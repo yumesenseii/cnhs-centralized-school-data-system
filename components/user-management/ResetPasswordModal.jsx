@@ -1,0 +1,174 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Check, Copy, KeyRound, Loader2 } from "lucide-react";
+
+function makeTempPassword() {
+  return `CNHS-Tmp-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+}
+
+export default function ResetPasswordModal({
+  open,
+  user,
+  onClose,
+  onReset,
+}) {
+  const [copied, setCopied] = useState(false);
+  const [generated, setGenerated] = useState(makeTempPassword);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setGenerated(makeTempPassword());
+    setCopied(false);
+    setError("");
+    setDone(false);
+    setSaving(false);
+  }, [open, user?.id]);
+
+  if (!open || !user) return null;
+
+  function handleGenerate() {
+    if (done) return;
+    setGenerated(makeTempPassword());
+    setCopied(false);
+  }
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(generated);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  async function handleConfirmReset() {
+    if (!user.authUserId) {
+      setError("This account has no Auth user id to reset.");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    const result = await onReset?.({
+      authUserId: user.authUserId,
+      temporaryPassword: generated,
+    });
+    setSaving(false);
+
+    if (result?.error) {
+      setError(result.error.message || "Unable to reset password.");
+      return;
+    }
+
+    if (result?.data?.temporaryPassword) {
+      setGenerated(result.data.temporaryPassword);
+    }
+    setDone(true);
+    setCopied(false);
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px]" onClick={onClose} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reset-password-title"
+        className="relative z-10 w-full max-w-[440px] overflow-hidden rounded-2xl bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]"
+      >
+        <div className="border-b border-slate-100 px-4 py-3.5">
+          <h2
+            id="reset-password-title"
+            className="text-lg font-semibold tracking-[-0.02em] text-slate-900"
+          >
+            Reset Password
+          </h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Set a temporary password for {user.fullName}. Share it securely;
+            they should change it after login.
+          </p>
+        </div>
+
+        <div className="space-y-3 px-4 py-3.5">
+          <div className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            Confirm password reset for{" "}
+            <span className="font-semibold">{user.email || "this account"}</span>.
+            {done
+              ? " Password has been updated in Auth."
+              : " This will replace their current password immediately."}
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-[11px] font-semibold text-slate-600">
+              Temporary Password
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex h-10 flex-1 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold tracking-wide text-slate-800">
+                {generated}
+              </code>
+              <button
+                type="button"
+                onClick={handleCopy}
+                disabled={!done && !generated}
+                className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
+              >
+                {copied ? <Check size={14} /> : <Copy size={14} />}
+                {copied ? "Copied" : "Copy"}
+              </button>
+            </div>
+          </div>
+
+          {error ? (
+            <div className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600">
+              {error}
+            </div>
+          ) : null}
+
+          {done ? (
+            <div className="rounded-xl border border-green-100 bg-green-50 px-3 py-2 text-xs font-medium text-cnhs-green-dark">
+              Password reset successful. Copy and share the temporary password
+              now — it will not be shown again later.
+            </div>
+          ) : null}
+
+          <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
+            {!done ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  disabled={saving}
+                  className="inline-flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
+                >
+                  <KeyRound size={14} />
+                  Regenerate
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmReset}
+                  disabled={saving}
+                  className="inline-flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-cnhs-green-dark px-4 text-xs font-semibold text-white transition-colors hover:bg-[#246f54] disabled:opacity-60"
+                >
+                  {saving ? <Loader2 size={14} className="animate-spin" /> : null}
+                  Confirm Reset
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={onClose}
+                className="h-10 cursor-pointer rounded-xl bg-cnhs-green-dark px-4 text-xs font-semibold text-white transition-colors hover:bg-[#246f54]"
+              >
+                Done
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

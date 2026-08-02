@@ -1,0 +1,594 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { motion } from "framer-motion";
+import {
+  AlertTriangle,
+  BookOpen,
+  CheckCircle2,
+  Clock3,
+  Loader2,
+  RefreshCw,
+  Users,
+  X,
+} from "lucide-react";
+import Header from "@/components/layout/Header";
+import AdminAralFacilitatorAssignPanel from "@/components/admin/monitoring/AdminAralFacilitatorAssignPanel";
+import AdminAralProgressPanel from "@/components/admin/monitoring/AdminAralProgressPanel";
+import LearnersInterventionTable from "@/components/teacher/monitoring/LearnersInterventionTable";
+import {
+  Pill,
+  RiskPill,
+  interventionStyles,
+  monitoringStatusStyles,
+} from "@/components/teacher/monitoring/shared";
+import { useAdminMonitoring } from "@/hooks/teacher/useMonitoring";
+import {
+  RISK_LEVEL,
+  normalizeRecommendationType,
+  normalizeRiskLevel,
+} from "@/lib/monitoring/recommendations";
+import { cn } from "@/lib/utils";
+
+function StatCard({ label, value, icon: Icon, tone, alert }) {
+  return (
+    <div className="relative rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
+      {alert ? (
+        <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-red-500" />
+      ) : null}
+      <div className="flex items-start gap-2.5">
+        <span
+          className={cn(
+            "flex h-8 w-8 items-center justify-center rounded-lg",
+            tone
+          )}
+        >
+          <Icon size={15} strokeWidth={1.8} />
+        </span>
+        <div>
+          <p className="text-xl font-semibold tracking-[-0.03em] text-slate-900">
+            {value}
+          </p>
+          <p className="mt-0.5 text-[11px] font-semibold text-slate-700">{label}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailPanel({ detail, loading, onClose }) {
+  if (!detail && !loading) return null;
+
+  return (
+    <div className="fixed inset-0 z-50">
+      <div
+        className="absolute inset-0 bg-slate-900/35 backdrop-blur-[1px]"
+        onClick={onClose}
+      />
+      <aside className="absolute right-0 top-0 flex h-full w-full max-w-[520px] flex-col bg-white shadow-[-18px_0_40px_rgba(15,23,42,0.18)]">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
+              Student Monitoring Record
+            </p>
+            <h2 className="mt-1 text-lg font-semibold text-slate-900">
+              {detail?.name ?? "Loading…"}
+            </h2>
+            <p className="mt-0.5 text-[12px] text-slate-500">
+              {detail
+                ? `${detail.studentNumber} · ${detail.gradeSection}`
+                : ""}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
+          {loading || !detail ? (
+            <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
+              <Loader2 size={16} className="animate-spin" />
+              Loading record…
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-2">
+                <RiskPill value={detail.riskLevel} />
+                <Pill
+                  value={detail.recommendation}
+                  styles={interventionStyles}
+                />
+                <Pill
+                  value={detail.monitoringStatus}
+                  styles={monitoringStatusStyles}
+                />
+              </div>
+
+              <section className="rounded-xl border border-slate-100 bg-slate-50/70 p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-slate-400">
+                  Student Information
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
+                  <p>
+                    <span className="text-slate-400">Adviser:</span>{" "}
+                    <span className="font-medium text-slate-700">
+                      {detail.adviser}
+                    </span>
+                  </p>
+                  <p>
+                    <span className="text-slate-400">Teacher:</span>{" "}
+                    <span className="font-medium text-slate-700">
+                      {detail.teacher}
+                    </span>
+                  </p>
+                  <p>
+                    <span className="text-slate-400">Subject grade:</span>{" "}
+                    <span className="font-medium text-slate-700">
+                      {detail.classSubjectGrade ?? detail.generalAverage ?? "—"}
+                    </span>
+                  </p>
+                  <p>
+                    <span className="text-slate-400">Period:</span>{" "}
+                    <span className="font-medium text-slate-700">
+                      {detail.schoolYear} · {detail.quarter}
+                    </span>
+                  </p>
+                </div>
+              </section>
+
+              <section>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-slate-400">
+                  Subject Grades
+                </p>
+                <div className="mt-2 overflow-hidden rounded-xl border border-slate-100">
+                  <table className="w-full text-left">
+                    <tbody>
+                      {detail.subjectGrades.length ? (
+                        detail.subjectGrades.map((row) => (
+                          <tr
+                            key={`${row.subject}-${row.grade}`}
+                            className="border-t border-slate-100 first:border-t-0"
+                          >
+                            <td className="px-3 py-2 text-xs text-slate-600">
+                              {row.subject}
+                            </td>
+                            <td className="px-3 py-2 text-right text-xs font-semibold text-slate-800">
+                              {row.grade ?? "—"}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td className="px-3 py-4 text-center text-xs text-slate-400">
+                            No grades available.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-slate-400">
+                  System Recommendation
+                </p>
+                <p className="mt-2 text-[12px] leading-5 text-slate-600">
+                  {detail.recommendationReason}
+                </p>
+              </section>
+
+              <section>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-slate-400">
+                  Weekly Progress History (view-only)
+                </p>
+                <div className="mt-2 space-y-2">
+                  {detail.records.length ? (
+                    detail.records.map((record) => (
+                      <div
+                        key={record.id}
+                        className="rounded-xl border border-slate-100 bg-white px-3 py-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-semibold text-slate-800">
+                            {record.weekLabel ? `${record.weekLabel} · ` : ""}
+                            {record.observationDate}
+                          </p>
+                          <Pill
+                            value={record.monitoringStatus}
+                            styles={monitoringStatusStyles}
+                          />
+                        </div>
+                        <p className="mt-1 text-[11px] font-semibold text-slate-700">
+                          Progress: {record.studentProgress || "—"}
+                        </p>
+                        <p className="mt-1 text-[11px] text-slate-600">
+                          {record.interventionGiven}
+                        </p>
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          {record.teacherRemarks}
+                        </p>
+                        {record.teacherName && record.teacherName !== "—" ? (
+                          <p className="mt-1 text-[10px] text-slate-400">
+                            Teacher: {record.teacherName}
+                          </p>
+                        ) : null}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="py-2 text-center text-xs text-slate-400">
+                      No weekly progress updates recorded yet.
+                    </p>
+                  )}
+                </div>
+              </section>
+            </>
+          )}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+export default function AdminMonitoringPage() {
+  const searchParams = useSearchParams();
+  const {
+    students,
+    stats,
+    filterOptions,
+    loading,
+    error,
+    refresh,
+    selectedDetail,
+    detailLoading,
+    openStudent,
+    closeStudent,
+  } = useAdminMonitoring();
+
+  const [search, setSearch] = useState("");
+  const [schoolYear, setSchoolYear] = useState("");
+  const [quarter, setQuarter] = useState("All Terms");
+  const [grade, setGrade] = useState("All Grades");
+  const [section, setSection] = useState("All Sections");
+  const [recommendation, setRecommendation] = useState("All Recommendations");
+  const [risk, setRisk] = useState("All Risks");
+  const [status, setStatus] = useState("All Status");
+
+  useEffect(() => {
+    const riskParam = searchParams.get("risk");
+    const recommendationParam = searchParams.get("recommendation");
+    if (riskParam) {
+      setRisk(normalizeRiskLevel(riskParam));
+    }
+    if (recommendationParam) {
+      setRecommendation(normalizeRecommendationType(recommendationParam));
+    }
+  }, [searchParams]);
+
+  const filtered = useMemo(() => {
+    return students.filter((learner) => {
+      const query = search.trim().toLowerCase();
+      const matchesSearch =
+        !query ||
+        learner.name.toLowerCase().includes(query) ||
+        learner.studentNumber.toLowerCase().includes(query);
+      const matchesYear =
+        !schoolYear || learner.schoolYear === schoolYear;
+      const matchesQuarter =
+        quarter === "All Terms" || learner.quarter === quarter;
+      const matchesGrade = grade === "All Grades" || learner.grade === grade;
+      const matchesSection =
+        section === "All Sections" || learner.section === section;
+      const matchesRecommendation =
+        recommendation === "All Recommendations" ||
+        normalizeRecommendationType(learner.recommendation) ===
+          normalizeRecommendationType(recommendation);
+      const learnerRisk = normalizeRiskLevel(learner.riskLevel);
+      const matchesRisk = risk === "All Risks" || learnerRisk === risk;
+      const matchesStatus =
+        status === "All Status" || learner.monitoringStatus === status;
+
+      return (
+        matchesSearch &&
+        matchesYear &&
+        matchesQuarter &&
+        matchesGrade &&
+        matchesSection &&
+        matchesRecommendation &&
+        matchesRisk &&
+        matchesStatus
+      );
+    });
+  }, [
+    students,
+    search,
+    schoolYear,
+    quarter,
+    grade,
+    section,
+    recommendation,
+    risk,
+    status,
+  ]);
+
+  const activeSchoolYear =
+    schoolYear || filterOptions.schoolYears[0] || "SY 2026-2027";
+
+  function clearFilters() {
+    setSearch("");
+    setSchoolYear("");
+    setQuarter("All Terms");
+    setGrade("All Grades");
+    setSection("All Sections");
+    setRecommendation("All Recommendations");
+    setRisk("All Risks");
+    setStatus("All Status");
+  }
+
+  function handleServerFilterChange(next = {}) {
+    const year = next.schoolYear ?? schoolYear;
+    const q = next.quarter ?? quarter;
+    const g = next.grade ?? grade;
+    const s = next.section ?? section;
+
+    if (next.schoolYear !== undefined) setSchoolYear(next.schoolYear);
+    if (next.quarter !== undefined) setQuarter(next.quarter);
+    if (next.grade !== undefined) setGrade(next.grade);
+    if (next.section !== undefined) setSection(next.section);
+
+    const quarterNumber =
+      q && q !== "All Terms"
+        ? Number(String(q).replace(/\D/g, "")) || null
+        : null;
+    const gradeLevel =
+      g && g !== "All Grades"
+        ? Number(String(g).replace(/\D/g, "")) || null
+        : null;
+
+    refresh({
+      schoolYear: year || null,
+      quarterNumber,
+      gradeLevel,
+      sectionName: s && s !== "All Sections" ? s : null,
+    });
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="pb-5"
+    >
+      <Header
+        breadcrumb="Home > Student Monitoring"
+        title="Student Monitoring"
+        description="Review at-risk learners, ARAL weekly progress from teachers (view-only), and remediation monitoring."
+      />
+
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[12px] text-slate-500">
+          Showing monitored students across assigned classes. Recommendations
+          are generated by the Random Forest recommendation engine.
+        </p>
+        <button
+          type="button"
+          onClick={() =>
+            handleServerFilterChange({
+              schoolYear,
+              quarter,
+              grade,
+              section,
+            })
+          }
+          className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+        >
+          <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+          Refresh
+        </button>
+      </div>
+
+      {error ? (
+        <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+          {error}
+        </div>
+      ) : null}
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <StatCard
+          label="Total At-Risk Students"
+          value={stats.totalAtRisk}
+          icon={Users}
+          tone="bg-sky-50 text-sky-600"
+          alert={stats.totalAtRisk > 0}
+        />
+        <StatCard
+          label="ARAL Recommendations"
+          value={stats.aral}
+          icon={Clock3}
+          tone="bg-orange-50 text-cnhs-orange"
+          alert={stats.aral > 0}
+        />
+        <StatCard
+          label="Classroom Remedial"
+          value={stats.remediation}
+          icon={BookOpen}
+          tone="bg-green-50 text-cnhs-green-dark"
+        />
+        <StatCard
+          label="Ongoing Monitoring"
+          value={stats.ongoing}
+          icon={AlertTriangle}
+          tone="bg-red-50 text-red-500"
+          alert={stats.ongoing > 0}
+        />
+        <StatCard
+          label="Completed Monitoring"
+          value={stats.completed}
+          icon={CheckCircle2}
+          tone="bg-emerald-50 text-emerald-600"
+        />
+      </div>
+
+      <div className="mt-3 space-y-3">
+        <AdminAralFacilitatorAssignPanel
+          students={students}
+          onChanged={() => refresh({
+            schoolYear: schoolYear || undefined,
+            quarterNumber:
+              quarter !== "All Terms"
+                ? Number(String(quarter).replace(/\D/g, "")) || null
+                : null,
+          })}
+        />
+        <AdminAralProgressPanel
+          students={students}
+          onViewStudent={openStudent}
+        />
+      </div>
+
+      <section className="mt-3 rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search student name or number…"
+            className="h-9 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-[12px] text-slate-700 outline-none placeholder:text-slate-400 focus:border-cnhs-green"
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={schoolYear || activeSchoolYear}
+              onChange={(e) =>
+                handleServerFilterChange({ schoolYear: e.target.value })
+              }
+              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 outline-none focus:border-cnhs-green"
+            >
+              {filterOptions.schoolYears.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <select
+              value={quarter}
+              onChange={(e) =>
+                handleServerFilterChange({ quarter: e.target.value })
+              }
+              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 outline-none focus:border-cnhs-green"
+            >
+              {(filterOptions.quarters.length > 1
+                ? filterOptions.quarters
+                : ["All Terms", "Term 1", "Term 2", "Term 3", "Final Grade / Average"]
+              ).map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <select
+              value={grade}
+              onChange={(e) =>
+                handleServerFilterChange({ grade: e.target.value })
+              }
+              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 outline-none focus:border-cnhs-green"
+            >
+              {filterOptions.grades.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <select
+              value={section}
+              onChange={(e) =>
+                handleServerFilterChange({ section: e.target.value })
+              }
+              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 outline-none focus:border-cnhs-green"
+            >
+              {filterOptions.sections.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <select
+              value={recommendation}
+              onChange={(e) => setRecommendation(e.target.value)}
+              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 outline-none focus:border-cnhs-green"
+            >
+              {filterOptions.interventions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <select
+              value={risk}
+              onChange={(e) => setRisk(e.target.value)}
+              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 outline-none focus:border-cnhs-green"
+            >
+              {(filterOptions.risks ?? [
+                "All Risks",
+                RISK_LEVEL.HIGH,
+                RISK_LEVEL.MODERATE,
+                RISK_LEVEL.LOW,
+              ]).map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 outline-none focus:border-cnhs-green"
+            >
+              {filterOptions.statuses.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-500 transition-colors hover:bg-slate-50"
+            >
+              <X size={12} />
+              Clear
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div className="mt-3">
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-100 bg-white py-10 text-sm text-slate-500">
+            <Loader2 size={16} className="animate-spin" />
+            Loading monitoring data…
+          </div>
+        ) : (
+          <LearnersInterventionTable
+            learners={filtered}
+            schoolYear={activeSchoolYear}
+            quarter={quarter === "All Terms" ? "All Terms" : quarter}
+            onViewMonitoring={openStudent}
+            title="Monitored Students"
+          />
+        )}
+      </div>
+
+      <DetailPanel
+        detail={selectedDetail}
+        loading={detailLoading}
+        onClose={closeStudent}
+      />
+    </motion.div>
+  );
+}
