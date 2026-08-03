@@ -18,6 +18,7 @@ const icons = {
   Reports: BarChart3,
   Users: Users,
   Monitoring: ClipboardList,
+  "Academic Monitoring": ClipboardList,
   "ARAL Learners": GraduationCap,
   "ARAL Screening": GraduationCap,
   "Classroom Remedial": BookOpen,

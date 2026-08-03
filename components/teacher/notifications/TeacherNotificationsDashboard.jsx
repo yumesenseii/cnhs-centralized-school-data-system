@@ -28,8 +28,10 @@ export default function TeacherNotificationsDashboard() {
     filterOptions,
     unreadCount,
     loading,
+    markingAll,
     error,
     filters,
+    filtersActive,
     setSearch,
     setType,
     setPriority,
@@ -101,11 +103,11 @@ export default function TeacherNotificationsDashboard() {
           <button
             type="button"
             onClick={() => markAllRead()}
-            disabled={unreadCount === 0}
+            disabled={unreadCount === 0 || markingAll}
             className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 shadow-sm transition-colors duration-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <CheckCheck size={13} />
-            Mark All as Read
+            {markingAll ? "Marking…" : "Mark All as Read"}
           </button>
           <button
             type="button"
@@ -146,6 +148,7 @@ export default function TeacherNotificationsDashboard() {
               type={filters.type}
               priority={filters.priority}
               status={filters.status}
+              filtersActive={filtersActive}
               onSearchChange={setSearch}
               onTypeChange={setType}
               onPriorityChange={setPriority}

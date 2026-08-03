@@ -3,12 +3,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   createMonitoringRecord,
-  getAdminMonitoringRoster,
   getStudentMonitoringDetail,
-  getTeacherMonitoringRoster,
   resolveTeacherSessionForMonitoring,
 } from "@/lib/supabase/queries/monitoring";
 import { getAdminSession } from "@/lib/supabase/queries/adminAuth";
+import {
+  getCachedAdminRoster,
+  getCachedBuiltMonitoringRoster,
+  invalidateAdminRosterCache,
+} from "@/lib/admin/adminRosterCache";
+import {
+  getCachedBuiltTeacherRoster,
+  getCachedTeacherRoster,
+  invalidateTeacherRosterCache,
+} from "@/lib/teacher/teacherRosterCache";
 import {
   getAralAssignmentMapByStudent,
   isCurrentTeacherAralFacilitator,
@@ -18,9 +26,41 @@ import {
   buildAdminMonitoringStats,
   buildFilterOptions,
   buildMonitoringKpis,
-  buildMonitoringRoster,
   mapMonitoringDetail,
 } from "@/lib/teacher/monitoringMappers";
+
+function unwrap(value) {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
+
+function filterRosterPayload(
+  payload,
+  { gradeLevel = null, sectionName = null } = {}
+) {
+  let classes = payload?.classes ?? [];
+  if (gradeLevel !== null && gradeLevel !== undefined && gradeLevel !== "") {
+    classes = classes.filter(
+      (row) => Number(unwrap(row.sections)?.grade_level) === Number(gradeLevel)
+    );
+  }
+  if (sectionName) {
+    classes = classes.filter(
+      (row) => unwrap(row.sections)?.section_name === sectionName
+    );
+  }
+  const classIds = new Set(classes.map((row) => row.id));
+  return {
+    classes,
+    enrollments: (payload?.enrollments ?? []).filter((row) =>
+      classIds.has(row.class_id)
+    ),
+    grades: (payload?.grades ?? []).filter((row) => classIds.has(row.class_id)),
+    monitoringRecords: (payload?.monitoringRecords ?? []).filter((row) =>
+      classIds.has(row.class_id)
+    ),
+  };
+}
 
 export function useTeacherMonitoring() {
   const [students, setStudents] = useState([]);
@@ -31,9 +71,11 @@ export function useTeacherMonitoring() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async ({ bustCache = false } = {}) => {
     setLoading(true);
     setError("");
+
+    if (bustCache) invalidateTeacherRosterCache();
 
     const session = await resolveTeacherSessionForMonitoring();
     if (session.error || !session.data) {
@@ -45,7 +87,7 @@ export function useTeacherMonitoring() {
     setProfile(session.data.profile);
     setTeacher(session.data.teacher);
 
-    const result = await getTeacherMonitoringRoster({
+    const result = await getCachedTeacherRoster({
       teacherId: session.data.teacherId,
     });
 
@@ -55,14 +97,14 @@ export function useTeacherMonitoring() {
       return;
     }
 
-    const roster = await buildMonitoringRoster(result.data);
+    const roster = await getCachedBuiltTeacherRoster(result.data, {
+      teacherId: session.data.teacherId,
+    });
     setStudents(roster.students);
     setClassSummaries(roster.classSummaries);
     setKpis(buildMonitoringKpis(roster.students, roster.classSummaries));
     setLoading(false);
 
-    // Recommendations are computed, not stored, so the roster is the event
-    // source. Deduplicated inserts keep repeated refreshes idempotent.
     syncRecommendationNotifications({
       profileId: session.data.profile?.id ?? null,
       students: roster.students,
@@ -85,9 +127,7 @@ export function useTeacherMonitoring() {
       students[0]?.schoolYear ||
       "SY 2026-2027";
     const quarter =
-      classSummaries[0]?.quarterLabel ||
-      students[0]?.quarter ||
-      "Term 1";
+      classSummaries[0]?.quarterLabel || students[0]?.quarter || "Term 1";
     return { schoolYear, quarter };
   }, [classSummaries, students]);
 
@@ -102,7 +142,7 @@ export function useTeacherMonitoring() {
     teacherId: teacher?.id ?? null,
     loading,
     error,
-    refresh,
+    refresh: () => refresh({ bustCache: true }),
   };
 }
 
@@ -216,6 +256,8 @@ export function useAdminMonitoring() {
     setLoading(true);
     setError("");
 
+    if (filters.bustCache) invalidateAdminRosterCache();
+
     const session = await getAdminSession();
     if (session.error) {
       setError(session.error.message);
@@ -223,12 +265,10 @@ export function useAdminMonitoring() {
       return;
     }
 
-    const result = await getAdminMonitoringRoster({
-      schoolYear: filters.schoolYear || null,
-      quarter: filters.quarterNumber || null,
-      gradeLevel: filters.gradeLevel || null,
-      sectionName: filters.sectionName || null,
-    });
+    const schoolYear = filters.schoolYear || null;
+    const quarter = filters.quarterNumber || null;
+
+    const result = await getCachedAdminRoster({ schoolYear, quarter });
 
     if (result.error) {
       setError(result.error.message);
@@ -236,12 +276,25 @@ export function useAdminMonitoring() {
       return;
     }
 
-    const roster = await buildMonitoringRoster(result.data);
+    const scoped = filterRosterPayload(result.data, {
+      gradeLevel: filters.gradeLevel || null,
+      sectionName: filters.sectionName || null,
+    });
+
+    const scope =
+      filters.gradeLevel || filters.sectionName
+        ? `g${filters.gradeLevel || "all"}-s${filters.sectionName || "all"}`
+        : "default";
+
+    const roster = await getCachedBuiltMonitoringRoster(scoped, {
+      schoolYear,
+      quarter,
+      scope,
+    });
+
     const assignmentMap = await getAralAssignmentMapByStudent({
       schoolYear:
-        filters.schoolYear ||
-        roster.students[0]?.schoolYear ||
-        "SY 2026-2027",
+        schoolYear || roster.students[0]?.schoolYear || "SY 2026-2027",
     });
 
     const studentsWithFacilitators = roster.students.map((student) => {

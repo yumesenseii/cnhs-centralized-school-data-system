@@ -115,10 +115,12 @@ export default function MonitoringDashboard() {
                 Home
               </Link>
               <span className="text-slate-300"> &gt; </span>
-              <span className="font-semibold text-slate-600">Monitoring</span>
+              <span className="font-semibold text-slate-600">
+                Academic Monitoring
+              </span>
             </p>
             <h1 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-slate-800 sm:text-[22px]">
-              Monitoring
+              Academic Monitoring
             </h1>
             <p className="mt-1 max-w-xl text-[12px] text-slate-500">
               {filterOptions.hasAralClass

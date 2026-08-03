@@ -12,6 +12,7 @@ import RiskDistributionChart from "@/components/dashboard/RiskDistributionChart"
 import StatCard from "@/components/dashboard/StatCard";
 import WeakSubjectChart from "@/components/dashboard/WeakSubjectChart";
 import AttendanceMonitoringPanel from "@/components/attendance/AttendanceMonitoringPanel";
+import DeferredMount from "@/components/shared/DeferredMount";
 import { useAdminDashboard } from "@/hooks/admin/useAdminDashboard";
 
 function DashboardLoading() {
@@ -103,11 +104,13 @@ export default function DashboardPage() {
         <>
           <section className="mb-3">
             <h2 className="text-sm font-semibold text-slate-900">
-              {/* Academic Analytics */}
+              Academic Analytics
             </h2>
             <p className="mt-0.5 text-[11px] text-slate-500">
-              {/* Risk predictions are based on academic performance (ECR grades)
-              only. Attendance is not a prediction input. */}
+              Risk predictions are based on academic performance (ECR grades)
+              only
+              {data?.schoolYear ? ` · ${data.schoolYear}` : ""}. Attendance is
+              not a prediction input.
             </p>
           </section>
 
@@ -161,11 +164,20 @@ export default function DashboardPage() {
           </div>
 
           <div className="mt-3 border-t border-slate-100 pt-3">
-            <AttendanceMonitoringPanel
-              title="Attendance Analytics"
-              showUpload={false}
-              compact
-            />
+            <DeferredMount
+              delayMs={100}
+              fallback={
+                <p className="py-4 text-center text-[12px] text-slate-400">
+                  Loading attendance analytics…
+                </p>
+              }
+            >
+              <AttendanceMonitoringPanel
+                title="Attendance Analytics"
+                showUpload={false}
+                compact
+              />
+            </DeferredMount>
             <p className="mt-2 text-[11px] text-slate-400">
               Upload SF2 files and manage monthly reports on{" "}
               <a

@@ -6,11 +6,13 @@ import {
   getTeacherReportsBundle,
   resolveTeacherReportsSession,
 } from "@/lib/supabase/queries/reports";
+import { invalidateTeacherRosterCache } from "@/lib/teacher/teacherRosterCache";
 import { buildTeacherDashboardModel } from "@/lib/teacher/dashboardMappers";
 
 export function useTeacherDashboard() {
   const [bundle, setBundle] = useState(null);
   const [profileId, setProfileId] = useState(null);
+  const [teacherId, setTeacherId] = useState(null);
   const [schoolYear, setSchoolYear] = useState("");
   const [quarter, setQuarter] = useState("1");
   const [data, setData] = useState(null);
@@ -18,9 +20,11 @@ export function useTeacherDashboard() {
   const [building, setBuilding] = useState(false);
   const [error, setError] = useState("");
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async ({ bustCache = false } = {}) => {
     setLoading(true);
     setError("");
+
+    if (bustCache) invalidateTeacherRosterCache();
 
     const session = await resolveTeacherReportsSession();
     if (session.error || !session.data?.teacherId) {
@@ -41,6 +45,7 @@ export function useTeacherDashboard() {
     }
 
     setProfileId(session.data.profile?.id ?? null);
+    setTeacherId(session.data.teacherId);
 
     const nextBundle = result.data;
     const classes = nextBundle.allClasses ?? nextBundle.classes ?? [];
@@ -118,13 +123,13 @@ export function useTeacherDashboard() {
           lessonPlans: bundle.lessonPlans ?? [],
           schoolYear,
           quarter,
+          teacherId,
         });
         if (cancelled) return;
         setData(next);
 
-        // The dashboard already ran the recommendation service for this
-        // school year / quarter, so reuse that roster for notifications.
-        syncRecommendationNotifications({
+        // Fire-and-forget — must not block dashboard paint.
+        void syncRecommendationNotifications({
           profileId,
           students: next.roster?.students ?? [],
           classSummaries: next.roster?.classSummaries ?? [],
@@ -143,7 +148,7 @@ export function useTeacherDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [bundle, schoolYear, quarter, profileId]);
+  }, [bundle, schoolYear, quarter, profileId, teacherId]);
 
   return {
     data,
@@ -153,7 +158,7 @@ export function useTeacherDashboard() {
     quarters,
     setSchoolYear,
     setQuarter,
-    refresh,
+    refresh: () => refresh({ bustCache: true }),
     loading: loading || building,
     error,
   };

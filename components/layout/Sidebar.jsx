@@ -53,15 +53,17 @@ function initialsFromName(name = "") {
   );
 }
 
-function NavLink({ href, label, icon: Icon, isActive, onNavigate }) {
+function NavLink({ href, label, icon: Icon, isActive, onNavigate, collapsed }) {
   return (
     <Link
       href={href}
       onClick={onNavigate}
+      title={label}
       aria-current={isActive ? "page" : undefined}
       className={cn(
         "group flex min-h-8 items-center gap-2.5 rounded-lg px-3 text-[13px] font-medium transition-all duration-200",
         "hover:bg-white/8 hover:text-white",
+        collapsed && "justify-center px-2",
         isActive ? "bg-cnhs-green/20 text-[#7dd8a9]" : "text-white/70"
       )}
     >
@@ -73,24 +75,39 @@ function NavLink({ href, label, icon: Icon, isActive, onNavigate }) {
           isActive ? "text-cnhs-green" : "text-white/45 group-hover:text-white/75"
         )}
       />
-      <span className="min-w-0 flex-1 leading-5">{label}</span>
-      {isActive ? <ChevronRight size={14} className="shrink-0 text-cnhs-green" /> : null}
+      {!collapsed ? (
+        <>
+          <span className="min-w-0 flex-1 leading-5">{label}</span>
+          {isActive ? (
+            <ChevronRight size={14} className="shrink-0 text-cnhs-green" />
+          ) : null}
+        </>
+      ) : null}
     </Link>
   );
 }
 
-function NavSection({ title, children }) {
+function NavSection({ title, children, collapsed }) {
   return (
     <div>
-      <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">
-        {title}
-      </p>
+      {!collapsed ? (
+        <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">
+          {title}
+        </p>
+      ) : null}
       <div className="space-y-0.5">{children}</div>
     </div>
   );
 }
 
-export default function Sidebar({ className, mobile = false, onNavigate }) {
+export default function Sidebar({
+  className,
+  mobile = false,
+  onNavigate,
+  collapsed = false,
+  widthClass = SIDEBAR_WIDTH_CLASS,
+  schoolName = "Cambaog National High School",
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [profile, setProfile] = useState({
@@ -141,14 +158,19 @@ export default function Sidebar({ className, mobile = false, onNavigate }) {
   return (
     <aside
       className={cn(
-        "z-30 h-screen flex-col bg-cnhs-sidebar text-white",
-        SIDEBAR_WIDTH_CLASS,
+        "z-30 h-screen flex-col bg-cnhs-sidebar text-white transition-[width] duration-200",
+        widthClass,
         mobile ? "flex h-full w-full" : "fixed inset-y-0 left-0",
         className
       )}
       aria-label="Admin sidebar"
     >
-      <div className="flex items-start gap-2.5 px-3 pb-3 pt-3">
+      <div
+        className={cn(
+          "flex items-start gap-2.5 px-3 pb-3 pt-3",
+          collapsed && "justify-center px-2"
+        )}
+      >
         <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-0.5 shadow-sm">
           <Image
             src="/cnhs-logo.png"
@@ -159,20 +181,25 @@ export default function Sidebar({ className, mobile = false, onNavigate }) {
             className="h-full w-full rounded-md object-cover"
           />
         </div>
-        <div className="min-w-0 pt-0.5">
-          <p className="truncate text-[13px] font-semibold leading-5 text-white">CNHS Admin</p>
-          <p className="line-clamp-2 text-[11px] leading-4 text-white/58">
-            Cambaog National High School
-          </p>
-        </div>
+        {!collapsed ? (
+          <div className="min-w-0 pt-0.5">
+            <p className="truncate text-[13px] font-semibold leading-5 text-white">
+              CNHS Admin
+            </p>
+            <p className="line-clamp-2 text-[11px] leading-4 text-white/58">
+              {schoolName}
+            </p>
+          </div>
+        ) : null}
       </div>
 
       <nav className="flex-1 space-y-2 overflow-y-auto px-3" aria-label="Admin navigation">
-        <NavSection title="Menu">
+        <NavSection title="Menu" collapsed={collapsed}>
           {menuNavigation.map((item) => (
             <NavLink
               key={item.href}
               {...item}
+              collapsed={collapsed}
               isActive={isActive(item.href)}
               onNavigate={onNavigate}
             />
@@ -181,11 +208,12 @@ export default function Sidebar({ className, mobile = false, onNavigate }) {
 
         <div className="mx-3 my-0.5 border-t border-white/10" />
 
-        <NavSection title="Analytics">
+        <NavSection title="Analytics" collapsed={collapsed}>
           {analyticsNavigation.map((item) => (
             <NavLink
               key={item.href}
               {...item}
+              collapsed={collapsed}
               isActive={isActive(item.href)}
               onNavigate={onNavigate}
             />
@@ -194,11 +222,12 @@ export default function Sidebar({ className, mobile = false, onNavigate }) {
 
         <div className="mx-3 my-0.5 border-t border-white/10" />
 
-        <NavSection title="Account">
+        <NavSection title="Account" collapsed={collapsed}>
           {accountNavigation.map((item) => (
             <NavLink
               key={item.href}
               {...item}
+              collapsed={collapsed}
               isActive={isActive(item.href)}
               onNavigate={onNavigate}
             />
@@ -206,27 +235,42 @@ export default function Sidebar({ className, mobile = false, onNavigate }) {
         </NavSection>
       </nav>
 
-      <div className="mt-auto space-y-2 px-3 pb-3">
-        <div className="flex items-center gap-2.5 rounded-lg bg-white/10 px-2.5 py-2">
+      <div className={cn("mt-auto space-y-2 px-3 pb-3", collapsed && "px-2")}>
+        <div
+          className={cn(
+            "flex items-center gap-2.5 rounded-lg bg-white/10 px-2.5 py-2",
+            collapsed && "justify-center px-2"
+          )}
+          title={profile.name}
+        >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cnhs-green text-[11px] font-semibold text-white">
             {profile.initials}
           </div>
-          <div className="min-w-0">
-            <p className="truncate text-[12px] font-semibold leading-4 text-white">
-              {profile.name}
-            </p>
-            <p className="truncate text-[10px] leading-4 text-white/55">{profile.role}</p>
-          </div>
+          {!collapsed ? (
+            <div className="min-w-0">
+              <p className="truncate text-[12px] font-semibold leading-4 text-white">
+                {profile.name}
+              </p>
+              <p className="truncate text-[10px] leading-4 text-white/55">
+                {profile.role}
+              </p>
+            </div>
+          ) : null}
         </div>
         <button
           type="button"
           onClick={handleLogout}
-          className="flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 text-[13px] font-medium text-white/72 transition-colors duration-200 hover:bg-white/8 hover:text-white"
+          title="Logout"
+          className={cn(
+            "flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 text-[13px] font-medium text-white/72 transition-colors duration-200 hover:bg-white/8 hover:text-white",
+            collapsed && "justify-center px-2"
+          )}
         >
           <LogOut size={16} strokeWidth={1.9} />
-          Logout
+          {!collapsed ? "Logout" : null}
         </button>
       </div>
     </aside>
   );
 }
+

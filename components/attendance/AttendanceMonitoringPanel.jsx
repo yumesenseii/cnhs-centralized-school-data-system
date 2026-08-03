@@ -57,37 +57,42 @@ export default function AttendanceMonitoringPanel({
   async function reload() {
     setLoading(true);
     setError("");
-    const [analyticsResult, uploadsResult] = await Promise.all([
-      getAttendanceAnalytics({ schoolYear: form.schoolYear || null }),
-      listAttendanceUploads(10),
-    ]);
+    const analyticsResult = await getAttendanceAnalytics({
+      schoolYear: form.schoolYear || null,
+    });
     if (analyticsResult.error) {
       setError(analyticsResult.error.message);
       setAnalytics(null);
     } else {
       setAnalytics(analyticsResult.data);
     }
-    if (!uploadsResult.error) setUploads(uploadsResult.data ?? []);
+    if (showUpload) {
+      const uploadsResult = await listAttendanceUploads(10);
+      if (!uploadsResult.error) setUploads(uploadsResult.data ?? []);
+    }
     setLoading(false);
   }
 
   useEffect(() => {
     let cancelled = false;
     async function boot() {
-      const supabase = createClient();
-      const { data: sectionRows } = await supabase
-        .from("sections")
-        .select("id, section_name, grade_level, school_year")
-        .order("grade_level");
-      if (!cancelled) setSections(sectionRows ?? []);
-      await reload();
+      // Compact dashboard embeds don't need the full section list for uploads.
+      if (showUpload) {
+        const supabase = createClient();
+        const { data: sectionRows } = await supabase
+          .from("sections")
+          .select("id, section_name, grade_level, school_year")
+          .order("grade_level");
+        if (!cancelled) setSections(sectionRows ?? []);
+      }
+      if (!cancelled) await reload();
     }
     boot();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [showUpload]);
 
   async function handleImport(e) {
     e.preventDefault();

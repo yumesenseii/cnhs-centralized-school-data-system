@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { pickDefaultSchoolYear } from "@/lib/admin/academicRecordsMappers";
+import {
+  getCachedAdminSchoolYears,
+  invalidateAdminRosterCache,
+} from "@/lib/admin/adminRosterCache";
 import { getAdminReportsBundle } from "@/lib/supabase/queries/reports";
 import { buildAdminReportsModel } from "@/lib/admin/reportsMappers";
 import { QUARTER_OPTIONS, TERM_ALL_LABEL } from "@/lib/teacher/reportsConstants";
@@ -13,58 +16,96 @@ export function useAdminReports() {
   const [quarter, setQuarter] = useState("");
   const [schoolYears, setSchoolYears] = useState([]);
   const [model, setModel] = useState(null);
-  const [initialized, setInitialized] = useState(false);
+  const [filtersReady, setFiltersReady] = useState(false);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  useEffect(() => {
+    let cancelled = false;
 
-    const result = await getAdminReportsBundle({
-      schoolYear: schoolYear || null,
-      quarter: quarter || null,
-    });
+    async function resolveYear() {
+      const yearsResult = await getCachedAdminSchoolYears();
+      if (cancelled) return;
 
-    if (result.error) {
-      setError(result.error.message || "Unable to load admin reports.");
-      setModel(null);
-      setLoading(false);
-      return;
-    }
-
-    const years = result.data.schoolYears ?? [];
-    setSchoolYears(years);
-
-    if (!initialized) {
-      setInitialized(true);
-      const preferred = pickDefaultSchoolYear(
-        result.data.classes ?? [],
-        years
-      );
-      if (!schoolYear && preferred) {
-        setSchoolYear(preferred);
+      if (yearsResult.error) {
+        setError(yearsResult.error.message || "Unable to load admin reports.");
+        setFiltersReady(true);
         setLoading(false);
         return;
       }
+
+      const years = yearsResult.data ?? [];
+      setSchoolYears(years);
+      setSchoolYear((current) => current || years[0] || "");
+      setFiltersReady(true);
     }
 
-    const built = await buildAdminReportsModel({
-      ...result.data,
-      schoolYears: years,
-      filters: {
-        schoolYear: schoolYear || undefined,
-        quarter: quarter || undefined,
-      },
-    });
-    setModel(built);
-    setLoading(false);
-  }, [schoolYear, quarter, initialized]);
+    resolveYear();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const refresh = useCallback(
+    async ({ bustCache = false } = {}) => {
+      if (!filtersReady) return;
+
+      setLoading(true);
+      setError("");
+
+      try {
+        if (bustCache) invalidateAdminRosterCache();
+
+        const result = await getAdminReportsBundle({
+          schoolYear: schoolYear || null,
+          quarter: quarter || null,
+        });
+
+        if (result.error) {
+          setError(result.error.message || "Unable to load admin reports.");
+          setModel(null);
+          return;
+        }
+
+        const yearsForModel =
+          result.data.schoolYears?.length > 0
+            ? result.data.schoolYears
+            : schoolYears;
+
+        if (result.data.schoolYears?.length) {
+          setSchoolYears((prev) =>
+            prev.length === result.data.schoolYears.length &&
+            prev.every((y, i) => y === result.data.schoolYears[i])
+              ? prev
+              : result.data.schoolYears
+          );
+        }
+
+        const built = await buildAdminReportsModel({
+          ...result.data,
+          schoolYears: yearsForModel,
+          filters: {
+            schoolYear: schoolYear || undefined,
+            quarter: quarter || undefined,
+          },
+        });
+        setModel(built);
+      } catch (err) {
+        setError(err?.message || "Unable to load admin reports.");
+        setModel(null);
+      } finally {
+        setLoading(false);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- schoolYears is display-only after boot
+    [filtersReady, schoolYear, quarter]
+  );
 
   useEffect(() => {
+    if (!filtersReady) return;
     refresh();
-  }, [refresh]);
+  }, [filtersReady, refresh]);
 
   return {
-    loading,
+    loading: loading || !filtersReady,
     error,
     schoolYear,
     quarter,
@@ -79,7 +120,7 @@ export function useAdminReports() {
     attendance: model?.attendance ?? null,
     setSchoolYear,
     setQuarter,
-    refresh,
+    refresh: () => refresh({ bustCache: true }),
     getPreview(classId) {
       return model?.buildPreviewForClass?.(classId) ?? null;
     },

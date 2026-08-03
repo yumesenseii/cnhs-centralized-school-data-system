@@ -70,7 +70,7 @@ function DetailPanel({ detail, loading, onClose }) {
         <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
           <div>
             <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
-              Student Monitoring Record
+              Academic Monitoring Record
             </p>
             <h2 className="mt-1 text-lg font-semibold text-slate-900">
               {detail?.name ?? "Loading…"}
@@ -367,8 +367,8 @@ export default function AdminMonitoringPage() {
       className="pb-5"
     >
       <Header
-        breadcrumb="Home > Student Monitoring"
-        title="Student Monitoring"
+        breadcrumb="Home > Academic Monitoring"
+        title="Academic Monitoring"
         description="Review at-risk learners, ARAL weekly progress from teachers (view-only), and remediation monitoring."
       />
 

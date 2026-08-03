@@ -23,6 +23,7 @@ export function useTeacherNotifications() {
   const [notifications, setNotifications] = useState([]);
   const [profileId, setProfileId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [markingAll, setMarkingAll] = useState(false);
   const [error, setError] = useState("");
 
   const [search, setSearch] = useState("");
@@ -90,6 +91,7 @@ export function useTeacherNotifications() {
   }, [refresh]);
 
   const markAllRead = useCallback(async () => {
+    setMarkingAll(true);
     const readAt = new Date().toISOString();
     setNotifications((current) =>
       current.map((item) =>
@@ -102,6 +104,7 @@ export function useTeacherNotifications() {
       setError(result.error.message ?? "Unable to mark all as read.");
       await refresh({ silent: true });
     }
+    if (mounted.current) setMarkingAll(false);
   }, [refresh]);
 
   const filtered = useMemo(
@@ -124,6 +127,15 @@ export function useTeacherNotifications() {
     [notifications]
   );
 
+  const filtersActive = useMemo(
+    () =>
+      Boolean(search.trim()) ||
+      type !== NOTIFICATION_FILTER_ALL ||
+      priority !== NOTIFICATION_FILTER_ALL ||
+      status !== NOTIFICATION_STATUS_FILTER.ALL,
+    [search, type, priority, status]
+  );
+
   function clearFilters() {
     setSearch("");
     setType(NOTIFICATION_FILTER_ALL);
@@ -138,8 +150,10 @@ export function useTeacherNotifications() {
     filterOptions,
     unreadCount,
     loading,
+    markingAll,
     error,
     filters: { search, type, priority, status },
+    filtersActive,
     setSearch,
     setType,
     setPriority,

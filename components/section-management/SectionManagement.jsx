@@ -127,8 +127,8 @@ export default function SectionManagement({ embedded = false }) {
         </div>
       ) : (
         <Header
-          breadcrumb="Home / Section Management"
-          title="Section Management"
+          breadcrumb="Home / Classes & Sections / Sections"
+          title="Sections"
           description="Create and manage grade sections by school year. Archived sections remain available for historical records."
           controls={createButton}
         />

@@ -258,9 +258,16 @@ export function useTeacherReports() {
   const [subject, setSubject] = useState(REPORT_FILTER_ALL);
   const [section, setSection] = useState(REPORT_FILTER_ALL);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async ({ bustCache = false } = {}) => {
     setLoading(true);
     setError("");
+
+    if (bustCache) {
+      const { invalidateTeacherRosterCache } = await import(
+        "@/lib/teacher/teacherRosterCache"
+      );
+      invalidateTeacherRosterCache();
+    }
 
     const session = await resolveTeacherReportsSession();
     if (session.error || !session.data) {
@@ -321,31 +328,15 @@ export function useTeacherReports() {
         const year = schoolYear || null;
         const quarterNumber = quarter ? Number(quarter) : null;
 
-        const filteredClasses = (bundle.classes ?? []).filter((row) => {
-          if (year && row.school_year !== year) return false;
-          if (
-            quarterNumber !== null &&
-            Number.isFinite(quarterNumber) &&
-            Number(row.quarter) !== quarterNumber
-          ) {
-            return false;
-          }
-          return true;
-        });
-        const classIds = new Set(filteredClasses.map((row) => row.id));
-
         const next = await buildTeacherReportsModel({
-          classes: filteredClasses,
-          enrollments: (bundle.enrollments ?? []).filter((row) =>
-            classIds.has(row.class_id)
-          ),
+          classes: bundle.classes ?? [],
+          enrollments: bundle.enrollments ?? [],
           grades: bundle.grades ?? [],
-          monitoringRecords: (bundle.monitoringRecords ?? []).filter((row) =>
-            classIds.has(row.class_id)
-          ),
+          monitoringRecords: bundle.monitoringRecords ?? [],
           lessonPlans: bundle.lessonPlans ?? [],
           teacher,
           profile,
+          teacherId: teacher?.id ?? null,
           filters: {
             schoolYear: year,
             quarter: quarterNumber,
@@ -436,7 +427,7 @@ export function useTeacherReports() {
     setQuarter,
     setSubject,
     setSection,
-    refresh,
+    refresh: () => refresh({ bustCache: true }),
     getPreview,
   };
 }

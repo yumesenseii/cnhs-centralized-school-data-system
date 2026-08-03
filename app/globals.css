@@ -113,8 +113,24 @@
     @apply scroll-smooth font-sans;
   }
 
+  html[data-font-size="small"] {
+    font-size: 14px;
+  }
+
+  html[data-font-size="medium"] {
+    font-size: 16px;
+  }
+
+  html[data-font-size="large"] {
+    font-size: 17.5px;
+  }
+
   body {
     @apply min-h-screen bg-cnhs-page font-sans text-foreground antialiased;
+  }
+
+  html.dark body {
+    @apply bg-slate-950 text-slate-100;
   }
 
   button,

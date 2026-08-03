@@ -24,10 +24,11 @@ Use this roadmap to prioritize remaining work before defense, school pilot, or p
 
 | Bucket | Items |
 |--------|--------|
-| **Done (recent)** | Reports Excel + embedded charts · Multi-term ECR · Term UI · Academic Records live · Class-Record parser · LP Reviewed By · Reset / Activate users · Password change (all portals) |
-| **In progress** | **P0-5** Test Summary Pass/Fail · **P2-3** Notifications polish |
-| **Todo (pilot)** | **P1-3** Export Users · **P1-7** Forgot Password · **P2-5** Naming consistency · **P2-6** Archive unused LP components · **P2-7** Mobile QA |
-| **Post-pilot (P3)** | AI LP checks · ONNX · Email/SMS · Audit UI · Bulk ECR/SF2 · (deferred: DOCX extract, student self-reg) |
+| **Done (recent)** | Reports Excel + embedded charts · Multi-term ECR · Term UI · Academic Records live · Class-Record parser · LP Reviewed By · Reset / Activate users · Password change (all portals) · Naming consistency (P2-5) · Unused LP cleanup (P2-6) · Admin School/Appearance persist · Notifications live (P2-3) |
+| **In progress** | **P0-5** Test Summary Pass/Fail |
+| **Todo (pilot)** | **P1-3** Export Users · **P1-7** Forgot Password |
+| **Won’t do (now)** | **P2-7** Mobile QA (out of scope — desktop pilot) · DOCX extract · student self-reg |
+| **Post-pilot (P3)** | AI LP checks · ONNX · Email/SMS · Audit UI · Bulk ECR/SF2 |
 
 ---
 
@@ -42,7 +43,9 @@ These were delivered in recent iterations and should stay regression-tested:
 | Trimester UI (Term vs Quarter) | Labels Term 1–3 + Final; My Classes groups multi-term cards + in-class Term dropdown |
 | Class-Record-v1 + DepEd AVE parsers | TERM-first roster; Male/Female blank gaps; SUMMARY≈AVE |
 | Academic Records live data | Same ECR/monitoring source as Reports; official Excel export |
-| Admin Lesson Plan Review simplified | Info + preview + Approve / Needs Revision / Cancel |
+| Admin Lesson Plan Review simplified | Info + preview + Approve / Needs Revision / Cancel; unused checklist cards removed |
+| Notifications live (admin + teacher) | Personal inbox from Supabase; mark-all-read + filters + empty states; admin sidebar = live lesson plan activity |
+| Admin School + Appearance persist | localStorage save; theme, font size, collapsed sidebar applied in admin shell |
 | Classes & Sections combined | `/class-organization` with Sections + Class Assignments tabs |
 | User Management Edit / Reset / Activate | Live HT + teacher updates; edge reset password; `is_active` toggle |
 | Password change (Teacher / Student / Admin) | Settings / Profile Security via `useAuth().changePassword` |
@@ -68,7 +71,7 @@ These were delivered in recent iterations and should stay regression-tested:
 
 | ID | Item | Status | Notes |
 |----|------|--------|-------|
-| P1-1 | **Admin Settings live data** | Done | Personal Account from session/profiles; Security uses `changePassword`. School/Appearance remain static branding. |
+| P1-1 | **Admin Settings live data** | Done | Personal Account from session/profiles; Security uses `changePassword`. School Information + Appearance persist via localStorage (device-level) and apply theme/font/sidebar. |
 | P1-2 | **Head Teacher login email editable (safe path)** | Done | Edge `admin-update-user-email` syncs Auth + `users` / `teachers`. |
 | P1-3 | **Export Users** | Todo | Header button has no export handler. |
 | P1-4 | **Admin Recent Activity (Lesson Plans)** | Done | Sidebar from `lesson_plan_events` via `getRecentLessonPlanActivity`. |
@@ -85,15 +88,15 @@ These were delivered in recent iterations and should stay regression-tested:
 |----|------|--------|-------|
 | P2-1 | **Student portal password change** | Done | Profile → Security via `useAuth().changePassword`. |
 | P2-2 | **Admin self-service password** | Done | Admin Settings → Security same flow as teacher. |
-| P2-3 | **Notifications: mark-all-read / filters polish** | In progress | Verify live vs mock; tighten empty states; mark-all-read polish. |
+| P2-3 | **Notifications: mark-all-read / filters polish** | Done | Teacher + Admin personal inboxes live (Supabase). Mark all read, search/type/priority/status filters, empty states. Admin sidebar uses live lesson plan activity. Clear Read removed (no delete policy). |
 | P2-4 | **Reports exports** | Done | PDF (print) + ExcelJS **2-tab** Legal (Report Cover + Detailed Report). Cover embeds canvas chart PNGs (**Performance Analysis**) from the same `chartSeries` as the UI; supporting data tables kept. SheetJS for ECR/SF2 imports only. |
 | P2-4b | **Academic Records live data** | Done | `/academic-records` uses `getAdminReportsBundle` + monitoring roster; Export → official Excel. |
 | P2-4c | **Class-Record-v1 ECR upload** | Done | Class-Record (`TERM1–3` + `SUMMARY OF GRADES`) + DepEd (`AVE`): TERM-first; Male/Female gaps; SUMMARY≈AVE. |
 | P2-4d | **Trimester UI (Term vs Quarter)** | Done | UI: Term 1–3 + Final (DB `quarter` 1–4 unchanged). All Terms assign; My Classes multi-term cards + Term dropdown. |
 | P2-4e | **Multi-term ECR import** | Done | One upload → Term 1–3 + Final to sibling classes; upserts per term `class_id`. |
-| P2-5 | **Sidebar / docs naming consistency** | Todo | Classes & Sections, ARAL Learners, monitoring labels across manuals and UI. |
-| P2-6 | **Remove or archive unused LP review components** | Todo | `ReviewChecklist`, `SystemValidationCard`, `DecisionPanel` unused after drawer simplify. |
-| P2-7 | **Mobile QA pass** | Todo | Checklist for teacher upload + admin drawers on phone widths. |
+| P2-5 | **Sidebar / docs naming consistency** | Done | Canonical labels: Classes & Sections, Academic Monitoring, Attendance Monitoring, ARAL Learners, Lesson Plan Review. Admin/teacher page titles + headers aligned. |
+| P2-6 | **Remove or archive unused LP review components** | Done | Deleted unused `ReviewChecklist`, `SystemValidationCard`, `DecisionPanel`, `ReviewHistory`, `ReviewComments`. |
+| P2-7 | **Mobile QA pass** | Won’t do (now) | Out of project scope for this release; pilot targets desktop admin/teacher use. Responsive basics may exist but no dedicated phone QA checklist. |
 
 ---
 
@@ -114,10 +117,9 @@ These were delivered in recent iterations and should stay regression-tested:
 ## Suggested implementation order
 
 1. **P0-5** — Fill Test Summary Pass/Fail (defense evidence)  
-2. **P2-3** — Finish notifications polish  
-3. **P1-3 / P1-7** — Export Users, Forgot Password (as needed for pilot)  
-4. **P2-5 / P2-6 / P2-7** — Naming, cleanup, mobile QA  
-5. Keep **P3** out of the critical path unless requested  
+2. **P1-3 / P1-7** — Export Users, Forgot Password (as needed for pilot)  
+3. Keep **P3** out of the critical path unless requested  
+4. **P2-7 Mobile QA** — explicitly out of scope (desktop pilot)  
 
 ---
 
@@ -127,16 +129,16 @@ These were delivered in recent iterations and should stay regression-tested:
 |--------|--------|--------------------|
 | Auth / portals | Good | Forgot password still open; password change live on all portals |
 | User Management | Good | Edit, reset password, activate/deactivate live; Export Users still Todo |
-| Classes & Sections | Good | Naming consistency in docs (P2-5) |
+| Classes & Sections | Good | Combined organization page; naming aligned (P2-5) |
 | Academic records / ECR | Good | Multi-term import + Class-Record/AVE parsers live |
-| Lesson plans | Good | Reviewed By denormalized; unused review components to archive (P2-6) |
+| Lesson plans | Good | Reviewed By denormalized; unused review cards removed (P2-6) |
 | Academic monitoring / ARAL | Good | Facilitator training + seed data for demos |
 | Attendance (SF2) | Good | Keep prediction separation in training materials |
 | Reports | Good | Live charts; PDF + 2-tab Legal Excel with embedded Performance Analysis graphs |
 | Student portal | Good | Password change on Profile; grade coverage depends on enrollments |
-| Settings (Admin) | Good | Live Personal Account + Security; school/appearance still static |
+| Settings (Admin) | Good | Live Personal Account + Security; School/Appearance saved locally and applied |
 | Settings (Teacher) | Good | Profile \| Security; temp password until changed |
-| Notifications | Partial | Mark-all-read / filters polish in progress (P2-3) |
+| Notifications | Good | Live inbox (admin + teacher); mark-all-read + filters + empty states |
 
 ---
 

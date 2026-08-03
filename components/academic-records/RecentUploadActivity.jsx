@@ -19,8 +19,11 @@ export default function RecentUploadActivity({ activity }) {
             </tr>
           </thead>
           <tbody>
-            {activity.map((item) => (
-              <tr key={`${item.teacher}-${item.assignedClass}`} className="border-t border-slate-100">
+            {activity.map((item, index) => (
+              <tr
+                key={item.id || `${item.teacher}-${item.assignedClass}-${index}`}
+                className="border-t border-slate-100"
+              >
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-2">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cnhs-green-dark text-[10px] font-semibold text-white">

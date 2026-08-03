@@ -172,7 +172,7 @@ export default function StudentMonitoringDetails({ classId, studentId }) {
             </Link>
             <div>
               <h1 className="text-xl font-semibold tracking-[-0.03em] text-slate-800">
-                {detail?.name ?? "Student Monitoring"}
+                {detail?.name ?? "Academic Monitoring"}
               </h1>
               <p className="mt-0.5 text-[12px] text-slate-500">
                 {detail

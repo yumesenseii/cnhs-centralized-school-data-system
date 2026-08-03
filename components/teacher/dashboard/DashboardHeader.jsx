@@ -64,16 +64,20 @@ export default function DashboardHeader({ controls }) {
             }
             className="h-8 cursor-pointer rounded-full border border-slate-200 bg-white pl-8 pr-7 text-[11px] font-medium text-slate-600 shadow-sm outline-none transition-colors hover:bg-slate-50 focus:border-cnhs-green"
           >
-            {controls.schoolYears.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
+            {controls.schoolYears?.length ? (
+              controls.schoolYears.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))
+            ) : (
+              <option value="">No school years</option>
+            )}
           </select>
         </label>
 
         <label className="relative">
-          <span className="sr-only">Quarter</span>
+          <span className="sr-only">Term</span>
           <Layers3
             size={12}
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -85,11 +89,13 @@ export default function DashboardHeader({ controls }) {
             }
             className="h-8 cursor-pointer rounded-full border border-slate-200 bg-white pl-8 pr-7 text-[11px] font-medium text-slate-600 shadow-sm outline-none transition-colors hover:bg-slate-50 focus:border-cnhs-green"
           >
-            {controls.quarters.map((quarter) => (
-              <option key={quarter} value={quarter}>
-                Quarter {quarter}
-              </option>
-            ))}
+            {(controls.quarters?.length ? controls.quarters : ["1"]).map(
+              (quarter) => (
+                <option key={quarter} value={quarter}>
+                  Term {quarter}
+                </option>
+              )
+            )}
           </select>
         </label>
 

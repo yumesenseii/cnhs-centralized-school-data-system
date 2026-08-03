@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import DashboardHeader from "@/components/teacher/dashboard/DashboardHeader";
@@ -13,7 +14,17 @@ import SystemRecommendations from "@/components/teacher/dashboard/SystemRecommen
 import TodaysTasks from "@/components/teacher/dashboard/TodaysTasks";
 import UpcomingDeadlines from "@/components/teacher/dashboard/UpcomingDeadlines";
 import AttendanceMonitoringPanel from "@/components/attendance/AttendanceMonitoringPanel";
+import DeferredMount from "@/components/shared/DeferredMount";
 import { useTeacherDashboard } from "@/hooks/teacher/useTeacherDashboard";
+
+function formatCurrentDate() {
+  return new Date().toLocaleDateString("en-PH", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 export default function Dashboard() {
   const {
@@ -28,6 +39,12 @@ export default function Dashboard() {
     error,
   } = useTeacherDashboard();
 
+  // Client-only date — avoids React hydration #418 (server vs browser locale/TZ).
+  const [currentDate, setCurrentDate] = useState("");
+  useEffect(() => {
+    setCurrentDate(formatCurrentDate());
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -37,19 +54,12 @@ export default function Dashboard() {
     >
       <DashboardHeader
         controls={{
-          ...(data?.controls ?? {
-            schoolYear,
-            currentDate: new Date().toLocaleDateString("en-PH", {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            }),
-          }),
+          ...(data?.controls ?? {}),
           schoolYear,
-          schoolYears,
+          schoolYears: schoolYears.length ? schoolYears : schoolYear ? [schoolYear] : [],
           quarterValue: quarter,
-          quarters,
+          quarters: quarters.length ? quarters : ["1"],
+          currentDate: currentDate || data?.controls?.currentDate || "\u00a0",
           onSchoolYearChange: setSchoolYear,
           onQuarterChange: setQuarter,
         }}
@@ -104,11 +114,13 @@ export default function Dashboard() {
           </div>
 
           <div className="mt-3 border-t border-slate-100 pt-3">
-            <AttendanceMonitoringPanel
-              title="Attendance Analytics"
-              showUpload={false}
-              compact
-            />
+            <DeferredMount delayMs={120}>
+              <AttendanceMonitoringPanel
+                title="Attendance Analytics"
+                showUpload={false}
+                compact
+              />
+            </DeferredMount>
             <p className="mt-2 text-[11px] text-slate-400">
               Manage SF2 uploads on{" "}
               <a

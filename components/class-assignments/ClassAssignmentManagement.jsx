@@ -122,8 +122,8 @@ export default function ClassAssignmentManagement({ embedded = false }) {
         </div>
       ) : (
         <Header
-          breadcrumb="Home / Class Assignments"
-          title="Teacher Class Assignment"
+          breadcrumb="Home / Classes & Sections / Class Assignments"
+          title="Class Assignments"
           description="Assign teachers to subjects and sections by school year and quarter. Teachers only see classes assigned to them."
           controls={assignButton}
         />

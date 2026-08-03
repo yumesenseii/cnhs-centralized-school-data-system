@@ -44,7 +44,9 @@ export default function MonitoringDetailsDrawer({
     setProgress(monitoringDashboardData.progressOptions[2]);
     setNextRecommendation(
       learner.intervention === "ARAL Learners" ||
-        learner.intervention === "Recommended for ARAL Screening"
+        learner.intervention === "Recommended for ARAL Learners" ||
+        learner.intervention === "Recommended for ARAL Screening" ||
+        String(learner.intervention || "").toLowerCase().includes("aral")
         ? "Recommend for ARAL Learners"
         : "Continue Classroom Remediation"
     );

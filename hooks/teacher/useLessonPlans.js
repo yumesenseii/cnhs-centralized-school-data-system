@@ -219,16 +219,24 @@ export function useAdminLessonPlanReview() {
         setReviewerName(session.data.full_name ?? null);
       }
 
-      const [result, metaResult, activityResult] = await Promise.all([
+      const [result, activityResult] = await Promise.all([
         getAllLessonPlansForReview({
           schoolYear:
             nextSchoolYear === "All School Years" ? null : nextSchoolYear,
           quarter: nextQuarter === "All Terms" ? null : nextQuarter,
         }),
-        // Unfiltered list for school year / quarter dropdown options.
-        getAllLessonPlansForReview(),
         getRecentLessonPlanActivity(8),
       ]);
+
+      // When filters are "all", the filtered query already has meta options.
+      // Otherwise fetch an unfiltered list once for dropdown years/quarters.
+      let metaResult = { data: result.data, error: result.error };
+      if (
+        nextSchoolYear !== "All School Years" ||
+        nextQuarter !== "All Terms"
+      ) {
+        metaResult = await getAllLessonPlansForReview();
+      }
 
       if (result.error) {
         setError(result.error.message);

@@ -8,6 +8,7 @@ export default function TeacherNotificationFilters({
   type,
   priority,
   status,
+  filtersActive = false,
   onSearchChange,
   onTypeChange,
   onPriorityChange,
@@ -66,7 +67,8 @@ export default function TeacherNotificationFilters({
           <button
             type="button"
             onClick={onClear}
-            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-500 transition-colors hover:bg-slate-50"
+            disabled={!filtersActive}
+            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-500 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <X size={12} />
             Clear
