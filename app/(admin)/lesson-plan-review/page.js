@@ -3,12 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { CalendarDays, RefreshCw } from "lucide-react";
-import ActionRequiredCard from "@/components/lesson-plan/ActionRequiredCard";
 import FilterDropdown from "@/components/lesson-plan/FilterDropdown";
 import LessonDrawer from "@/components/lesson-plan/LessonDrawer";
 import LessonPlanTable from "@/components/lesson-plan/LessonPlanTable";
-import QuarterSummary from "@/components/lesson-plan/QuarterSummary";
-import RecentActivity from "@/components/lesson-plan/RecentActivity";
+import ReviewContextAccordion from "@/components/lesson-plan/ReviewContextAccordion";
 import SearchBar from "@/components/lesson-plan/SearchBar";
 import SummaryCards from "@/components/lesson-plan/SummaryCards";
 import Header from "@/components/layout/Header";
@@ -212,8 +210,8 @@ export default function LessonPlanReviewPage() {
 
       <SummaryCards cards={summaryCards} />
 
-      <section className="mt-4 rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-        <div className="flex flex-col gap-2 lg:flex-row">
+      <section className="mt-2.5 rounded-2xl border border-slate-100 bg-white p-2.5 shadow-[0_4px_12px_rgba(15,23,42,0.03)]">
+        <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center">
           <SearchBar value={search} onChange={setSearch} />
           <FilterDropdown
             label="Teacher"
@@ -242,21 +240,21 @@ export default function LessonPlanReviewPage() {
         </div>
       </section>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_250px]">
+      <div className="mt-2.5">
         {loading ? (
-          <div className="rounded-xl border border-slate-100 bg-white px-4 py-10 text-center text-sm text-slate-400">
+          <div className="rounded-xl border border-slate-100 bg-white px-4 py-8 text-center text-sm text-slate-400">
             Loading lesson plans...
           </div>
         ) : (
           <LessonPlanTable lessons={filtered} onReview={openDrawer} />
         )}
-
-        <aside className="space-y-3">
-          <RecentActivity items={recentActivity} />
-          <QuarterSummary summary={quarterSummary} />
-          <ActionRequiredCard action={actionRequired} />
-        </aside>
       </div>
+
+      <ReviewContextAccordion
+        recentActivity={recentActivity}
+        quarterSummary={quarterSummary}
+        actionRequired={actionRequired}
+      />
 
       <LessonDrawer
         open={drawerOpen}

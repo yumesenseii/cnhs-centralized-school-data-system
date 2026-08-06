@@ -13,16 +13,20 @@ const headers = [
 
 export default function LessonPlanTable({ lessons, onReview }) {
   return (
-    <section className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
+    <section className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_4px_12px_rgba(15,23,42,0.03)]">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[980px] text-left">
-          <thead className="bg-slate-50/80">
+        <table className="w-full min-w-[820px] text-left">
+          <thead className="bg-slate-50/90">
             <tr>
               {headers.map((header) => (
                 <th
                   key={header}
                   scope="col"
-                  className="px-4 py-4 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500"
+                  className={
+                    header === "Actions"
+                      ? "sticky right-0 z-10 bg-slate-50/95 px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-500 shadow-[-6px_0_8px_-6px_rgba(15,23,42,0.12)]"
+                      : "px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-500"
+                  }
                 >
                   {header}
                 </th>
@@ -30,9 +34,20 @@ export default function LessonPlanTable({ lessons, onReview }) {
             </tr>
           </thead>
           <tbody>
-            {lessons.map((lesson) => (
-              <LessonRow key={lesson.id} lesson={lesson} onReview={onReview} />
-            ))}
+            {lessons.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={headers.length}
+                  className="px-3 py-8 text-center text-sm text-slate-400"
+                >
+                  No lesson plans for the selected filters.
+                </td>
+              </tr>
+            ) : (
+              lessons.map((lesson) => (
+                <LessonRow key={lesson.id} lesson={lesson} onReview={onReview} />
+              ))
+            )}
           </tbody>
         </table>
       </div>

@@ -20,17 +20,18 @@ import {
   summarizeStudentGrades,
 } from "@/lib/teacher/myClassesMappers";
 import { parseTermNumber, TERM_OPTIONS, termLabel } from "@/lib/academic/termLabels";
+import { useSoftLoadState } from "@/hooks/useSoftLoadState";
 
 export function useTeacherClasses() {
   const [classes, setClasses] = useState([]);
   const [kpis, setKpis] = useState([]);
   const [profile, setProfile] = useState(null);
   const [teacher, setTeacher] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(true);
 
   const refresh = useCallback(async () => {
-    setLoading(true);
+    beginLoad();
     setError("");
 
     const sessionResult = await getCurrentTeacherSession();
@@ -38,7 +39,7 @@ export function useTeacherClasses() {
       setError(
         sessionResult.error?.message ?? "Unable to load teacher profile."
       );
-      setLoading(false);
+      endLoad(false);
       return;
     }
 
@@ -50,7 +51,7 @@ export function useTeacherClasses() {
     const classesResult = await getTeacherClasses(teacherId);
     if (classesResult.error) {
       setError(classesResult.error.message);
-      setLoading(false);
+      endLoad(false);
       return;
     }
 
@@ -58,8 +59,8 @@ export function useTeacherClasses() {
     const grouped = groupClassesForMyClassesList(mapped);
     setClasses(grouped);
     setKpis(buildMyClassesKpis(grouped));
-    setLoading(false);
-  }, []);
+    endLoad(true);
+  }, [beginLoad, endLoad]);
 
   useEffect(() => {
     refresh();
@@ -72,6 +73,7 @@ export function useTeacherClasses() {
     teacher,
     teacherId: teacher?.id ?? null,
     loading,
+    refreshing,
     error,
     refresh,
   };
@@ -85,12 +87,18 @@ export function useClassDetails(classId) {
   const [viewQuarter, setViewQuarter] = useState(null);
   const [termClassIds, setTermClassIds] = useState({});
   const [availableTerms, setAvailableTerms] = useState([1, 2, 3, 4]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const { loading, refreshing, beginLoad, endLoad, resetLoaded } =
+    useSoftLoadState(true);
+
+  useEffect(() => {
+    resetLoaded();
+    setClassItem(null);
+  }, [classId, resetLoaded]);
 
   const refresh = useCallback(async () => {
     if (!classId) return;
-    setLoading(true);
+    beginLoad();
     setError("");
 
     const sessionResult = await getCurrentTeacherSession();
@@ -98,7 +106,7 @@ export function useClassDetails(classId) {
       setError(
         sessionResult.error?.message ?? "Unable to load teacher profile."
       );
-      setLoading(false);
+      endLoad(false);
       return;
     }
 
@@ -107,7 +115,7 @@ export function useClassDetails(classId) {
     const classResult = await getClassById(classId, { teacherId });
     if (classResult.error || !classResult.data) {
       setError(classResult.error?.message ?? "Class not found.");
-      setLoading(false);
+      endLoad(false);
       return;
     }
 
@@ -126,12 +134,12 @@ export function useClassDetails(classId) {
 
     if (studentsResult.error) {
       setError(studentsResult.error.message);
-      setLoading(false);
+      endLoad(false);
       return;
     }
     if (gradesResult.error) {
       setError(gradesResult.error.message);
-      setLoading(false);
+      endLoad(false);
       return;
     }
 
@@ -194,8 +202,8 @@ export function useClassDetails(classId) {
     }
 
     setViewQuarter(classQuarter);
-    setLoading(false);
-  }, [classId]);
+    endLoad(true);
+  }, [classId, beginLoad, endLoad]);
 
   useEffect(() => {
     refresh();
@@ -226,6 +234,7 @@ export function useClassDetails(classId) {
     students,
     kpis,
     loading,
+    refreshing,
     error,
     refresh,
     viewQuarter: preferredQuarter,

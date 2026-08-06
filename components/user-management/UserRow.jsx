@@ -11,8 +11,8 @@ const avatarTones = {
   orange: "bg-orange-100 text-cnhs-orange",
   teal: "bg-teal-100 text-teal-700",
   red: "bg-red-100 text-red-600",
-  violet: "bg-violet-100 text-violet-700",
-  purple: "bg-violet-100 text-violet-700",
+  violet: "bg-amber-100 text-amber-700",
+  purple: "bg-amber-100 text-amber-700",
 };
 
 export default function UserRow({
@@ -24,7 +24,7 @@ export default function UserRow({
 }) {
   return (
     <tr className="border-t border-slate-100 transition-colors hover:bg-slate-50/70">
-      <td className="px-4 py-4 align-middle">
+      <td className="px-4 py-3 align-middle">
         <div className="flex items-center gap-2.5">
           <span
             className={cn(
@@ -34,48 +34,69 @@ export default function UserRow({
           >
             {user.initials}
           </span>
-          <span>
+          <span className="min-w-0">
             <span className="block whitespace-nowrap text-xs font-semibold text-slate-800">
               {user.fullName}
             </span>
-            <span className="block text-[10px] text-slate-400">{user.username}</span>
+            <span className="mt-0.5 block text-[10px] text-slate-500">
+              @{user.username}
+            </span>
+            <span className="block max-w-[210px] truncate text-[10px] text-slate-400">
+              {user.email || "No email"}
+            </span>
           </span>
         </div>
       </td>
-      <td className="px-3 py-4 align-middle">
+      <td className="px-3 py-3 align-middle">
         <RoleBadge value={user.role} />
+        <span className="mt-1.5 block max-w-[150px] text-[10px] leading-4 text-slate-500">
+          {user.learningArea}
+        </span>
       </td>
-      <td className="px-3 py-4 align-middle text-xs text-slate-600">{user.learningArea}</td>
-      <td className="px-3 py-4 align-middle">
+      <td className="px-3 py-3 align-middle">
         {user.assignedClasses.length ? (
-          <div className="flex max-w-[160px] flex-col gap-1">
-            {user.assignedClasses.map((cls) => (
+          <div className="flex max-w-[210px] flex-wrap gap-1">
+            {user.assignedClasses.slice(0, 2).map((cls) => (
               <ClassBadge key={cls} label={cls} />
             ))}
+            {user.assignedClasses.length > 2 ? (
+              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[9px] font-semibold text-slate-500">
+                +{user.assignedClasses.length - 2} more
+              </span>
+            ) : null}
           </div>
         ) : (
           <span className="text-[11px] text-slate-300">—</span>
         )}
       </td>
-      <td className="px-3 py-4 align-middle">
-        <SubmissionProgress
-          compact
-          label={user.eClassSubmission.label}
-          tone={user.eClassSubmission.tone}
-        />
+      <td className="px-3 py-3 align-middle">
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[9px] font-medium uppercase tracking-[0.06em] text-slate-400">
+              E-Class
+            </span>
+            <SubmissionProgress
+              compact
+              label={user.eClassSubmission.label}
+              tone={user.eClassSubmission.tone}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[9px] font-medium uppercase tracking-[0.06em] text-slate-400">
+              Lesson Plan
+            </span>
+            <SubmissionProgress
+              compact
+              label={user.lessonPlanSubmission.label}
+              tone={user.lessonPlanSubmission.tone}
+            />
+          </div>
+        </div>
       </td>
-      <td className="px-3 py-4 align-middle">
-        <SubmissionProgress
-          compact
-          label={user.lessonPlanSubmission.label}
-          tone={user.lessonPlanSubmission.tone}
-        />
-      </td>
-      <td className="px-3 py-4 align-middle text-xs text-slate-500">{user.email}</td>
-      <td className="px-3 py-4 align-middle">
+      <td className="px-3 py-3 align-middle">
         <StatusBadge value={user.status} />
       </td>
-      <td className="px-3 py-4 align-middle">
+      <td className="px-4 py-3 align-middle">
         <ActionButtons
           user={user}
           onView={onView}

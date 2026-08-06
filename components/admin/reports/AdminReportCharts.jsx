@@ -35,7 +35,10 @@ function EmptyChart() {
   );
 }
 
-export default function AdminReportCharts({ charts }) {
+export default function AdminReportCharts({
+  charts,
+  hideAttendance = false,
+}) {
   const risk = charts?.riskDistribution ?? [];
   const performance = charts?.performanceBySubject ?? [];
   const intervention = charts?.interventionMix ?? [];
@@ -46,7 +49,7 @@ export default function AdminReportCharts({ charts }) {
   const hasPerformance = performance.length > 0;
   const hasIntervention = intervention.some((row) => row.value > 0);
   const hasLessonPlans = lessonPlans.some((row) => row.value > 0);
-  const hasAttendance = attendance.length > 0;
+  const hasAttendance = !hideAttendance && attendance.length > 0;
 
   return (
     <div className="space-y-3">
@@ -266,58 +269,60 @@ export default function AdminReportCharts({ charts }) {
         </ChartCard>
       </div>
 
-      <ChartCard
-        title="Attendance Rate by Month"
-        subtitle="SF2 monitoring only · not used in academic risk prediction"
-      >
-        {!hasAttendance ? (
-          <EmptyChart />
-        ) : (
-          <div className="h-[220px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={attendance}
-                margin={{ top: 12, right: 12, left: -12, bottom: 0 }}
-              >
-                <CartesianGrid
-                  stroke="#eef2f7"
-                  strokeDasharray="3 3"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="name"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 11, fill: "#94a3b8" }}
-                />
-                <YAxis
-                  domain={[0, 100]}
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 11, fill: "#94a3b8" }}
-                  width={32}
-                />
-                <Tooltip
-                  contentStyle={{
-                    border: "1px solid #e5e7eb",
-                    borderRadius: 12,
-                    fontSize: 12,
-                  }}
-                  formatter={(value) => [`${value}%`, "Attendance rate"]}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="rate"
-                  stroke="#2563eb"
-                  strokeWidth={2.5}
-                  dot={{ r: 3, fill: "#2563eb" }}
-                  activeDot={{ r: 5 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </ChartCard>
+      {!hideAttendance ? (
+        <ChartCard
+          title="Attendance Rate by Month"
+          subtitle="SF2 monitoring only · not used in academic risk prediction"
+        >
+          {!hasAttendance ? (
+            <EmptyChart />
+          ) : (
+            <div className="h-[220px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={attendance}
+                  margin={{ top: 12, right: 12, left: -12, bottom: 0 }}
+                >
+                  <CartesianGrid
+                    stroke="#eef2f7"
+                    strokeDasharray="3 3"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="name"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 11, fill: "#94a3b8" }}
+                  />
+                  <YAxis
+                    domain={[0, 100]}
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 11, fill: "#94a3b8" }}
+                    width={32}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      border: "1px solid #e5e7eb",
+                      borderRadius: 12,
+                      fontSize: 12,
+                    }}
+                    formatter={(value) => [`${value}%`, "Attendance rate"]}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="rate"
+                    stroke="#2563eb"
+                    strokeWidth={2.5}
+                    dot={{ r: 3, fill: "#2563eb" }}
+                    activeDot={{ r: 5 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </ChartCard>
+      ) : null}
     </div>
   );
 }

@@ -1,11 +1,27 @@
 "use client";
 
 export default function MonitoringSummary({ monitoring }) {
-  const rows = [
-    ["ARAL Learners", monitoring.aralScreening],
-    ["Classroom Remedial (class-level)", monitoring.classroomRemediation],
-    ["Monitoring Completed", monitoring.monitoringCompleted],
-    ["Still Under Monitoring", monitoring.stillUnderMonitoring],
+  const tiles = [
+    {
+      label: "ARAL Learners",
+      value: monitoring.aralScreening,
+      tone: "text-sky-700",
+    },
+    {
+      label: "Classroom Remedial (class-level)",
+      value: monitoring.classroomRemediation,
+      tone: "text-cnhs-green-dark",
+    },
+    {
+      label: "Monitoring Completed",
+      value: monitoring.monitoringCompleted,
+      tone: "text-cnhs-green-dark",
+    },
+    {
+      label: "Still Under Monitoring",
+      value: monitoring.stillUnderMonitoring,
+      tone: "text-amber-600",
+    },
   ];
 
   return (
@@ -13,17 +29,18 @@ export default function MonitoringSummary({ monitoring }) {
       <h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
         Monitoring Summary <span className="font-normal">· read-only</span>
       </h3>
-      <dl className="mt-3 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-100">
-        {rows.map(([label, value]) => (
-          <div
-            key={label}
-            className="flex items-center justify-between gap-3 bg-white px-3 py-2.5"
-          >
-            <dt className="text-[12px] text-slate-600">{label}</dt>
-            <dd className="text-[12px] font-semibold text-slate-800">{value}</dd>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        {tiles.map((item) => (
+          <div key={item.label} className="rounded-xl bg-slate-50 px-3 py-2">
+            <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
+              {item.label}
+            </p>
+            <p className={`mt-1 text-[12px] font-semibold ${item.tone}`}>
+              {item.value}
+            </p>
           </div>
         ))}
-      </dl>
+      </div>
     </section>
   );
 }

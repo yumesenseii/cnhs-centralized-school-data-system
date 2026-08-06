@@ -55,7 +55,7 @@ export default function AttendanceMonitoringPanel({
   });
 
   async function reload() {
-    setLoading(true);
+    if (!analytics) setLoading(true);
     setError("");
     const analyticsResult = await getAttendanceAnalytics({
       schoolYear: form.schoolYear || null,
@@ -180,7 +180,7 @@ export default function AttendanceMonitoringPanel({
         </div>
       ) : null}
 
-      {loading ? (
+      {loading && !analytics ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-100 bg-white py-12 text-sm text-slate-500">
           <Loader2 size={16} className="animate-spin" />
           Loading attendance analytics…

@@ -8,6 +8,7 @@ import {
   BookOpen,
   CheckCircle2,
   Clock3,
+  FileSpreadsheet,
   Loader2,
   RefreshCw,
   Users,
@@ -15,7 +16,9 @@ import {
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import AdminAralFacilitatorAssignPanel from "@/components/admin/monitoring/AdminAralFacilitatorAssignPanel";
+import AdminAralApprovalPanel from "@/components/admin/monitoring/AdminAralApprovalPanel";
 import AdminAralProgressPanel from "@/components/admin/monitoring/AdminAralProgressPanel";
+import AdminClassReportFilesPanel from "@/components/admin/monitoring/AdminClassReportFilesPanel";
 import LearnersInterventionTable from "@/components/teacher/monitoring/LearnersInterventionTable";
 import {
   Pill,
@@ -29,6 +32,10 @@ import {
   normalizeRecommendationType,
   normalizeRiskLevel,
 } from "@/lib/monitoring/recommendations";
+import {
+  exportAralRecommendedExcel,
+  filterAralRecommendedLearners,
+} from "@/lib/reports/aralRecommendedExport";
 import { cn } from "@/lib/utils";
 
 function StatCard({ label, value, icon: Icon, tone, alert }) {
@@ -61,14 +68,17 @@ function DetailPanel({ detail, loading, onClose }) {
   if (!detail && !loading) return null;
 
   return (
-    <div className="fixed inset-0 z-50">
-      <div
-        className="absolute inset-0 bg-slate-900/35 backdrop-blur-[1px]"
-        onClick={onClose}
-      />
-      <aside className="absolute right-0 top-0 flex h-full w-full max-w-[520px] flex-col bg-white shadow-[-18px_0_40px_rgba(15,23,42,0.18)]">
-        <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
-          <div>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 p-3 backdrop-blur-[1px] sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose?.();
+      }}
+    >
+      <div className="relative z-10 flex max-h-[72vh] w-[min(920px,94vw)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-5 py-3.5">
+          <div className="min-w-0">
             <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
               Academic Monitoring Record
             </p>
@@ -90,7 +100,7 @@ function DetailPanel({ detail, loading, onClose }) {
           </button>
         </div>
 
-        <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3 sm:px-5">
           {loading || !detail ? (
             <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
               <Loader2 size={16} className="animate-spin" />
@@ -114,7 +124,7 @@ function DetailPanel({ detail, loading, onClose }) {
                 <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-slate-400">
                   Student Information
                 </p>
-                <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
+                <div className="mt-2 grid grid-cols-2 gap-2 text-[12px] lg:grid-cols-4">
                   <p>
                     <span className="text-slate-400">Adviser:</span>{" "}
                     <span className="font-medium text-slate-700">
@@ -188,7 +198,7 @@ function DetailPanel({ detail, loading, onClose }) {
                 <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-slate-400">
                   Weekly Progress History (view-only)
                 </p>
-                <div className="mt-2 space-y-2">
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   {detail.records.length ? (
                     detail.records.map((record) => (
                       <div
@@ -222,7 +232,7 @@ function DetailPanel({ detail, loading, onClose }) {
                       </div>
                     ))
                   ) : (
-                    <p className="py-2 text-center text-xs text-slate-400">
+                    <p className="col-span-full py-2 text-center text-xs text-slate-400">
                       No weekly progress updates recorded yet.
                     </p>
                   )}
@@ -231,7 +241,17 @@ function DetailPanel({ detail, loading, onClose }) {
             </>
           )}
         </div>
-      </aside>
+
+        <div className="flex shrink-0 justify-end border-t border-slate-100 px-5 py-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-4 text-[12px] font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Close
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -240,9 +260,11 @@ export default function AdminMonitoringPage() {
   const searchParams = useSearchParams();
   const {
     students,
+    classSummaries,
     stats,
     filterOptions,
     loading,
+    refreshing,
     error,
     refresh,
     selectedDetail,
@@ -259,6 +281,7 @@ export default function AdminMonitoringPage() {
   const [recommendation, setRecommendation] = useState("All Recommendations");
   const [risk, setRisk] = useState("All Risks");
   const [status, setStatus] = useState("All Status");
+  const [exportingAral, setExportingAral] = useState(false);
 
   useEffect(() => {
     const riskParam = searchParams.get("risk");
@@ -331,6 +354,44 @@ export default function AdminMonitoringPage() {
     setStatus("All Status");
   }
 
+  const aralExportCount = useMemo(
+    () => filterAralRecommendedLearners(filtered).length,
+    [filtered]
+  );
+
+  const exportScopeLabel = useMemo(() => {
+    const parts = [];
+    if (grade && grade !== "All Grades") parts.push(grade);
+    if (section && section !== "All Sections") parts.push(section);
+    return parts.length ? parts.join(" ") : "School-wide";
+  }, [grade, section]);
+
+  async function handleExportAralRecommended() {
+    if (exportingAral) return;
+    setExportingAral(true);
+    try {
+      const result = await exportAralRecommendedExcel({
+        learners: filtered,
+        schoolYear: activeSchoolYear,
+        quarter: quarter === "All Terms" ? "All Terms" : quarter,
+        periodLabel: quarter === "All Terms" ? "All Terms" : quarter,
+        generatedBy: "Head Teacher / Admin",
+        scopeLabel: exportScopeLabel,
+        includeTeacherColumn: true,
+      });
+      if (result.count === 0) {
+        window.alert(
+          "No ARAL-recommended learners under the current filters. The Excel file still downloaded for review."
+        );
+      }
+    } catch (err) {
+      console.error(err);
+      window.alert("Unable to export ARAL recommended list. Please try again.");
+    } finally {
+      setExportingAral(false);
+    }
+  }
+
   function handleServerFilterChange(next = {}) {
     const year = next.schoolYear ?? schoolYear;
     const q = next.quarter ?? quarter;
@@ -375,23 +436,45 @@ export default function AdminMonitoringPage() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-[12px] text-slate-500">
           Showing monitored students across assigned classes. Recommendations
-          are generated by the Random Forest recommendation engine.
+          are generated by the Random Forest recommendation engine. ARAL export
+          is a system suggestion for educator review.
         </p>
-        <button
-          type="button"
-          onClick={() =>
-            handleServerFilterChange({
-              schoolYear,
-              quarter,
-              grade,
-              section,
-            })
-          }
-          className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
-        >
-          <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
-          Refresh
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportAralRecommended}
+            disabled={loading || exportingAral}
+            title="Export English/Filipino learners recommended for ARAL (for review)"
+            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50 px-3 text-[12px] font-semibold text-sky-800 transition-colors hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {exportingAral ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <FileSpreadsheet size={13} />
+            )}
+            Export ARAL Recommended
+            {aralExportCount > 0 ? (
+              <span className="rounded-full bg-white/80 px-1.5 text-[10px] font-bold text-sky-700">
+                {aralExportCount}
+              </span>
+            ) : null}
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              handleServerFilterChange({
+                schoolYear,
+                quarter,
+                grade,
+                section,
+              })
+            }
+            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+          >
+            <RefreshCw size={13} className={refreshing || loading ? "animate-spin" : ""} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {error ? (
@@ -437,6 +520,44 @@ export default function AdminMonitoringPage() {
       </div>
 
       <div className="mt-3 space-y-3">
+        <AdminClassReportFilesPanel
+          students={students}
+          classSummaries={classSummaries}
+          onChanged={() =>
+            refresh({
+              schoolYear: schoolYear || undefined,
+              quarterNumber:
+                quarter !== "All Terms"
+                  ? Number(String(quarter).replace(/\D/g, "")) || null
+                  : null,
+              gradeLevel:
+                grade !== "All Grades"
+                  ? Number(String(grade).replace(/\D/g, "")) || null
+                  : null,
+              sectionName: section !== "All Sections" ? section : null,
+              bustCache: true,
+            })
+          }
+        />
+
+        <AdminAralApprovalPanel
+          students={filtered}
+          onChanged={() =>
+            refresh({
+              schoolYear: schoolYear || undefined,
+              quarterNumber:
+                quarter !== "All Terms"
+                  ? Number(String(quarter).replace(/\D/g, "")) || null
+                  : null,
+              gradeLevel:
+                grade !== "All Grades"
+                  ? Number(String(grade).replace(/\D/g, "")) || null
+                  : null,
+              sectionName: section !== "All Sections" ? section : null,
+              bustCache: true,
+            })
+          }
+        />
         <AdminAralFacilitatorAssignPanel
           students={students}
           onChanged={() => refresh({
@@ -568,7 +689,7 @@ export default function AdminMonitoringPage() {
       </section>
 
       <div className="mt-3">
-        {loading ? (
+        {loading && students.length === 0 ? (
           <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-100 bg-white py-10 text-sm text-slate-500">
             <Loader2 size={16} className="animate-spin" />
             Loading monitoring data…
@@ -580,6 +701,7 @@ export default function AdminMonitoringPage() {
             quarter={quarter === "All Terms" ? "All Terms" : quarter}
             onViewMonitoring={openStudent}
             title="Monitored Students"
+            showAralApproval
           />
         )}
       </div>

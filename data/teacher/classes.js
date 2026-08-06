@@ -11,12 +11,6 @@ export const classesData = {
     sections: ["All Sections", "Ponce", "Rizal", "Bonifacio", "Luna", "Mabini", "Aguinaldo", "Del Pilar"],
     statuses: ["All Status", "Pending Upload", "Submitted", "Approved", "Needs Revision", "Pending"],
   },
-  kpis: [
-    { id: "assigned", label: "Assigned Classes", value: 6, icon: "book", tone: "green" },
-    { id: "students", label: "Students Handled", value: 248, icon: "users", tone: "blue" },
-    { id: "pending-records", label: "Pending Records", value: 3, icon: "file", tone: "orange", alert: true },
-    { id: "pending-plans", label: "Pending Lesson Plans", value: 3, icon: "clipboard", tone: "red", alert: true },
-  ],
   classes: [
     {
       id: "sci-g10-ponce",
@@ -35,7 +29,7 @@ export const classesData = {
       schoolYear: "SY 2026-2027",
       currentQuarter: "Quarter 1",
       teacher: "Allan A. Marcelo",
-      adviserDisplay: "Sir Allan",
+      adviserDisplay: "Sir Allan",
       classAverage: 84.2,
       forIntervention: 5,
       quarterlyAverages: [
@@ -93,7 +87,7 @@ export const classesData = {
       schoolYear: "SY 2026-2027",
       currentQuarter: "Quarter 1",
       teacher: "Allan A. Marcelo",
-      adviserDisplay: "Sir Allan",
+      adviserDisplay: "Sir Allan",
       classAverage: 79.5,
       forIntervention: 8,
       quarterlyAverages: [
@@ -148,7 +142,7 @@ export const classesData = {
       schoolYear: "SY 2026-2027",
       currentQuarter: "Quarter 1",
       teacher: "Allan A. Marcelo",
-      adviserDisplay: "Sir Allan",
+      adviserDisplay: "Sir Allan",
       classAverage: 82.1,
       forIntervention: 3,
       quarterlyAverages: [
@@ -202,7 +196,7 @@ export const classesData = {
       schoolYear: "SY 2026-2027",
       currentQuarter: "Quarter 1",
       teacher: "Allan A. Marcelo",
-      adviserDisplay: "Sir Allan",
+      adviserDisplay: "Sir Allan",
       classAverage: 85.0,
       forIntervention: 2,
       quarterlyAverages: [
@@ -255,7 +249,7 @@ export const classesData = {
       schoolYear: "SY 2026-2027",
       currentQuarter: "Quarter 1",
       teacher: "Allan A. Marcelo",
-      adviserDisplay: "Sir Allan",
+      adviserDisplay: "Sir Allan",
       classAverage: 86.4,
       forIntervention: 1,
       quarterlyAverages: [
@@ -308,7 +302,7 @@ export const classesData = {
       schoolYear: "SY 2026-2027",
       currentQuarter: "Quarter 1",
       teacher: "Allan A. Marcelo",
-      adviserDisplay: "Sir Allan",
+      adviserDisplay: "Sir Allan",
       classAverage: 83.7,
       forIntervention: 4,
       quarterlyAverages: [

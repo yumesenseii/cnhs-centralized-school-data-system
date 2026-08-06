@@ -1,10 +1,5 @@
 export const studentsByClass = {
   "eng-g8-rizal": {
-    kpis: [
-      { id: "total", label: "Total Students", value: 10, icon: "users", tone: "blue" },
-      { id: "at-risk", label: "At-Risk Students", value: 5, icon: "alert", tone: "red", alert: true },
-      { id: "average", label: "Class Average", value: "81.4", icon: "trend", tone: "green" },
-    ],
     filters: {
       riskLevels: ["All Risk Levels", "Priority", "Moderate", "Low"],
       interventions: [

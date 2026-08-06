@@ -31,6 +31,7 @@ import {
   exportTeacherReportsPdf,
 } from "@/lib/teacher/reportsExport";
 import { SIDEBAR_SHEET_CLASS } from "@/lib/constants/layout";
+import { UPLOAD_STORAGE_KEY } from "@/data/teacher/lessonPlans";
 import { buildQuarterlyAverages } from "@/lib/teacher/myClassesMappers";
 import { termLabel } from "@/lib/academic/termLabels";
 import { useRouter } from "next/navigation";
@@ -89,6 +90,29 @@ export default function ClassOverview({ classId }) {
     }
     if (action.id === "qa1") {
       openUpload();
+      return;
+    }
+    if (action.id === "qa2") {
+      const targetClassId = classItem?.id ?? classId;
+      if (!targetClassId) return;
+      try {
+        const raw = window.sessionStorage.getItem(UPLOAD_STORAGE_KEY);
+        const prev = raw ? JSON.parse(raw) : {};
+        window.sessionStorage.setItem(
+          UPLOAD_STORAGE_KEY,
+          JSON.stringify({
+            ...prev,
+            classId: targetClassId,
+            selectedClassSnapshot: null,
+            step: 1,
+          })
+        );
+      } catch {
+        /* ignore storage errors — query param still preselects */
+      }
+      router.push(
+        `/teacher/lesson-plans/upload?classId=${encodeURIComponent(targetClassId)}`
+      );
     }
   }
 
@@ -123,7 +147,7 @@ export default function ClassOverview({ classId }) {
     resetReport();
   }
 
-  if (loading) {
+  if (loading && !classItem) {
     return (
       <div className="rounded-xl border border-slate-100 bg-white px-4 py-10 text-center text-sm text-slate-400">
         Loading class overview...

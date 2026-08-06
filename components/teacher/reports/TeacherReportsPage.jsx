@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
+  BarChart3,
   BookOpen,
   CalendarDays,
+  ClipboardList,
   Download,
   FileSpreadsheet,
   Layers3,
@@ -20,12 +23,18 @@ import {
 } from "@/components/ui/sheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import ClassReportsTable from "@/components/teacher/reports/ClassReportsTable";
-import ReportCards from "@/components/teacher/reports/ReportCards";
 import ReportCharts from "@/components/teacher/reports/ReportCharts";
 import ReportPreviewModal from "@/components/teacher/reports/ReportPreviewModal";
-import ReportSummaryCards from "@/components/teacher/reports/ReportSummaryCards";
+import ReportAttendancePanel from "@/components/reports/ReportAttendancePanel";
+import ReportByClassGrid from "@/components/reports/ReportByClassGrid";
+import ReportInsightCallout from "@/components/reports/ReportInsightCallout";
+import ReportKpiStrip from "@/components/reports/ReportKpiStrip";
+import ReportModule from "@/components/reports/ReportModule";
+import ReportSubmissionsPanel from "@/components/reports/ReportSubmissionsPanel";
+import ReportSummaryMetrics from "@/components/reports/ReportSummaryMetrics";
 import { useTeacherReports } from "@/hooks/teacher/useTeacherReports";
 import { SIDEBAR_SHEET_CLASS } from "@/lib/constants/layout";
+import { buildReportInsight } from "@/lib/reports/buildReportInsight";
 import {
   QUARTER_OPTIONS,
   REPORT_FILTER_ALL,
@@ -36,6 +45,13 @@ import {
   exportTeacherReportsPdf,
 } from "@/lib/teacher/reportsExport";
 
+const PERF_TABS = [
+  { id: "summary", label: "Summary" },
+  { id: "charts", label: "Charts" },
+  { id: "by-class", label: "By Class" },
+  { id: "breakdown", label: "Breakdown" },
+];
+
 function ReportsSkeleton() {
   return (
     <div className="space-y-3">
@@ -43,31 +59,24 @@ function ReportsSkeleton() {
         {Array.from({ length: 4 }).map((_, index) => (
           <div
             key={`summary-skel-${index}`}
-            className="h-[132px] animate-pulse rounded-xl border border-slate-100 bg-slate-100/80"
+            className="h-[110px] animate-pulse rounded-2xl border border-slate-100 bg-slate-100/80"
           />
         ))}
       </div>
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div
-            key={`card-skel-${index}`}
-            className="h-[180px] animate-pulse rounded-xl border border-slate-100 bg-slate-100/80"
-          />
-        ))}
-      </div>
-      <div className="h-[280px] animate-pulse rounded-xl border border-slate-100 bg-slate-100/80" />
+      <div className="h-[280px] animate-pulse rounded-2xl border border-slate-100 bg-slate-100/80" />
+      <div className="h-[120px] animate-pulse rounded-2xl border border-slate-100 bg-slate-100/80" />
     </div>
   );
 }
 
 export default function TeacherReportsPage() {
+  const router = useRouter();
   const {
     loading,
     error,
     teacherName,
     summary,
-    summaryCards,
-    reportCards,
+    lessonSummary,
     classReports,
     charts,
     schoolYear,
@@ -89,6 +98,10 @@ export default function TeacherReportsPage() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [preview, setPreview] = useState(null);
   const [toast, setToast] = useState("");
+  const [perfOpen, setPerfOpen] = useState(true);
+  const [perfTab, setPerfTab] = useState("summary");
+  const [subsOpen, setSubsOpen] = useState(false);
+  const [attendanceOpen, setAttendanceOpen] = useState(false);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -96,18 +109,91 @@ export default function TeacherReportsPage() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
+  const kpiItems = useMemo(() => {
+    const avg =
+      summary?.averageClassGrade == null
+        ? "—"
+        : String(summary.averageClassGrade);
+    const pass =
+      summary?.passingRate == null ? "—" : `${summary.passingRate}%`;
+    const aral = summary?.aralScreeningCount ?? 0;
+
+    return [
+      {
+        id: "learners",
+        label: "Learners",
+        value: summary?.totalStudents ?? 0,
+        hint: `${summary?.totalClasses ?? 0} classes in scope`,
+        tone: "green",
+      },
+      {
+        id: "avg",
+        label: "Avg grade",
+        value: avg,
+        hint: "Class average · filtered",
+        tone: "slate",
+      },
+      {
+        id: "passing",
+        label: "Passing rate",
+        value: pass,
+        hint: "Graded entries ≥ 75",
+        tone: "green",
+      },
+      {
+        id: "aral",
+        label: "At-risk / ARAL",
+        value: aral,
+        hint: `${summary?.classroomRemedialCount ?? 0} classroom remedial`,
+        badge: aral > 0 ? "Follow-up" : undefined,
+        tone: aral > 0 ? "orange" : "green",
+      },
+    ];
+  }, [summary]);
+
+  const insight = useMemo(
+    () =>
+      buildReportInsight({
+        termLabel: quarterLabel,
+        summary,
+        lessonSummary,
+        scope: "teacher",
+      }),
+    [quarterLabel, summary, lessonSummary]
+  );
+
+  const summaryRows = useMemo(
+    () => [
+      ["Total classes", summary?.totalClasses],
+      ["Total learners", summary?.totalStudents],
+      [
+        "Average class grade",
+        summary?.averageClassGrade == null
+          ? "—"
+          : String(summary.averageClassGrade),
+      ],
+      [
+        "Passing rate",
+        summary?.passingRate == null ? "—" : `${summary.passingRate}%`,
+      ],
+      ["Highest performing subject", summary?.highestSubject],
+      ["Lowest performing subject", summary?.lowestSubject],
+      ["ARAL learners", summary?.aralScreeningCount],
+      ["Classroom remedial", summary?.classroomRemedialCount],
+      [
+        "Monitoring completion",
+        summary?.monitoringCompletionRate == null
+          ? "—"
+          : `${summary.monitoringCompletionRate}%`,
+      ],
+      ["Learners under monitoring", summary?.learnersUnderMonitoring],
+    ],
+    [summary]
+  );
+
   function openPreview(classReport) {
     setPreview(getPreview(classReport));
     setPreviewOpen(true);
-  }
-
-  function handleViewReport(card) {
-    if (classReports[0]) {
-      openPreview(classReports[0]);
-      setToast(`Opened ${card.title}.`);
-      return;
-    }
-    setToast("No class report available for the selected filters.");
   }
 
   function handleExportPdf() {
@@ -175,8 +261,8 @@ export default function TeacherReportsPage() {
               Reports
             </h1>
             <p className="mt-1 max-w-xl text-[12px] text-slate-500">
-              Review your class reports, intervention recommendations, lesson plan submissions,
-              and academic performance.
+              Review your class reports, intervention recommendations, lesson
+              plan submissions, and academic performance.
             </p>
           </div>
 
@@ -224,7 +310,7 @@ export default function TeacherReportsPage() {
           </label>
 
           <label className="relative">
-            <span className="sr-only">Quarter</span>
+            <span className="sr-only">Term</span>
             <Layers3
               size={12}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -325,32 +411,95 @@ export default function TeacherReportsPage() {
           <ReportsSkeleton />
         </div>
       ) : !classReports.length && !error ? (
-        <div className="rounded-xl border border-dashed border-slate-200 bg-white px-6 py-10 text-center">
-          <p className="text-sm font-semibold text-slate-800">No reports available</p>
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-10 text-center">
+          <p className="text-sm font-semibold text-slate-800">
+            No reports available
+          </p>
           <p className="mt-2 text-xs text-slate-500">
-            No assigned classes match the selected school year, quarter, subject, or section.
+            No assigned classes match the selected school year, term, subject,
+            or section.
           </p>
         </div>
       ) : (
-        <>
-          <ReportSummaryCards cards={summaryCards} />
+        <div className="space-y-4">
+          <ReportKpiStrip items={kpiItems} />
 
-          <div className="mt-4">
-            <ReportCards cards={reportCards} onView={handleViewReport} />
-          </div>
+          <ReportModule
+            title="My Class Performance"
+            subtitle="Academic rates · charts · class cards · detailed breakdown"
+            icon={<BarChart3 size={16} strokeWidth={1.8} />}
+            open={perfOpen}
+            onOpenChange={setPerfOpen}
+            tabs={PERF_TABS}
+            activeTab={perfTab}
+            onTabChange={setPerfTab}
+            accent="green"
+            footer={<ReportInsightCallout text={insight} />}
+          >
+            {perfTab === "summary" ? (
+              <ReportSummaryMetrics
+                title="Class summary · read-only"
+                rows={summaryRows}
+              />
+            ) : null}
+            {perfTab === "charts" ? <ReportCharts charts={charts} /> : null}
+            {perfTab === "by-class" ? (
+              <ReportByClassGrid
+                reports={classReports}
+                onDetails={openPreview}
+                mapRow={(row) => ({
+                  id: row.id,
+                  title: row.section ?? row.gradeSection ?? "Section",
+                  subtitle: row.subject,
+                  metric: row.averageGrade ?? "—",
+                  metricLabel: `${row.students ?? 0} learners`,
+                  needsLabel:
+                    row.aralEligible === false
+                      ? "Not ARAL-eligible subject"
+                      : `${row.aralScreening ?? 0} ARAL · ${
+                          row.classroomRemedialRecommended ? "remedial" : "ok"
+                        }`,
+                })}
+              />
+            ) : null}
+            {perfTab === "breakdown" ? (
+              <ClassReportsTable
+                reports={classReports}
+                onPreview={openPreview}
+                onExport={handleRowExport}
+              />
+            ) : null}
+          </ReportModule>
 
-          <div className="mt-4">
-            <ReportCharts charts={charts} />
-          </div>
-
-          <div className="mt-4">
-            <ClassReportsTable
-              reports={classReports}
-              onPreview={openPreview}
-              onExport={handleRowExport}
+          <ReportModule
+            title="Submissions & follow-up"
+            subtitle="Lesson plans · monitoring progress"
+            icon={<ClipboardList size={16} strokeWidth={1.8} />}
+            open={subsOpen}
+            onOpenChange={setSubsOpen}
+            accent="orange"
+          >
+            <ReportSubmissionsPanel
+              lessonSummary={lessonSummary}
+              summary={summary}
+              actionLabel="Open Lesson Plans"
+              onLessonPlanAction={() =>
+                router.push("/teacher/lesson-plans")
+              }
             />
-          </div>
-        </>
+          </ReportModule>
+
+          <ReportModule
+            title="Attendance (SF2)"
+            subtitle="Monthly attendance · separate from academic risk"
+            icon={<CalendarDays size={16} strokeWidth={1.8} />}
+            open={attendanceOpen}
+            onOpenChange={setAttendanceOpen}
+            accent="sky"
+          >
+            <ReportAttendancePanel attendance={null} chartData={[]} />
+          </ReportModule>
+        </div>
       )}
 
       <ReportPreviewModal
@@ -370,8 +519,11 @@ export default function TeacherReportsPage() {
                   totalClasses: 1,
                   totalStudents: row.students,
                   aralScreeningCount: row.aralScreening,
-                  classroomRemedialCount: row.classroomRemedialRecommended ? 1 : 0,
-                  averageClassGrade: row.averageGradeValue ?? row.averageGrade,
+                  classroomRemedialCount: row.classroomRemedialRecommended
+                    ? 1
+                    : 0,
+                  averageClassGrade:
+                    row.averageGradeValue ?? row.averageGrade,
                   monitoringCompletionRate: 0,
                 },
                 classReports: [row],

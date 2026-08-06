@@ -16,15 +16,16 @@ import {
   mapSectionRow,
   suggestCurrentSchoolYear,
 } from "@/lib/admin/sectionMappers";
+import { useSoftLoadState } from "@/hooks/useSoftLoadState";
 
 export function useSectionManagement() {
   const [sections, setSections] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [schoolYears, setSchoolYears] = useState([]);
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(true);
   const [filters, setFilters] = useState({
     search: "",
     schoolYear: "All School Years",
@@ -33,7 +34,7 @@ export function useSectionManagement() {
   });
 
   const refresh = useCallback(async () => {
-    setLoading(true);
+    beginLoad();
     setError("");
 
     const session = await getAdminSession();
@@ -41,7 +42,7 @@ export function useSectionManagement() {
       setError(session.error?.message ?? "Admin access required.");
       setProfile(null);
       setSections([]);
-      setLoading(false);
+      endLoad(false);
       return;
     }
 
@@ -55,12 +56,12 @@ export function useSectionManagement() {
 
     if (sectionsResult.error) {
       setError(sectionsResult.error.message);
-      setLoading(false);
+      endLoad(false);
       return;
     }
     if (teachersResult.error) {
       setError(teachersResult.error.message);
-      setLoading(false);
+      endLoad(false);
       return;
     }
 
@@ -73,8 +74,8 @@ export function useSectionManagement() {
     setSchoolYears(
       [...new Set([current, ...years])].sort((a, b) => b.localeCompare(a))
     );
-    setLoading(false);
-  }, []);
+    endLoad(true);
+  }, [beginLoad, endLoad]);
 
   useEffect(() => {
     refresh();
@@ -166,6 +167,7 @@ export function useSectionManagement() {
     summary,
     profile,
     loading,
+    refreshing,
     saving,
     error,
     filters,

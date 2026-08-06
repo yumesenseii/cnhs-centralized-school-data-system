@@ -14,7 +14,7 @@ const statusDots = {
 
 const roleStyles = {
   Teacher: "bg-green-50 text-cnhs-green-dark",
-  "Head Teacher": "bg-violet-50 text-violet-700",
+  "Head Teacher": "bg-amber-50 text-amber-700",
 };
 
 export function StatusBadge({ value }) {

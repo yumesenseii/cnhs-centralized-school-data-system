@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, Upload, Users } from "lucide-react";
+import { BookOpen, FileSpreadsheet, Loader2, Upload, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const iconTones = {
@@ -14,7 +14,12 @@ const iconTones = {
   teal: "bg-teal-50 text-teal-600",
 };
 
-export default function ClassCard({ classItem, onUploadRecord }) {
+export default function ClassCard({
+  classItem,
+  onUploadRecord,
+  onGenerateReport,
+  generating = false,
+}) {
   return (
     <article className="flex h-full flex-col rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] transition-shadow hover:shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
       <div className="flex items-start gap-3">
@@ -37,7 +42,9 @@ export default function ClassCard({ classItem, onUploadRecord }) {
               </h3>
             </div>
             <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600">
-              {classItem.quarterLabel || classItem.currentQuarter || classItem.quarter}
+              {classItem.quarterLabel ||
+                classItem.currentQuarter ||
+                classItem.quarter}
             </span>
           </div>
         </div>
@@ -45,7 +52,9 @@ export default function ClassCard({ classItem, onUploadRecord }) {
 
       <dl className="mt-4 space-y-2.5 rounded-xl bg-slate-50/80 px-3 py-2">
         <div className="flex items-start justify-between gap-3">
-          <dt className="text-[11px] font-medium text-slate-400">Grade & Section</dt>
+          <dt className="text-[11px] font-medium text-slate-400">
+            Grade & Section
+          </dt>
           <dd className="text-right text-[12px] font-semibold text-slate-800">
             {classItem.gradeSection}
           </dd>
@@ -85,6 +94,20 @@ export default function ClassCard({ classItem, onUploadRecord }) {
         >
           <Upload size={12} />
           Upload Record
+        </button>
+        <button
+          type="button"
+          disabled={generating}
+          onClick={() => onGenerateReport?.(classItem)}
+          title="Create/refresh this class report file in Academic Monitoring"
+          className="inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-cnhs-green-dark/35 bg-white px-3 text-[11px] font-semibold text-cnhs-green-dark transition-colors hover:bg-green-50 disabled:opacity-60"
+        >
+          {generating ? (
+            <Loader2 size={12} className="animate-spin" />
+          ) : (
+            <FileSpreadsheet size={12} />
+          )}
+          Generate report
         </button>
         <Link
           href={`/teacher/my-classes/${classItem.id}/students`}

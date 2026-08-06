@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import StudentPageHeader from "@/components/student/layout/StudentPageHeader";
 import StudentSecurityCard from "@/components/student/profile/StudentSecurityCard";
+import ThemeSettingsCard from "@/components/settings/ThemeSettingsCard";
 import {
   Pill,
   RiskPill,
@@ -241,7 +242,10 @@ export default function StudentProfilePage() {
             )}
           </section>
 
-          <StudentSecurityCard />
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start">
+            <ThemeSettingsCard description="Choose how the student portal looks on this browser. The theme stays after logout and when you return." />
+            <StudentSecurityCard />
+          </div>
         </div>
       )}
     </motion.div>

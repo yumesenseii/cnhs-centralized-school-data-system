@@ -15,6 +15,7 @@ import {
 import { SIDEBAR_WIDTH_CLASS } from "@/lib/constants/layout";
 import { createClient } from "@/lib/supabase/client";
 import { getCurrentStudentSession } from "@/lib/supabase/queries/studentPortal";
+import { confirmLogout } from "@/lib/ui/confirmAction";
 import { cn } from "@/lib/utils";
 
 const menuNavigation = [
@@ -109,6 +110,7 @@ export default function StudentSidebar({ className, mobile = false, onNavigate }
   }, []);
 
   async function handleLogout() {
+    if (!confirmLogout()) return;
     const supabase = createClient();
     await supabase.auth.updateUser({
       data: { portal_role: null, portal_active: null },

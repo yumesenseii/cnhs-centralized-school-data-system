@@ -9,6 +9,7 @@ import AssignmentSummaryCards from "@/components/class-assignments/AssignmentSum
 import AssignmentsTable from "@/components/class-assignments/AssignmentsTable";
 import { useClassAssignments } from "@/hooks/admin/useClassAssignments";
 import { suggestCurrentSchoolYear } from "@/lib/admin/sectionMappers";
+import { confirmDelete } from "@/lib/ui/confirmAction";
 
 export default function ClassAssignmentManagement({ embedded = false }) {
   const {
@@ -19,6 +20,7 @@ export default function ClassAssignmentManagement({ embedded = false }) {
     schoolYears,
     summary,
     loading,
+    refreshing,
     saving,
     error,
     filters,
@@ -57,7 +59,11 @@ export default function ClassAssignmentManagement({ embedded = false }) {
       const result = await handleUpdate(selected.id, payload);
       if (result.ok) {
         setModalOpen(false);
-        showToast("Class assignment updated.");
+        showToast(
+          payload?.allQuarters
+            ? result.message || "Missing term assignments created."
+            : "Class assignment updated."
+        );
       }
       return result;
     }
@@ -71,15 +77,13 @@ export default function ClassAssignmentManagement({ embedded = false }) {
   }
 
   async function onDelete(assignment) {
-    const confirmed = window.confirm(
-      `Remove ${assignment.teacherName} from ${assignment.subjectName} — ${assignment.gradeLabel} ${assignment.sectionName} (${assignment.schoolYear}, ${assignment.quarterLabel})?`
-    );
-    if (!confirmed) return;
+    const label = `${assignment.teacherName} — ${assignment.subjectName} (${assignment.gradeLabel} ${assignment.sectionName}, ${assignment.schoolYear}, ${assignment.quarterLabel})`;
+    if (!confirmDelete(label)) return;
     const result = await handleDelete(assignment.id);
     if (result.ok) showToast("Class assignment removed.");
   }
 
-  if (loading) {
+  if (loading && !assignments.length && !refreshing) {
     return (
       <div className="rounded-xl border border-slate-100 bg-white px-4 py-10 text-center text-sm text-slate-400">
         Loading class assignments...
@@ -99,7 +103,7 @@ export default function ClassAssignmentManagement({ embedded = false }) {
     <button
       type="button"
       onClick={openCreate}
-      className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-[#246f54]"
+      className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-[#246f54]"
     >
       <Plus size={13} />
       Assign Class

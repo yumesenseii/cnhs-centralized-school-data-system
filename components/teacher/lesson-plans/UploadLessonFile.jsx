@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, CloudUpload } from "lucide-react";
 import FileCard from "@/components/teacher/lesson-plans/FileCard";
 import { lessonPlansData } from "@/data/teacher/lessonPlans";
+import { confirmDelete } from "@/lib/ui/confirmAction";
 import { cn } from "@/lib/utils";
 
 const ACCEPTED = [".pdf", ".doc", ".docx"];
@@ -127,6 +128,7 @@ export default function UploadLessonFile({ file, onFileChange, onBack, onPreview
               progress={progress}
               onReplace={() => inputRef.current?.click()}
               onRemove={() => {
+                if (!confirmDelete(file?.name || "this file")) return;
                 onFileChange?.(null, null);
                 setProgress(0);
               }}

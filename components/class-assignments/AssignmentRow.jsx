@@ -37,7 +37,7 @@ export default function AssignmentRow({
             type="button"
             disabled={busy}
             onClick={() => onEdit?.(assignment)}
-            className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 text-[10px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-40"
+            className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-40"
           >
             <Pencil size={11} />
             Edit
@@ -46,7 +46,7 @@ export default function AssignmentRow({
             type="button"
             disabled={busy}
             onClick={() => onDelete?.(assignment)}
-            className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-lg border border-red-100 bg-red-50 px-2 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-100 disabled:opacity-40"
+            className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-500 transition-colors hover:bg-slate-50 disabled:opacity-40"
           >
             <Trash2 size={11} />
             Remove

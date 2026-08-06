@@ -8,6 +8,7 @@ import {
   ACCEPTED_EXTENSIONS,
   validateEClassFile,
 } from "@/lib/eclass/validateEClassFile";
+import { confirmDelete } from "@/lib/ui/confirmAction";
 import { cn } from "@/lib/utils";
 
 function buildFileMeta(file) {
@@ -145,6 +146,7 @@ export default function InputGradesUploadStep({
               inputRef.current?.click();
             }}
             onRemove={() => {
+              if (!confirmDelete(fileMeta?.name || "this file")) return;
               onClear?.();
               setError("");
             }}

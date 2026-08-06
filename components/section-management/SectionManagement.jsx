@@ -9,6 +9,7 @@ import SectionSummaryCards from "@/components/section-management/SectionSummaryC
 import SectionsTable from "@/components/section-management/SectionsTable";
 import { useSectionManagement } from "@/hooks/admin/useSections";
 import { suggestCurrentSchoolYear } from "@/lib/admin/sectionMappers";
+import { confirmDestructive } from "@/lib/ui/confirmAction";
 
 export default function SectionManagement({ embedded = false }) {
   const {
@@ -17,6 +18,7 @@ export default function SectionManagement({ embedded = false }) {
     schoolYears,
     summary,
     loading,
+    refreshing,
     saving,
     error,
     filters,
@@ -71,20 +73,31 @@ export default function SectionManagement({ embedded = false }) {
   }
 
   async function onArchive(section) {
-    const confirmed = window.confirm(
-      `Archive ${section.gradeLabel} — ${section.sectionName} (${section.schoolYear})? Historical records will be kept.`
-    );
-    if (!confirmed) return;
+    const label = `${section.gradeLabel} — ${section.sectionName} (${section.schoolYear})`;
+    if (
+      !confirmDestructive(
+        `Are you sure you want to archive ${label}? Historical records will be kept.`
+      )
+    ) {
+      return;
+    }
     const result = await handleArchive(section.id);
     if (result.ok) showToast("Section archived.");
   }
 
   async function onRestore(section) {
+    if (
+      !confirmDestructive(
+        `Are you sure you want to restore ${section.gradeLabel} — ${section.sectionName}?`
+      )
+    ) {
+      return;
+    }
     const result = await handleRestore(section.id);
     if (result.ok) showToast("Section restored to Active.");
   }
 
-  if (loading) {
+  if (loading && !sections.length && !refreshing) {
     return (
       <div className="rounded-xl border border-slate-100 bg-white px-4 py-10 text-center text-sm text-slate-400">
         Loading sections...
@@ -104,7 +117,7 @@ export default function SectionManagement({ embedded = false }) {
     <button
       type="button"
       onClick={openCreate}
-      className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-[#246f54]"
+      className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-[#246f54]"
     >
       <Plus size={13} />
       Create Section

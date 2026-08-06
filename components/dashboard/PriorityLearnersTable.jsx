@@ -24,8 +24,8 @@ const columns = [
 
 export default function PriorityLearnersTable({ learners }) {
   return (
-    <section className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-      <div className="px-3 py-3">
+    <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
+      <div className="border-b border-slate-100 px-4 py-3.5 sm:px-5">
         <h2 className="text-sm font-semibold tracking-[-0.02em] text-slate-800">
           Priority Learners Requiring Review
         </h2>

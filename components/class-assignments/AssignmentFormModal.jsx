@@ -5,7 +5,6 @@ import { formatPersonName } from "@/lib/admin/classAssignmentMappers";
 import {
   TERM_ALL_VALUE,
   TERM_FORM_OPTIONS,
-  TERM_OPTIONS,
 } from "@/lib/academic/termLabels";
 
 const GRADE_OPTIONS = [7, 8, 9, 10];
@@ -73,7 +72,9 @@ export default function AssignmentFormModal({
   const title =
     mode === "edit" ? "Edit Class Assignment" : "Assign Teacher to Class";
   const description =
-    "Assign a teacher to a subject and section for a school year and term. Choose All Terms to create Term 1–3 + Final Grade in one step.";
+    mode === "edit"
+      ? "Update this assignment, or choose All Terms to create any missing Term 1–3 + Final rows for this teacher, subject, section, and school year."
+      : "Assign a teacher to a subject and section for a school year and term. Choose All Terms to create Term 1–3 + Final Grade in one step.";
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -86,11 +87,6 @@ export default function AssignmentFormModal({
       !schoolYear.trim()
     ) {
       setFormError("Teacher, subject, section, and school year are required.");
-      return;
-    }
-
-    if (mode === "edit" && quarter === TERM_ALL_VALUE) {
-      setFormError("Edit one term at a time. Use All Terms only when creating.");
       return;
     }
 
@@ -210,13 +206,11 @@ export default function AssignmentFormModal({
                 className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-cnhs-green-dark/40"
                 required
               >
-                {(mode === "create" ? TERM_FORM_OPTIONS : TERM_OPTIONS).map(
-                  (item) => (
-                    <option key={item.value} value={item.value}>
-                      {item.label}
-                    </option>
-                  )
-                )}
+                {TERM_FORM_OPTIONS.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
               </select>
             </label>
           </div>

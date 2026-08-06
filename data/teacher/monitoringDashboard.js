@@ -16,42 +16,6 @@ export const monitoringDashboardData = {
     ],
     statuses: ["All Status", "Not Started", "Ongoing", "Completed", "Needs Update"],
   },
-  kpis: [
-    {
-      id: "requiring",
-      label: "Learners Requiring Intervention",
-      value: 6,
-      description: "Learners identified by the system as needing intervention.",
-      icon: "users",
-      tone: "blue",
-    },
-    {
-      id: "aral",
-      label: "ARAL Learners",
-      value: 3,
-      description: "Learners recommended for English or Filipino screening.",
-      icon: "clock",
-      tone: "orange",
-      alert: true,
-    },
-    {
-      id: "remediation",
-      label: "Classroom Remediation",
-      value: 3,
-      description: "Learners receiving teacher-led classroom remediation.",
-      icon: "book",
-      tone: "green",
-    },
-    {
-      id: "due",
-      label: "Monitoring Due This Week",
-      value: 4,
-      description: "Weekly monitoring reports still needing completion.",
-      icon: "alert",
-      tone: "red",
-      alert: true,
-    },
-  ],
   learners: [
     {
       id: "miguel-torres",
@@ -67,7 +31,7 @@ export const monitoringDashboardData = {
       intervention: "ARAL Learners",
       monitoringWeek: "Week 2",
       monitoringStatus: "Needs Update",
-      generalAverage: 73.7,
+      generalAverage: 73.7,
       latestGrades: [
         { subject: "English", grade: 65 },
         { subject: "Mathematics", grade: 72 },
@@ -117,7 +81,7 @@ export const monitoringDashboardData = {
       intervention: "ARAL Learners",
       monitoringWeek: "Week 2",
       monitoringStatus: "Ongoing",
-      generalAverage: 74.2,
+      generalAverage: 74.2,
       latestGrades: [
         { subject: "English", grade: 68 },
         { subject: "Mathematics", grade: 75 },
@@ -167,7 +131,7 @@ export const monitoringDashboardData = {
       intervention: "Classroom Remediation",
       monitoringWeek: "Week 3",
       monitoringStatus: "Ongoing",
-      generalAverage: 76.5,
+      generalAverage: 76.5,
       latestGrades: [
         { subject: "English", grade: 78 },
         { subject: "Mathematics", grade: 70 },
@@ -217,7 +181,7 @@ export const monitoringDashboardData = {
       intervention: "Classroom Remediation",
       monitoringWeek: "Week 1",
       monitoringStatus: "Not Started",
-      generalAverage: 78.2,
+      generalAverage: 78.2,
       latestGrades: [
         { subject: "English", grade: 80 },
         { subject: "Mathematics", grade: 79 },
@@ -267,7 +231,7 @@ export const monitoringDashboardData = {
       intervention: "ARAL Learners",
       monitoringWeek: "Week 2",
       monitoringStatus: "Needs Update",
-      generalAverage: 74.0,
+      generalAverage: 74.0,
       latestGrades: [
         { subject: "English", grade: 76 },
         { subject: "Mathematics", grade: 75 },
@@ -317,7 +281,7 @@ export const monitoringDashboardData = {
       intervention: "Classroom Remediation",
       monitoringWeek: "Week 4",
       monitoringStatus: "Completed",
-      generalAverage: 77.8,
+      generalAverage: 77.8,
       latestGrades: [
         { subject: "English", grade: 79 },
         { subject: "Mathematics", grade: 73 },
@@ -396,7 +360,7 @@ export const monitoringDashboardData = {
     "Minimal Improvement",
     "Improving",
     "Significant Improvement",
-  ],
+  ],
   nextRecommendationOptions: [
     "Continue Classroom Remediation",
     "Recommend for ARAL Learners",

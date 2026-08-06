@@ -1,20 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2 } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { CheckCircle2, X } from "lucide-react";
 import {
   Pill,
   RiskPill,
   interventionStyles,
 } from "@/components/teacher/monitoring/shared";
 import { monitoringDashboardData } from "@/data/teacher/monitoringDashboard";
+import { VIEW_MODAL_BACKDROP, VIEW_MODAL_PANEL } from "@/lib/ui/viewModal";
 import { cn } from "@/lib/utils";
 
 function FieldLabel({ children }) {
@@ -31,7 +25,9 @@ export default function MonitoringDetailsDrawer({
   learner,
 }) {
   const [observation, setObservation] = useState("");
-  const [progress, setProgress] = useState(monitoringDashboardData.progressOptions[2]);
+  const [progress, setProgress] = useState(
+    monitoringDashboardData.progressOptions[2]
+  );
   const [nextRecommendation, setNextRecommendation] = useState(
     monitoringDashboardData.nextRecommendationOptions[0]
   );
@@ -60,7 +56,11 @@ export default function MonitoringDetailsDrawer({
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  if (!learner) return null;
+  if (!open || !learner) return null;
+
+  function handleClose() {
+    onOpenChange?.(false);
+  }
 
   function handleSaveObservation(e) {
     e.preventDefault();
@@ -73,24 +73,36 @@ export default function MonitoringDetailsDrawer({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="w-full overflow-y-auto border-l border-slate-100 bg-cnhs-page p-0 sm:max-w-[480px]"
-      >
-        <div className="sticky top-0 z-10 border-b border-slate-100 bg-white px-5 py-4">
-          <SheetHeader className="gap-1 p-0">
-            <SheetTitle className="text-base font-semibold text-slate-900">
+    <div
+      className={VIEW_MODAL_BACKDROP}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Monitoring details"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose();
+      }}
+    >
+      <div className={VIEW_MODAL_PANEL}>
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-5 py-3.5">
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-slate-900">
               Monitoring Details
-            </SheetTitle>
-            <SheetDescription className="text-[12px] text-slate-500">
-              Record weekly observations and submit recommendations to the Head Teacher. This does
-              not enroll the learner in ARAL.
-            </SheetDescription>
-          </SheetHeader>
+            </h2>
+            <p className="mt-1 text-[12px] text-slate-500">
+              Record weekly observations and submit recommendations to the Head
+              Teacher. This does not enroll the learner in ARAL.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleClose}
+            className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-700"
+          >
+            <X size={16} />
+          </button>
         </div>
 
-        <div className="space-y-3 p-4 sm:p-3.5">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-cnhs-page px-4 py-3 sm:px-5">
           {toast ? (
             <div className="flex items-center gap-2 rounded-xl border border-green-100 bg-green-50 px-3 py-2.5 text-[12px] font-medium text-cnhs-green-dark">
               <CheckCircle2 size={14} />
@@ -99,18 +111,25 @@ export default function MonitoringDetailsDrawer({
           ) : null}
 
           <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-            <h3 className="text-sm font-semibold text-slate-900">Student Information</h3>
-            <dl className="mt-3 grid grid-cols-2 gap-3">
+            <h3 className="text-sm font-semibold text-slate-900">
+              Student Information
+            </h3>
+            <dl className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-3">
               {[
                 ["Student Name", learner.name],
                 ["Student Number", learner.studentNumber],
                 ["Grade & Section", learner.gradeSection],
                 ["Weak Subject", learner.weakSubject],
-                ["Subject Grade", learner.classSubjectGrade ?? learner.generalAverage],
+                [
+                  "Subject Grade",
+                  learner.classSubjectGrade ?? learner.generalAverage,
+                ],
               ].map(([label, value]) => (
-                <div key={label}>
+                <div key={label} className="min-w-0">
                   <FieldLabel>{label}</FieldLabel>
-                  <dd className="mt-1 text-[12px] font-semibold text-slate-800">{value}</dd>
+                  <dd className="mt-1 text-[12px] font-semibold text-slate-800">
+                    {value}
+                  </dd>
                 </div>
               ))}
               <div>
@@ -119,17 +138,22 @@ export default function MonitoringDetailsDrawer({
                   <RiskPill value={learner.riskLevel} />
                 </div>
               </div>
-              <div>
+              <div className="col-span-2 min-w-0 lg:col-span-1">
                 <FieldLabel>Current Intervention Recommendation</FieldLabel>
                 <div className="mt-1.5">
-                  <Pill value={learner.intervention} styles={interventionStyles} />
+                  <Pill
+                    value={learner.intervention}
+                    styles={interventionStyles}
+                  />
                 </div>
               </div>
             </dl>
           </section>
 
           <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-            <h3 className="text-sm font-semibold text-slate-900">Academic Summary</h3>
+            <h3 className="text-sm font-semibold text-slate-900">
+              Academic Summary
+            </h3>
             <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 px-3 py-2">
               <div>
                 <FieldLabel>Weak Subject</FieldLabel>
@@ -164,7 +188,7 @@ export default function MonitoringDetailsDrawer({
                   </tr>
                 </thead>
                 <tbody>
-                  {learner.latestGrades.map((row) => (
+                  {(learner.latestGrades || []).map((row) => (
                     <tr key={row.subject} className="border-t border-slate-100">
                       <td className="px-3 py-2 text-[12px] text-slate-600">
                         {row.subject}
@@ -190,15 +214,19 @@ export default function MonitoringDetailsDrawer({
           </section>
 
           <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-            <h3 className="text-sm font-semibold text-slate-900">Monitoring Timeline</h3>
-            <div className="mt-3 space-y-3">
-              {learner.timeline.map((week) => (
+            <h3 className="text-sm font-semibold text-slate-900">
+              Monitoring Timeline
+            </h3>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {(learner.timeline || []).map((week) => (
                 <article
                   key={week.week}
                   className="rounded-xl border border-slate-100 bg-slate-50/60 p-3"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <h4 className="text-[12px] font-semibold text-slate-800">{week.week}</h4>
+                    <h4 className="text-[12px] font-semibold text-slate-800">
+                      {week.week}
+                    </h4>
                     <span className="text-[10px] font-medium text-slate-400">
                       {week.observationDate ?? "No date yet"}
                     </span>
@@ -216,22 +244,27 @@ export default function MonitoringDetailsDrawer({
             onSubmit={handleSaveObservation}
             className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)]"
           >
-            <h3 className="text-sm font-semibold text-slate-900">Teacher Observation</h3>
+            <h3 className="text-sm font-semibold text-slate-900">
+              Teacher Observation
+            </h3>
             <p className="mt-1 text-[11px] text-slate-400">
-              Record participation, learning progress, behavior, assessment notes, and
-              challenges. SF2 attendance is tracked separately under Attendance Monitoring.
+              Record participation, learning progress, behavior, assessment
+              notes, and challenges. SF2 attendance is tracked separately under
+              Attendance Monitoring.
             </p>
             <textarea
               value={observation}
               onChange={(e) => setObservation(e.target.value)}
-              rows={5}
+              rows={4}
               placeholder="Enter weekly observation notes..."
               className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-[12px] text-slate-700 outline-none focus:border-cnhs-green"
             />
 
-            <div className="mt-3 grid grid-cols-1 gap-3">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="block">
-                <span className="text-[11px] font-medium text-slate-600">Progress Assessment</span>
+                <span className="text-[11px] font-medium text-slate-600">
+                  Progress Assessment
+                </span>
                 <select
                   value={progress}
                   onChange={(e) => setProgress(e.target.value)}
@@ -246,17 +279,21 @@ export default function MonitoringDetailsDrawer({
               </label>
 
               <label className="block">
-                <span className="text-[11px] font-medium text-slate-600">Next Recommendation</span>
+                <span className="text-[11px] font-medium text-slate-600">
+                  Next Recommendation
+                </span>
                 <select
                   value={nextRecommendation}
                   onChange={(e) => setNextRecommendation(e.target.value)}
                   className="mt-1.5 h-9 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 text-[12px] text-slate-700 outline-none focus:border-cnhs-green"
                 >
-                  {monitoringDashboardData.nextRecommendationOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
+                  {monitoringDashboardData.nextRecommendationOptions.map(
+                    (option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    )
+                  )}
                 </select>
               </label>
             </div>
@@ -275,15 +312,17 @@ export default function MonitoringDetailsDrawer({
             onSubmit={handleSubmitRecommendation}
             className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)]"
           >
-            <h3 className="text-sm font-semibold text-slate-900">Final Recommendation</h3>
+            <h3 className="text-sm font-semibold text-slate-900">
+              Final Recommendation
+            </h3>
             <p className="mt-1 text-[11px] text-slate-400">
-              Submits monitoring results to the Head Teacher only. It does not enroll the learner
-              into the DepEd ARAL Program.
+              Submits monitoring results to the Head Teacher only. It does not
+              enroll the learner into the DepEd ARAL Program.
             </p>
             <textarea
               value={finalRecommendation}
               onChange={(e) => setFinalRecommendation(e.target.value)}
-              rows={4}
+              rows={3}
               placeholder="Summarize the learner's overall progress and provide your recommendation for the Head Teacher."
               className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-[12px] text-slate-700 outline-none focus:border-cnhs-green"
             />
@@ -297,7 +336,17 @@ export default function MonitoringDetailsDrawer({
             </div>
           </form>
         </div>
-      </SheetContent>
-    </Sheet>
+
+        <div className="flex shrink-0 justify-end border-t border-slate-100 bg-white px-5 py-3">
+          <button
+            type="button"
+            onClick={handleClose}
+            className="inline-flex h-9 cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-4 text-[12px] font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

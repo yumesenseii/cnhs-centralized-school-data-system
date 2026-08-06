@@ -33,7 +33,7 @@ export default function SectionsTable({
               onFiltersChange({ ...filters, search: event.target.value })
             }
             placeholder="Search by section, grade, school year, or adviser"
-            className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none transition-colors placeholder:text-slate-400 focus:border-cnhs-green-dark/40"
+            className="h-9 w-full rounded-full border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none transition-colors placeholder:text-slate-400 focus:border-cnhs-green-dark/40"
           />
         </label>
         <div className="flex shrink-0 flex-wrap gap-2 md:ml-auto">
@@ -111,7 +111,7 @@ export default function SectionsTable({
 
 function SelectFilter({ label, value, options, onChange }) {
   return (
-    <label className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 text-[11px] text-slate-600">
+    <label className="inline-flex h-8 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 text-[11px] text-slate-600 shadow-sm">
       <span className="font-medium text-slate-400">{label}</span>
       <select
         value={value}

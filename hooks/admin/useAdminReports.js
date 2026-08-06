@@ -8,15 +8,16 @@ import {
 import { getAdminReportsBundle } from "@/lib/supabase/queries/reports";
 import { buildAdminReportsModel } from "@/lib/admin/reportsMappers";
 import { QUARTER_OPTIONS, TERM_ALL_LABEL } from "@/lib/teacher/reportsConstants";
+import { useSoftLoadState } from "@/hooks/useSoftLoadState";
 
 export function useAdminReports() {
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [schoolYear, setSchoolYear] = useState("");
   const [quarter, setQuarter] = useState("");
   const [schoolYears, setSchoolYears] = useState([]);
   const [model, setModel] = useState(null);
   const [filtersReady, setFiltersReady] = useState(false);
+  const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,7 +29,7 @@ export function useAdminReports() {
       if (yearsResult.error) {
         setError(yearsResult.error.message || "Unable to load admin reports.");
         setFiltersReady(true);
-        setLoading(false);
+        endLoad(false);
         return;
       }
 
@@ -42,13 +43,13 @@ export function useAdminReports() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [endLoad]);
 
   const refresh = useCallback(
     async ({ bustCache = false } = {}) => {
       if (!filtersReady) return;
 
-      setLoading(true);
+      beginLoad();
       setError("");
 
       try {
@@ -62,6 +63,7 @@ export function useAdminReports() {
         if (result.error) {
           setError(result.error.message || "Unable to load admin reports.");
           setModel(null);
+          endLoad(false);
           return;
         }
 
@@ -88,15 +90,15 @@ export function useAdminReports() {
           },
         });
         setModel(built);
+        endLoad(true);
       } catch (err) {
         setError(err?.message || "Unable to load admin reports.");
         setModel(null);
-      } finally {
-        setLoading(false);
+        endLoad(false);
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- schoolYears is display-only after boot
-    [filtersReady, schoolYear, quarter]
+    [filtersReady, schoolYear, quarter, beginLoad, endLoad]
   );
 
   useEffect(() => {
@@ -105,7 +107,8 @@ export function useAdminReports() {
   }, [filtersReady, refresh]);
 
   return {
-    loading: loading || !filtersReady,
+    loading: (loading || !filtersReady) && !model,
+    refreshing,
     error,
     schoolYear,
     quarter,
@@ -116,6 +119,7 @@ export function useAdminReports() {
     classReports: model?.classReports ?? [],
     charts: model?.charts ?? null,
     summary: model?.summary ?? null,
+    lessonSummary: model?.lessonSummary ?? null,
     schoolSummary: model?.schoolSummary ?? null,
     attendance: model?.attendance ?? null,
     setSchoolYear,

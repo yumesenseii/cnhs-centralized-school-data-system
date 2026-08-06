@@ -44,7 +44,7 @@ export default function LessonPlanTable({
                 "Subject",
                 "Grade & Section",
                 "Week",
-                "Quarter",
+                "Term",
                 "Submitted Date",
                 "Status",
                 "Last Updated",

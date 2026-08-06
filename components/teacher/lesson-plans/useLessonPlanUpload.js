@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   UPLOAD_STORAGE_KEY,
   lessonPlansData,
@@ -65,6 +66,9 @@ function writeStorage(next) {
 }
 
 export function useLessonPlanUpload() {
+  const searchParams = useSearchParams();
+  const urlClassId = searchParams?.get("classId")?.trim() || null;
+
   const [state, setState] = useState(initialState);
   const [hydrated, setHydrated] = useState(false);
   const [classes, setClasses] = useState([]);
@@ -75,8 +79,26 @@ export function useLessonPlanUpload() {
   const [submitError, setSubmitError] = useState("");
 
   useEffect(() => {
-    setState(readStorage());
+    const stored = readStorage();
+    // Prefer ?classId= from My Classes quick action over stale session storage.
+    if (urlClassId) {
+      const next = {
+        ...stored,
+        classId: urlClassId,
+        selectedClassSnapshot:
+          stored.selectedClassSnapshot?.id === urlClassId
+            ? stored.selectedClassSnapshot
+            : null,
+        step: stored.step || 1,
+      };
+      writeStorage(next);
+      setState(next);
+    } else {
+      setState(stored);
+    }
     setHydrated(true);
+    // Only apply URL classId on first hydrate so the class dropdown stays editable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional one-shot hydrate
   }, []);
 
   useEffect(() => {
@@ -128,8 +150,15 @@ export function useLessonPlanUpload() {
 
       setClassError("");
       setState((prev) => {
+        const preferredId =
+          urlClassId && mapped.some((item) => item.id === urlClassId)
+            ? urlClassId
+            : null;
         const stillValid = mapped.some((item) => item.id === prev.classId);
-        const nextClassId = stillValid ? prev.classId : mapped[0].id;
+        // Prefer stored/hydrated selection; fall back to ?classId= then first class.
+        const nextClassId = stillValid
+          ? prev.classId
+          : preferredId ?? mapped[0].id;
         if (nextClassId === prev.classId) return prev;
         const next = {
           ...prev,
@@ -154,7 +183,7 @@ export function useLessonPlanUpload() {
       active = false;
       window.removeEventListener("focus", onFocus);
     };
-  }, []);
+  }, [urlClassId]);
 
   const teacherName = useMemo(() => {
     if (!teacher) return "";

@@ -31,7 +31,7 @@ export default function SectionRow({
             type="button"
             disabled={busy || isArchived}
             onClick={() => onEdit?.(section)}
-            className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 text-[10px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Pencil size={11} />
             Edit
@@ -41,7 +41,7 @@ export default function SectionRow({
               type="button"
               disabled={busy}
               onClick={() => onRestore?.(section)}
-              className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-lg border border-cnhs-green-dark/30 bg-green-50 px-2 text-[10px] font-semibold text-cnhs-green-dark transition-colors hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-cnhs-green-dark/30 bg-green-50 px-2.5 text-[10px] font-semibold text-cnhs-green-dark transition-colors hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <ArchiveRestore size={11} />
               Restore
@@ -51,7 +51,7 @@ export default function SectionRow({
               type="button"
               disabled={busy}
               onClick={() => onArchive?.(section)}
-              className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 text-[10px] font-semibold text-slate-500 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-500 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Archive size={11} />
               Archive

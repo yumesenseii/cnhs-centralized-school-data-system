@@ -8,6 +8,7 @@ import {
 } from "@/lib/supabase/queries/reports";
 import { invalidateTeacherRosterCache } from "@/lib/teacher/teacherRosterCache";
 import { buildTeacherDashboardModel } from "@/lib/teacher/dashboardMappers";
+import { useSoftLoadState } from "@/hooks/useSoftLoadState";
 
 export function useTeacherDashboard() {
   const [bundle, setBundle] = useState(null);
@@ -16,64 +17,72 @@ export function useTeacherDashboard() {
   const [schoolYear, setSchoolYear] = useState("");
   const [quarter, setQuarter] = useState("1");
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [building, setBuilding] = useState(false);
   const [error, setError] = useState("");
+  const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(true);
 
-  const refresh = useCallback(async ({ bustCache = false } = {}) => {
-    setLoading(true);
-    setError("");
+  const refresh = useCallback(
+    async ({ bustCache = false } = {}) => {
+      beginLoad();
+      setError("");
 
-    if (bustCache) invalidateTeacherRosterCache();
+      if (bustCache) invalidateTeacherRosterCache();
 
-    const session = await resolveTeacherReportsSession();
-    if (session.error || !session.data?.teacherId) {
-      setError(session.error?.message ?? "Unable to load teacher session.");
-      setBundle(null);
-      setLoading(false);
-      return;
-    }
+      try {
+        const session = await resolveTeacherReportsSession();
+        if (session.error || !session.data?.teacherId) {
+          setError(session.error?.message ?? "Unable to load teacher session.");
+          setBundle(null);
+          endLoad(false);
+          return;
+        }
 
-    const result = await getTeacherReportsBundle({
-      teacherId: session.data.teacherId,
-    });
-    if (result.error) {
-      setError(result.error.message || "Unable to load dashboard data.");
-      setBundle(null);
-      setLoading(false);
-      return;
-    }
+        const result = await getTeacherReportsBundle({
+          teacherId: session.data.teacherId,
+        });
+        if (result.error) {
+          setError(result.error.message || "Unable to load dashboard data.");
+          setBundle(null);
+          endLoad(false);
+          return;
+        }
 
-    setProfileId(session.data.profile?.id ?? null);
-    setTeacherId(session.data.teacherId);
+        setProfileId(session.data.profile?.id ?? null);
+        setTeacherId(session.data.teacherId);
 
-    const nextBundle = result.data;
-    const classes = nextBundle.allClasses ?? nextBundle.classes ?? [];
-    const years = [
-      ...new Set(classes.map((row) => row.school_year).filter(Boolean)),
-    ].sort((a, b) => b.localeCompare(a));
-    const initialYear = years[0] ?? "";
-    const firstQuarter = classes
-      .filter((row) => !initialYear || row.school_year === initialYear)
-      .map((row) => Number(row.quarter))
-      .filter(Number.isFinite)
-      .sort((a, b) => a - b)[0];
+        const nextBundle = result.data;
+        const classes = nextBundle.allClasses ?? nextBundle.classes ?? [];
+        const years = [
+          ...new Set(classes.map((row) => row.school_year).filter(Boolean)),
+        ].sort((a, b) => b.localeCompare(a));
+        const initialYear = years[0] ?? "";
+        const firstQuarter = classes
+          .filter((row) => !initialYear || row.school_year === initialYear)
+          .map((row) => Number(row.quarter))
+          .filter(Number.isFinite)
+          .sort((a, b) => a - b)[0];
 
-    setBundle(nextBundle);
-    setSchoolYear((current) =>
-      current && years.includes(current) ? current : initialYear
-    );
-    setQuarter((current) =>
-      classes.some(
-        (row) =>
-          (!initialYear || row.school_year === initialYear) &&
-          Number(row.quarter) === Number(current)
-      )
-        ? current
-        : String(firstQuarter ?? 1)
-    );
-    setLoading(false);
-  }, []);
+        setBundle(nextBundle);
+        setSchoolYear((current) =>
+          current && years.includes(current) ? current : initialYear
+        );
+        setQuarter((current) =>
+          classes.some(
+            (row) =>
+              (!initialYear || row.school_year === initialYear) &&
+              Number(row.quarter) === Number(current)
+          )
+            ? current
+            : String(firstQuarter ?? 1)
+        );
+        endLoad(true);
+      } catch (err) {
+        setError(err?.message ?? "Unable to load dashboard data.");
+        endLoad(false);
+      }
+    },
+    [beginLoad, endLoad]
+  );
 
   useEffect(() => {
     refresh();
@@ -128,7 +137,6 @@ export function useTeacherDashboard() {
         if (cancelled) return;
         setData(next);
 
-        // Fire-and-forget — must not block dashboard paint.
         void syncRecommendationNotifications({
           profileId,
           students: next.roster?.students ?? [],
@@ -150,6 +158,9 @@ export function useTeacherDashboard() {
     };
   }, [bundle, schoolYear, quarter, profileId, teacherId]);
 
+  const showFullPageLoading = loading || (building && !data);
+  const isRefreshing = refreshing || (building && Boolean(data));
+
   return {
     data,
     schoolYear,
@@ -159,7 +170,8 @@ export function useTeacherDashboard() {
     setSchoolYear,
     setQuarter,
     refresh: () => refresh({ bustCache: true }),
-    loading: loading || building,
+    loading: showFullPageLoading,
+    refreshing: isRefreshing,
     error,
   };
 }

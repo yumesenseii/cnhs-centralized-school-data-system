@@ -90,34 +90,35 @@ export default function LessonDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-50">
-      <div
-        className="absolute inset-0 bg-slate-900/35 backdrop-blur-[1px]"
-        onClick={onClose}
-      />
-      <aside
-        className="absolute right-0 top-0 flex h-full w-full max-w-[640px] flex-col bg-white shadow-[-18px_0_40px_rgba(15,23,42,0.18)]"
-        aria-label="Lesson plan review drawer"
-      >
-        <div className="border-l-4 border-cnhs-orange border-b border-slate-100 px-7 py-5">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 p-3 backdrop-blur-[1px] sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Lesson plan review"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose?.();
+      }}
+    >
+      <div className="relative z-10 flex max-h-[72vh] w-[min(920px,94vw)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="shrink-0 border-b border-slate-100 border-l-4 border-l-cnhs-orange px-5 py-3.5">
           <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 max-w-[430px] sm:max-w-[480px]">
+            <div className="min-w-0">
               <p className="text-xs font-semibold text-slate-400">
                 Lesson Plan Review · {lesson.trackingNumber || lesson.id}
               </p>
-              <h2 className="mt-1 break-words text-xl font-semibold leading-7 tracking-[-0.03em] text-slate-900">
+              <h2 className="mt-1 break-words text-lg font-semibold leading-6 tracking-[-0.03em] text-slate-900">
                 {lesson.lessonTitle}
               </h2>
               <p className="mt-1 text-sm text-slate-500">
                 {lesson.teacher} · {lesson.learningArea} · {lesson.gradeSection}
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-3">
               <StatusBadge value={lesson.status} />
               <button
                 type="button"
                 onClick={onClose}
-                aria-label="Close review drawer"
+                aria-label="Close review"
                 className="cursor-pointer rounded-full p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
               >
                 <X size={20} />
@@ -126,7 +127,7 @@ export default function LessonDrawer({
           </div>
         </div>
 
-        <div className="flex-1 space-y-6 overflow-y-auto px-7 py-7 pb-28">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
           <LessonInformation lesson={lesson} />
           <LessonPreview lesson={lesson} fileUrl={fileUrl} />
 
@@ -137,11 +138,11 @@ export default function LessonDrawer({
             <label>
               <span className="sr-only">Review remarks</span>
               <textarea
-                rows={4}
+                rows={3}
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 placeholder="Required when requesting revision. Optional notes for approval."
-                className="w-full resize-none rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-700 outline-none placeholder:text-slate-400 focus:border-cnhs-green"
+                className="w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-sm leading-6 text-slate-700 outline-none placeholder:text-slate-400 focus:border-cnhs-green"
               />
             </label>
           </section>
@@ -153,12 +154,12 @@ export default function LessonDrawer({
           ) : null}
         </div>
 
-        <div className="sticky bottom-0 grid grid-cols-1 gap-3 border-t border-slate-100 bg-white/95 px-7 py-4 backdrop-blur sm:grid-cols-[1fr_1fr_110px]">
+        <div className="grid shrink-0 grid-cols-1 gap-2 border-t border-slate-100 bg-white px-5 py-3 sm:grid-cols-[1fr_1fr_110px]">
           <button
             type="button"
             onClick={() => handleDecision("Approved")}
             disabled={submitting}
-            className="inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-cnhs-green-dark text-base font-semibold text-white transition-colors hover:bg-[#246f54] disabled:cursor-not-allowed disabled:opacity-70"
+            className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl bg-cnhs-green-dark text-sm font-semibold text-white transition-colors hover:bg-[#246f54] disabled:cursor-not-allowed disabled:opacity-70"
           >
             {submitting && decision === "Approved" ? (
               <Loader2 size={18} className="animate-spin" />
@@ -171,7 +172,7 @@ export default function LessonDrawer({
             type="button"
             onClick={() => handleDecision("Needs Revision")}
             disabled={submitting}
-            className="inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-red-500 bg-white text-base font-semibold text-red-500 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-70"
+            className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-red-500 bg-white text-sm font-semibold text-red-500 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {submitting && decision === "Needs Revision" ? (
               <Loader2 size={18} className="animate-spin" />
@@ -184,12 +185,12 @@ export default function LessonDrawer({
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="h-12 cursor-pointer rounded-2xl border border-slate-200 bg-white text-base font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+            className="h-10 cursor-pointer rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
           >
             Cancel
           </button>
         </div>
-      </aside>
+      </div>
     </div>
   );
 }

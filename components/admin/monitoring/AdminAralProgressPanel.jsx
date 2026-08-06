@@ -1,12 +1,16 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { Eye } from "lucide-react";
+import TablePagination from "@/components/academic-records/TablePagination";
 import {
   Pill,
   interventionStyles,
   monitoringStatusStyles,
 } from "@/components/teacher/monitoring/shared";
 import { isAralProgramLearner } from "@/lib/monitoring/aralProgress";
+
+const ARAL_PROGRESS_PAGE_SIZE = 25;
 
 /**
  * Admin view-only panel: Summer ARAL weekly progress from assigned facilitators.
@@ -15,7 +19,25 @@ export default function AdminAralProgressPanel({
   students = [],
   onViewStudent,
 }) {
-  const aralLearners = students.filter(isAralProgramLearner);
+  const [page, setPage] = useState(1);
+  const aralLearners = useMemo(
+    () => students.filter(isAralProgramLearner),
+    [students]
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [aralLearners]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(aralLearners.length / ARAL_PROGRESS_PAGE_SIZE) || 1
+  );
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+  const pagedAralLearners = useMemo(() => {
+    const start = (safePage - 1) * ARAL_PROGRESS_PAGE_SIZE;
+    return aralLearners.slice(start, start + ARAL_PROGRESS_PAGE_SIZE);
+  }, [aralLearners, safePage]);
 
   return (
     <section className="overflow-hidden rounded-xl border border-sky-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
@@ -60,7 +82,7 @@ export default function AdminAralProgressPanel({
           </thead>
           <tbody>
             {aralLearners.length ? (
-              aralLearners.map((learner) => (
+              pagedAralLearners.map((learner) => (
                 <tr
                   key={learner.id}
                   className="border-t border-slate-100 hover:bg-slate-50/70"
@@ -134,6 +156,17 @@ export default function AdminAralProgressPanel({
           </tbody>
         </table>
       </div>
+
+      {aralLearners.length ? (
+        <div className="border-t border-slate-100 px-3 py-2.5 sm:px-4">
+          <TablePagination
+            page={safePage}
+            pageSize={ARAL_PROGRESS_PAGE_SIZE}
+            total={aralLearners.length}
+            onPageChange={setPage}
+          />
+        </div>
+      ) : null}
     </section>
   );
 }

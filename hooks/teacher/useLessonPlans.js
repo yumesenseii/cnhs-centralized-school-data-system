@@ -22,17 +22,17 @@ import {
   mapRecentLessonPlanActivity,
   quarterToLabel,
 } from "@/lib/teacher/lessonPlanMappers";
+import { useSoftLoadState } from "@/hooks/useSoftLoadState";
 
 export function useTeacherLessonPlans() {
   const [plans, setPlans] = useState([]);
   const [kpis, setKpis] = useState([]);
   const [teacher, setTeacher] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(true);
 
-  const refresh = useCallback(async (options = {}) => {
-    const silent = Boolean(options.silent);
-    if (!silent) setLoading(true);
+  const refresh = useCallback(async () => {
+    beginLoad();
     setError("");
 
     // Same resolution path as My Classes: profiles.auth_user_id → teachers.id
@@ -47,7 +47,7 @@ export function useTeacherLessonPlans() {
       setError(message);
       setPlans([]);
       setKpis(buildTeacherLessonPlanKpis([]));
-      setLoading(false);
+      endLoad(false);
       return;
     }
 
@@ -67,7 +67,7 @@ export function useTeacherLessonPlans() {
       setError(result.error.message);
       setPlans([]);
       setKpis(buildTeacherLessonPlanKpis([]));
-      setLoading(false);
+      endLoad(false);
       return;
     }
 
@@ -84,8 +84,8 @@ export function useTeacherLessonPlans() {
 
     setPlans(mapped);
     setKpis(buildTeacherLessonPlanKpis(mapped));
-    setLoading(false);
-  }, []);
+    endLoad(true);
+  }, [beginLoad, endLoad]);
 
   useEffect(() => {
     refresh();
@@ -93,7 +93,7 @@ export function useTeacherLessonPlans() {
 
   useEffect(() => {
     function onFocus() {
-      refresh({ silent: true });
+      refresh();
     }
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
@@ -129,6 +129,7 @@ export function useTeacherLessonPlans() {
     teacher,
     teacherId: teacher?.id ?? null,
     loading,
+    refreshing,
     error,
     refresh,
     resubmit,
@@ -195,8 +196,8 @@ export function useAdminLessonPlanReview() {
     needsRevision: 0,
     message: "",
   });
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(true);
   const [reviewerProfileId, setReviewerProfileId] = useState(null);
   const [reviewerName, setReviewerName] = useState(null);
   const [schoolYear, setSchoolYear] = useState("All School Years");
@@ -204,13 +205,12 @@ export function useAdminLessonPlanReview() {
 
   const refresh = useCallback(
     async (options = {}) => {
-      const silent = Boolean(options.silent);
       const nextSchoolYear =
         options.schoolYear !== undefined ? options.schoolYear : schoolYear;
       const nextQuarter =
         options.quarter !== undefined ? options.quarter : quarter;
 
-      if (!silent) setLoading(true);
+      beginLoad();
       setError("");
 
       const session = await getAdminSession();
@@ -240,7 +240,7 @@ export function useAdminLessonPlanReview() {
 
       if (result.error) {
         setError(result.error.message);
-        if (!silent) setLoading(false);
+        endLoad(false);
         return;
       }
 
@@ -259,9 +259,9 @@ export function useAdminLessonPlanReview() {
         setRecentActivity([]);
       }
 
-      if (!silent) setLoading(false);
+      endLoad(true);
     },
-    [schoolYear, quarter]
+    [schoolYear, quarter, beginLoad, endLoad]
   );
 
   useEffect(() => {
@@ -270,7 +270,7 @@ export function useAdminLessonPlanReview() {
 
   useEffect(() => {
     function onFocus() {
-      refresh({ silent: true });
+      refresh();
     }
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
@@ -392,6 +392,7 @@ export function useAdminLessonPlanReview() {
     setSchoolYear: changeSchoolYear,
     setQuarter: changeQuarter,
     loading,
+    refreshing,
     error,
     refresh,
     submitDecision,

@@ -1,9 +1,15 @@
 export const lessonPlansData = {
   controls: {
-    schoolYear: "SY 2026-2027",
-    schoolYears: ["SY 2026-2027", "SY 2025-2026"],
-    quarter: "Quarter 1",
-    quarters: ["Quarter 1", "Quarter 2", "Quarter 3", "Quarter 4"],
+    schoolYear: "All School Years",
+    schoolYears: ["All School Years", "SY 2026-2027", "SY 2025-2026"],
+    quarter: "All Terms",
+    quarters: [
+      "All Terms",
+      "Term 1",
+      "Term 2",
+      "Term 3",
+      "Final Grade / Average",
+    ],
   },
   filters: {
     statuses: [
@@ -14,14 +20,14 @@ export const lessonPlansData = {
       "Needs Revision",
     ],
     subjects: ["All Subjects", "English", "Mathematics", "Science", "Filipino", "Araling Panlipunan", "MAPEH"],
-    quarters: ["All Quarters", "Quarter 1", "Quarter 2", "Quarter 3", "Quarter 4"],
+    quarters: [
+      "All Terms",
+      "Term 1",
+      "Term 2",
+      "Term 3",
+      "Final Grade / Average",
+    ],
   },
-  kpis: [
-    { id: "total", label: "Total Lesson Plans", value: 12, tone: "green", icon: "clipboard" },
-    { id: "pending", label: "Pending Review", value: 3, tone: "orange", icon: "clock", alert: true },
-    { id: "approved", label: "Approved", value: 6, tone: "blue", icon: "check" },
-    { id: "revision", label: "Needs Revision", value: 2, tone: "red", icon: "alert", alert: true },
-  ],
   selectedClass: {
     subject: "Science",
     grade: "Grade 10",

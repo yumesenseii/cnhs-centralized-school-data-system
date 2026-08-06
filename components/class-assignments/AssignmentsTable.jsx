@@ -36,7 +36,7 @@ export default function AssignmentsTable({
               onFiltersChange({ ...filters, search: event.target.value })
             }
             placeholder="Search teacher, subject, section, or school year"
-            className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-cnhs-green-dark/40"
+            className="h-9 w-full rounded-full border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-cnhs-green-dark/40"
           />
         </label>
         <div className="flex shrink-0 flex-wrap gap-2 lg:ml-auto">
@@ -135,7 +135,7 @@ function SelectFilter({ label, value, options, onChange }) {
   );
 
   return (
-    <label className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 text-[11px] text-slate-600">
+    <label className="inline-flex h-8 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 text-[11px] text-slate-600 shadow-sm">
       <span className="font-medium text-slate-400">{label}</span>
       <select
         value={value}

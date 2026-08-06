@@ -21,6 +21,8 @@ import {
   getAralAssignmentMapByStudent,
   isCurrentTeacherAralFacilitator,
 } from "@/lib/supabase/queries/aralProgram";
+import { listAralApprovals } from "@/lib/supabase/queries/aralApprovals";
+import { attachAralApprovals } from "@/lib/monitoring/aralApproval";
 import { syncRecommendationNotifications } from "@/lib/notifications/syncRecommendationNotifications";
 import {
   buildAdminMonitoringStats,
@@ -28,6 +30,7 @@ import {
   buildMonitoringKpis,
   mapMonitoringDetail,
 } from "@/lib/teacher/monitoringMappers";
+import { useSoftLoadState } from "@/hooks/useSoftLoadState";
 
 function unwrap(value) {
   if (Array.isArray(value)) return value[0] ?? null;
@@ -68,11 +71,11 @@ export function useTeacherMonitoring() {
   const [kpis, setKpis] = useState([]);
   const [teacher, setTeacher] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(true);
 
   const refresh = useCallback(async ({ bustCache = false } = {}) => {
-    setLoading(true);
+    beginLoad();
     setError("");
 
     if (bustCache) invalidateTeacherRosterCache();
@@ -80,7 +83,7 @@ export function useTeacherMonitoring() {
     const session = await resolveTeacherSessionForMonitoring();
     if (session.error || !session.data) {
       setError(session.error?.message ?? "Unable to load teacher session.");
-      setLoading(false);
+      endLoad(false);
       return;
     }
 
@@ -93,24 +96,37 @@ export function useTeacherMonitoring() {
 
     if (result.error) {
       setError(result.error.message);
-      setLoading(false);
+      endLoad(false);
       return;
     }
 
     const roster = await getCachedBuiltTeacherRoster(result.data, {
       teacherId: session.data.teacherId,
     });
-    setStudents(roster.students);
+
+    const schoolYear =
+      roster.students[0]?.schoolYear ||
+      roster.classSummaries[0]?.schoolYear ||
+      null;
+    const approvals = await listAralApprovals({ schoolYear });
+    const studentsWithApprovals = attachAralApprovals(
+      roster.students,
+      approvals.data ?? new Map()
+    );
+
+    setStudents(studentsWithApprovals);
     setClassSummaries(roster.classSummaries);
-    setKpis(buildMonitoringKpis(roster.students, roster.classSummaries));
-    setLoading(false);
+    setKpis(
+      buildMonitoringKpis(studentsWithApprovals, roster.classSummaries)
+    );
+    endLoad(true);
 
     syncRecommendationNotifications({
       profileId: session.data.profile?.id ?? null,
-      students: roster.students,
+      students: studentsWithApprovals,
       classSummaries: roster.classSummaries,
     });
-  }, []);
+  }, [beginLoad, endLoad]);
 
   useEffect(() => {
     refresh();
@@ -141,6 +157,7 @@ export function useTeacherMonitoring() {
     profile,
     teacherId: teacher?.id ?? null,
     loading,
+    refreshing,
     error,
     refresh: () => refresh({ bustCache: true }),
   };
@@ -149,19 +166,25 @@ export function useTeacherMonitoring() {
 export function useStudentMonitoringDetail(classId, studentId) {
   const [detail, setDetail] = useState(null);
   const [teacher, setTeacher] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const { loading, refreshing, beginLoad, endLoad, resetLoaded } =
+    useSoftLoadState(true);
+
+  useEffect(() => {
+    resetLoaded();
+    setDetail(null);
+  }, [classId, studentId, resetLoaded]);
 
   const refresh = useCallback(async () => {
     if (!classId || !studentId) return;
-    setLoading(true);
+    beginLoad();
     setError("");
 
     const session = await resolveTeacherSessionForMonitoring();
     if (session.error || !session.data) {
       setError(session.error?.message ?? "Unable to load teacher session.");
-      setLoading(false);
+      endLoad(false);
       return;
     }
 
@@ -175,7 +198,7 @@ export function useStudentMonitoringDetail(classId, studentId) {
 
     if (result.error) {
       setError(result.error.message);
-      setLoading(false);
+      endLoad(false);
       return;
     }
 
@@ -190,8 +213,8 @@ export function useStudentMonitoringDetail(classId, studentId) {
           }
         : prev
     );
-    setLoading(false);
-  }, [classId, studentId]);
+    endLoad(true);
+  }, [classId, studentId, beginLoad, endLoad]);
 
   useEffect(() => {
     refresh();
@@ -230,6 +253,7 @@ export function useStudentMonitoringDetail(classId, studentId) {
     detail,
     teacher,
     loading,
+    refreshing,
     error,
     saving,
     refresh,
@@ -247,13 +271,13 @@ export function useAdminMonitoring() {
     completed: 0,
     ongoing: 0,
   });
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(true);
 
   const refresh = useCallback(async (filters = {}) => {
-    setLoading(true);
+    beginLoad();
     setError("");
 
     if (filters.bustCache) invalidateAdminRosterCache();
@@ -261,7 +285,7 @@ export function useAdminMonitoring() {
     const session = await getAdminSession();
     if (session.error) {
       setError(session.error.message);
-      setLoading(false);
+      endLoad(false);
       return;
     }
 
@@ -272,7 +296,7 @@ export function useAdminMonitoring() {
 
     if (result.error) {
       setError(result.error.message);
-      setLoading(false);
+      endLoad(false);
       return;
     }
 
@@ -317,16 +341,26 @@ export function useAdminMonitoring() {
       };
     });
 
-    setStudents(studentsWithFacilitators);
+    const approvals = await listAralApprovals({
+      schoolYear:
+        schoolYear || roster.students[0]?.schoolYear || "SY 2026-2027",
+      quarter,
+    });
+    const studentsWithApprovals = attachAralApprovals(
+      studentsWithFacilitators,
+      approvals.data ?? new Map()
+    );
+
+    setStudents(studentsWithApprovals);
     setClassSummaries(roster.classSummaries);
     setStats(
       buildAdminMonitoringStats(
-        studentsWithFacilitators,
+        studentsWithApprovals,
         roster.classSummaries
       )
     );
-    setLoading(false);
-  }, []);
+    endLoad(true);
+  }, [beginLoad, endLoad]);
 
   useEffect(() => {
     refresh();
@@ -360,6 +394,7 @@ export function useAdminMonitoring() {
     stats,
     filterOptions,
     loading,
+    refreshing,
     error,
     refresh,
     selectedDetail,

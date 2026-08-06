@@ -71,6 +71,17 @@ export default function StudentInterventionsPage() {
                       <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-200">
                         {item.scope === "class" ? "Class-level" : "Student-level"}
                       </span>
+                      {item.approvalStatus ? (
+                        <span
+                          className={
+                            item.approvalStatus === "Approved"
+                              ? "rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-100"
+                              : "rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200"
+                          }
+                        >
+                          {item.approvalStatus}
+                        </span>
+                      ) : null}
                     </div>
                     <p className="mt-2 text-[13px] font-semibold text-slate-800">
                       {item.subject}

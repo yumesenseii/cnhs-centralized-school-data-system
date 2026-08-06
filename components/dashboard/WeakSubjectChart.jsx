@@ -10,9 +10,9 @@ export default function WeakSubjectChart({ data = [] }) {
   const maxCount = Math.max(...data.map((item) => item.count), 1);
 
   return (
-    <div className="space-y-5 py-2">
+    <div className="max-h-[320px] space-y-4 overflow-y-auto py-2 pr-2">
       {data.map((item) => {
-        const width = `${(item.count / maxCount) * 100}%`;
+        const width = item.count > 0 ? `${(item.count / maxCount) * 100}%` : "0%";
 
         return (
           <div key={item.subject} className="grid grid-cols-[112px_1fr_24px] items-center gap-3 sm:grid-cols-[132px_1fr_28px]">
@@ -28,7 +28,12 @@ export default function WeakSubjectChart({ data = [] }) {
                 aria-valuemax={maxCount}
               />
             </div>
-            <p className="text-right text-xs font-semibold text-slate-600">{item.count}</p>
+            <p
+              className="text-right text-xs font-semibold text-slate-600"
+              aria-label={`${item.count} weak learners`}
+            >
+              {item.count}
+            </p>
           </div>
         );
       })}

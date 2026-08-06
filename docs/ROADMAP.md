@@ -2,16 +2,18 @@
 
 **School:** Cambaog National High School (CNHS)  
 **Document type:** Fixes, gaps, and planned enhancements  
-**Last updated:** August 2026  
+**Last updated:** August 3, 2026  
 
 Use this roadmap to prioritize remaining work before defense, school pilot, or production hardening. Items are grouped by priority. Status reflects the codebase as of this document.
+
+**Pilot readiness (estimate):** ~85–90% for desktop admin/teacher/student portals. Remaining critical path is mostly QA evidence (P0-5) plus optional Export Users / Forgot Password (P1-3 / P1-7). P3 stays post-pilot.
 
 ---
 
 ## Legend
 
 | Status | Meaning |
-|--------|---------|
+|--------|--------|
 | **Done** | Shipped in the current codebase |
 | **In progress** | Actively being worked or awaiting formal completion (e.g. QA fill-in) |
 | **Partial** | Started or UI exists; needs backend / polish |
@@ -24,7 +26,7 @@ Use this roadmap to prioritize remaining work before defense, school pilot, or p
 
 | Bucket | Items |
 |--------|--------|
-| **Done (recent)** | Reports Excel + embedded charts · Multi-term ECR · Term UI · Academic Records live · Class-Record parser · LP Reviewed By · Reset / Activate users · Password change (all portals) · Naming consistency (P2-5) · Unused LP cleanup (P2-6) · Admin School/Appearance persist · Notifications live (P2-3) |
+| **Done (recent)** | Reports Excel + embedded charts · Multi-term ECR · Term UI · Academic Records live · Class-Record parser · LP Reviewed By · Reset / Activate users · Password change (all portals) · Naming (P2-5) · Unused LP cleanup (P2-6) · Admin School/Appearance persist · Notifications live (P2-3) · Shared roster caches / soft-nav performance · Unique-learner Overview KPIs · Teacher dashboard `filteredMonitoring` fix · Portal landing at `/` |
 | **In progress** | **P0-5** Test Summary Pass/Fail |
 | **Todo (pilot)** | **P1-3** Export Users · **P1-7** Forgot Password |
 | **Won’t do (now)** | **P2-7** Mobile QA (out of scope — desktop pilot) · DOCX extract · student self-reg |
@@ -52,6 +54,10 @@ These were delivered in recent iterations and should stay regression-tested:
 | ARAL facilitator flow | Admin assign + teacher weekly progress gate |
 | Input Grades stepped flow | Upload → confirm class → preview & import |
 | Student My Grades | Shows enrolled subjects even when ungraded |
+| Admin + teacher performance caches | Shared TTL/`globalThis` roster caches; soft-nav reuse Overview → Academic Records / Monitoring / Reports; `preferLocal` recommendations; deferred attendance where applicable |
+| Unique-learner Overview KPIs | Risk cards / distribution count unique students (worst risk), aligned with Academic Records totals |
+| Teacher dashboard model fix | Restored `filteredMonitoring` filter so dashboard build no longer throws |
+| Public portal landing | `/` light landing (hero, who-can-sign-in, footer) → Portal Login `/login`; logged-in users still redirect to role home |
 
 ---
 
@@ -90,13 +96,15 @@ These were delivered in recent iterations and should stay regression-tested:
 | P2-2 | **Admin self-service password** | Done | Admin Settings → Security same flow as teacher. |
 | P2-3 | **Notifications: mark-all-read / filters polish** | Done | Teacher + Admin personal inboxes live (Supabase). Mark all read, search/type/priority/status filters, empty states. Admin sidebar uses live lesson plan activity. Clear Read removed (no delete policy). |
 | P2-4 | **Reports exports** | Done | PDF (print) + ExcelJS **2-tab** Legal (Report Cover + Detailed Report). Cover embeds canvas chart PNGs (**Performance Analysis**) from the same `chartSeries` as the UI; supporting data tables kept. SheetJS for ECR/SF2 imports only. |
-| P2-4b | **Academic Records live data** | Done | `/academic-records` uses `getAdminReportsBundle` + monitoring roster; Export → official Excel. |
+| P2-4b | **Academic Records live data** | Done | `/academic-records` uses reports roster + monitoring; Export → official Excel. Skips SF2/lesson-plan bundle on this page for speed. |
 | P2-4c | **Class-Record-v1 ECR upload** | Done | Class-Record (`TERM1–3` + `SUMMARY OF GRADES`) + DepEd (`AVE`): TERM-first; Male/Female gaps; SUMMARY≈AVE. |
 | P2-4d | **Trimester UI (Term vs Quarter)** | Done | UI: Term 1–3 + Final (DB `quarter` 1–4 unchanged). All Terms assign; My Classes multi-term cards + Term dropdown. |
 | P2-4e | **Multi-term ECR import** | Done | One upload → Term 1–3 + Final to sibling classes; upserts per term `class_id`. |
 | P2-5 | **Sidebar / docs naming consistency** | Done | Canonical labels: Classes & Sections, Academic Monitoring, Attendance Monitoring, ARAL Learners, Lesson Plan Review. Admin/teacher page titles + headers aligned. |
 | P2-6 | **Remove or archive unused LP review components** | Done | Deleted unused `ReviewChecklist`, `SystemValidationCard`, `DecisionPanel`, `ReviewHistory`, `ReviewComments`. |
 | P2-7 | **Mobile QA pass** | Won’t do (now) | Out of project scope for this release; pilot targets desktop admin/teacher use. Responsive basics may exist but no dedicated phone QA checklist. |
+| P2-8 | **Admin / teacher load performance** | Done | Shared `adminRosterCache` / `teacherRosterCache` + `globalThis` TTL; year-first fetches; soft-nav cache hits; unique-learner Overview KPIs; `preferLocal` bulk recommendations. |
+| P2-9 | **Portal landing page** | Done | `/` public landing (hero, roles strip, footer) with Portal Login → `/login`. Middleware still redirects authenticated users to role home. |
 
 ---
 
@@ -111,6 +119,7 @@ These were delivered in recent iterations and should stay regression-tested:
 | P3-5 | **Audit log UI** | Todo | Events exist for lesson plans; broader admin audit trail optional. |
 | P3-6 | **Bulk ECR / SF2 operations** | Todo | Scale tooling for multi-class import seasons. |
 | P3-7 | **Student self-registration** | Won’t do (now) | Accounts provisioned by school / Head Teacher. |
+| P3-8 | **Full public school website** | Todo | News, events, contact form, map — separate from portal; landing entry only for now. |
 
 ---
 
@@ -120,6 +129,7 @@ These were delivered in recent iterations and should stay regression-tested:
 2. **P1-3 / P1-7** — Export Users, Forgot Password (as needed for pilot)  
 3. Keep **P3** out of the critical path unless requested  
 4. **P2-7 Mobile QA** — explicitly out of scope (desktop pilot)  
+5. Confirm production deploy includes performance + teacher dashboard fix + landing  
 
 ---
 
@@ -127,18 +137,19 @@ These were delivered in recent iterations and should stay regression-tested:
 
 | Module | Health | Main remaining gap |
 |--------|--------|--------------------|
-| Auth / portals | Good | Forgot password still open; password change live on all portals |
+| Auth / portals | Good | Landing at `/`; Forgot password still open; password change live on all portals |
 | User Management | Good | Edit, reset password, activate/deactivate live; Export Users still Todo |
 | Classes & Sections | Good | Combined organization page; naming aligned (P2-5) |
-| Academic records / ECR | Good | Multi-term import + Class-Record/AVE parsers live |
+| Academic records / ECR | Good | Multi-term import + Class-Record/AVE parsers live; soft-nav cache with Overview |
 | Lesson plans | Good | Reviewed By denormalized; unused review cards removed (P2-6) |
-| Academic monitoring / ARAL | Good | Facilitator training + seed data for demos |
+| Academic monitoring / ARAL | Good | Facilitator training + seed data for demos; shares admin roster cache |
 | Attendance (SF2) | Good | Keep prediction separation in training materials |
 | Reports | Good | Live charts; PDF + 2-tab Legal Excel with embedded Performance Analysis graphs |
 | Student portal | Good | Password change on Profile; grade coverage depends on enrollments |
 | Settings (Admin) | Good | Live Personal Account + Security; School/Appearance saved locally and applied |
 | Settings (Teacher) | Good | Profile \| Security; temp password until changed |
 | Notifications | Good | Live inbox (admin + teacher); mark-all-read + filters + empty states |
+| Performance (admin/teacher) | Good | Shared caches; first load still network-bound; soft-nav much lighter |
 
 ---
 

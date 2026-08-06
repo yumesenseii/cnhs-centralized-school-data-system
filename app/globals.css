@@ -104,6 +104,42 @@
   --cnhs-orange-soft: #fff3e4;
 }
 
+.dark {
+  /* Softer CNHS dark — near-black page, lifted cards, brighter labels (less eye strain) */
+  --background: #0a0f0d;
+  --foreground: #f1f5f9;
+  --card: #161d1b;
+  --card-foreground: #f1f5f9;
+  --popover: #161d1b;
+  --popover-foreground: #f1f5f9;
+  --primary: #2f7d5f;
+  --primary-foreground: #ffffff;
+  --secondary: #1e2623;
+  --secondary-foreground: #e8eeeb;
+  --muted: #1e2623;
+  --muted-foreground: #b0b8b4;
+  --accent: #15382d;
+  --accent-foreground: #d1fae5;
+  --destructive: #d83a3a;
+  --border: #2a3531;
+  --input: #2a3531;
+  --ring: #52b788;
+  --sidebar: #000000;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #52b788;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(82, 183, 136, 0.18);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #52b788;
+  --cnhs-page: #0a0f0d;
+  --cnhs-green: #52b788;
+  --cnhs-green-dark: #2f7d5f;
+  --cnhs-green-soft: #12372b;
+  --cnhs-red-soft: #3b1d24;
+  --cnhs-orange-soft: #3a2918;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -129,8 +165,14 @@
     @apply min-h-screen bg-cnhs-page font-sans text-foreground antialiased;
   }
 
-  html.dark body {
-    @apply bg-slate-950 text-slate-100;
+  html.dark {
+    color-scheme: dark;
+  }
+
+  html.dark input,
+  html.dark select,
+  html.dark textarea {
+    color-scheme: dark;
   }
 
   button,
@@ -178,6 +220,138 @@
   aside[aria-label$="sidebar"] *::-webkit-scrollbar-thumb:hover {
     background-color: rgba(255, 255, 255, 0.35);
   }
+}
+
+/*
+ * Dark compatibility layer — global for Teacher / Admin / Student.
+ * Softer near-black page, lifted charcoal cards, brighter muted labels; CNHS greens intact.
+ */
+html.dark [class~="bg-white"],
+html.dark [class~="bg-white/80"],
+html.dark [class~="bg-white/90"],
+html.dark [class~="bg-white/95"] {
+  background-color: #161d1b;
+}
+
+/* Keep intentional white tiles on dark-green chrome (logo badges, etc.). */
+html.dark aside[aria-label$="sidebar"] [class~="bg-white"],
+html.dark [data-keep-white="true"][class~="bg-white"] {
+  background-color: #ffffff;
+}
+
+html.dark [class~="bg-slate-50"],
+html.dark [class~="bg-slate-50/50"],
+html.dark [class~="bg-slate-50/60"],
+html.dark [class~="bg-slate-50/70"],
+html.dark [class~="bg-slate-50/80"],
+html.dark [class~="bg-slate-50/90"],
+html.dark [class~="bg-slate-100"] {
+  background-color: #1e2623;
+}
+
+html.dark [class~="text-slate-950"],
+html.dark [class~="text-slate-900"] {
+  color: #f1f5f9;
+}
+
+html.dark [class~="text-slate-800"],
+html.dark [class~="text-slate-700"] {
+  color: #e8eeeb;
+}
+
+html.dark [class~="text-slate-600"],
+html.dark [class~="text-slate-500"] {
+  color: #c4cbc7;
+}
+
+html.dark [class~="text-slate-400"],
+html.dark [class~="text-slate-300"] {
+  color: #b0b8b4;
+}
+
+html.dark [class~="border-slate-100"],
+html.dark [class~="border-slate-200"],
+html.dark [class~="border-slate-300"] {
+  border-color: #2a3531;
+}
+
+html.dark [class~="divide-slate-100"] > :not(:last-child) {
+  border-color: #2a3531;
+}
+
+html.dark [class~="ring-slate-100"],
+html.dark [class~="ring-slate-200"] {
+  --tw-ring-color: #2a3531;
+}
+
+html.dark [class~="bg-green-50"],
+html.dark [class~="bg-green-50/50"] {
+  background-color: rgba(47, 125, 95, 0.32);
+}
+
+html.dark [class~="bg-red-50"] {
+  background-color: rgba(153, 27, 27, 0.28);
+}
+
+html.dark [class~="bg-orange-50"],
+html.dark [class~="bg-amber-50"] {
+  background-color: rgba(146, 64, 14, 0.28);
+}
+
+html.dark [class~="bg-sky-50"],
+html.dark [class~="bg-teal-50"] {
+  background-color: rgba(14, 116, 144, 0.26);
+}
+
+html.dark [class~="bg-violet-50"] {
+  background-color: rgba(91, 33, 182, 0.24);
+}
+
+html.dark [class~="text-cnhs-green-dark"] {
+  color: #6ee7b7;
+}
+
+html.dark [class~="text-amber-700"],
+html.dark [class~="text-amber-800"] {
+  color: #fcd34d;
+}
+
+html.dark [class~="text-red-600"],
+html.dark [class~="text-red-700"],
+html.dark [class~="text-red-800"] {
+  color: #fca5a5;
+}
+
+html.dark [class~="text-sky-600"],
+html.dark [class~="text-sky-700"],
+html.dark [class~="text-teal-600"],
+html.dark [class~="text-teal-700"] {
+  color: #7dd3fc;
+}
+
+html.dark [class~="hover:bg-white"]:hover,
+html.dark [class~="hover:bg-slate-50"]:hover,
+html.dark [class~="hover:bg-slate-50/60"]:hover,
+html.dark [class~="hover:bg-slate-50/70"]:hover {
+  background-color: #1e2623;
+}
+
+html.dark [class~="focus:bg-white"]:focus {
+  background-color: #161d1b;
+}
+
+html.dark .recharts-cartesian-grid line {
+  stroke: #2a3531;
+}
+
+html.dark .recharts-cartesian-axis-tick-value {
+  fill: #b0b8b4;
+}
+
+html.dark .recharts-default-tooltip {
+  border-color: #2a3531 !important;
+  background-color: #161d1b !important;
+  color: #f1f5f9 !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

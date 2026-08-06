@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
+  BarChart3,
   CalendarDays,
+  ClipboardList,
   Download,
   FileSpreadsheet,
   Layers3,
@@ -12,10 +15,16 @@ import {
 import Header from "@/components/layout/Header";
 import AdminReportCharts from "@/components/admin/reports/AdminReportCharts";
 import ClassReportsTable from "@/components/admin/reports/ClassReportsTable";
-import ReportCards from "@/components/admin/reports/ReportCards";
 import ReportPreviewModal from "@/components/admin/reports/ReportPreviewModal";
-import ReportSummaryCards from "@/components/admin/reports/ReportSummaryCards";
+import ReportAttendancePanel from "@/components/reports/ReportAttendancePanel";
+import ClassFolderLibrary from "@/components/reports/ClassFolderLibrary";
+import ReportInsightCallout from "@/components/reports/ReportInsightCallout";
+import ReportKpiStrip from "@/components/reports/ReportKpiStrip";
+import ReportModule from "@/components/reports/ReportModule";
+import ReportSubmissionsPanel from "@/components/reports/ReportSubmissionsPanel";
+import ReportSummaryMetrics from "@/components/reports/ReportSummaryMetrics";
 import { useAdminReports } from "@/hooks/admin/useAdminReports";
+import { buildReportInsight } from "@/lib/reports/buildReportInsight";
 import {
   exportAdminClassReportPdf,
   exportAdminReportsExcel,
@@ -25,7 +34,15 @@ import {
 const selectClass =
   "h-8 cursor-pointer rounded-lg border border-slate-200 bg-white pl-8 pr-7 text-[11px] font-medium text-slate-600 outline-none hover:bg-slate-50 focus:border-cnhs-green";
 
+const PERF_TABS = [
+  { id: "summary", label: "Summary" },
+  { id: "charts", label: "Charts" },
+  { id: "by-class", label: "By Class" },
+  { id: "breakdown", label: "Breakdown" },
+];
+
 export default function AdminReportsPage() {
+  const router = useRouter();
   const {
     loading,
     error,
@@ -34,10 +51,10 @@ export default function AdminReportsPage() {
     schoolYears,
     quarters,
     quickStats,
-    reportCards,
     classReports,
     charts,
     summary,
+    lessonSummary,
     schoolSummary,
     attendance,
     setSchoolYear,
@@ -50,11 +67,15 @@ export default function AdminReportsPage() {
   const [preview, setPreview] = useState(null);
   const [previewClassId, setPreviewClassId] = useState(null);
   const [toast, setToast] = useState("");
+  const [perfOpen, setPerfOpen] = useState(true);
+  const [perfTab, setPerfTab] = useState("summary");
+  const [subsOpen, setSubsOpen] = useState(false);
+  const [attendanceOpen, setAttendanceOpen] = useState(false);
 
   const quarterLabel = useMemo(() => {
     if (!quarter) return "All Terms";
     const match = quarters.find((item) => item.value === quarter);
-    return match?.label || `Quarter ${quarter}`;
+    return match?.label || `Term ${quarter}`;
   }, [quarter, quarters]);
 
   useEffect(() => {
@@ -62,6 +83,91 @@ export default function AdminReportsPage() {
     const timer = window.setTimeout(() => setToast(""), 2500);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  const kpiItems = useMemo(() => {
+    const byId = Object.fromEntries(
+      (quickStats ?? []).map((stat) => [stat.id, stat])
+    );
+
+    return [
+      {
+        id: "classes",
+        label: "Classes",
+        value: byId.classes?.value ?? schoolSummary?.totalLearners ?? 0,
+        hint: `${schoolSummary?.totalLearners ?? summary?.totalStudents ?? 0} learners`,
+        tone: "green",
+      },
+      {
+        id: "at-risk",
+        label: "At-risk learners",
+        value: byId["at-risk"]?.value ?? schoolSummary?.atRisk ?? 0,
+        hint: "High + moderate risk · ECR grades",
+        badge:
+          (byId["at-risk"]?.value ?? schoolSummary?.atRisk ?? 0) > 0
+            ? "Attention"
+            : undefined,
+        tone:
+          (byId["at-risk"]?.value ?? schoolSummary?.atRisk ?? 0) > 0
+            ? "orange"
+            : "green",
+      },
+      {
+        id: "aral",
+        label: "ARAL learners",
+        value: byId.intervention?.value ?? schoolSummary?.aralScreening ?? 0,
+        hint: "Screening recommended",
+        tone: "blue",
+      },
+      {
+        id: "pending",
+        label: "LP pending",
+        value: byId.pending?.value ?? lessonSummary?.pending ?? 0,
+        hint: "Awaiting HT / admin review",
+        badge:
+          (byId.pending?.value ?? lessonSummary?.pending ?? 0) > 0
+            ? "Review"
+            : undefined,
+        tone:
+          (byId.pending?.value ?? lessonSummary?.pending ?? 0) > 0
+            ? "red"
+            : "green",
+      },
+    ];
+  }, [quickStats, schoolSummary, summary, lessonSummary]);
+
+  const insight = useMemo(
+    () =>
+      buildReportInsight({
+        termLabel: quarterLabel,
+        summary,
+        schoolSummary,
+        lessonSummary,
+        scope: "admin",
+      }),
+    [quarterLabel, summary, schoolSummary, lessonSummary]
+  );
+
+  const summaryRows = useMemo(
+    () => [
+      ["Overall school average", schoolSummary?.overallAverage],
+      ["Total learners", schoolSummary?.totalLearners],
+      ["Total at-risk learners", schoolSummary?.atRisk],
+      ["ARAL learners", schoolSummary?.aralScreening],
+      ["Classroom remediation", schoolSummary?.classroomRemediation],
+      ["Monitoring completion rate", schoolSummary?.monitoringCompletionRate],
+      ["Lesson plans approved", schoolSummary?.lessonPlansApproved],
+      [
+        "Academic records validated",
+        schoolSummary?.academicRecordsValidated,
+      ],
+      [
+        "Passing rate",
+        summary?.passingRate == null ? "—" : `${summary.passingRate}%`,
+      ],
+      ["Lowest performing subject", summary?.lowestSubject],
+    ],
+    [schoolSummary, summary]
+  );
 
   function openPreview(classReport) {
     const live = getPreview(classReport?.id);
@@ -72,26 +178,6 @@ export default function AdminReportsPage() {
     setPreview(live);
     setPreviewClassId(classReport?.id ?? null);
     setPreviewOpen(true);
-  }
-
-  function handleCardView(card) {
-    if (card.id === "academic" || card.id === "intervention") {
-      if (classReports[0]) {
-        openPreview(classReports[0]);
-        return;
-      }
-    }
-    if (card.id === "lesson-plan") {
-      setToast("Open Lesson Plan Review for full queue details.");
-      return;
-    }
-    if (card.id === "attendance") {
-      setToast(
-        "Attendance analytics are shown in the chart below (separate from academic risk)."
-      );
-      return;
-    }
-    setToast(`${card.title} summary is shown in the analytics charts.`);
   }
 
   function handleExportPdf() {
@@ -216,7 +302,7 @@ export default function AdminReportsPage() {
             </label>
 
             <label className="relative shrink-0">
-              <span className="sr-only">Quarter</span>
+              <span className="sr-only">Term</span>
               <Layers3
                 size={12}
                 className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
@@ -276,31 +362,85 @@ export default function AdminReportsPage() {
       ) : null}
 
       {loading ? (
-        <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-white px-4 py-10 text-sm text-slate-400">
+        <div className="flex items-center gap-2 rounded-2xl border border-slate-100 bg-white px-4 py-10 text-sm text-slate-400">
           <Loader2 size={16} className="animate-spin" />
           Loading live reports…
         </div>
       ) : (
-        <>
-          <ReportSummaryCards stats={quickStats} />
+        <div className="space-y-4">
+          <ReportKpiStrip items={kpiItems} />
 
-          <div className="mt-3">
-            <AdminReportCharts charts={charts} />
-          </div>
+          <ReportModule
+            title="School Performance"
+            subtitle="Risk · performance · interventions · class drill-down"
+            icon={<BarChart3 size={16} strokeWidth={1.8} />}
+            open={perfOpen}
+            onOpenChange={setPerfOpen}
+            tabs={PERF_TABS}
+            activeTab={perfTab}
+            onTabChange={setPerfTab}
+            accent="green"
+            footer={<ReportInsightCallout text={insight} />}
+          >
+            {perfTab === "summary" ? (
+              <ReportSummaryMetrics
+                title="School summary · read-only"
+                rows={summaryRows}
+              />
+            ) : null}
+            {perfTab === "charts" ? (
+              <AdminReportCharts charts={charts} hideAttendance />
+            ) : null}
+            {perfTab === "by-class" ? (
+              <ClassFolderLibrary
+                reports={classReports}
+                onDetails={openPreview}
+                onExport={handleRowExportPdf}
+                groupMultiTerm={!quarter}
+              />
+            ) : null}
+            {perfTab === "breakdown" ? (
+              <ClassReportsTable
+                reports={classReports}
+                onPreview={openPreview}
+                onExport={handleRowExportPdf}
+                onExportAll={handleExportAllExcel}
+              />
+            ) : null}
+          </ReportModule>
 
-          <div className="mt-3">
-            <ReportCards cards={reportCards} onView={handleCardView} />
-          </div>
-
-          <div className="mt-3">
-            <ClassReportsTable
-              reports={classReports}
-              onPreview={openPreview}
-              onExport={handleRowExportPdf}
-              onExportAll={handleExportAllExcel}
+          <ReportModule
+            title="Submissions & review"
+            subtitle="Lesson plan queue · monitoring follow-up"
+            icon={<ClipboardList size={16} strokeWidth={1.8} />}
+            open={subsOpen}
+            onOpenChange={setSubsOpen}
+            accent="orange"
+          >
+            <ReportSubmissionsPanel
+              lessonSummary={lessonSummary}
+              summary={summary}
+              actionLabel="Open Lesson Plan Review"
+              onLessonPlanAction={() =>
+                router.push("/lesson-plan-review")
+              }
             />
-          </div>
-        </>
+          </ReportModule>
+
+          <ReportModule
+            title="Attendance (SF2)"
+            subtitle="Monthly attendance · separate from academic risk"
+            icon={<CalendarDays size={16} strokeWidth={1.8} />}
+            open={attendanceOpen}
+            onOpenChange={setAttendanceOpen}
+            accent="sky"
+          >
+            <ReportAttendancePanel
+              attendance={attendance}
+              chartData={charts?.attendanceByMonth ?? []}
+            />
+          </ReportModule>
+        </div>
       )}
 
       <ReportPreviewModal
@@ -311,8 +451,6 @@ export default function AdminReportsPage() {
           setPreviewClassId(null);
         }}
         onExport={handlePreviewExport}
-        onSaveDraft={() => setToast("Draft save is not available yet.")}
-        onFinalize={() => setToast("Finalize is not available yet.")}
       />
     </motion.div>
   );

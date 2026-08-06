@@ -16,33 +16,33 @@ const tones = {
 
 export default function RecentActivity({ items = [] }) {
   return (
-    <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-800">Recent Activity</h2>
-        <Activity size={14} className="text-slate-300" />
+    <section className="rounded-xl border border-slate-100 bg-white p-2.5 shadow-[0_4px_12px_rgba(15,23,42,0.03)]">
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-[12px] font-semibold text-slate-800">Recent Activity</h2>
+        <Activity size={12} className="text-slate-300" aria-hidden="true" />
       </div>
       {!items.length ? (
         <p className="text-[11px] text-slate-400">No recent lesson plan activity yet.</p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {items.map((item) => {
             const Icon = icons[item.type] ?? Send;
             return (
-              <div key={item.id} className="flex gap-2.5">
+              <div key={item.id} className="flex gap-2">
                 <span
                   className={cn(
-                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border",
+                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border",
                     tones[item.tone]
                   )}
                 >
-                  <Icon size={14} />
+                  <Icon size={11} />
                 </span>
                 <div className="min-w-0">
                   <p className="text-[11px] font-medium leading-4 text-slate-700">
                     {item.text}
                   </p>
-                  <p className="mt-1 inline-flex items-center gap-1 text-[10px] text-slate-400">
-                    <Clock3 size={10} /> {item.time}
+                  <p className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-slate-400">
+                    <Clock3 size={9} /> {item.time}
                   </p>
                 </div>
               </div>

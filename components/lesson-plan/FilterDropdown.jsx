@@ -12,7 +12,7 @@ export default function FilterDropdown({
         {...(isControlled
           ? { value, onChange: (e) => onChange?.(e.target.value) }
           : { defaultValue: options[0] })}
-        className="h-9 w-full cursor-pointer rounded-xl border border-slate-100 bg-slate-50 px-3 text-[11px] font-medium text-slate-500 outline-none transition-colors focus:border-cnhs-green focus:bg-white"
+        className="h-8 w-full cursor-pointer rounded-full border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 shadow-sm outline-none transition-colors hover:bg-slate-50 focus:border-cnhs-green"
       >
         {options.map((option) => (
           <option key={option} value={option}>

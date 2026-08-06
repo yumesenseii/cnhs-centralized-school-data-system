@@ -20,10 +20,25 @@ import {
 import { useTeacherClasses } from "@/hooks/teacher/useMyClasses";
 import { TERM_ALL_LABEL } from "@/lib/academic/termLabels";
 import { SIDEBAR_SHEET_CLASS } from "@/lib/constants/layout";
+import {
+  buildClassReportFileName,
+  markClassReportGenerated,
+} from "@/lib/monitoring/classReportFiles";
+import { formatPersonName } from "@/lib/teacher/monitoringMappers";
+import Link from "next/link";
 
 export default function MyClasses() {
-  const { classes, kpis, teacherId, loading, error, refresh } =
-    useTeacherClasses();
+  const {
+    classes,
+    kpis,
+    teacherId,
+    teacher,
+    profile,
+    loading,
+    refreshing,
+    error,
+    refresh,
+  } = useTeacherClasses();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [subject, setSubject] = useState("All Subjects");
@@ -33,6 +48,54 @@ export default function MyClasses() {
   const [quarter, setQuarter] = useState(TERM_ALL_LABEL);
   const [uploadClass, setUploadClass] = useState(null);
   const [toast, setToast] = useState("");
+  const [toastClassId, setToastClassId] = useState("");
+  const [generatingId, setGeneratingId] = useState("");
+
+  const teacherDisplayName = useMemo(() => {
+    const named = formatPersonName(teacher);
+    if (named && named !== "—") return named;
+    return profile?.email || "Teacher";
+  }, [teacher, profile]);
+
+  function handleGenerateReport(classItem) {
+    setGeneratingId(classItem.id);
+    try {
+      const quarterNumber =
+        classItem.quarterNumber && classItem.quarterNumber >= 1
+          ? classItem.quarterNumber
+          : 1;
+      const classId =
+        classItem.isTermGroup && classItem.termClassIds
+          ? classItem.termClassIds[quarterNumber] ||
+            classItem.termClassIds[1] ||
+            classItem.id
+          : classItem.id;
+
+      const fileName = buildClassReportFileName({
+        subject: classItem.subject,
+        gradeSection: String(classItem.gradeSection || "").replace(/—/g, "-"),
+        grade: classItem.grade,
+        section: classItem.section,
+      });
+      markClassReportGenerated({
+        classId,
+        schoolYear: classItem.schoolYear,
+        quarterNumber,
+        fileName,
+        uploadedBy: teacherDisplayName,
+      });
+      setToastClassId(classId);
+      setToast(
+        `Report ready: ${fileName}. Open it in Academic Monitoring (Passing / Failing tabs).`
+      );
+    } catch (err) {
+      console.error(err);
+      setToast("Unable to generate class report file.");
+      setToastClassId("");
+    } finally {
+      setGeneratingId("");
+    }
+  }
 
   const filterOptions = useMemo(() => {
     const subjects = [
@@ -206,8 +269,28 @@ export default function MyClasses() {
       </header>
 
       {toast ? (
-        <div className="mb-4 rounded-xl border border-green-100 bg-green-50 px-3 py-2.5 text-[12px] font-medium text-cnhs-green-dark">
-          {toast}
+        <div className="mb-4 flex flex-col gap-2 rounded-xl border border-green-100 bg-green-50 px-3 py-2.5 text-[12px] font-medium text-cnhs-green-dark sm:flex-row sm:items-center sm:justify-between">
+          <p>{toast}</p>
+          <div className="flex flex-wrap gap-2">
+            {toastClassId ? (
+              <Link
+                href={`/teacher/monitoring?classId=${toastClassId}`}
+                className="inline-flex h-8 items-center rounded-lg bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white hover:bg-[#246f54]"
+              >
+                Open in Academic Monitoring
+              </Link>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                setToast("");
+                setToastClassId("");
+              }}
+              className="inline-flex h-8 cursor-pointer items-center rounded-lg border border-green-200 bg-white px-3 text-[11px] font-semibold text-cnhs-green-dark"
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -217,11 +300,11 @@ export default function MyClasses() {
         </div>
       ) : null}
 
-      {loading ? (
+      {loading && classes.length === 0 ? (
         <div className="rounded-xl border border-slate-100 bg-white px-4 py-10 text-center text-sm text-slate-400">
           Loading assigned classes...
         </div>
-      ) : !hasAssignedClasses ? (
+      ) : !hasAssignedClasses && !refreshing ? (
         <EmptyAssignedClassesState />
       ) : (
         <>
@@ -288,6 +371,8 @@ export default function MyClasses() {
                 key={classItem.id}
                 classItem={classItem}
                 onUploadRecord={() => setUploadClass(classItem)}
+                onGenerateReport={handleGenerateReport}
+                generating={generatingId === classItem.id}
               />
             ))}
           </div>

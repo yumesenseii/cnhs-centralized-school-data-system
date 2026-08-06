@@ -7,11 +7,16 @@ import StatusBadge from "@/components/teacher/lesson-plans/StatusBadge";
 
 function SummaryItem({ label, value }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
         {label}
       </dt>
-      <dd className="mt-1 text-[12px] font-medium text-slate-700">{value || "—"}</dd>
+      <dd
+        className="mt-1 break-all text-[12px] font-medium text-slate-700"
+        title={value || undefined}
+      >
+        {value || "—"}
+      </dd>
     </div>
   );
 }

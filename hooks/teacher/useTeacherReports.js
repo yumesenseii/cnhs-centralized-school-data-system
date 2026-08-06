@@ -24,6 +24,7 @@ import {
   highestLowestSubjects,
   passingRateFromGrades,
 } from "@/lib/teacher/reportsCalculations";
+import { useSoftLoadState } from "@/hooks/useSoftLoadState";
 
 function defaultSchoolYear(years = []) {
   return years[0] ?? "SY 2026-2027";
@@ -248,10 +249,10 @@ export function useTeacherReports() {
   const [bundle, setBundle] = useState(null);
   const [teacher, setTeacher] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [building, setBuilding] = useState(false);
   const [error, setError] = useState("");
   const [baseModel, setBaseModel] = useState(null);
+  const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(true);
 
   const [schoolYear, setSchoolYear] = useState("");
   const [quarter, setQuarter] = useState("1");
@@ -259,7 +260,7 @@ export function useTeacherReports() {
   const [section, setSection] = useState(REPORT_FILTER_ALL);
 
   const refresh = useCallback(async ({ bustCache = false } = {}) => {
-    setLoading(true);
+    beginLoad();
     setError("");
 
     if (bustCache) {
@@ -276,7 +277,7 @@ export function useTeacherReports() {
       setProfile(null);
       setBundle(null);
       setBaseModel(null);
-      setLoading(false);
+      endLoad(false);
       return;
     }
 
@@ -291,7 +292,7 @@ export function useTeacherReports() {
       setError(result.error.message);
       setBundle(null);
       setBaseModel(null);
-      setLoading(false);
+      endLoad(false);
       return;
     }
 
@@ -307,8 +308,8 @@ export function useTeacherReports() {
     ].sort();
 
     setSchoolYear((current) => current || defaultSchoolYear(years));
-    setLoading(false);
-  }, []);
+    endLoad(true);
+  }, [beginLoad, endLoad]);
 
   useEffect(() => {
     refresh();
@@ -400,12 +401,14 @@ export function useTeacherReports() {
   }
 
   return {
-    loading: loading || building,
+    loading: loading || (building && !baseModel),
+    refreshing: refreshing || (building && Boolean(baseModel)),
     error,
     teacher,
     profile,
     teacherName: built?.teacherName ?? profile?.full_name ?? "Teacher",
     summary: built?.summary ?? null,
+    lessonSummary: built?.lessonSummary ?? null,
     summaryCards: built?.summaryCards ?? [],
     reportCards: built?.reportCards ?? [],
     classReports: built?.classReports ?? [],

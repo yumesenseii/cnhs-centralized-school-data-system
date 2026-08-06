@@ -17,6 +17,7 @@ import {
 } from "@/lib/admin/classAssignmentMappers";
 import { suggestCurrentSchoolYear } from "@/lib/admin/sectionMappers";
 import { TERM_ALL_LABEL } from "@/lib/academic/termLabels";
+import { useSoftLoadState } from "@/hooks/useSoftLoadState";
 
 export function useClassAssignments() {
   const [assignments, setAssignments] = useState([]);
@@ -24,9 +25,9 @@ export function useClassAssignments() {
   const [subjects, setSubjects] = useState([]);
   const [sections, setSections] = useState([]);
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(true);
   const [filters, setFilters] = useState({
     search: "",
     schoolYear: "All School Years",
@@ -36,7 +37,7 @@ export function useClassAssignments() {
   });
 
   const refresh = useCallback(async () => {
-    setLoading(true);
+    beginLoad();
     setError("");
 
     const session = await getAdminSession();
@@ -44,7 +45,7 @@ export function useClassAssignments() {
       setError(session.error?.message ?? "Admin access required.");
       setProfile(null);
       setAssignments([]);
-      setLoading(false);
+      endLoad(false);
       return;
     }
 
@@ -60,22 +61,22 @@ export function useClassAssignments() {
 
     if (assignmentsResult.error) {
       setError(assignmentsResult.error.message);
-      setLoading(false);
+      endLoad(false);
       return;
     }
     if (teachersResult.error) {
       setError(teachersResult.error.message);
-      setLoading(false);
+      endLoad(false);
       return;
     }
     if (subjectsResult.error) {
       setError(subjectsResult.error.message);
-      setLoading(false);
+      endLoad(false);
       return;
     }
     if (sectionsResult.error) {
       setError(sectionsResult.error.message);
-      setLoading(false);
+      endLoad(false);
       return;
     }
 
@@ -83,8 +84,8 @@ export function useClassAssignments() {
     setTeachers(teachersResult.data ?? []);
     setSubjects(subjectsResult.data ?? []);
     setSections(sectionsResult.data ?? []);
-    setLoading(false);
-  }, []);
+    endLoad(true);
+  }, [beginLoad, endLoad]);
 
   useEffect(() => {
     refresh();
@@ -137,45 +138,54 @@ export function useClassAssignments() {
     [assignments]
   );
 
+  async function createMissingTermAssignments(payload) {
+    const base = { ...payload };
+    delete base.allQuarters;
+    delete base.quarter;
+
+    let created = 0;
+    let skipped = 0;
+    const errors = [];
+
+    for (const q of [1, 2, 3, 4]) {
+      const result = await createClassAssignment({ ...base, quarter: q });
+      if (result.error) {
+        const message = result.error.message || "Unable to save assignment.";
+        if (/already assigned/i.test(message)) {
+          skipped += 1;
+        } else {
+          errors.push(`Term ${q}: ${message}`);
+        }
+      } else {
+        created += 1;
+      }
+    }
+
+    if (created === 0 && errors.length) {
+      return { ok: false, error: errors.join(" ") };
+    }
+
+    return {
+      ok: true,
+      message: `Created ${created} term assignment(s)${
+        skipped ? `, skipped ${skipped} existing` : ""
+      }.`,
+    };
+  }
+
   async function handleCreate(payload) {
     setSaving(true);
     setError("");
 
     if (payload?.allQuarters) {
-      const base = { ...payload };
-      delete base.allQuarters;
-      delete base.quarter;
-
-      let created = 0;
-      let skipped = 0;
-      const errors = [];
-
-      for (const q of [1, 2, 3, 4]) {
-        const result = await createClassAssignment({ ...base, quarter: q });
-        if (result.error) {
-          const message = result.error.message || "Unable to save assignment.";
-          if (/already assigned/i.test(message)) {
-            skipped += 1;
-          } else {
-            errors.push(`Term ${q}: ${message}`);
-          }
-        } else {
-          created += 1;
-        }
-      }
-
+      const result = await createMissingTermAssignments(payload);
       setSaving(false);
-      if (created === 0 && errors.length) {
-        setError(errors.join(" "));
-        return { ok: false, error: errors.join(" ") };
+      if (!result.ok) {
+        setError(result.error);
+        return result;
       }
       await refresh();
-      return {
-        ok: true,
-        message: `Created ${created} term assignment(s)${
-          skipped ? `, skipped ${skipped} existing` : ""
-        }.`,
-      };
+      return result;
     }
 
     const result = await createClassAssignment(payload);
@@ -191,6 +201,19 @@ export function useClassAssignments() {
   async function handleUpdate(classId, payload) {
     setSaving(true);
     setError("");
+
+    // Edit + All Terms: fill any missing Term 1–3 + Final for this combo
+    if (payload?.allQuarters) {
+      const result = await createMissingTermAssignments(payload);
+      setSaving(false);
+      if (!result.ok) {
+        setError(result.error);
+        return result;
+      }
+      await refresh();
+      return result;
+    }
+
     const result = await updateClassAssignment(classId, payload);
     setSaving(false);
     if (result.error) {
@@ -224,6 +247,7 @@ export function useClassAssignments() {
     summary,
     profile,
     loading,
+    refreshing,
     saving,
     error,
     filters,

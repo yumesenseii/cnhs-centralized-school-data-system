@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Download, ExternalLink, FileText, Loader2, Upload, X } from "lucide-react";
 import StatusBadge from "@/components/teacher/lesson-plans/StatusBadge";
+import { VIEW_MODAL_BACKDROP, VIEW_MODAL_PANEL } from "@/lib/ui/viewModal";
 import { cn } from "@/lib/utils";
 
 function isPdf(plan) {
@@ -42,25 +43,28 @@ export default function TeacherLessonPlanDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-50">
-      <button
-        type="button"
-        aria-label="Close lesson plan details"
-        className="absolute inset-0 bg-slate-900/35 backdrop-blur-[1px]"
-        onClick={onClose}
-      />
-      <aside className="absolute right-0 top-0 flex h-full w-full max-w-lg flex-col bg-white shadow-[-18px_0_40px_rgba(15,23,42,0.18)]">
-        <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
+    <div
+      className={VIEW_MODAL_BACKDROP}
+      role="dialog"
+      aria-modal="true"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose?.();
+      }}
+    >
+      <div className={VIEW_MODAL_PANEL}>
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
               Submission Details
             </p>
-            <h2 className="mt-1 text-base font-semibold text-slate-900">{plan.lessonTitle}</h2>
+            <h2 className="mt-1 truncate text-base font-semibold text-slate-900">
+              {plan.lessonTitle}
+            </h2>
             <p className="mt-1 text-[12px] text-slate-500">
               {plan.subject} · {plan.gradeSection}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <StatusBadge status={plan.status} />
             <button
               type="button"
@@ -72,38 +76,40 @@ export default function TeacherLessonPlanDrawer({
           </div>
         </div>
 
-        <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
-          <dl className="grid grid-cols-2 gap-3 text-[12px]">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3 sm:px-5">
+          <dl className="grid grid-cols-2 gap-3 text-[12px] lg:grid-cols-4">
             {[
               ["Tracking No.", plan.trackingNumber],
               ["Week Covered", plan.weekCovered || plan.week],
-              ["Quarter", plan.quarter],
+              ["Term", plan.quarter],
               ["School Year", plan.schoolYear],
               ["Current Status", plan.status],
               ["Submitted", plan.submittedAt || plan.submittedDate],
               ["Reviewed", plan.reviewedAt || plan.reviewedDate || "—"],
               ["Reviewed By", plan.reviewedBy || "—"],
             ].map(([label, value]) => (
-              <div key={label}>
+              <div key={label} className="min-w-0">
                 <dt className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
                   {label}
                 </dt>
-                <dd className="mt-1 font-semibold text-slate-800">{value || "—"}</dd>
+                <dd className="mt-1 break-words font-semibold text-slate-800">
+                  {value || "—"}
+                </dd>
               </div>
             ))}
-            <div className="col-span-2">
+            <div className="col-span-2 min-w-0 lg:col-span-4">
               <dt className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
                 Learning Competency
               </dt>
-              <dd className="mt-1 font-medium text-slate-700">
+              <dd className="mt-1 break-words font-medium text-slate-700">
                 {plan.learningCompetency || "—"}
               </dd>
             </div>
-            <div className="col-span-2">
+            <div className="col-span-2 min-w-0 lg:col-span-4">
               <dt className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
                 Review Remarks
               </dt>
-              <dd className="mt-1 font-medium text-slate-700">
+              <dd className="mt-1 break-words font-medium text-slate-700">
                 {plan.remarks || "—"}
               </dd>
             </div>
@@ -114,7 +120,7 @@ export default function TeacherLessonPlanDrawer({
               <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
                 Timeline
               </h3>
-              <ol className="space-y-2">
+              <ol className="flex flex-wrap gap-x-4 gap-y-2">
                 {plan.timeline.map((item) => (
                   <li
                     key={item.id}
@@ -144,14 +150,16 @@ export default function TeacherLessonPlanDrawer({
             <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-3 py-2.5">
               <div className="flex min-w-0 items-center gap-2 text-[11px] font-semibold text-slate-600">
                 <FileText size={14} className="shrink-0 text-slate-400" />
-                <span className="truncate">{plan.fileName}</span>
+                <span className="truncate" title={plan.fileName}>
+                  {plan.fileName}
+                </span>
               </div>
               {fileUrl ? (
                 <a
                   href={fileUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-cnhs-green-dark"
+                  className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-cnhs-green-dark"
                 >
                   <ExternalLink size={12} />
                   Open
@@ -159,18 +167,33 @@ export default function TeacherLessonPlanDrawer({
               ) : null}
             </div>
 
-            <div className={cn("bg-white", isPdf(plan) ? "h-[360px]" : "px-4 py-8")}>
+            <div
+              className={cn(
+                "bg-white",
+                isPdf(plan) ? "h-[200px]" : "px-4 py-6"
+              )}
+            >
               {loadingUrl ? (
                 <div className="flex h-full items-center justify-center text-sm text-slate-400">
                   Loading file...
                 </div>
               ) : isPdf(plan) && fileUrl ? (
-                <iframe title={plan.fileName} src={fileUrl} className="h-full w-full" />
+                <iframe
+                  title={plan.fileName}
+                  src={fileUrl}
+                  className="h-full w-full"
+                />
               ) : (
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-slate-800">{plan.fileName}</p>
+                <div className="px-2 text-center">
+                  <p
+                    className="mx-auto max-w-full break-all text-sm font-semibold text-slate-800"
+                    title={plan.fileName}
+                  >
+                    {plan.fileName}
+                  </p>
                   <p className="mt-1 text-[12px] text-slate-500">
-                    Preview is available for PDF files. Use Download/Open for DOC/DOCX.
+                    Preview is available for PDF files. Use Download/Open for
+                    DOC/DOCX.
                   </p>
                   {fileUrl ? (
                     <a
@@ -190,7 +213,8 @@ export default function TeacherLessonPlanDrawer({
 
           {isApproved ? (
             <p className="rounded-xl border border-green-100 bg-green-50 px-3 py-2 text-[12px] text-cnhs-green-dark">
-              This lesson plan is approved. Editing and resubmission are disabled.
+              This lesson plan is approved. Editing and resubmission are
+              disabled.
             </p>
           ) : null}
 
@@ -201,7 +225,7 @@ export default function TeacherLessonPlanDrawer({
           ) : null}
         </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-4 py-3">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-4 py-3 sm:px-5">
           <input
             ref={fileInputRef}
             type="file"
@@ -240,7 +264,7 @@ export default function TeacherLessonPlanDrawer({
             </button>
           ) : null}
         </div>
-      </aside>
+      </div>
     </div>
   );
 }

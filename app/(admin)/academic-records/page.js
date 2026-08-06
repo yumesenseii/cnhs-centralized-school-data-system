@@ -2,18 +2,22 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { CalendarDays, Loader2, RefreshCw } from "lucide-react";
-import AcademicPerformanceAnalysis from "@/components/academic-records/AcademicPerformanceAnalysis";
+import {
+  CalendarDays,
+  ChevronRight,
+  Download,
+  Loader2,
+  RefreshCw,
+} from "lucide-react";
 import AcademicRecordsTable from "@/components/academic-records/AcademicRecordsTable";
-import ActionToolbar from "@/components/academic-records/ActionToolbar";
 import FilterDropdown from "@/components/academic-records/FilterDropdown";
-import GradeLevelSummary from "@/components/academic-records/GradeLevelSummary";
-import RecentUploadActivity from "@/components/academic-records/RecentUploadActivity";
-import SearchBar from "@/components/academic-records/SearchBar";
+import GradeFolderCards from "@/components/academic-records/GradeFolderCards";
+import OperationsAccordion from "@/components/academic-records/OperationsAccordion";
+import RecordsBrowseBar from "@/components/academic-records/RecordsBrowseBar";
 import SummaryCard from "@/components/academic-records/SummaryCard";
-import TablePagination from "@/components/academic-records/TablePagination";
-import TeacherSubmissionStatus from "@/components/academic-records/TeacherSubmissionStatus";
-import ValidationSummary from "@/components/academic-records/ValidationSummary";
+import TablePagination, {
+  ACADEMIC_RECORDS_PAGE_SIZE,
+} from "@/components/academic-records/TablePagination";
 import Header from "@/components/layout/Header";
 import { useAcademicRecords } from "@/hooks/admin/useAcademicRecords";
 import { exportAcademicRecordsExcel } from "@/lib/admin/academicRecordsExport";
@@ -47,17 +51,20 @@ export default function AcademicRecordsPage() {
     search,
     setSearch,
     gradeFilter,
-    setGradeFilter,
+    selectGradeFolder,
+    clearGradeFolder,
     sectionFilter,
     setSectionFilter,
-    riskFilter,
-    setRiskFilter,
     teacherFilter,
     setTeacherFilter,
+    statusFilter,
+    setStatusFilter,
+    statusCounts,
   } = useAcademicRecords();
 
   const [toast, setToast] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [page, setPage] = useState(1);
 
   const quarterLabel = useMemo(() => {
     if (!quarter) return "All Terms";
@@ -66,6 +73,37 @@ export default function AcademicRecordsPage() {
       `Quarter ${quarter}`
     );
   }, [quarter, quarters]);
+
+  const gradeFocused = gradeFilter !== "All Grades";
+
+  const breadcrumb = gradeFocused
+    ? `Home / Academic Records / ${gradeFilter}`
+    : "Home / Academic Records";
+
+  // Reset to first page whenever browse filters change.
+  useEffect(() => {
+    setPage(1);
+  }, [
+    search,
+    gradeFilter,
+    sectionFilter,
+    teacherFilter,
+    statusFilter,
+    schoolYear,
+    quarter,
+  ]);
+
+  const totalStudents = students.length;
+  const totalPages = Math.max(
+    1,
+    Math.ceil(totalStudents / ACADEMIC_RECORDS_PAGE_SIZE) || 1
+  );
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+
+  const pagedStudents = useMemo(() => {
+    const start = (safePage - 1) * ACADEMIC_RECORDS_PAGE_SIZE;
+    return students.slice(start, start + ACADEMIC_RECORDS_PAGE_SIZE);
+  }, [students, safePage]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -91,20 +129,6 @@ export default function AcademicRecordsPage() {
     }
   }
 
-  function handleToolbarAction(label) {
-    if (label === "Export Records") {
-      handleExportRecords();
-      return;
-    }
-    if (label === "View Intervention Summary") {
-      window.location.href = "/monitoring";
-      return;
-    }
-    setToast(
-      `${label} stays on this page for review — use filters to find pending learners.`
-    );
-  }
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -113,7 +137,7 @@ export default function AcademicRecordsPage() {
       className="pb-5"
     >
       <Header
-        breadcrumb="Home / Student Academic Records"
+        breadcrumb={breadcrumb}
         title="Academic Records"
         controls={
           <>
@@ -169,6 +193,19 @@ export default function AcademicRecordsPage() {
               )}
               Refresh
             </button>
+            <button
+              type="button"
+              onClick={handleExportRecords}
+              disabled={exporting || loading}
+              className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-[#246f54] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {exporting ? (
+                <Loader2 size={12} className="animate-spin" aria-hidden="true" />
+              ) : (
+                <Download size={12} aria-hidden="true" />
+              )}
+              Export
+            </button>
           </>
         }
       />
@@ -186,73 +223,115 @@ export default function AcademicRecordsPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {/* Slim KPI strip */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
             {summaryCards.map((card) => (
               <SummaryCard key={card.id} card={card} />
             ))}
           </div>
 
-          <div className="mt-4">
-            <ActionToolbar
-              onAction={handleToolbarAction}
-              exporting={exporting}
-            />
-          </div>
-
-          <div className="mt-4 space-y-3">
-            <GradeLevelSummary rows={gradeSummary} />
-
-            <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-              <div className="flex flex-col gap-2 lg:flex-row">
-                <SearchBar value={search} onChange={setSearch} />
-                <FilterDropdown
-                  label="Grade Filter"
-                  options={filterOptions.grades}
-                  value={gradeFilter}
-                  onChange={setGradeFilter}
-                />
-                <FilterDropdown
-                  label="Section Filter"
-                  options={filterOptions.sections}
-                  value={sectionFilter}
-                  onChange={setSectionFilter}
-                />
-                <FilterDropdown
-                  label="Risk Level Filter"
-                  options={filterOptions.risks}
-                  value={riskFilter}
-                  onChange={setRiskFilter}
-                />
-                <FilterDropdown
-                  label="Teacher Filter"
-                  options={filterOptions.teachers}
-                  value={teacherFilter}
-                  onChange={setTeacherFilter}
-                />
+          {/* Level-1 grade folders — hidden when a grade is focused */}
+          {!gradeFocused ? (
+            <section className="mt-4">
+              <div className="mb-2">
+                <h2 className="text-sm font-semibold text-slate-800">
+                  Grade folders
+                </h2>
+                <p className="text-[11px] text-slate-500">
+                  Browse by grade level — high risk and ARAL (Eng/Fil) shown on
+                  each folder.
+                </p>
               </div>
-              <TablePagination count={students.length} />
+              <GradeFolderCards
+                rows={gradeSummary}
+                activeGrade={gradeFilter}
+                onSelect={selectGradeFolder}
+              />
             </section>
+          ) : null}
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_256px]">
-              <div className="min-w-0 space-y-3">
-                <AcademicRecordsTable students={students} />
-                <RecentUploadActivity activity={recentUploadActivity} />
-              </div>
-
-              <aside className="space-y-3">
-                <TeacherSubmissionStatus
-                  submissions={teacherSubmissions}
-                  progress={submissionProgress}
-                  periodLabel={periodLabel}
-                />
-                <ValidationSummary
-                  summary={validationSummary}
-                  lastValidated={validationLastUpdated}
-                />
-                <AcademicPerformanceAnalysis analysis={academicAnalysis} />
-              </aside>
+          {/* Learner browse */}
+          <section className={gradeFocused ? "mt-3 space-y-2" : "mt-4 space-y-3"}>
+            <div className="flex flex-wrap items-center gap-1 text-[12px] text-slate-500">
+              <button
+                type="button"
+                onClick={clearGradeFolder}
+                className="cursor-pointer font-medium text-slate-600 hover:text-cnhs-green-dark"
+              >
+                Academic Records
+              </button>
+              {gradeFocused ? (
+                <>
+                  <ChevronRight size={12} className="text-slate-300" />
+                  <span className="font-semibold text-slate-800">
+                    {gradeFilter}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearGradeFolder}
+                    className="ml-2 cursor-pointer text-[11px] font-semibold text-cnhs-green-dark hover:underline"
+                  >
+                    Show all grades
+                  </button>
+                </>
+              ) : null}
+              <span className="ml-auto text-[10px] text-slate-400">
+                {totalStudents} filtered · {periodLabel}
+              </span>
             </div>
-          </div>
+
+            <RecordsBrowseBar
+              search={search}
+              onSearchChange={setSearch}
+              statusFilter={statusFilter}
+              onStatusChange={setStatusFilter}
+              counts={statusCounts}
+              extraFilters={
+                <div className="flex flex-wrap gap-2 lg:shrink-0">
+                  <FilterDropdown
+                    label="Section Filter"
+                    options={filterOptions.sections}
+                    value={sectionFilter}
+                    onChange={setSectionFilter}
+                  />
+                  <FilterDropdown
+                    label="Teacher Filter"
+                    options={filterOptions.teachers}
+                    value={teacherFilter}
+                    onChange={setTeacherFilter}
+                  />
+                </div>
+              }
+            />
+
+            <AcademicRecordsTable
+              students={pagedStudents}
+              title={
+                gradeFocused
+                  ? `Learners · ${gradeFilter}`
+                  : "Learners · All Grades"
+              }
+              recordCount={totalStudents}
+            />
+
+            <TablePagination
+              page={safePage}
+              pageSize={ACADEMIC_RECORDS_PAGE_SIZE}
+              total={totalStudents}
+              onPageChange={setPage}
+            />
+          </section>
+
+          {/* Secondary panels — collapsed by default */}
+          <OperationsAccordion
+            recentUploadActivity={recentUploadActivity}
+            teacherSubmissions={teacherSubmissions}
+            submissionProgress={submissionProgress}
+            periodLabel={periodLabel}
+            validationSummary={validationSummary}
+            validationLastUpdated={validationLastUpdated}
+            academicAnalysis={academicAnalysis}
+          />
         </>
       )}
 

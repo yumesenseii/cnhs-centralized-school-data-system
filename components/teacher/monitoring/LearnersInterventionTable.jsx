@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye } from "lucide-react";
+import { Eye, Loader2, Send } from "lucide-react";
 import {
   Pill,
   RiskPill,
@@ -9,6 +9,11 @@ import {
   monitoringStatusStyles,
 } from "@/components/teacher/monitoring/shared";
 import MonitoringTablePagination from "@/components/teacher/monitoring/MonitoringTablePagination";
+import { isAralRecommended } from "@/lib/monitoring/aralProgress";
+import {
+  ARAL_APPROVAL_STATUS,
+  aralApprovalStyles,
+} from "@/lib/monitoring/aralApproval";
 import { cn } from "@/lib/utils";
 
 export default function LearnersInterventionTable({
@@ -22,6 +27,10 @@ export default function LearnersInterventionTable({
   quarter,
   onViewMonitoring,
   title = "Students for Monitoring",
+  /** When true (Eng/Fil teacher portal), show approval status + Submit */
+  showAralApproval = false,
+  onSubmitAralReview = null,
+  submittingAralId = "",
 }) {
   const displayTotal =
     typeof totalCount === "number" ? totalCount : learners.length;
@@ -29,6 +38,18 @@ export default function LearnersInterventionTable({
     typeof atRiskCount === "number"
       ? atRiskCount
       : learners.filter((l) => l.atRisk).length;
+
+  const columns = [
+    "Student Name",
+    "Student Number",
+    "Subject Grade",
+    "Risk Level",
+    "Recommendation",
+    ...(showAralApproval ? ["HT Approval"] : []),
+    "Latest Progress",
+    "Monitoring Status",
+    "Action",
+  ];
 
   return (
     <section className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
@@ -51,16 +72,7 @@ export default function LearnersInterventionTable({
         <table className="min-w-[980px] w-full border-collapse text-left">
           <thead>
             <tr className="bg-slate-50/80">
-              {[
-                "Student Name",
-                "Student Number",
-                "Subject Grade",
-                "Risk Level",
-                "Recommendation",
-                "Latest Progress",
-                "Monitoring Status",
-                "Action",
-              ].map((column) => (
+              {columns.map((column) => (
                 <th
                   key={column}
                   className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400"
@@ -71,89 +83,140 @@ export default function LearnersInterventionTable({
             </tr>
           </thead>
           <tbody>
-            {learners.map((learner) => (
-              <tr
-                key={learner.id}
-                className="border-t border-slate-100 transition-colors hover:bg-slate-50/70"
-              >
-                <td className="px-3 py-1.5">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        "flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-semibold",
-                        avatarTones[learner.avatarTone] ?? avatarTones.blue
-                      )}
-                    >
-                      {learner.initials}
-                    </span>
-                    <div>
-                      <p className="text-[12px] font-semibold text-slate-800">
-                        {learner.name}
-                      </p>
-                      <p className="text-[10px] text-slate-400">
-                        {learner.gradeSection}
-                      </p>
+            {learners.map((learner) => {
+              const aral = isAralRecommended(learner);
+              const approvalStatus =
+                learner.aralApprovalStatus || ARAL_APPROVAL_STATUS.SUGGESTED;
+              const canSubmit =
+                showAralApproval &&
+                aral &&
+                typeof onSubmitAralReview === "function" &&
+                approvalStatus !== ARAL_APPROVAL_STATUS.APPROVED &&
+                approvalStatus !== ARAL_APPROVAL_STATUS.SUBMITTED;
+              const submitting = submittingAralId === learner.id;
+
+              return (
+                <tr
+                  key={learner.id}
+                  className="border-t border-slate-100 transition-colors hover:bg-slate-50/70"
+                >
+                  <td className="px-3 py-1.5">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-semibold",
+                          avatarTones[learner.avatarTone] ?? avatarTones.blue
+                        )}
+                      >
+                        {learner.initials}
+                      </span>
+                      <div>
+                        <p className="text-[12px] font-semibold text-slate-800">
+                          {learner.name}
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          {learner.gradeSection}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </td>
-                <td className="px-3 py-1.5 text-[12px] font-medium text-slate-600">
-                  {learner.studentNumber}
-                </td>
-                <td className="px-3 py-1.5 text-[12px] font-semibold text-slate-800">
-                  {learner.classSubjectGrade ?? learner.generalAverage ?? "—"}
-                </td>
-                <td className="px-3 py-1.5">
-                  <RiskPill value={learner.riskLevel} />
-                </td>
-                <td className="px-3 py-1.5">
-                  {learner.recommendationDisplay ? (
-                    <Pill
-                      value={learner.recommendationDisplay}
-                      styles={interventionStyles}
-                    />
-                  ) : (
-                    <span
-                      title="ARAL Learners applies to English and Filipino only."
-                      className="text-[11px] font-medium text-slate-400"
-                    >
-                      Not applicable
-                    </span>
-                  )}
-                </td>
-                <td className="px-3 py-1.5">
-                  <div>
-                    <p className="text-[12px] font-medium text-slate-700">
-                      {learner.latestProgress || "—"}
-                    </p>
-                    {learner.inAralProgram ? (
-                      <p className="text-[10px] text-slate-400">
-                        {learner.weeklyUpdateCount
-                          ? `${learner.weeklyUpdateCount} weekly update${
-                              learner.weeklyUpdateCount === 1 ? "" : "s"
-                            }`
-                          : "No weekly updates yet"}
+                  </td>
+                  <td className="px-3 py-1.5 text-[12px] font-medium text-slate-600">
+                    {learner.studentNumber}
+                  </td>
+                  <td className="px-3 py-1.5 text-[12px] font-semibold text-slate-800">
+                    {learner.classSubjectGrade ?? learner.generalAverage ?? "—"}
+                  </td>
+                  <td className="px-3 py-1.5">
+                    <RiskPill value={learner.riskLevel} />
+                  </td>
+                  <td className="px-3 py-1.5">
+                    {learner.recommendationDisplay ? (
+                      <Pill
+                        value={learner.recommendationDisplay}
+                        styles={interventionStyles}
+                      />
+                    ) : (
+                      <span
+                        title="ARAL Learners applies to English and Filipino only."
+                        className="text-[11px] font-medium text-slate-400"
+                      >
+                        Not applicable
+                      </span>
+                    )}
+                  </td>
+                  {showAralApproval ? (
+                    <td className="px-3 py-1.5">
+                      {aral ? (
+                        <div>
+                          <Pill
+                            value={approvalStatus}
+                            styles={aralApprovalStyles}
+                          />
+                          {learner.aralApprovalNote &&
+                          approvalStatus === ARAL_APPROVAL_STATUS.RETURNED ? (
+                            <p className="mt-0.5 max-w-[140px] truncate text-[10px] text-orange-700">
+                              {learner.aralApprovalNote}
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-slate-400">—</span>
+                      )}
+                    </td>
+                  ) : null}
+                  <td className="px-3 py-1.5">
+                    <div>
+                      <p className="text-[12px] font-medium text-slate-700">
+                        {learner.latestProgress || "—"}
                       </p>
-                    ) : null}
-                  </div>
-                </td>
-                <td className="px-3 py-1.5">
-                  <Pill
-                    value={learner.monitoringStatus}
-                    styles={monitoringStatusStyles}
-                  />
-                </td>
-                <td className="px-3 py-1.5">
-                  <button
-                    type="button"
-                    onClick={() => onViewMonitoring(learner)}
-                    className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-lg border border-cnhs-green-dark/35 bg-white px-2.5 text-[10px] font-semibold text-cnhs-green-dark transition-colors hover:bg-green-50"
-                  >
-                    <Eye size={11} />
-                    View Details
-                  </button>
-                </td>
-              </tr>
-            ))}
+                      {learner.inAralProgram ? (
+                        <p className="text-[10px] text-slate-400">
+                          {learner.weeklyUpdateCount
+                            ? `${learner.weeklyUpdateCount} weekly update${
+                                learner.weeklyUpdateCount === 1 ? "" : "s"
+                              }`
+                            : "No weekly updates yet"}
+                        </p>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className="px-3 py-1.5">
+                    <Pill
+                      value={learner.monitoringStatus}
+                      styles={monitoringStatusStyles}
+                    />
+                  </td>
+                  <td className="px-3 py-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => onViewMonitoring(learner)}
+                        className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-lg border border-cnhs-green-dark/35 bg-white px-2.5 text-[10px] font-semibold text-cnhs-green-dark transition-colors hover:bg-green-50"
+                      >
+                        <Eye size={11} />
+                        View Details
+                      </button>
+                      {canSubmit ? (
+                        <button
+                          type="button"
+                          disabled={submitting}
+                          onClick={() => onSubmitAralReview(learner)}
+                          title="Submit ARAL recommendation for Head Teacher review"
+                          className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2 text-[10px] font-semibold text-amber-900 transition-colors hover:bg-amber-100 disabled:opacity-50"
+                        >
+                          {submitting ? (
+                            <Loader2 size={11} className="animate-spin" />
+                          ) : (
+                            <Send size={11} />
+                          )}
+                          Submit for HT
+                        </button>
+                      ) : null}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { CalendarDays, Layers3, Menu, Upload } from "lucide-react";
+import { CalendarDays, Layers3, Menu, RefreshCw, Upload } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -19,16 +19,21 @@ import { useTeacherLessonPlans } from "@/hooks/teacher/useLessonPlans";
 import { getLessonPlanSignedUrl } from "@/lib/supabase/queries/lessonPlans";
 import { lessonPlansData } from "@/data/teacher/lessonPlans";
 import { SIDEBAR_SHEET_CLASS } from "@/lib/constants/layout";
+import { TERM_ALL_LABEL, TERM_OPTIONS } from "@/lib/academic/termLabels";
+
+const ALL_SCHOOL_YEARS = "All School Years";
+const TERM_FILTER_OPTIONS = [TERM_ALL_LABEL, ...TERM_OPTIONS.map((t) => t.label)];
 
 export default function LessonPlansDashboard() {
-  const { controls, filters } = lessonPlansData;
-  const { plans, kpis, loading, error, refresh, resubmit } =
+  const { filters } = lessonPlansData;
+  const { plans, kpis, loading, refreshing, error, refresh, resubmit } =
     useTeacherLessonPlans();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState(filters.statuses[0]);
-  const [subject, setSubject] = useState(filters.subjects[0]);
-  const [quarter, setQuarter] = useState(filters.quarters[0]);
+  const [status, setStatus] = useState("All Status");
+  const [subject, setSubject] = useState("All Subjects");
+  const [quarter, setQuarter] = useState(TERM_ALL_LABEL);
+  const [schoolYear, setSchoolYear] = useState(ALL_SCHOOL_YEARS);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [fileUrl, setFileUrl] = useState(null);
@@ -37,60 +42,53 @@ export default function LessonPlansDashboard() {
   const deepLinkHandled = useRef(false);
 
   const subjectOptions = useMemo(() => {
-    const subjects = [
+    return [
       "All Subjects",
       ...new Set(plans.map((plan) => plan.subject).filter(Boolean)),
     ];
-    return subjects;
+  }, [plans]);
+
+  const schoolYearOptions = useMemo(() => {
+    const years = [
+      ...new Set(plans.map((plan) => plan.schoolYear).filter(Boolean)),
+    ].sort((a, b) => b.localeCompare(a));
+    return [ALL_SCHOOL_YEARS, ...years];
   }, [plans]);
 
   const filtered = useMemo(() => {
-    const next = plans.filter((plan) => {
+    return plans.filter((plan) => {
       const query = search.trim().toLowerCase();
       const matchesSearch =
         !query ||
-        plan.lessonTitle.toLowerCase().includes(query) ||
-        plan.subject.toLowerCase().includes(query);
+        String(plan.lessonTitle || "")
+          .toLowerCase()
+          .includes(query) ||
+        String(plan.subject || "")
+          .toLowerCase()
+          .includes(query);
       const matchesStatus = status === "All Status" || plan.status === status;
       const matchesSubject =
         subject === "All Subjects" || plan.subject === subject;
       const matchesQuarter =
-        quarter === "All Terms" || plan.quarter === quarter;
-      return matchesSearch && matchesStatus && matchesSubject && matchesQuarter;
+        quarter === TERM_ALL_LABEL || plan.quarter === quarter;
+      const matchesYear =
+        schoolYear === ALL_SCHOOL_YEARS || plan.schoolYear === schoolYear;
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesSubject &&
+        matchesQuarter &&
+        matchesYear
+      );
     });
+  }, [plans, search, status, subject, quarter, schoolYear]);
 
-    if (plans.length > 0 && next.length !== plans.length) {
-      const removed = plans.filter((plan) => !next.includes(plan));
-      console.log("[lesson_plans] UI filters removed rows", {
-        activeFilters: { search, status, subject, quarter },
-        before: plans.length,
-        after: next.length,
-        removed: removed.map((plan) => ({
-          id: plan.id,
-          status: plan.status,
-          subject: plan.subject,
-          quarter: plan.quarter,
-          schoolYear: plan.schoolYear,
-          reasons: {
-            search:
-              Boolean(search.trim()) &&
-              !plan.lessonTitle.toLowerCase().includes(search.trim().toLowerCase()) &&
-              !plan.subject.toLowerCase().includes(search.trim().toLowerCase()),
-            status: status !== "All Status" && plan.status !== status,
-            subject: subject !== "All Subjects" && plan.subject !== subject,
-            quarter: quarter !== "All Terms" && plan.quarter !== quarter,
-          },
-        })),
-      });
-    }
-
-    return next;
-  }, [plans, search, status, subject, quarter]);
   function clearFilters() {
     setSearch("");
-    setStatus(filters.statuses[0]);
+    setStatus("All Status");
     setSubject("All Subjects");
-    setQuarter(filters.quarters[0]);
+    setQuarter(TERM_ALL_LABEL);
+    setSchoolYear(ALL_SCHOOL_YEARS);
   }
 
   async function openPlan(plan) {
@@ -130,6 +128,7 @@ export default function LessonPlansDashboard() {
   }, [plans, selectedPlan]);
 
   async function downloadPlan(plan) {
+    if (!plan?.filePath) return;
     const signed = await getLessonPlanSignedUrl(plan.filePath);
     if (signed.data) {
       window.open(signed.data, "_blank", "noopener,noreferrer");
@@ -214,10 +213,11 @@ export default function LessonPlansDashboard() {
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
             />
             <select
-              defaultValue={controls.schoolYear}
+              value={schoolYear}
+              onChange={(e) => setSchoolYear(e.target.value)}
               className="h-8 cursor-pointer rounded-full border border-slate-200 bg-white pl-8 pr-7 text-[11px] font-medium text-slate-600 shadow-sm outline-none hover:bg-slate-50 focus:border-cnhs-green"
             >
-              {controls.schoolYears.map((year) => (
+              {schoolYearOptions.map((year) => (
                 <option key={year} value={year}>
                   {year}
                 </option>
@@ -226,16 +226,17 @@ export default function LessonPlansDashboard() {
           </label>
 
           <label className="relative">
-            <span className="sr-only">Quarter</span>
+            <span className="sr-only">Term</span>
             <Layers3
               size={12}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
             />
             <select
-              defaultValue={controls.quarter}
+              value={quarter}
+              onChange={(e) => setQuarter(e.target.value)}
               className="h-8 cursor-pointer rounded-full border border-slate-200 bg-white pl-8 pr-7 text-[11px] font-medium text-slate-600 shadow-sm outline-none hover:bg-slate-50 focus:border-cnhs-green"
             >
-              {controls.quarters.map((q) => (
+              {TERM_FILTER_OPTIONS.map((q) => (
                 <option key={q} value={q}>
                   {q}
                 </option>
@@ -245,9 +246,13 @@ export default function LessonPlansDashboard() {
 
           <button
             type="button"
-            onClick={refresh}
-            className="inline-flex h-8 cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
+            onClick={() => refresh()}
+            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
           >
+            <RefreshCw
+              size={12}
+              className={refreshing || loading ? "animate-spin" : ""}
+            />
             Refresh
           </button>
 
@@ -274,6 +279,7 @@ export default function LessonPlansDashboard() {
           filters={{
             ...filters,
             subjects: subjectOptions,
+            quarters: TERM_FILTER_OPTIONS,
             statuses: [
               "All Status",
               "Pending Review",
@@ -297,7 +303,7 @@ export default function LessonPlansDashboard() {
       </div>
 
       <div className="mt-4">
-        {loading ? (
+        {loading && plans.length === 0 ? (
           <div className="rounded-xl border border-slate-100 bg-white px-4 py-10 text-center text-sm text-slate-400">
             Loading lesson plans...
           </div>

@@ -16,12 +16,16 @@ import {
   GraduationCap,
   LayoutGrid,
   LogOut,
+  Moon,
   Settings,
+  Sun,
 } from "lucide-react";
+import { useTheme } from "@/components/theme/ThemeProvider";
 import { useUnreadNotificationCount } from "@/hooks/teacher/useUnreadNotificationCount";
 import { SIDEBAR_WIDTH_CLASS } from "@/lib/constants/layout";
 import { createClient } from "@/lib/supabase/client";
 import { getCurrentTeacherSession } from "@/lib/supabase/queries/myClasses";
+import { confirmLogout } from "@/lib/ui/confirmAction";
 import { cn } from "@/lib/utils";
 
 const menuNavigation = [
@@ -50,17 +54,27 @@ function NavLink({ href, label, icon: Icon, isActive, onNavigate, badge = 0 }) {
       onClick={onNavigate}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "group flex min-h-8 items-center gap-2.5 rounded-lg px-3 text-[13px] font-medium transition-all duration-200",
+        "group relative flex min-h-8 items-center gap-2.5 rounded-lg px-3 text-[13px] font-medium transition-all duration-200",
         "hover:bg-white/8 hover:text-white",
-        isActive ? "bg-cnhs-green/20 text-[#7dd8a9]" : "text-white/70"
+        isActive
+          ? "bg-cnhs-green/25 text-[#7dd8a9]"
+          : "text-white/70"
       )}
     >
+      {isActive ? (
+        <span
+          className="absolute inset-y-1 left-0 w-[3px] rounded-full bg-cnhs-green"
+          aria-hidden="true"
+        />
+      ) : null}
       <Icon
         size={16}
         strokeWidth={1.9}
         className={cn(
           "shrink-0 transition-colors",
-          isActive ? "text-cnhs-green" : "text-white/45 group-hover:text-white/75"
+          isActive
+            ? "text-cnhs-green"
+            : "text-white/45 group-hover:text-white/75"
         )}
       />
       <span className="min-w-0 flex-1 leading-5">{label}</span>
@@ -72,7 +86,9 @@ function NavLink({ href, label, icon: Icon, isActive, onNavigate, badge = 0 }) {
           {badge > 99 ? "99+" : badge}
         </span>
       ) : null}
-      {isActive ? <ChevronRight size={14} className="shrink-0 text-cnhs-green" /> : null}
+      {isActive ? (
+        <ChevronRight size={14} className="shrink-0 text-cnhs-green" />
+      ) : null}
     </Link>
   );
 }
@@ -91,12 +107,19 @@ function NavSection({ title, children }) {
 export default function TeacherSidebar({ className, mobile = false, onNavigate }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { resolvedTheme, hydrated, setTheme } = useTheme();
   const [profile, setProfile] = useState({
     initials: "T",
     name: "Teacher",
     role: "Teacher",
   });
   const { count: unreadCount } = useUnreadNotificationCount();
+
+  const isDark = resolvedTheme === "dark";
+
+  function toggleTheme() {
+    setTheme(isDark ? "light" : "dark");
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -127,6 +150,7 @@ export default function TeacherSidebar({ className, mobile = false, onNavigate }
   }, []);
 
   async function handleLogout() {
+    if (!confirmLogout()) return;
     const supabase = createClient();
     await supabase.auth.updateUser({
       data: { portal_role: null, portal_active: null },
@@ -143,7 +167,7 @@ export default function TeacherSidebar({ className, mobile = false, onNavigate }
   return (
     <aside
       className={cn(
-        "z-30 h-screen flex-col bg-cnhs-sidebar text-white",
+        "z-30 h-screen flex-col bg-cnhs-sidebar text-white dark:bg-black",
         SIDEBAR_WIDTH_CLASS,
         mobile ? "flex h-full w-full" : "fixed inset-y-0 left-0",
         className
@@ -208,6 +232,19 @@ export default function TeacherSidebar({ className, mobile = false, onNavigate }
       </nav>
 
       <div className="mt-auto space-y-2 px-3 pb-3 pt-2">
+        {hydrated ? (
+          <div className="flex justify-end px-0.5">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              title={isDark ? "Light mode" : "Dark mode"}
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/8 hover:text-white"
+            >
+              {isDark ? <Sun size={15} strokeWidth={1.9} /> : <Moon size={15} strokeWidth={1.9} />}
+            </button>
+          </div>
+        ) : null}
         <div className="flex items-center gap-2.5 rounded-lg bg-white/8 px-2.5 py-2">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cnhs-green text-[11px] font-semibold text-white">
             {profile.initials}
