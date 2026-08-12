@@ -20,13 +20,14 @@ import { getLessonPlanSignedUrl } from "@/lib/supabase/queries/lessonPlans";
 import { lessonPlansData } from "@/data/teacher/lessonPlans";
 import { SIDEBAR_SHEET_CLASS } from "@/lib/constants/layout";
 import { TERM_ALL_LABEL, TERM_OPTIONS } from "@/lib/academic/termLabels";
+import { confirmDelete } from "@/lib/ui/confirmAction";
 
 const ALL_SCHOOL_YEARS = "All School Years";
 const TERM_FILTER_OPTIONS = [TERM_ALL_LABEL, ...TERM_OPTIONS.map((t) => t.label)];
 
 export default function LessonPlansDashboard() {
   const { filters } = lessonPlansData;
-  const { plans, kpis, loading, refreshing, error, refresh, resubmit } =
+  const { plans, kpis, loading, refreshing, error, refresh, resubmit, remove } =
     useTeacherLessonPlans();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -39,6 +40,8 @@ export default function LessonPlansDashboard() {
   const [fileUrl, setFileUrl] = useState(null);
   const [loadingUrl, setLoadingUrl] = useState(false);
   const [resubmitting, setResubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [actionError, setActionError] = useState("");
   const deepLinkHandled = useRef(false);
 
   const subjectOptions = useMemo(() => {
@@ -137,6 +140,7 @@ export default function LessonPlansDashboard() {
 
   async function handleResubmit(plan, file) {
     setResubmitting(true);
+    setActionError("");
     const result = await resubmit({
       id: plan.id,
       file,
@@ -154,6 +158,30 @@ export default function LessonPlansDashboard() {
       setLoadingUrl(false);
     }
 
+    return result;
+  }
+
+  async function handleDelete(plan) {
+    if (!plan?.id) return { ok: false, error: new Error("Missing plan.") };
+    if (!confirmDelete(plan.lessonTitle || "this lesson plan")) {
+      return { ok: false, cancelled: true };
+    }
+
+    setDeleting(true);
+    setActionError("");
+    const result = await remove(plan);
+    setDeleting(false);
+
+    if (!result.ok) {
+      setActionError(result.error?.message ?? "Unable to delete lesson plan.");
+      return result;
+    }
+
+    if (selectedPlan?.id === plan.id) {
+      setDrawerOpen(false);
+      setSelectedPlan(null);
+      setFileUrl(null);
+    }
     return result;
   }
 
@@ -266,9 +294,9 @@ export default function LessonPlansDashboard() {
         </div>
       </header>
 
-      {error ? (
+      {error || actionError ? (
         <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
-          {error}
+          {actionError || error}
         </div>
       ) : null}
 
@@ -313,6 +341,7 @@ export default function LessonPlansDashboard() {
             onView={openPlan}
             onDownload={downloadPlan}
             onResubmit={handleResubmit}
+            onDelete={handleDelete}
           />
         )}
       </div>
@@ -323,9 +352,11 @@ export default function LessonPlansDashboard() {
         fileUrl={fileUrl}
         loadingUrl={loadingUrl}
         resubmitting={resubmitting}
+        deleting={deleting}
         onClose={() => setDrawerOpen(false)}
         onDownload={downloadPlan}
         onResubmit={handleResubmit}
+        onDelete={handleDelete}
       />
     </motion.div>
   );

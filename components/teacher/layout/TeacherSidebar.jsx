@@ -21,11 +21,11 @@ import {
   Sun,
 } from "lucide-react";
 import { useTheme } from "@/components/theme/ThemeProvider";
+import LogoutConfirmModal from "@/components/shared/LogoutConfirmModal";
 import { useUnreadNotificationCount } from "@/hooks/teacher/useUnreadNotificationCount";
 import { SIDEBAR_WIDTH_CLASS } from "@/lib/constants/layout";
 import { createClient } from "@/lib/supabase/client";
 import { getCurrentTeacherSession } from "@/lib/supabase/queries/myClasses";
-import { confirmLogout } from "@/lib/ui/confirmAction";
 import { cn } from "@/lib/utils";
 
 const menuNavigation = [
@@ -114,6 +114,8 @@ export default function TeacherSidebar({ className, mobile = false, onNavigate }
     role: "Teacher",
   });
   const { count: unreadCount } = useUnreadNotificationCount();
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const isDark = resolvedTheme === "dark";
 
@@ -149,15 +151,20 @@ export default function TeacherSidebar({ className, mobile = false, onNavigate }
     };
   }, []);
 
-  async function handleLogout() {
-    if (!confirmLogout()) return;
-    const supabase = createClient();
-    await supabase.auth.updateUser({
-      data: { portal_role: null, portal_active: null },
-    });
-    await supabase.auth.signOut();
-    router.replace("/login");
-    router.refresh();
+  async function confirmLogoutAction() {
+    setLoggingOut(true);
+    try {
+      const supabase = createClient();
+      await supabase.auth.updateUser({
+        data: { portal_role: null, portal_active: null },
+      });
+      await supabase.auth.signOut();
+      router.replace("/login");
+      router.refresh();
+    } finally {
+      setLoggingOut(false);
+      setLogoutOpen(false);
+    }
   }
 
   function isActive(href) {
@@ -256,13 +263,22 @@ export default function TeacherSidebar({ className, mobile = false, onNavigate }
         </div>
         <button
           type="button"
-          onClick={handleLogout}
+          onClick={() => setLogoutOpen(true)}
           className="inline-flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-white/65 transition-colors hover:bg-white/8 hover:text-white"
         >
           <LogOut size={16} />
           Logout
         </button>
       </div>
+
+      <LogoutConfirmModal
+        open={logoutOpen}
+        confirming={loggingOut}
+        onCancel={() => {
+          if (!loggingOut) setLogoutOpen(false);
+        }}
+        onConfirm={confirmLogoutAction}
+      />
     </aside>
   );
 }

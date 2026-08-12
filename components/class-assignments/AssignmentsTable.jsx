@@ -21,6 +21,7 @@ export default function AssignmentsTable({
   teachers,
   onFiltersChange,
   onEdit,
+  onClearGrades,
   onDelete,
   busy,
 }) {
@@ -115,6 +116,7 @@ export default function AssignmentsTable({
                   key={assignment.id}
                   assignment={assignment}
                   onEdit={onEdit}
+                  onClearGrades={onClearGrades}
                   onDelete={onDelete}
                   busy={busy}
                 />

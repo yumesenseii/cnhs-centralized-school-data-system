@@ -49,6 +49,13 @@ function riskLabel(value) {
   return String(value);
 }
 
+function termColumnClass(quarterNumber, columnQuarter) {
+  if (Number(quarterNumber) === Number(columnQuarter)) {
+    return "bg-[#f0faf4]";
+  }
+  return "";
+}
+
 /** LIS-style spreadsheet cell */
 const th =
   "sticky top-0 z-10 border border-slate-200 bg-[#f3f3f3] px-2 py-1.5 text-left text-[11px] font-semibold text-slate-600 whitespace-nowrap";
@@ -56,7 +63,9 @@ const td =
   "border border-slate-200 bg-white px-2 py-1 text-[12px] leading-snug text-slate-800 whitespace-nowrap";
 
 /**
- * LIS Enrollment–style landscape file modal with Passing | Failing sheet tabs.
+ * LIS Enrollment–style landscape file modal with Failing | Moderate | Passing tabs.
+ * Failing = grade < 75 · Moderate = 75–80 · Passing = >80 (or ungraded).
+ * "At Risk" is reserved elsewhere for failing / High / ARAL — not this middle band.
  */
 export default function ClassReportFileModal({
   file,
@@ -82,20 +91,49 @@ export default function ClassReportFileModal({
 
   const editing = mode === "edit";
   const allLearners = useMemo(
-    () => [...(file?.passingLearners || []), ...(file?.failingLearners || [])],
+    () => [
+      ...(file?.failingLearners || []),
+      ...(file?.moderateLearners || file?.atRiskLearners || []),
+      ...(file?.passingLearners || []),
+    ],
     [file]
   );
 
   const rows =
-    tab === "passing" ? file?.passingLearners || [] : file?.failingLearners || [];
+    tab === "failing"
+      ? file?.failingLearners || []
+      : tab === "moderate"
+        ? file?.moderateLearners || file?.atRiskLearners || []
+        : file?.passingLearners || [];
 
   const tabs = useMemo(
     () => [
-      { id: "passing", label: "PASSING", count: file?.passingCount ?? 0 },
-      { id: "failing", label: "FAILING", count: file?.failingCount ?? 0 },
+      {
+        id: "failing",
+        label: "FAILING",
+        count: file?.failingCount ?? 0,
+      },
+      {
+        id: "moderate",
+        label: "MODERATE",
+        count: file?.moderateCount ?? file?.atRiskCount ?? 0,
+      },
+      {
+        id: "passing",
+        label: "PASSING",
+        count: file?.passingCount ?? 0,
+      },
     ],
     [file]
   );
+
+  useEffect(() => {
+    // Prefer the sheet that has learners when opening a file.
+    if ((file?.failingCount ?? 0) > 0) setTab("failing");
+    else if ((file?.moderateCount ?? file?.atRiskCount ?? 0) > 0) {
+      setTab("moderate");
+    } else setTab("passing");
+  }, [file?.id]);
 
   useEffect(() => {
     setDraft(emptyDraftFromLearners(allLearners));
@@ -222,7 +260,7 @@ export default function ClassReportFileModal({
             <p className="mt-1 text-[12px] text-slate-500">
               {editing
                 ? "Edit Term 1–3 and Final cells, then Save Changes."
-                : "Read-only view. Click 'Edit File' to make changes."}
+                : `Read-only view · Risk classified on ${file.quarterLabel || "selected term"} only. Click 'Edit File' to make changes.`}
             </p>
           </div>
 
@@ -296,7 +334,14 @@ export default function ClassReportFileModal({
                   <th className={cn(th, "w-[76px] text-center")}>Term 2</th>
                   <th className={cn(th, "w-[76px] text-center")}>Term 3</th>
                   <th className={cn(th, "w-[76px] text-center")}>Final</th>
-                  <th className={cn(th, "min-w-[90px] text-center")}>Risk</th>
+                  <th className={cn(th, "min-w-[90px] text-center")}>
+                    Risk
+                    {file.quarterLabel ? (
+                      <span className="block text-[9px] font-medium normal-case tracking-normal text-slate-400">
+                        ({file.quarterLabel})
+                      </span>
+                    ) : null}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -317,7 +362,14 @@ export default function ClassReportFileModal({
                         {learner.studentNumber || "—"}
                       </td>
                       {[1, 2, 3, 4].map((q) => (
-                        <td key={q} className={cn(td, "p-0 text-center")}>
+                        <td
+                          key={q}
+                          className={cn(
+                            td,
+                            "p-0 text-center",
+                            termColumnClass(file.quarterNumber, q)
+                          )}
+                        >
                           {editing && !showHtReview ? (
                             <input
                               type="text"

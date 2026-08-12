@@ -15,7 +15,7 @@ import {
 import { SIDEBAR_WIDTH_CLASS } from "@/lib/constants/layout";
 import { createClient } from "@/lib/supabase/client";
 import { getCurrentStudentSession } from "@/lib/supabase/queries/studentPortal";
-import { confirmLogout } from "@/lib/ui/confirmAction";
+import LogoutConfirmModal from "@/components/shared/LogoutConfirmModal";
 import { cn } from "@/lib/utils";
 
 const menuNavigation = [
@@ -80,6 +80,8 @@ export default function StudentSidebar({ className, mobile = false, onNavigate }
     name: "Student",
     role: "Student",
   });
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,15 +111,20 @@ export default function StudentSidebar({ className, mobile = false, onNavigate }
     };
   }, []);
 
-  async function handleLogout() {
-    if (!confirmLogout()) return;
-    const supabase = createClient();
-    await supabase.auth.updateUser({
-      data: { portal_role: null, portal_active: null },
-    });
-    await supabase.auth.signOut();
-    router.replace("/login");
-    router.refresh();
+  async function confirmLogoutAction() {
+    setLoggingOut(true);
+    try {
+      const supabase = createClient();
+      await supabase.auth.updateUser({
+        data: { portal_role: null, portal_active: null },
+      });
+      await supabase.auth.signOut();
+      router.replace("/login");
+      router.refresh();
+    } finally {
+      setLoggingOut(false);
+      setLogoutOpen(false);
+    }
   }
 
   function isActive(href) {
@@ -201,7 +208,7 @@ export default function StudentSidebar({ className, mobile = false, onNavigate }
           </div>
           <button
             type="button"
-            onClick={handleLogout}
+            onClick={() => setLogoutOpen(true)}
             aria-label="Log out"
             className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-white/55 transition-colors hover:bg-white/10 hover:text-white"
           >
@@ -209,6 +216,15 @@ export default function StudentSidebar({ className, mobile = false, onNavigate }
           </button>
         </div>
       </div>
+
+      <LogoutConfirmModal
+        open={logoutOpen}
+        confirming={loggingOut}
+        onCancel={() => {
+          if (!loggingOut) setLogoutOpen(false);
+        }}
+        onConfirm={confirmLogoutAction}
+      />
     </aside>
   );
 }

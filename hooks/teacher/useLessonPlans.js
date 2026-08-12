@@ -10,6 +10,7 @@ import {
   markLessonPlanUnderReview,
   resubmitLessonPlan,
   reviewLessonPlan,
+  deleteTeacherLessonPlan,
 } from "@/lib/supabase/queries/lessonPlans";
 import { getCurrentTeacherSession } from "@/lib/supabase/queries/myClasses";
 import { getAdminSession } from "@/lib/supabase/queries/adminAuth";
@@ -123,6 +124,27 @@ export function useTeacherLessonPlans() {
     [refresh, teacher?.id]
   );
 
+  const remove = useCallback(
+    async (plan) => {
+      if (!teacher?.id) {
+        return { ok: false, error: new Error("Teacher session is required.") };
+      }
+      if (!plan?.id) {
+        return { ok: false, error: new Error("Lesson plan id is required.") };
+      }
+
+      const result = await deleteTeacherLessonPlan({
+        id: plan.id,
+        teacherId: teacher.id,
+      });
+
+      if (result.error) return { ok: false, error: result.error };
+      await refresh();
+      return { ok: true, data: result.data };
+    },
+    [refresh, teacher?.id]
+  );
+
   return {
     plans,
     kpis,
@@ -133,6 +155,7 @@ export function useTeacherLessonPlans() {
     error,
     refresh,
     resubmit,
+    remove,
   };
 }
 

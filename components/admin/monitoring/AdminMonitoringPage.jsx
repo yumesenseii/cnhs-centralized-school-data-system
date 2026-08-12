@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   BookOpen,
   CheckCircle2,
+  ChevronDown,
   Clock3,
   FileSpreadsheet,
   Loader2,
@@ -38,27 +39,35 @@ import {
 } from "@/lib/reports/aralRecommendedExport";
 import { cn } from "@/lib/utils";
 
+const MONITORING_TABS = [
+  { id: "received", label: "Received files" },
+  { id: "approve", label: "Approve ARAL" },
+  { id: "facilitators", label: "Assign facilitators" },
+  { id: "progress", label: "ARAL assessments" },
+  { id: "students", label: "Monitored students" },
+];
+
 function StatCard({ label, value, icon: Icon, tone, alert }) {
   return (
-    <div className="relative rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
+    <div className="relative flex min-w-0 items-center gap-2 rounded-lg border border-slate-100 bg-white px-2.5 py-2 shadow-[0_4px_12px_rgba(15,23,42,0.03)]">
       {alert ? (
-        <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-red-500" />
+        <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
       ) : null}
-      <div className="flex items-start gap-2.5">
-        <span
-          className={cn(
-            "flex h-8 w-8 items-center justify-center rounded-lg",
-            tone
-          )}
-        >
-          <Icon size={15} strokeWidth={1.8} />
-        </span>
-        <div>
-          <p className="text-xl font-semibold tracking-[-0.03em] text-slate-900">
-            {value}
-          </p>
-          <p className="mt-0.5 text-[11px] font-semibold text-slate-700">{label}</p>
-        </div>
+      <span
+        className={cn(
+          "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
+          tone
+        )}
+      >
+        <Icon size={13} strokeWidth={1.8} />
+      </span>
+      <div className="min-w-0">
+        <p className="text-base font-semibold leading-none tracking-[-0.03em] text-slate-900 sm:text-lg">
+          {value}
+        </p>
+        <p className="mt-0.5 truncate text-[10px] font-semibold text-slate-600">
+          {label}
+        </p>
       </div>
     </div>
   );
@@ -282,6 +291,8 @@ export default function AdminMonitoringPage() {
   const [risk, setRisk] = useState("All Risks");
   const [status, setStatus] = useState("All Status");
   const [exportingAral, setExportingAral] = useState(false);
+  const [activeTab, setActiveTab] = useState("received");
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
 
   useEffect(() => {
     const riskParam = searchParams.get("risk");
@@ -291,6 +302,9 @@ export default function AdminMonitoringPage() {
     }
     if (recommendationParam) {
       setRecommendation(normalizeRecommendationType(recommendationParam));
+    }
+    if (riskParam || recommendationParam) {
+      setMoreFiltersOpen(true);
     }
   }, [searchParams]);
 
@@ -420,6 +434,27 @@ export default function AdminMonitoringPage() {
     });
   }
 
+  const moreFiltersActive =
+    recommendation !== "All Recommendations" ||
+    risk !== "All Risks" ||
+    status !== "All Status";
+
+  function refreshWithCurrentFilters(extra = {}) {
+    return refresh({
+      schoolYear: schoolYear || undefined,
+      quarterNumber:
+        quarter !== "All Terms"
+          ? Number(String(quarter).replace(/\D/g, "")) || null
+          : null,
+      gradeLevel:
+        grade !== "All Grades"
+          ? Number(String(grade).replace(/\D/g, "")) || null
+          : null,
+      sectionName: section !== "All Sections" ? section : null,
+      ...extra,
+    });
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -430,152 +465,58 @@ export default function AdminMonitoringPage() {
       <Header
         breadcrumb="Home > Academic Monitoring"
         title="Academic Monitoring"
-        description="Review at-risk learners, ARAL weekly progress from teachers (view-only), and remediation monitoring."
+        description="Track at-risk learners, ARAL approvals, and remediation across classes."
+        controls={
+          <>
+            <button
+              type="button"
+              onClick={handleExportAralRecommended}
+              disabled={loading || exportingAral}
+              title="Export English/Filipino learners recommended for ARAL (for review)"
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50 px-3 text-[12px] font-semibold text-sky-800 transition-colors hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {exportingAral ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <FileSpreadsheet size={13} />
+              )}
+              Export ARAL
+              {aralExportCount > 0 ? (
+                <span className="rounded-full bg-white/80 px-1.5 text-[10px] font-bold text-sky-700">
+                  {aralExportCount}
+                </span>
+              ) : null}
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                handleServerFilterChange({
+                  schoolYear,
+                  quarter,
+                  grade,
+                  section,
+                })
+              }
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+            >
+              <RefreshCw
+                size={13}
+                className={refreshing || loading ? "animate-spin" : ""}
+              />
+              Refresh
+            </button>
+          </>
+        }
       />
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[12px] text-slate-500">
-          Showing monitored students across assigned classes. Recommendations
-          are generated by the Random Forest recommendation engine. ARAL export
-          is a system suggestion for educator review.
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleExportAralRecommended}
-            disabled={loading || exportingAral}
-            title="Export English/Filipino learners recommended for ARAL (for review)"
-            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50 px-3 text-[12px] font-semibold text-sky-800 transition-colors hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {exportingAral ? (
-              <Loader2 size={13} className="animate-spin" />
-            ) : (
-              <FileSpreadsheet size={13} />
-            )}
-            Export ARAL Recommended
-            {aralExportCount > 0 ? (
-              <span className="rounded-full bg-white/80 px-1.5 text-[10px] font-bold text-sky-700">
-                {aralExportCount}
-              </span>
-            ) : null}
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              handleServerFilterChange({
-                schoolYear,
-                quarter,
-                grade,
-                section,
-              })
-            }
-            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
-          >
-            <RefreshCw size={13} className={refreshing || loading ? "animate-spin" : ""} />
-            Refresh
-          </button>
-        </div>
-      </div>
-
       {error ? (
-        <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+        <div className="mb-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
           {error}
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard
-          label="Total At-Risk Students"
-          value={stats.totalAtRisk}
-          icon={Users}
-          tone="bg-sky-50 text-sky-600"
-          alert={stats.totalAtRisk > 0}
-        />
-        <StatCard
-          label="ARAL Recommendations"
-          value={stats.aral}
-          icon={Clock3}
-          tone="bg-orange-50 text-cnhs-orange"
-          alert={stats.aral > 0}
-        />
-        <StatCard
-          label="Classroom Remedial"
-          value={stats.remediation}
-          icon={BookOpen}
-          tone="bg-green-50 text-cnhs-green-dark"
-        />
-        <StatCard
-          label="Ongoing Monitoring"
-          value={stats.ongoing}
-          icon={AlertTriangle}
-          tone="bg-red-50 text-red-500"
-          alert={stats.ongoing > 0}
-        />
-        <StatCard
-          label="Completed Monitoring"
-          value={stats.completed}
-          icon={CheckCircle2}
-          tone="bg-emerald-50 text-emerald-600"
-        />
-      </div>
-
-      <div className="mt-3 space-y-3">
-        <AdminClassReportFilesPanel
-          students={students}
-          classSummaries={classSummaries}
-          onChanged={() =>
-            refresh({
-              schoolYear: schoolYear || undefined,
-              quarterNumber:
-                quarter !== "All Terms"
-                  ? Number(String(quarter).replace(/\D/g, "")) || null
-                  : null,
-              gradeLevel:
-                grade !== "All Grades"
-                  ? Number(String(grade).replace(/\D/g, "")) || null
-                  : null,
-              sectionName: section !== "All Sections" ? section : null,
-              bustCache: true,
-            })
-          }
-        />
-
-        <AdminAralApprovalPanel
-          students={filtered}
-          onChanged={() =>
-            refresh({
-              schoolYear: schoolYear || undefined,
-              quarterNumber:
-                quarter !== "All Terms"
-                  ? Number(String(quarter).replace(/\D/g, "")) || null
-                  : null,
-              gradeLevel:
-                grade !== "All Grades"
-                  ? Number(String(grade).replace(/\D/g, "")) || null
-                  : null,
-              sectionName: section !== "All Sections" ? section : null,
-              bustCache: true,
-            })
-          }
-        />
-        <AdminAralFacilitatorAssignPanel
-          students={students}
-          onChanged={() => refresh({
-            schoolYear: schoolYear || undefined,
-            quarterNumber:
-              quarter !== "All Terms"
-                ? Number(String(quarter).replace(/\D/g, "")) || null
-                : null,
-          })}
-        />
-        <AdminAralProgressPanel
-          students={students}
-          onViewStudent={openStudent}
-        />
-      </div>
-
-      <section className="mt-3 rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+      <section className="mb-3 rounded-xl border border-slate-100 bg-white p-2.5 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-3">
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -605,7 +546,13 @@ export default function AdminMonitoringPage() {
             >
               {(filterOptions.quarters.length > 1
                 ? filterOptions.quarters
-                : ["All Terms", "Term 1", "Term 2", "Term 3", "Final Grade / Average"]
+                : [
+                    "All Terms",
+                    "Term 1",
+                    "Term 2",
+                    "Term 3",
+                    "Final Grade / Average",
+                  ]
               ).map((option) => (
                 <option key={option} value={option}>
                   {option}
@@ -638,6 +585,41 @@ export default function AdminMonitoringPage() {
                 </option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={() => setMoreFiltersOpen((open) => !open)}
+              className={cn(
+                "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-[11px] font-semibold transition-colors",
+                moreFiltersOpen || moreFiltersActive
+                  ? "border-cnhs-green/40 bg-emerald-50 text-cnhs-green-dark"
+                  : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+              )}
+            >
+              More filters
+              <ChevronDown
+                size={12}
+                className={cn(
+                  "transition-transform",
+                  moreFiltersOpen ? "rotate-180" : ""
+                )}
+              />
+              {moreFiltersActive ? (
+                <span className="h-1.5 w-1.5 rounded-full bg-cnhs-green-dark" />
+              ) : null}
+            </button>
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-500 transition-colors hover:bg-slate-50"
+            >
+              <X size={12} />
+              Clear
+            </button>
+          </div>
+        </div>
+
+        {moreFiltersOpen ? (
+          <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
             <select
               value={recommendation}
               onChange={(e) => setRecommendation(e.target.value)}
@@ -676,34 +658,134 @@ export default function AdminMonitoringPage() {
                 </option>
               ))}
             </select>
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-500 transition-colors hover:bg-slate-50"
-            >
-              <X size={12} />
-              Clear
-            </button>
           </div>
-        </div>
+        ) : null}
       </section>
 
-      <div className="mt-3">
-        {loading && students.length === 0 ? (
-          <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-100 bg-white py-10 text-sm text-slate-500">
-            <Loader2 size={16} className="animate-spin" />
-            Loading monitoring data…
-          </div>
-        ) : (
-          <LearnersInterventionTable
-            learners={filtered}
-            schoolYear={activeSchoolYear}
-            quarter={quarter === "All Terms" ? "All Terms" : quarter}
-            onViewMonitoring={openStudent}
-            title="Monitored Students"
-            showAralApproval
+      <div className="mb-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-2.5 sm:p-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+          <StatCard
+            label="At-Risk"
+            value={stats.totalAtRisk}
+            icon={Users}
+            tone="bg-sky-50 text-sky-600"
+            alert={stats.totalAtRisk > 0}
           />
-        )}
+          <StatCard
+            label="ARAL"
+            value={stats.aral}
+            icon={Clock3}
+            tone="bg-orange-50 text-cnhs-orange"
+            alert={stats.aral > 0}
+          />
+          <StatCard
+            label="Remedial"
+            value={stats.remediation}
+            icon={BookOpen}
+            tone="bg-green-50 text-cnhs-green-dark"
+          />
+          <StatCard
+            label="Ongoing"
+            value={stats.ongoing}
+            icon={AlertTriangle}
+            tone="bg-red-50 text-red-500"
+            alert={stats.ongoing > 0}
+          />
+          <StatCard
+            label="Completed"
+            value={stats.completed}
+            icon={CheckCircle2}
+            tone="bg-emerald-50 text-emerald-600"
+          />
+        </div>
+      </div>
+
+      <div
+        className="mb-3 flex items-end gap-4 overflow-x-auto border-b border-slate-200"
+        role="tablist"
+        aria-label="Academic monitoring panels"
+      >
+        {MONITORING_TABS.map((tab) => {
+          const selected = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "-mb-px shrink-0 cursor-pointer border-b-2 px-0.5 pb-2.5 text-[13px] transition-colors",
+                selected
+                  ? "border-cnhs-green-dark font-semibold text-cnhs-green-dark"
+                  : "border-transparent font-medium text-slate-500 hover:text-slate-700"
+              )}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        role="tabpanel"
+        id={`admin-monitoring-panel-${activeTab}`}
+        aria-labelledby={`admin-monitoring-tab-${activeTab}`}
+      >
+        {activeTab === "received" ? (
+          <AdminClassReportFilesPanel
+            students={students}
+            classSummaries={classSummaries}
+            onChanged={() => refreshWithCurrentFilters({ bustCache: true })}
+          />
+        ) : null}
+
+        {activeTab === "approve" ? (
+          <AdminAralApprovalPanel
+            students={filtered}
+            onChanged={() => refreshWithCurrentFilters({ bustCache: true })}
+          />
+        ) : null}
+
+        {activeTab === "facilitators" ? (
+          <AdminAralFacilitatorAssignPanel
+            students={students}
+            onChanged={() =>
+              refresh({
+                schoolYear: schoolYear || undefined,
+                quarterNumber:
+                  quarter !== "All Terms"
+                    ? Number(String(quarter).replace(/\D/g, "")) || null
+                    : null,
+              })
+            }
+          />
+        ) : null}
+
+        {activeTab === "progress" ? (
+          <AdminAralProgressPanel
+            students={students}
+            onViewStudent={openStudent}
+          />
+        ) : null}
+
+        {activeTab === "students" ? (
+          loading && students.length === 0 ? (
+            <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-100 bg-white py-10 text-sm text-slate-500">
+              <Loader2 size={16} className="animate-spin" />
+              Loading monitoring data…
+            </div>
+          ) : (
+            <LearnersInterventionTable
+              learners={filtered}
+              schoolYear={activeSchoolYear}
+              quarter={quarter === "All Terms" ? "All Terms" : quarter}
+              onViewMonitoring={openStudent}
+              title="Monitored Students"
+              showAralApproval
+            />
+          )
+        ) : null}
       </div>
 
       <DetailPanel

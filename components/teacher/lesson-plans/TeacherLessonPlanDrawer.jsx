@@ -1,7 +1,15 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Download, ExternalLink, FileText, Loader2, Upload, X } from "lucide-react";
+import {
+  Download,
+  ExternalLink,
+  FileText,
+  Loader2,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import StatusBadge from "@/components/teacher/lesson-plans/StatusBadge";
 import { VIEW_MODAL_BACKDROP, VIEW_MODAL_PANEL } from "@/lib/ui/viewModal";
 import { cn } from "@/lib/utils";
@@ -18,12 +26,15 @@ export default function TeacherLessonPlanDrawer({
   fileUrl,
   loadingUrl = false,
   resubmitting = false,
+  deleting = false,
   onClose,
   onDownload,
   onResubmit,
+  onDelete,
 }) {
   const fileInputRef = useRef(null);
   const [resubmitError, setResubmitError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
 
   if (!open || !plan) return null;
 
@@ -223,6 +234,11 @@ export default function TeacherLessonPlanDrawer({
               {resubmitError}
             </div>
           ) : null}
+          {deleteError ? (
+            <div className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-[12px] text-red-600">
+              {deleteError}
+            </div>
+          ) : null}
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-4 py-3 sm:px-5">
@@ -242,6 +258,27 @@ export default function TeacherLessonPlanDrawer({
           </button>
           <button
             type="button"
+            disabled={deleting || resubmitting}
+            onClick={async () => {
+              setDeleteError("");
+              const result = await onDelete?.(plan);
+              if (result && result.ok === false) {
+                setDeleteError(
+                  result.error?.message ?? "Failed to delete lesson plan."
+                );
+              }
+            }}
+            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 text-[11px] font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {deleting ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <Trash2 size={13} />
+            )}
+            {deleting ? "Deleting..." : "Delete"}
+          </button>
+          <button
+            type="button"
             onClick={() => onDownload?.(plan)}
             className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white hover:bg-[#246f54]"
           >
@@ -251,7 +288,7 @@ export default function TeacherLessonPlanDrawer({
           {canResubmit ? (
             <button
               type="button"
-              disabled={resubmitting}
+              disabled={resubmitting || deleting}
               onClick={() => fileInputRef.current?.click()}
               className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-cnhs-orange bg-orange-50 px-3 text-[11px] font-semibold text-cnhs-orange transition-colors hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-70"
             >

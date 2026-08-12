@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
@@ -10,6 +10,7 @@ import {
   Menu,
   RefreshCw,
   Search,
+  X,
 } from "lucide-react";
 import {
   Sheet,
@@ -65,6 +66,31 @@ export default function MonitoringDashboard() {
   const [modalFile, setModalFile] = useState(null);
   const [modalMode, setModalMode] = useState("view");
   const [metaTick, setMetaTick] = useState(0);
+  const [toast, setToast] = useState(null);
+  const toastTimerRef = useRef(null);
+
+  function clearToastTimer() {
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+  }
+
+  function showToast({ title, message, tone = "success" }) {
+    clearToastTimer();
+    setToast({ title, message, tone });
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast(null);
+      toastTimerRef.current = null;
+    }, 3500);
+  }
+
+  function dismissToast() {
+    clearToastTimer();
+    setToast(null);
+  }
+
+  useEffect(() => () => clearToastTimer(), []);
 
   const teacherDisplayName = useMemo(() => {
     const named = formatPersonName(teacher);
@@ -179,7 +205,11 @@ export default function MonitoringDashboard() {
       });
     } catch (err) {
       console.error(err);
-      window.alert("Unable to export ARAL recommended list.");
+      showToast({
+        title: "Export failed",
+        message: "Unable to export ARAL recommended list.",
+        tone: "error",
+      });
     } finally {
       setExportingAral(false);
     }
@@ -195,17 +225,27 @@ export default function MonitoringDashboard() {
         profileId: profile?.id ?? null,
       });
       if (result.error) {
-        window.alert(result.error.message);
+        showToast({
+          title: "Could not send",
+          message: result.error.message || "Unable to send file to HT.",
+          tone: "error",
+        });
         return;
       }
-      window.alert(
-        `Sent ${result.data.submitted} ARAL recommendation(s) from “${file.fileName}” to the Head Teacher.`
-      );
+      showToast({
+        title: "Sent to HT",
+        message: `Sent ${result.data.submitted} ARAL recommendation(s) from “${file.fileName}” to the Head Teacher.`,
+        tone: "success",
+      });
       await refresh();
       setMetaTick((n) => n + 1);
     } catch (err) {
       console.error(err);
-      window.alert("Unable to send file to HT.");
+      showToast({
+        title: "Could not send",
+        message: "Unable to send file to HT.",
+        tone: "error",
+      });
     } finally {
       setSubmittingFileId("");
     }
@@ -223,106 +263,100 @@ export default function MonitoringDashboard() {
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="pb-5"
     >
-      <header className="mb-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-medium text-slate-400">
-              <Link href="/teacher/dashboard" className="hover:text-slate-600">
-                Home
-              </Link>
-              <span className="text-slate-300"> &gt; </span>
-              <span className="font-semibold text-slate-600">
-                Academic Monitoring
-              </span>
-            </p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-900 sm:text-[28px]">
-              Academic Monitoring
-            </h1>
-            <p className="mt-1 text-[13px] text-slate-500">
-              {filtered.length} {filtered.length === 1 ? "file" : "files"}
-              {" · "}
-              {controls.schoolYear} · {controls.quarter}
-            </p>
+      <header className="mb-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-medium text-slate-400">
+                  <Link href="/teacher/dashboard" className="hover:text-slate-600">
+                    Home
+                  </Link>
+                  <span className="text-slate-300"> &gt; </span>
+                  <span className="font-semibold text-slate-600">
+                    Academic Monitoring
+                  </span>
+                </p>
+                <h1 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-900 sm:text-[28px]">
+                  Academic Monitoring
+                </h1>
+                <p className="mt-1 text-[13px] text-slate-500">
+                  {filtered.length} {filtered.length === 1 ? "file" : "files"}
+                  {" · "}
+                  {controls.schoolYear} · {controls.quarter}
+                  {" · "}
+                  {teacherDisplayName}
+                </p>
+              </div>
+
+              <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+                <SheetTrigger
+                  render={
+                    <button
+                      type="button"
+                      aria-label="Open teacher menu"
+                      className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm lg:hidden"
+                    />
+                  }
+                >
+                  <Menu size={18} />
+                </SheetTrigger>
+                <SheetContent
+                  side="left"
+                  showCloseButton={false}
+                  className={SIDEBAR_SHEET_CLASS}
+                >
+                  <SheetTitle className="sr-only">Teacher navigation</SheetTitle>
+                  <TeacherSidebar mobile onNavigate={() => setMenuOpen(false)} />
+                </SheetContent>
+              </Sheet>
+            </div>
           </div>
 
-          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-            <SheetTrigger
-              render={
-                <button
-                  type="button"
-                  aria-label="Open teacher menu"
-                  className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm lg:hidden"
-                />
-              }
-            >
-              <Menu size={18} />
-            </SheetTrigger>
-            <SheetContent
-              side="left"
-              showCloseButton={false}
-              className={SIDEBAR_SHEET_CLASS}
-            >
-              <SheetTitle className="sr-only">Teacher navigation</SheetTitle>
-              <TeacherSidebar mobile onNavigate={() => setMenuOpen(false)} />
-            </SheetContent>
-          </Sheet>
-        </div>
-
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          <div className="rounded-xl border border-slate-100 bg-white px-3.5 py-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
-              Managed by
-            </p>
-            <p className="mt-0.5 text-[13px] font-semibold text-slate-800">
-              {teacherDisplayName}
-            </p>
-          </div>
-          <div className="rounded-xl border border-slate-100 bg-white px-3.5 py-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
-              Scope
-            </p>
-            <p className="mt-0.5 text-[13px] font-semibold text-slate-800">
-              Class report files · generate in My Classes, send to HT here
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          {filterOptions.hasAralClass ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {filterOptions.hasAralClass ? (
+              <button
+                type="button"
+                onClick={handleExportAral}
+                disabled={loading || exportingAral}
+                className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-[12px] font-semibold text-cnhs-green-dark transition-colors hover:bg-emerald-100 disabled:opacity-60"
+              >
+                {exportingAral ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <FileSpreadsheet size={13} />
+                )}
+                Export ARAL
+                {aralExportCount > 0 ? (
+                  <span className="rounded-full bg-white/80 px-1.5 text-[10px] font-bold">
+                    {aralExportCount}
+                  </span>
+                ) : null}
+              </button>
+            ) : null}
             <button
               type="button"
-              onClick={handleExportAral}
-              disabled={loading || exportingAral}
-              className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 text-[11px] font-medium text-cnhs-green-dark shadow-sm transition-colors hover:bg-emerald-100 disabled:opacity-60"
+              onClick={() => refresh()}
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
             >
-              {exportingAral ? (
-                <Loader2 size={12} className="animate-spin" />
-              ) : (
-                <FileSpreadsheet size={12} />
-              )}
-              Export ARAL list
-              {aralExportCount > 0 ? (
-                <span className="rounded-full bg-white/80 px-1.5 text-[10px] font-bold">
-                  {aralExportCount}
-                </span>
-              ) : null}
+              <RefreshCw
+                size={13}
+                className={refreshing || loading ? "animate-spin" : ""}
+              />
+              Refresh
             </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => refresh()}
-            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 shadow-sm hover:bg-slate-50"
-          >
-            <RefreshCw size={12} className={refreshing || loading ? "animate-spin" : ""} />
-            Refresh
-          </button>
-          <Link
-            href="/teacher/my-classes"
-            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 shadow-sm hover:bg-slate-50"
-          >
-            Generate in My Classes
-          </Link>
+            <Link
+              href="/teacher/my-classes"
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+            >
+              Generate
+            </Link>
+          </div>
         </div>
+
+        <p className="mt-2 text-[11px] text-slate-500">
+          Class report files · generate in My Classes, send to HT here
+        </p>
       </header>
 
       {error ? (
@@ -446,6 +480,50 @@ export default function MonitoringDashboard() {
           }}
           showHtActions={Boolean(filterOptions.hasAralClass)}
         />
+      ) : null}
+
+      {toast ? (
+        <div
+          role="status"
+          className={
+            toast.tone === "error"
+              ? "fixed top-5 right-5 z-[80] flex w-[min(24rem,calc(100vw-2.5rem))] items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 shadow-lg"
+              : "fixed top-5 right-5 z-[80] flex w-[min(24rem,calc(100vw-2.5rem))] items-start gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 shadow-lg"
+          }
+        >
+          <div className="min-w-0 flex-1">
+            <p
+              className={
+                toast.tone === "error"
+                  ? "text-[12px] font-semibold text-red-800"
+                  : "text-[12px] font-semibold text-cnhs-green-dark"
+              }
+            >
+              {toast.title}
+            </p>
+            <p
+              className={
+                toast.tone === "error"
+                  ? "mt-0.5 text-[11px] leading-snug text-red-700"
+                  : "mt-0.5 text-[11px] leading-snug text-emerald-900/80"
+              }
+            >
+              {toast.message}
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={dismissToast}
+            className={
+              toast.tone === "error"
+                ? "inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-red-500 hover:bg-red-100"
+                : "inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-cnhs-green-dark/70 hover:bg-green-100"
+            }
+          >
+            <X size={14} />
+          </button>
+        </div>
       ) : null}
     </motion.div>
   );

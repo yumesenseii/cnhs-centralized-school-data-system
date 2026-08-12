@@ -344,7 +344,9 @@ export function useAdminMonitoring() {
     const approvals = await listAralApprovals({
       schoolYear:
         schoolYear || roster.students[0]?.schoolYear || "SY 2026-2027",
-      quarter,
+      // Always load all terms so Term 1 Send-to-HT rows stay visible under All Terms
+      // and when the page term filter differs from the report term.
+      quarter: null,
     });
     const studentsWithApprovals = attachAralApprovals(
       studentsWithFacilitators,

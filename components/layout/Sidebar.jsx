@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { SIDEBAR_WIDTH_CLASS } from "@/lib/constants/layout";
 import { createClient } from "@/lib/supabase/client";
-import { confirmLogout } from "@/lib/ui/confirmAction";
+import LogoutConfirmModal from "@/components/shared/LogoutConfirmModal";
 import { cn } from "@/lib/utils";
 
 const menuNavigation = [
@@ -116,6 +116,8 @@ export default function Sidebar({
     name: "Head Teacher",
     role: "Head Teacher",
   });
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -142,15 +144,20 @@ export default function Sidebar({
     };
   }, []);
 
-  async function handleLogout() {
-    if (!confirmLogout()) return;
-    const supabase = createClient();
-    await supabase.auth.updateUser({
-      data: { portal_role: null, portal_active: null },
-    });
-    await supabase.auth.signOut();
-    router.replace("/login");
-    router.refresh();
+  async function confirmLogoutAction() {
+    setLoggingOut(true);
+    try {
+      const supabase = createClient();
+      await supabase.auth.updateUser({
+        data: { portal_role: null, portal_active: null },
+      });
+      await supabase.auth.signOut();
+      router.replace("/login");
+      router.refresh();
+    } finally {
+      setLoggingOut(false);
+      setLogoutOpen(false);
+    }
   }
 
   function isActive(href) {
@@ -261,7 +268,7 @@ export default function Sidebar({
         </div>
         <button
           type="button"
-          onClick={handleLogout}
+          onClick={() => setLogoutOpen(true)}
           title="Logout"
           className={cn(
             "flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 text-[13px] font-medium text-white/72 transition-colors duration-200 hover:bg-white/8 hover:text-white",
@@ -272,6 +279,15 @@ export default function Sidebar({
           {!collapsed ? "Logout" : null}
         </button>
       </div>
+
+      <LogoutConfirmModal
+        open={logoutOpen}
+        confirming={loggingOut}
+        onCancel={() => {
+          if (!loggingOut) setLogoutOpen(false);
+        }}
+        onConfirm={confirmLogoutAction}
+      />
     </aside>
   );
 }

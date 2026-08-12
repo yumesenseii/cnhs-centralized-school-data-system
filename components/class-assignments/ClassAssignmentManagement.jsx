@@ -9,7 +9,7 @@ import AssignmentSummaryCards from "@/components/class-assignments/AssignmentSum
 import AssignmentsTable from "@/components/class-assignments/AssignmentsTable";
 import { useClassAssignments } from "@/hooks/admin/useClassAssignments";
 import { suggestCurrentSchoolYear } from "@/lib/admin/sectionMappers";
-import { confirmDelete } from "@/lib/ui/confirmAction";
+import { confirmClearClassGrades, confirmDelete } from "@/lib/ui/confirmAction";
 
 export default function ClassAssignmentManagement({ embedded = false }) {
   const {
@@ -28,6 +28,7 @@ export default function ClassAssignmentManagement({ embedded = false }) {
     handleCreate,
     handleUpdate,
     handleDelete,
+    handleClearGrades,
   } = useClassAssignments();
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -74,6 +75,21 @@ export default function ClassAssignmentManagement({ embedded = false }) {
       showToast(result.message || "Teacher assigned to class.");
     }
     return result;
+  }
+
+  async function onClearGrades(assignment) {
+    const label = `${assignment.subjectName} · ${assignment.gradeLabel} ${assignment.sectionName} · ${assignment.quarterLabel} · ${assignment.schoolYear}`;
+    if (!confirmClearClassGrades(label)) return;
+    const result = await handleClearGrades(assignment.id);
+    if (result.ok) {
+      const grades = result.gradesDeleted ?? 0;
+      const enrollments = result.enrollmentsDeleted ?? 0;
+      showToast(
+        grades || enrollments
+          ? `Cleared ${grades} grade row(s) and ${enrollments} enrollment(s). Class assignment kept.`
+          : "No grades found for this class. Assignment unchanged."
+      );
+    }
   }
 
   async function onDelete(assignment) {
@@ -149,6 +165,7 @@ export default function ClassAssignmentManagement({ embedded = false }) {
           teachers={teachers}
           onFiltersChange={setFilters}
           onEdit={openEdit}
+          onClearGrades={onClearGrades}
           onDelete={onDelete}
           busy={saving}
         />

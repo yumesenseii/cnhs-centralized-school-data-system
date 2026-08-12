@@ -85,8 +85,13 @@ export default function ClassReportFilesTable({
                           {file.fileName}
                         </p>
                         <p className="text-[11px] text-slate-400">
-                          {file.learnerCount} learners · {file.passingCount}{" "}
-                          passing · {file.failingCount} failing
+                          {file.learnerCount} learners · {file.failingCount}{" "}
+                          failing ·{" "}
+                          {file.moderateCount ?? file.atRiskCount ?? 0}{" "}
+                          moderate · {file.passingCount} passing
+                          {file.quarterLabel
+                            ? ` · ${file.quarterLabel}`
+                            : ""}
                         </p>
                       </div>
                     </div>
@@ -118,7 +123,7 @@ export default function ClassReportFilesTable({
                     <Pill value={file.htLabel} styles={htStyles} />
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex flex-wrap items-center justify-end gap-1.5">
+                    <div className="flex flex-wrap items-center justify-end gap-2.5">
                       <button
                         type="button"
                         onClick={() => onView?.(file)}

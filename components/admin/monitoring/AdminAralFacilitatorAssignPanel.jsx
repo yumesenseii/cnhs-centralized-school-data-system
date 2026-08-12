@@ -5,8 +5,10 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Folder,
   Loader2,
   UserPlus,
+  Users,
   X,
 } from "lucide-react";
 import {
@@ -20,6 +22,45 @@ import { confirmDelete } from "@/lib/ui/confirmAction";
 import { cn } from "@/lib/utils";
 
 const SECTIONS_PAGE_SIZE = 10;
+
+/** Prefer gradeLevel field; else parse "Grade 7 — Mabini" / "Grade 7 Mabini". */
+function parseGradeLabel(gradeSection, gradeLevel) {
+  const fromField = String(gradeLevel || "").trim();
+  if (/^Grade\s+\d+/i.test(fromField)) {
+    return fromField.match(/^(Grade\s+\d+)/i)?.[1] ?? fromField;
+  }
+  const m = String(gradeSection || "").match(/^(Grade\s+\d+)/i);
+  return m ? m[1] : "Other";
+}
+
+function sectionDisplayName(gradeSection, grade) {
+  const stripped = String(gradeSection || "")
+    .replace(/^Grade\s+\d+\s*[—–-]?\s*/i, "")
+    .trim();
+  return stripped || gradeSection || grade || "Section";
+}
+
+function gradeSortKey(grade) {
+  const n = Number(String(grade).replace(/\D/g, ""));
+  return Number.isFinite(n) ? n : 999;
+}
+
+function summarizeSectionFacilitator(learners = []) {
+  const assigned = learners.filter((l) => l.aralFacilitatorTeacherId);
+  if (!assigned.length) {
+    return { label: "Unassigned", teacherId: "", mixed: false };
+  }
+  const ids = new Set(assigned.map((l) => l.aralFacilitatorTeacherId));
+  if (ids.size > 1) {
+    return { label: "Multiple facilitators", teacherId: "", mixed: true };
+  }
+  const first = assigned[0];
+  return {
+    label: first.aralFacilitatorName || "Assigned",
+    teacherId: first.aralFacilitatorTeacherId || "",
+    mixed: false,
+  };
+}
 
 /**
  * Collapse Eng/Fil (and duplicate) rows into one learner per section.
@@ -42,6 +83,7 @@ function buildSectionGroups(aralRows = []) {
         name: row.name,
         studentNumber: row.studentNumber,
         gradeSection: sectionKey,
+        gradeLevel: row.gradeLevel || null,
         schoolYear: row.schoolYear || "SY 2026-2027",
         subjects: row.subject ? [row.subject] : [],
         teacherNames: row.teacherName ? [row.teacherName] : [],
@@ -78,19 +120,52 @@ function buildSectionGroups(aralRows = []) {
       );
       const unassigned = learners.filter((l) => !l.aralFacilitatorTeacherId)
         .length;
+      const sample = learners[0];
+      const grade = parseGradeLabel(gradeSection, sample?.gradeLevel);
+      const facilitator = summarizeSectionFacilitator(learners);
       return {
         gradeSection,
+        grade,
+        sectionName: sectionDisplayName(gradeSection, grade),
         learners,
         unassigned,
         count: learners.length,
+        facilitator,
       };
     })
-    .sort((a, b) => String(a.gradeSection).localeCompare(String(b.gradeSection)));
+    .sort((a, b) =>
+      String(a.gradeSection).localeCompare(String(b.gradeSection))
+    );
+}
+
+function buildGradeFolders(sectionGroups = []) {
+  const byGrade = new Map();
+
+  for (const group of sectionGroups) {
+    const grade = group.grade;
+    if (!byGrade.has(grade)) {
+      byGrade.set(grade, {
+        grade,
+        sections: [],
+        count: 0,
+        unassigned: 0,
+      });
+    }
+    const folder = byGrade.get(grade);
+    folder.sections.push(group);
+    folder.count += group.count;
+    folder.unassigned += group.unassigned;
+  }
+
+  return [...byGrade.values()].sort(
+    (a, b) => gradeSortKey(a.grade) - gradeSortKey(b.grade)
+  );
 }
 
 /**
- * Admin panel: assign Summer ARAL Program facilitators to ARAL Learners.
- * Grouped by section; subject teachers still identify; facilitators submit weekly progress.
+ * Admin panel: assign Summer ARAL facilitators by grade → section.
+ * Roster from identified ARAL learners; DB still one row per student.
+ * TODO: Excel Section→Facilitator template download/upload (bulk map).
  */
 export default function AdminAralFacilitatorAssignPanel({
   students = [],
@@ -106,6 +181,11 @@ export default function AdminAralFacilitatorAssignPanel({
     [aralRows]
   );
 
+  const gradeFolders = useMemo(
+    () => buildGradeFolders(sectionGroups),
+    [sectionGroups]
+  );
+
   const uniqueLearnerCount = useMemo(() => {
     const ids = new Set();
     for (const group of sectionGroups) {
@@ -114,6 +194,7 @@ export default function AdminAralFacilitatorAssignPanel({
     return ids.size;
   }, [sectionGroups]);
 
+  const [selectedGrade, setSelectedGrade] = useState(null);
   const [teachers, setTeachers] = useState([]);
   const [loadingTeachers, setLoadingTeachers] = useState(true);
   const [drafts, setDrafts] = useState({});
@@ -122,11 +203,18 @@ export default function AdminAralFacilitatorAssignPanel({
   // When ON: also overwrites existing facilitator assignments.
   const [overwriteExistingBySection, setOverwriteExistingBySection] =
     useState({});
-  const [openSections, setOpenSections] = useState({});
+  const [viewLearnersBySection, setViewLearnersBySection] = useState({});
   const [page, setPage] = useState(1);
   const [busyId, setBusyId] = useState("");
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
+
+  const activeFolder = useMemo(
+    () => gradeFolders.find((f) => f.grade === selectedGrade) ?? null,
+    [gradeFolders, selectedGrade]
+  );
+
+  const visibleSections = activeFolder?.sections ?? [];
 
   useEffect(() => {
     let cancelled = false;
@@ -154,19 +242,38 @@ export default function AdminAralFacilitatorAssignPanel({
     setPage(1);
   }, [sectionGroups]);
 
+  useEffect(() => {
+    setPage(1);
+    setViewLearnersBySection({});
+  }, [selectedGrade]);
+
+  useEffect(() => {
+    if (
+      selectedGrade &&
+      !gradeFolders.some((folder) => folder.grade === selectedGrade)
+    ) {
+      setSelectedGrade(null);
+    }
+  }, [gradeFolders, selectedGrade]);
+
   const totalPages = Math.max(
     1,
-    Math.ceil(sectionGroups.length / SECTIONS_PAGE_SIZE) || 1
+    Math.ceil(visibleSections.length / SECTIONS_PAGE_SIZE) || 1
   );
   const safePage = Math.min(Math.max(page, 1), totalPages);
   const pagedSections = useMemo(() => {
     const start = (safePage - 1) * SECTIONS_PAGE_SIZE;
-    return sectionGroups.slice(start, start + SECTIONS_PAGE_SIZE);
-  }, [sectionGroups, safePage]);
+    return visibleSections.slice(start, start + SECTIONS_PAGE_SIZE);
+  }, [visibleSections, safePage]);
 
-  function toggleSection(key) {
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
+  const sectionStart =
+    visibleSections.length === 0
+      ? 0
+      : (safePage - 1) * SECTIONS_PAGE_SIZE + 1;
+  const sectionEnd = Math.min(
+    safePage * SECTIONS_PAGE_SIZE,
+    visibleSections.length
+  );
 
   async function upsertLearner(learner, teacherId, profileId) {
     return upsertAralFacilitatorAssignment({
@@ -227,7 +334,7 @@ export default function AdminAralFacilitatorAssignPanel({
 
     if (!learnersToAssign.length) {
       setToast(
-        `All learners in ${group.gradeSection} are already assigned.`
+        `All learners in ${group.sectionName} are already assigned.`
       );
       return;
     }
@@ -261,7 +368,7 @@ export default function AdminAralFacilitatorAssignPanel({
     setToast(
       `Facilitator assigned to ${learnersToAssign.length} learner${
         learnersToAssign.length === 1 ? "" : "s"
-      } in ${group.gradeSection}.`
+      } in ${group.sectionName}.`
     );
     onChanged?.();
   }
@@ -289,15 +396,6 @@ export default function AdminAralFacilitatorAssignPanel({
     onChanged?.();
   }
 
-  const sectionStart =
-    sectionGroups.length === 0
-      ? 0
-      : (safePage - 1) * SECTIONS_PAGE_SIZE + 1;
-  const sectionEnd = Math.min(
-    safePage * SECTIONS_PAGE_SIZE,
-    sectionGroups.length
-  );
-
   return (
     <section className="overflow-hidden rounded-xl border border-violet-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-violet-50 bg-violet-50/40 px-3 py-2.5 sm:px-4">
@@ -305,16 +403,16 @@ export default function AdminAralFacilitatorAssignPanel({
           <h2 className="text-sm font-semibold text-slate-900">
             Assign ARAL Facilitators
           </h2>
-          <p className="mt-0.5 text-[11px] text-slate-500">
-            Browse by section, then assign a Summer ARAL facilitator. Subject
-            teachers still identify Eng/Fil ARAL Learners; facilitators submit
-            weekly progress.
+          <p className="mt-0.5 max-w-2xl text-[11px] text-slate-500">
+            Open a grade folder, then assign one facilitator per section. Roster
+            comes from identified ARAL learners — no separate student upload.
           </p>
         </div>
         <span className="inline-flex rounded-full bg-violet-100 px-2.5 py-0.5 text-[10px] font-semibold text-violet-700">
           {uniqueLearnerCount} learner
           {uniqueLearnerCount === 1 ? "" : "s"} · {sectionGroups.length}{" "}
-          section{sectionGroups.length === 1 ? "" : "s"}
+          section{sectionGroups.length === 1 ? "" : "s"} · {gradeFolders.length}{" "}
+          grade{gradeFolders.length === 1 ? "" : "s"}
         </span>
       </div>
 
@@ -334,44 +432,155 @@ export default function AdminAralFacilitatorAssignPanel({
           No ARAL Learners identified yet. English / Filipino teachers identify
           candidates from ECR grades first.
         </p>
-      ) : (
-        <div className="divide-y divide-slate-100">
-          {pagedSections.map((group) => {
-            const open = Boolean(openSections[group.gradeSection]);
-            const sectionBusy = busyId === `section:${group.gradeSection}`;
-            return (
-              <div key={group.gradeSection}>
+      ) : !selectedGrade ? (
+        <div className="p-3 sm:p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {gradeFolders.map((folder) => {
+              const attention = folder.unassigned > 0;
+              return (
                 <button
+                  key={folder.grade}
                   type="button"
-                  onClick={() => toggleSection(group.gradeSection)}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-slate-50/80 sm:px-4"
+                  onClick={() => setSelectedGrade(folder.grade)}
+                  className="group flex cursor-pointer flex-col rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-[0_6px_16px_rgba(15,23,42,0.04)] transition-colors hover:border-violet-200 hover:bg-violet-50/30"
                 >
-                  <ChevronDown
-                    size={16}
-                    className={cn(
-                      "shrink-0 text-slate-400 transition-transform",
-                      open ? "rotate-180" : ""
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-700 ring-1 ring-violet-100">
+                      <Folder size={18} strokeWidth={1.75} />
+                    </span>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        attention
+                          ? "bg-amber-50 text-amber-800 ring-1 ring-amber-100"
+                          : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "h-1.5 w-1.5 rounded-full",
+                          attention ? "bg-amber-500" : "bg-emerald-500"
+                        )}
+                      />
+                      {attention ? "Needs assign" : "Assigned"}
+                    </span>
+                  </div>
+
+                  <p className="mt-4 text-[13px] font-semibold tracking-[-0.01em] text-slate-900">
+                    {folder.grade}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-slate-500">
+                    {folder.count} learner{folder.count === 1 ? "" : "s"} ·{" "}
+                    {folder.sections.length} section
+                    {folder.sections.length === 1 ? "" : "s"}
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {folder.unassigned > 0 ? (
+                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800 ring-1 ring-amber-100">
+                        {folder.unassigned} unassigned
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-100">
+                        All assigned
+                      </span>
                     )}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-semibold text-slate-800">
-                      {group.gradeSection}
-                    </p>
-                    <p className="text-[10px] text-slate-500">
-                      {group.count} learner{group.count === 1 ? "" : "s"}
-                      {group.unassigned > 0
-                        ? ` · ${group.unassigned} unassigned`
-                        : " · all assigned"}
-                    </p>
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between border-t border-slate-50 pt-3">
+                    <span className="text-[11px] text-slate-400">
+                      Open sections
+                    </span>
+                    <span className="text-[11px] font-semibold text-violet-700 opacity-0 transition-opacity group-hover:opacity-100">
+                      Open →
+                    </span>
                   </div>
                 </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-3 py-2.5 sm:px-4">
+            <button
+              type="button"
+              onClick={() => setSelectedGrade(null)}
+              className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              <ChevronLeft size={13} />
+              All grades
+            </button>
+            <div className="min-w-0 text-right">
+              <p className="text-[13px] font-semibold text-slate-800">
+                {selectedGrade}
+              </p>
+              <p className="text-[10px] text-slate-500">
+                {activeFolder?.count ?? 0} learner
+                {(activeFolder?.count ?? 0) === 1 ? "" : "s"} ·{" "}
+                {visibleSections.length} section
+                {visibleSections.length === 1 ? "" : "s"}
+                {activeFolder?.unassigned
+                  ? ` · ${activeFolder.unassigned} unassigned`
+                  : " · all assigned"}
+              </p>
+            </div>
+          </div>
 
-                {open ? (
-                  <div className="border-t border-slate-50 bg-slate-50/40 px-3 py-3 sm:px-4">
-                    <div className="mb-3 flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-2.5 sm:flex-row sm:items-center">
+          <div className="divide-y divide-slate-100">
+            {pagedSections.map((group) => {
+              const sectionBusy = busyId === `section:${group.gradeSection}`;
+              const showLearners = Boolean(
+                viewLearnersBySection[group.gradeSection]
+              );
+              const overwriteExisting = Boolean(
+                overwriteExistingBySection[group.gradeSection]
+              );
+              const facilitatorLabel = group.facilitator?.label || "Unassigned";
+              const allAssigned = group.unassigned === 0;
+
+              return (
+                <div key={group.gradeSection} className="px-3 py-3 sm:px-4">
+                  <div className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_4px_12px_rgba(15,23,42,0.03)]">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-semibold text-slate-800">
+                          {group.sectionName}
+                        </p>
+                        <p className="mt-0.5 text-[10px] text-slate-500">
+                          {group.count} learner{group.count === 1 ? "" : "s"}
+                          {group.unassigned > 0
+                            ? ` · ${group.unassigned} unassigned`
+                            : " · all assigned"}
+                        </p>
+                        <p
+                          className={cn(
+                            "mt-1 text-[11px] font-medium",
+                            allAssigned && !group.facilitator?.mixed
+                              ? "text-violet-700"
+                              : group.facilitator?.mixed
+                                ? "text-amber-700"
+                                : "text-amber-600"
+                          )}
+                        >
+                          Facilitator: {facilitatorLabel}
+                        </p>
+                      </div>
+                      {group.unassigned > 0 ? (
+                        <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-100">
+                          {group.unassigned} pending
+                        </span>
+                      ) : (
+                        <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
+                          Assigned
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
                       <label className="min-w-0 flex-1">
                         <span className="sr-only">
-                          Facilitator for {group.gradeSection}
+                          Facilitator for {group.sectionName}
                         </span>
                         <select
                           value={sectionDrafts[group.gradeSection] || ""}
@@ -382,7 +591,7 @@ export default function AdminAralFacilitatorAssignPanel({
                               [group.gradeSection]: e.target.value,
                             }))
                           }
-                          className="h-7 w-full cursor-pointer rounded-full border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-700 outline-none focus:border-cnhs-green"
+                          className="h-8 w-full cursor-pointer rounded-full border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-700 outline-none focus:border-cnhs-green"
                         >
                           <option value="">
                             {loadingTeachers
@@ -401,11 +610,10 @@ export default function AdminAralFacilitatorAssignPanel({
                         disabled={
                           sectionBusy ||
                           !sectionDrafts[group.gradeSection] ||
-                          (!Boolean(overwriteExistingBySection[group.gradeSection]) &&
-                            group.unassigned === 0)
+                          (!overwriteExisting && group.unassigned === 0)
                         }
                         onClick={() => handleAssignSection(group)}
-                        className="inline-flex h-7 shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white hover:bg-[#246f54] disabled:cursor-not-allowed disabled:opacity-60"
+                        className="inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-full bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white hover:bg-[#246f54] disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {sectionBusy ? (
                           <Loader2 size={12} className="animate-spin" />
@@ -416,13 +624,11 @@ export default function AdminAralFacilitatorAssignPanel({
                       </button>
                     </div>
 
-                    <label className="mb-3 flex items-center gap-2 rounded-full px-2 py-1.5 text-[11px] font-medium text-slate-700">
+                    <label className="mt-2 flex items-center gap-2 px-0.5 text-[11px] font-medium text-slate-600">
                       <input
                         type="checkbox"
-                        className="h-4 w-4 rounded-full border-slate-300 text-cnhs-green-dark accent-cnhs-green-dark focus:ring-cnhs-green-dark"
-                        checked={Boolean(
-                          overwriteExistingBySection[group.gradeSection]
-                        )}
+                        className="h-4 w-4 rounded border-slate-300 text-cnhs-green-dark accent-cnhs-green-dark focus:ring-cnhs-green-dark"
+                        checked={overwriteExisting}
                         onChange={(e) =>
                           setOverwriteExistingBySection((prev) => ({
                             ...prev,
@@ -433,197 +639,216 @@ export default function AdminAralFacilitatorAssignPanel({
                       Overwrite existing assignments
                     </label>
 
-                    <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white">
-                      <table className="min-w-[720px] w-full border-collapse text-left">
-                        <thead>
-                          <tr className="bg-slate-50/80">
-                            {[
-                              "ARAL Learner",
-                              "Identified in",
-                              "Subject Teacher",
-                              "Facilitator",
-                              "Action",
-                            ].map((column) => (
-                              <th
-                                key={column}
-                                className="px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400"
-                              >
-                                {column}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {group.learners.map((learner) => {
-                            const busy = busyId === learner.studentId;
-                            const overwriteExisting = Boolean(
-                              overwriteExistingBySection[group.gradeSection]
-                            );
-                            const isAssigned = Boolean(
-                              learner.aralFacilitatorTeacherId
-                            );
-                            const showFacilitatorSelect =
-                              overwriteExisting || !isAssigned;
-                            return (
-                              <tr
-                                key={learner.studentId}
-                                className="border-t border-slate-100 hover:bg-slate-50/70"
-                              >
-                                <td className="px-2.5 py-2">
-                                  <p className="text-[12px] font-semibold text-slate-800">
-                                    {learner.name}
-                                  </p>
-                                  <p className="text-[10px] text-slate-400">
-                                    {learner.studentNumber}
-                                  </p>
-                                </td>
-                                <td className="px-2.5 py-2">
-                                  <div className="flex flex-wrap gap-1">
-                                    {learner.subjects.map((subject) => (
-                                      <span
-                                        key={subject}
-                                        className="inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 ring-1 ring-sky-100"
-                                      >
-                                        {subject}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </td>
-                                <td className="px-2.5 py-2 text-[11px] text-slate-600">
-                                  {learner.teacherNames.join(", ") || "—"}
-                                </td>
-                                <td className="px-2.5 py-2">
-                                  {showFacilitatorSelect ? (
-                                    <select
-                                      value={drafts[learner.studentId] || ""}
-                                      disabled={loadingTeachers || busy}
-                                      onChange={(e) =>
-                                        setDrafts((prev) => ({
-                                          ...prev,
-                                          [learner.studentId]: e.target.value,
-                                        }))
-                                      }
-                                      className={cn(
-                                        "h-7 w-full min-w-[160px] rounded-full border border-slate-200 bg-white px-2 text-[11px] text-slate-700 outline-none focus:border-cnhs-green",
-                                        loadingTeachers && "bg-slate-50"
-                                      )}
-                                    >
-                                      <option value="">
-                                        {loadingTeachers
-                                          ? "Loading..."
-                                          : "Select facilitator"}
-                                      </option>
-                                      {teachers.map((teacher) => (
-                                        <option
-                                          key={teacher.id}
-                                          value={teacher.id}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setViewLearnersBySection((prev) => ({
+                          ...prev,
+                          [group.gradeSection]: !prev[group.gradeSection],
+                        }))
+                      }
+                      className="mt-3 inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 text-[11px] font-semibold text-slate-600 hover:bg-slate-100"
+                    >
+                      <Users size={12} />
+                      {showLearners ? "Hide learners" : "View learners"}
+                      <ChevronDown
+                        size={12}
+                        className={cn(
+                          "transition-transform",
+                          showLearners ? "rotate-180" : ""
+                        )}
+                      />
+                    </button>
+
+                    {showLearners ? (
+                      <div className="mt-3 overflow-x-auto rounded-xl border border-slate-100 bg-slate-50/40">
+                        <table className="min-w-[720px] w-full border-collapse text-left">
+                          <thead>
+                            <tr className="bg-slate-50/80">
+                              {[
+                                "ARAL Learner",
+                                "Identified in",
+                                "Subject Teacher",
+                                "Facilitator",
+                                "Action",
+                              ].map((column) => (
+                                <th
+                                  key={column}
+                                  className="px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400"
+                                >
+                                  {column}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.learners.map((learner) => {
+                              const busy = busyId === learner.studentId;
+                              const isAssigned = Boolean(
+                                learner.aralFacilitatorTeacherId
+                              );
+                              const showFacilitatorSelect =
+                                overwriteExisting || !isAssigned;
+                              return (
+                                <tr
+                                  key={learner.studentId}
+                                  className="border-t border-slate-100 bg-white hover:bg-slate-50/70"
+                                >
+                                  <td className="px-2.5 py-2">
+                                    <p className="text-[12px] font-semibold text-slate-800">
+                                      {learner.name}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400">
+                                      {learner.studentNumber}
+                                    </p>
+                                  </td>
+                                  <td className="px-2.5 py-2">
+                                    <div className="flex flex-wrap gap-1">
+                                      {learner.subjects.map((subject) => (
+                                        <span
+                                          key={subject}
+                                          className="inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 ring-1 ring-sky-100"
                                         >
-                                          {teacher.name}
-                                        </option>
+                                          {subject}
+                                        </span>
                                       ))}
-                                    </select>
-                                  ) : null}
-
-                                  {learner.aralFacilitatorName ? (
-                                    <p className="mt-0.5 text-[10px] text-violet-600">
-                                      Current: {learner.aralFacilitatorName}
-                                    </p>
-                                  ) : (
-                                    <p className="mt-0.5 text-[10px] text-amber-600">
-                                      Unassigned
-                                    </p>
-                                  )}
-                                </td>
-
-                                <td className="px-2.5 py-2">
-                                  <div className="flex flex-wrap gap-1">
+                                    </div>
+                                  </td>
+                                  <td className="px-2.5 py-2 text-[11px] text-slate-600">
+                                    {learner.teacherNames.join(", ") || "—"}
+                                  </td>
+                                  <td className="px-2.5 py-2">
                                     {showFacilitatorSelect ? (
-                                      <button
-                                        type="button"
-                                        disabled={
-                                          busy || !drafts[learner.studentId]
+                                      <select
+                                        value={drafts[learner.studentId] || ""}
+                                        disabled={loadingTeachers || busy}
+                                        onChange={(e) =>
+                                          setDrafts((prev) => ({
+                                            ...prev,
+                                            [learner.studentId]: e.target.value,
+                                          }))
                                         }
-                                        onClick={() => handleAssign(learner)}
-                                        className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full bg-cnhs-green-dark px-2.5 text-[10px] font-semibold text-white hover:bg-[#246f54] disabled:cursor-not-allowed disabled:opacity-60"
-                                      >
-                                        {busy ? (
-                                          <Loader2
-                                            size={11}
-                                            className="animate-spin"
-                                          />
-                                        ) : (
-                                          <UserPlus size={11} />
+                                        className={cn(
+                                          "h-7 w-full min-w-[160px] rounded-full border border-slate-200 bg-white px-2 text-[11px] text-slate-700 outline-none focus:border-cnhs-green",
+                                          loadingTeachers && "bg-slate-50"
                                         )}
-                                        Assign
-                                      </button>
-                                    ) : null}
-
-                                    {overwriteExisting &&
-                                    learner.aralAssignmentId ? (
-                                      <button
-                                        type="button"
-                                        disabled={busy}
-                                        onClick={() => handleRemove(learner)}
-                                        className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed"
                                       >
-                                        <X size={11} />
-                                        Remove
-                                      </button>
+                                        <option value="">
+                                          {loadingTeachers
+                                            ? "Loading..."
+                                            : "Select facilitator"}
+                                        </option>
+                                        {teachers.map((teacher) => (
+                                          <option
+                                            key={teacher.id}
+                                            value={teacher.id}
+                                          >
+                                            {teacher.name}
+                                          </option>
+                                        ))}
+                                      </select>
                                     ) : null}
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-      )}
 
-      {sectionGroups.length > SECTIONS_PAGE_SIZE ? (
-        <div className="flex flex-col gap-2 border-t border-slate-100 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-4">
-          <p className="text-[11px] font-medium text-slate-500">
-            Showing{" "}
-            <span className="font-semibold tabular-nums text-slate-700">
-              {sectionStart}–{sectionEnd}
-            </span>{" "}
-            of{" "}
-            <span className="font-semibold tabular-nums text-slate-700">
-              {sectionGroups.length}
-            </span>{" "}
-            sections · {SECTIONS_PAGE_SIZE} per page
-          </p>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setPage(safePage - 1)}
-              disabled={safePage <= 1}
-              className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <ChevronLeft size={13} />
-              Previous
-            </button>
-            <span className="min-w-[4rem] text-center text-[11px] font-semibold tabular-nums text-slate-600">
-              {safePage} / {totalPages}
-            </span>
-            <button
-              type="button"
-              onClick={() => setPage(safePage + 1)}
-              disabled={safePage >= totalPages}
-              className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Next
-              <ChevronRight size={13} />
-            </button>
+                                    {learner.aralFacilitatorName ? (
+                                      <p className="mt-0.5 text-[10px] text-violet-600">
+                                        Current: {learner.aralFacilitatorName}
+                                      </p>
+                                    ) : (
+                                      <p className="mt-0.5 text-[10px] text-amber-600">
+                                        Unassigned
+                                      </p>
+                                    )}
+                                  </td>
+                                  <td className="px-2.5 py-2">
+                                    <div className="flex flex-wrap gap-1">
+                                      {showFacilitatorSelect ? (
+                                        <button
+                                          type="button"
+                                          disabled={
+                                            busy || !drafts[learner.studentId]
+                                          }
+                                          onClick={() => handleAssign(learner)}
+                                          className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full bg-cnhs-green-dark px-2.5 text-[10px] font-semibold text-white hover:bg-[#246f54] disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                          {busy ? (
+                                            <Loader2
+                                              size={11}
+                                              className="animate-spin"
+                                            />
+                                          ) : (
+                                            <UserPlus size={11} />
+                                          )}
+                                          Assign
+                                        </button>
+                                      ) : null}
+
+                                      {overwriteExisting &&
+                                      learner.aralAssignmentId ? (
+                                        <button
+                                          type="button"
+                                          disabled={busy}
+                                          onClick={() => handleRemove(learner)}
+                                          className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed"
+                                        >
+                                          <X size={11} />
+                                          Remove
+                                        </button>
+                                      ) : null}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
-      ) : null}
+
+          {visibleSections.length > SECTIONS_PAGE_SIZE ? (
+            <div className="flex flex-col gap-2 border-t border-slate-100 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+              <p className="text-[11px] font-medium text-slate-500">
+                Showing{" "}
+                <span className="font-semibold tabular-nums text-slate-700">
+                  {sectionStart}–{sectionEnd}
+                </span>{" "}
+                of{" "}
+                <span className="font-semibold tabular-nums text-slate-700">
+                  {visibleSections.length}
+                </span>{" "}
+                sections · {SECTIONS_PAGE_SIZE} per page
+              </p>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setPage(safePage - 1)}
+                  disabled={safePage <= 1}
+                  className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronLeft size={13} />
+                  Previous
+                </button>
+                <span className="min-w-[4rem] text-center text-[11px] font-semibold tabular-nums text-slate-600">
+                  {safePage} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPage(safePage + 1)}
+                  disabled={safePage >= totalPages}
+                  className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Next
+                  <ChevronRight size={13} />
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </>
+      )}
     </section>
   );
 }

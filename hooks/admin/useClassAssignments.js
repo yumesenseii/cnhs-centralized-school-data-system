@@ -11,6 +11,7 @@ import {
   listClassAssignments,
   updateClassAssignment,
 } from "@/lib/supabase/queries/classAssignments";
+import { clearGradesForClass } from "@/lib/supabase/queries/classGrades";
 import {
   buildAssignmentSummary,
   mapClassAssignment,
@@ -237,6 +238,23 @@ export function useClassAssignments() {
     return { ok: true };
   }
 
+  async function handleClearGrades(classId) {
+    setSaving(true);
+    setError("");
+    const result = await clearGradesForClass(classId);
+    setSaving(false);
+    if (result.error) {
+      setError(result.error.message);
+      return { ok: false, error: result.error.message };
+    }
+    await refresh();
+    return {
+      ok: true,
+      gradesDeleted: result.data?.gradesDeleted ?? 0,
+      enrollmentsDeleted: result.data?.enrollmentsDeleted ?? 0,
+    };
+  }
+
   return {
     assignments: filtered,
     allAssignments: assignments,
@@ -256,5 +274,6 @@ export function useClassAssignments() {
     handleCreate,
     handleUpdate,
     handleDelete,
+    handleClearGrades,
   };
 }

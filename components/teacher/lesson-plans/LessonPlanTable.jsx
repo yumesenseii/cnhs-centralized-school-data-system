@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Download, Eye, Loader2, Upload } from "lucide-react";
+import { Download, Eye, Loader2, Trash2, Upload } from "lucide-react";
 import StatusBadge from "@/components/teacher/lesson-plans/StatusBadge";
 
 export default function LessonPlanTable({
@@ -9,6 +9,7 @@ export default function LessonPlanTable({
   onView,
   onDownload,
   onResubmit,
+  onDelete,
 }) {
   const fileInputRef = useRef(null);
   const [pendingPlan, setPendingPlan] = useState(null);
@@ -120,6 +121,23 @@ export default function LessonPlanTable({
                           Resubmit
                         </button>
                       ) : null}
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={async () => {
+                          setBusyId(plan.id);
+                          await onDelete?.(plan);
+                          setBusyId(null);
+                        }}
+                        className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-red-200 bg-white px-2.5 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-70"
+                      >
+                        {isBusy ? (
+                          <Loader2 size={11} className="animate-spin" />
+                        ) : (
+                          <Trash2 size={11} />
+                        )}
+                        Delete
+                      </button>
                     </div>
                   </td>
                 </tr>

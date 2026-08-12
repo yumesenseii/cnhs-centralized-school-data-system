@@ -105,19 +105,19 @@
 }
 
 .dark {
-  /* Softer CNHS dark — near-black page, lifted cards, brighter labels (less eye strain) */
+  /* Soft off-white body text + stronger muted labels (less glare, still readable) */
   --background: #0a0f0d;
-  --foreground: #f1f5f9;
+  --foreground: #e2e8e5;
   --card: #161d1b;
-  --card-foreground: #f1f5f9;
+  --card-foreground: #e2e8e5;
   --popover: #161d1b;
-  --popover-foreground: #f1f5f9;
+  --popover-foreground: #e2e8e5;
   --primary: #2f7d5f;
   --primary-foreground: #ffffff;
   --secondary: #1e2623;
-  --secondary-foreground: #e8eeeb;
+  --secondary-foreground: #d8dfdb;
   --muted: #1e2623;
-  --muted-foreground: #b0b8b4;
+  --muted-foreground: #c5cdc9;
   --accent: #15382d;
   --accent-foreground: #d1fae5;
   --destructive: #d83a3a;
@@ -125,11 +125,11 @@
   --input: #2a3531;
   --ring: #52b788;
   --sidebar: #000000;
-  --sidebar-foreground: #ffffff;
+  --sidebar-foreground: #e2e8e5;
   --sidebar-primary: #52b788;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: rgba(82, 183, 136, 0.18);
-  --sidebar-accent-foreground: #ffffff;
+  --sidebar-accent-foreground: #e8eeeb;
   --sidebar-border: rgba(255, 255, 255, 0.08);
   --sidebar-ring: #52b788;
   --cnhs-page: #0a0f0d;
@@ -224,7 +224,8 @@
 
 /*
  * Dark compatibility layer — global for Teacher / Admin / Student.
- * Softer near-black page, lifted charcoal cards, brighter muted labels; CNHS greens intact.
+ * Soft off-white headings (less glare); stronger muted/secondary slate remaps.
+ * Leave text-white alone so solid green/primary buttons keep contrast.
  */
 html.dark [class~="bg-white"],
 html.dark [class~="bg-white/80"],
@@ -251,22 +252,22 @@ html.dark [class~="bg-slate-100"] {
 
 html.dark [class~="text-slate-950"],
 html.dark [class~="text-slate-900"] {
-  color: #f1f5f9;
+  color: #e2e8e5;
 }
 
 html.dark [class~="text-slate-800"],
 html.dark [class~="text-slate-700"] {
-  color: #e8eeeb;
+  color: #d8dfdb;
 }
 
 html.dark [class~="text-slate-600"],
 html.dark [class~="text-slate-500"] {
-  color: #c4cbc7;
+  color: #c5cdc9;
 }
 
 html.dark [class~="text-slate-400"],
 html.dark [class~="text-slate-300"] {
-  color: #b0b8b4;
+  color: #b8c0bc;
 }
 
 html.dark [class~="border-slate-100"],
@@ -345,13 +346,13 @@ html.dark .recharts-cartesian-grid line {
 }
 
 html.dark .recharts-cartesian-axis-tick-value {
-  fill: #b0b8b4;
+  fill: #c5cdc9;
 }
 
 html.dark .recharts-default-tooltip {
   border-color: #2a3531 !important;
   background-color: #161d1b !important;
-  color: #f1f5f9 !important;
+  color: #e2e8e5 !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
