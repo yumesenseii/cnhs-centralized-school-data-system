@@ -7,6 +7,7 @@ import StudentPageHeader from "@/components/student/layout/StudentPageHeader";
 import { Pill, gradeStatusStyles } from "@/components/student/shared";
 import { useStudentPortal } from "@/hooks/student/useStudentPortal";
 import { exportStudentGradesPdf } from "@/lib/student/gradesExport";
+import { termLabel } from "@/lib/academic/termLabels";
 
 export default function StudentGradesPage() {
   const { data, loading, error } = useStudentPortal();
@@ -87,7 +88,7 @@ export default function StudentGradesPage() {
               </h2>
               <p className="mt-0.5 text-[11px] text-slate-500">
                 {data.period.schoolYear
-                  ? `Showing ${data.period.schoolYear} · Quarter ${data.period.quarter ?? "—"}`
+                  ? `Showing ${data.period.schoolYear} · ${termLabel(data.period.quarter)}`
                   : "No grading period available yet"}
                 {data.summary.average != null
                   ? ` · Average ${data.summary.average}`
@@ -111,7 +112,7 @@ export default function StudentGradesPage() {
                 <tr className="text-[10px] uppercase tracking-[0.08em] text-slate-500">
                   <th className="px-3 py-2 font-semibold">Subject</th>
                   <th className="px-3 py-2 font-semibold">School Year</th>
-                  <th className="px-3 py-2 font-semibold">Quarter</th>
+                  <th className="px-3 py-2 font-semibold">Term</th>
                   <th className="px-3 py-2 font-semibold">Final Grade</th>
                   <th className="px-3 py-2 font-semibold">Status</th>
                 </tr>
@@ -129,7 +130,9 @@ export default function StudentGradesPage() {
                       <td className="px-3 py-2 text-slate-600">
                         {row.schoolYear}
                       </td>
-                      <td className="px-3 py-2 text-slate-600">Q{row.quarter}</td>
+                      <td className="px-3 py-2 text-slate-600">
+                        {termLabel(row.quarter)}
+                      </td>
                       <td className="px-3 py-2 font-semibold text-slate-800">
                         {row.finalGrade ?? "—"}
                       </td>

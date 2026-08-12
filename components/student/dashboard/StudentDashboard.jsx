@@ -11,6 +11,7 @@ import {
   interventionTypeStyles,
 } from "@/components/student/shared";
 import { useStudentPortal } from "@/hooks/student/useStudentPortal";
+import { termLabel } from "@/lib/academic/termLabels";
 
 function StatCard({ label, value, hint }) {
   return (
@@ -75,7 +76,7 @@ export default function StudentDashboard() {
               value={data.summary.average ?? "—"}
               hint={
                 data.period.schoolYear
-                  ? `${data.period.schoolYear} · Q${data.period.quarter ?? "—"}`
+                  ? `${data.period.schoolYear} · ${termLabel(data.period.quarter)}`
                   : "No grades yet"
               }
             />
