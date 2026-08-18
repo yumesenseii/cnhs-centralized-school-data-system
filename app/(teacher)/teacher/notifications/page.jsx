@@ -1,7 +1,7 @@
 import TeacherNotificationsDashboard from "@/components/teacher/notifications/TeacherNotificationsDashboard";
 
 export const metadata = {
-  title: "Notifications | CNHS Teacher Portal",
+  title: "Notifications | CNHS Learn",
   description:
     "Personal action items from lesson plan reviews, class assignments, learner recommendations, monitoring, and E-Class Record imports.",
 };

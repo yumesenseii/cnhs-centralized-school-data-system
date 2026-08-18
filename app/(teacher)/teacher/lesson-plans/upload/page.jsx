@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import UploadLessonPlanFlow from "@/components/teacher/lesson-plans/UploadLessonPlanFlow";
 
 export const metadata = {
-  title: "Upload Lesson Plan | CNHS Teacher Portal",
+  title: "Upload Lesson Plan | CNHS Learn",
   description: "Submit a lesson plan for Head Teacher review.",
 };
 

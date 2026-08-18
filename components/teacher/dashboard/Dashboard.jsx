@@ -90,7 +90,6 @@ export default function Dashboard() {
           <div className="mt-3 border-t border-slate-100 pt-3">
             <DeferredMount delayMs={120}>
               <AttendanceMonitoringPanel
-                title="Attendance Analytics"
                 showUpload={false}
                 compact
               />

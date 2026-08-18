@@ -1,11 +1,17 @@
+import AuthRecoveryRedirect from "@/components/auth/AuthRecoveryRedirect";
 import PortalLanding from "@/components/landing/PortalLanding";
 
 export const metadata = {
-  title: "Cambaog National High School | Portal",
+  title: "Cambaog National High School | CNHS Learn",
   description:
-    "CNHS Centralized School Data System — secure portal access for Head Teachers, Teachers, and Students.",
+    "CNHS Learn — secure access for Head Teachers, Teachers, and Students.",
 };
 
 export default function Home() {
-  return <PortalLanding />;
+  return (
+    <>
+      <AuthRecoveryRedirect />
+      <PortalLanding />
+    </>
+  );
 }

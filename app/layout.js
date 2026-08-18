@@ -1,10 +1,15 @@
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { SYSTEM_NAME } from "@/lib/constants/brand";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/settings/theme";
 
 export const metadata = {
-  title: "CNHS Centralized School Data System",
-  description: "Admin and Teacher portal for CNHS Centralized School Data System",
+  title: SYSTEM_NAME,
+  description: `${SYSTEM_NAME} — Cambaog National High School`,
+  icons: {
+    icon: "/cnhs-logo.png",
+    apple: "/cnhs-logo.png",
+  },
 };
 
 export default function RootLayout({ children }) {

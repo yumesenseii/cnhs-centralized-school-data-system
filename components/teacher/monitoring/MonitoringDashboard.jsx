@@ -7,22 +7,15 @@ import { motion } from "framer-motion";
 import {
   FileSpreadsheet,
   Loader2,
-  Menu,
   RefreshCw,
   Search,
   X,
 } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import ClassReportFilesTable from "@/components/teacher/monitoring/ClassReportFilesTable";
 import ClassReportFileModal from "@/components/teacher/monitoring/ClassReportFileModal";
 import { useTeacherMonitoring } from "@/hooks/teacher/useMonitoring";
-import { SIDEBAR_SHEET_CLASS } from "@/lib/constants/layout";
 import {
   buildClassReportFiles,
 } from "@/lib/monitoring/classReportFiles";
@@ -56,7 +49,6 @@ export default function MonitoringDashboard() {
     refresh,
   } = useTeacherMonitoring();
 
-  const [menuOpen, setMenuOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [grade, setGrade] = useState("All grades");
   const [section, setSection] = useState("All sections");
@@ -289,27 +281,9 @@ export default function MonitoringDashboard() {
                 </p>
               </div>
 
-              <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-                <SheetTrigger
-                  render={
-                    <button
-                      type="button"
-                      aria-label="Open teacher menu"
-                      className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm lg:hidden"
-                    />
-                  }
-                >
-                  <Menu size={18} />
-                </SheetTrigger>
-                <SheetContent
-                  side="left"
-                  showCloseButton={false}
-                  className={SIDEBAR_SHEET_CLASS}
-                >
-                  <SheetTitle className="sr-only">Teacher navigation</SheetTitle>
-                  <TeacherSidebar mobile onNavigate={() => setMenuOpen(false)} />
-                </SheetContent>
-              </Sheet>
+              <MobileNavSheet ariaLabel="Open teacher menu" title="Teacher navigation">
+                {(close) => <TeacherSidebar mobile onNavigate={close} />}
+              </MobileNavSheet>
             </div>
           </div>
 
@@ -353,10 +327,6 @@ export default function MonitoringDashboard() {
             </Link>
           </div>
         </div>
-
-        <p className="mt-2 text-[11px] text-slate-500">
-          Class report files · generate in My Classes, send to HT here
-        </p>
       </header>
 
       {error ? (

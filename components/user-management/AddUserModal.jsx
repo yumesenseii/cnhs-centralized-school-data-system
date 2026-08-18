@@ -1,10 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+function makeEmployeeId() {
+  const year = new Date().getFullYear();
+  const digits = String(Math.floor(1000 + Math.random() * 9000));
+  return `EMP-${year}-${digits}`;
+}
+
+function makeTempPassword() {
+  return `CNHS-Tmp-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+}
 
 export default function AddUserModal({ open, options, onClose, onSubmit }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [employeeId, setEmployeeId] = useState(makeEmployeeId);
+  const [temporaryPassword, setTemporaryPassword] = useState(makeTempPassword);
+
+  useEffect(() => {
+    if (!open) return;
+    setEmployeeId(makeEmployeeId());
+    setTemporaryPassword(makeTempPassword());
+    setError("");
+    setSaving(false);
+  }, [open]);
 
   if (!open) return null;
 
@@ -19,11 +39,11 @@ export default function AddUserModal({ open, options, onClose, onSubmit }) {
     const result = await onSubmit?.({
       firstName: form.get("firstName"),
       lastName: form.get("lastName"),
-      employeeId: form.get("employeeId"),
+      employeeId: employeeId || form.get("employeeId"),
       email: form.get("email"),
       role: form.get("role"),
       learningArea: form.get("learningArea"),
-      temporaryPassword: form.get("temporaryPassword"),
+      temporaryPassword: temporaryPassword || form.get("temporaryPassword"),
       status: form.get("status"),
     });
 
@@ -43,7 +63,7 @@ export default function AddUserModal({ open, options, onClose, onSubmit }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-user-title"
-        className="relative z-10 w-full max-w-[560px] overflow-hidden rounded-2xl bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]"
+        className="relative z-10 w-full max-w-[560px] overflow-hidden rounded-lg bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]"
       >
         <div className="border-b border-slate-100 px-4 py-3.5">
           <h2 id="add-user-title" className="text-lg font-semibold tracking-[-0.02em] text-slate-900">
@@ -62,7 +82,18 @@ export default function AddUserModal({ open, options, onClose, onSubmit }) {
             <Field label="First Name" name="firstName" placeholder="Maria" required />
             <Field label="Last Name" name="lastName" placeholder="Santos" required />
           </div>
-          <Field label="Employee ID" name="employeeId" placeholder="EMP-2026-010" required />
+          <label className="block">
+            <span className="mb-1.5 block text-[11px] font-semibold text-slate-600">
+              Employee ID
+            </span>
+            <input
+              name="employeeId"
+              value={employeeId}
+              readOnly
+              required
+              className="h-10 w-full rounded-xl border border-slate-200 bg-slate-100 px-3 text-xs text-slate-700 outline-none"
+            />
+          </label>
           <Field
             label="Email"
             name="email"
@@ -78,12 +109,18 @@ export default function AddUserModal({ open, options, onClose, onSubmit }) {
             Assign sections and class offerings from Class Assignments after
             creating the teacher account.
           </p>
-          <Field
-            label="Temporary Password"
-            name="temporaryPassword"
-            defaultValue="CNHS-Tmp-7K4m"
-            readOnly
-          />
+          <label className="block">
+            <span className="mb-1.5 block text-[11px] font-semibold text-slate-600">
+              Temporary Password
+            </span>
+            <input
+              name="temporaryPassword"
+              value={temporaryPassword}
+              readOnly
+              required
+              className="h-10 w-full rounded-xl border border-slate-200 bg-slate-100 px-3 text-xs text-slate-700 outline-none"
+            />
+          </label>
           <SelectField label="Status" name="status" options={options.statuses} />
 
           {error ? (

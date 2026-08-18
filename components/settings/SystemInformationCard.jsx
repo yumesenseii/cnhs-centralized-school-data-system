@@ -16,7 +16,7 @@ export default function SystemInformationCard({ system }) {
           System Information
         </h2>
         <p className="mt-1 text-xs text-slate-500">
-          Read-only details about the CNHS Centralized School Data System.
+          Read-only details about CNHS Learn.
         </p>
       </div>
 

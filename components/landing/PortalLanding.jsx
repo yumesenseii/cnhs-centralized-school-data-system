@@ -14,7 +14,7 @@ function PortalLoginButton({ className = "" }) {
       className={`inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-4 text-[11px] font-bold uppercase tracking-[0.04em] text-[#123D2C] shadow-sm transition-colors duration-200 hover:bg-[#ffda45] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b4027] ${className}`}
       style={{ backgroundColor: LOGIN_COLORS.gold }}
     >
-      Portal Login
+      CNHS Learn
     </Link>
   );
 }
@@ -242,7 +242,7 @@ export default function PortalLanding() {
               <p className="mt-5 max-w-2xl text-[14px] leading-7 text-slate-600">
                 We support learners through responsible teaching, transparent
                 academic monitoring, and programs that respond to individual
-                needs. The CNHS portal connects school leaders, teachers, and
+                needs. CNHS Learn connects school leaders, teachers, and
                 students through one secure system.
               </p>
             </div>
@@ -307,7 +307,7 @@ export default function PortalLanding() {
                 {loginContent.schoolName}
               </p>
               <p className="mt-1 max-w-md text-[11px] leading-relaxed text-white/60">
-                Cambaog, Bustos, Bulacan · Official school portal
+                Cambaog, Bustos, Bulacan · CNHS Learn
               </p>
             </div>
           </div>

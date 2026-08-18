@@ -3,13 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { CalendarDays, Layers3, Menu, RefreshCw, Upload } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { CalendarDays, Layers3, RefreshCw, Upload } from "lucide-react";
+import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import LessonPlanFilters from "@/components/teacher/lesson-plans/LessonPlanFilters";
 import LessonPlanStats from "@/components/teacher/lesson-plans/LessonPlanStats";
@@ -18,9 +13,9 @@ import TeacherLessonPlanDrawer from "@/components/teacher/lesson-plans/TeacherLe
 import { useTeacherLessonPlans } from "@/hooks/teacher/useLessonPlans";
 import { getLessonPlanSignedUrl } from "@/lib/supabase/queries/lessonPlans";
 import { lessonPlansData } from "@/data/teacher/lessonPlans";
-import { SIDEBAR_SHEET_CLASS } from "@/lib/constants/layout";
 import { TERM_ALL_LABEL, TERM_OPTIONS } from "@/lib/academic/termLabels";
-import { confirmDelete } from "@/lib/ui/confirmAction";
+import DeleteConfirmModal from "@/components/shared/DeleteConfirmModal";
+import { createDeleteRequest } from "@/lib/supabase/queries/deleteRequests";
 
 const ALL_SCHOOL_YEARS = "All School Years";
 const TERM_FILTER_OPTIONS = [TERM_ALL_LABEL, ...TERM_OPTIONS.map((t) => t.label)];
@@ -29,7 +24,6 @@ export default function LessonPlansDashboard() {
   const { filters } = lessonPlansData;
   const { plans, kpis, loading, refreshing, error, refresh, resubmit, remove } =
     useTeacherLessonPlans();
-  const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All Status");
   const [subject, setSubject] = useState("All Subjects");
@@ -42,6 +36,7 @@ export default function LessonPlansDashboard() {
   const [resubmitting, setResubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
   const deepLinkHandled = useRef(false);
 
   const subjectOptions = useMemo(() => {
@@ -163,26 +158,57 @@ export default function LessonPlansDashboard() {
 
   async function handleDelete(plan) {
     if (!plan?.id) return { ok: false, error: new Error("Missing plan.") };
-    if (!confirmDelete(plan.lessonTitle || "this lesson plan")) {
-      return { ok: false, cancelled: true };
-    }
+    const isDraft =
+      plan.dbStatus === "Pending Review" || plan.status === "Pending";
+    setDeleteConfirm({
+      plan,
+      isDraft,
+      title: isDraft ? "Delete lesson plan" : "Request delete lesson plan",
+      itemLabel: plan.lessonTitle || "this lesson plan",
+      consequence: isDraft
+        ? "This file will be removed. This cannot be undone."
+        : "The head teacher must approve before this submitted file is removed.",
+      confirmLabel: isDraft ? "Delete" : "Send request",
+      tone: isDraft ? "danger" : "request",
+    });
+    return { ok: true, pending: true };
+  }
 
+  async function runDeleteConfirm() {
+    const plan = deleteConfirm?.plan;
+    if (!plan?.id) return;
     setDeleting(true);
     setActionError("");
-    const result = await remove(plan);
-    setDeleting(false);
 
-    if (!result.ok) {
-      setActionError(result.error?.message ?? "Unable to delete lesson plan.");
+    if (deleteConfirm.isDraft) {
+      const result = await remove(plan);
+      setDeleting(false);
+      setDeleteConfirm(null);
+      if (!result.ok) {
+        setActionError(result.error?.message ?? "Unable to delete lesson plan.");
+        return result;
+      }
+      if (selectedPlan?.id === plan.id) {
+        setDrawerOpen(false);
+        setSelectedPlan(null);
+        setFileUrl(null);
+      }
       return result;
     }
 
-    if (selectedPlan?.id === plan.id) {
-      setDrawerOpen(false);
-      setSelectedPlan(null);
-      setFileUrl(null);
+    const result = await createDeleteRequest({
+      targetType: "lesson_plan",
+      targetId: plan.id,
+      label: plan.lessonTitle || "Lesson plan",
+    });
+    setDeleting(false);
+    setDeleteConfirm(null);
+    if (result.error) {
+      setActionError(result.error.message);
+      return { ok: false, error: result.error };
     }
-    return result;
+    setActionError("");
+    return { ok: true };
   }
 
   return (
@@ -210,27 +236,9 @@ export default function LessonPlansDashboard() {
             </p>
           </div>
 
-          <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger
-              render={
-                <button
-                  type="button"
-                  aria-label="Open teacher menu"
-                  className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm lg:hidden"
-                />
-              }
-            >
-              <Menu size={18} />
-            </SheetTrigger>
-            <SheetContent
-              side="left"
-              showCloseButton={false}
-              className={SIDEBAR_SHEET_CLASS}
-            >
-              <SheetTitle className="sr-only">Teacher navigation</SheetTitle>
-              <TeacherSidebar mobile onNavigate={() => setOpen(false)} />
-            </SheetContent>
-          </Sheet>
+          <MobileNavSheet ariaLabel="Open teacher menu" title="Teacher navigation">
+            {(close) => <TeacherSidebar mobile onNavigate={close} />}
+          </MobileNavSheet>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
@@ -357,6 +365,20 @@ export default function LessonPlansDashboard() {
         onDownload={downloadPlan}
         onResubmit={handleResubmit}
         onDelete={handleDelete}
+      />
+
+      <DeleteConfirmModal
+        open={Boolean(deleteConfirm)}
+        title={deleteConfirm?.title}
+        itemLabel={deleteConfirm?.itemLabel}
+        consequence={deleteConfirm?.consequence}
+        confirmLabel={deleteConfirm?.confirmLabel}
+        confirming={deleting}
+        confirmingLabel={deleteConfirm?.isDraft ? "Deleting…" : "Sending…"}
+        tone={deleteConfirm?.tone}
+        icon={deleteConfirm?.isDraft ? "delete" : "request"}
+        onCancel={() => !deleting && setDeleteConfirm(null)}
+        onConfirm={runDeleteConfirm}
       />
     </motion.div>
   );

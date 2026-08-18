@@ -20,6 +20,8 @@ import {
   summarizeStudentGrades,
 } from "@/lib/teacher/myClassesMappers";
 import { parseTermNumber, TERM_OPTIONS, termLabel } from "@/lib/academic/termLabels";
+import { syncSiblingClassRosters } from "@/lib/academic/siblingTermClasses";
+import { createClient } from "@/lib/supabase/client";
 import { useSoftLoadState } from "@/hooks/useSoftLoadState";
 
 export function useTeacherClasses() {
@@ -94,6 +96,7 @@ export function useClassDetails(classId) {
   useEffect(() => {
     resetLoaded();
     setClassItem(null);
+    setViewQuarter(null);
   }, [classId, resetLoaded]);
 
   const refresh = useCallback(async () => {
@@ -148,6 +151,16 @@ export function useClassDetails(classId) {
       class_students: studentsResult.data ?? [],
     });
 
+    const family = {
+      teacherId,
+      subjectId: classWithRoster.subjectId,
+      sectionId: classWithRoster.sectionId,
+      schoolYear: classWithRoster.schoolYear,
+    };
+    if (family.subjectId && family.sectionId && family.schoolYear) {
+      await syncSiblingClassRosters(createClient(), family);
+    }
+
     const siblingMapped = (siblingsResult.data ?? []).map(mapClassRecord);
     const grouped = groupClassesForMyClassesList(siblingMapped);
     const group =
@@ -161,14 +174,21 @@ export function useClassDetails(classId) {
     const nextTermIds = group?.termClassIds ?? classWithRoster.termClassIds ?? {
       [classQuarter]: classId,
     };
-    const nextAvailable =
-      group?.availableTerms?.length > 0
-        ? group.availableTerms
-        : classWithRoster.availableTerms ?? [classQuarter];
+    const nextAvailable = [1, 2, 3, 4];
+
+    let nextEnrollments = studentsResult.data ?? [];
+    if (family.subjectId && family.sectionId && family.schoolYear) {
+      const refreshed = await getClassStudents(classId, { teacherId });
+      if (!refreshed.error && refreshed.data) {
+        nextEnrollments = refreshed.data;
+      }
+    }
 
     setClassItem({
       ...classWithRoster,
-      isTermGroup: Boolean(group?.isTermGroup),
+      students: nextEnrollments.length,
+      hasLearners: nextEnrollments.length > 0,
+      isTermGroup: Boolean(group?.isTermGroup) || Object.keys(nextTermIds).length > 1,
       termClassIds: nextTermIds,
       availableTerms: nextAvailable,
       quarterLabel: group?.isTermGroup
@@ -177,7 +197,7 @@ export function useClassDetails(classId) {
     });
     setTermClassIds(nextTermIds);
     setAvailableTerms(nextAvailable);
-    setEnrollments(studentsResult.data ?? []);
+    setEnrollments(nextEnrollments);
     setGradeRows(gradesResult.data ?? []);
 
     const siblingIds = [
@@ -201,7 +221,7 @@ export function useClassDetails(classId) {
       }
     }
 
-    setViewQuarter(classQuarter);
+    setViewQuarter((current) => current ?? classQuarter);
     endLoad(true);
   }, [classId, beginLoad, endLoad]);
 
@@ -216,7 +236,9 @@ export function useClassDetails(classId) {
     1;
 
   const students = (() => {
-    const gradeStats = buildGradeStatsByStudent(gradeRows, {
+    const sourceRows =
+      allTermGradeRows.length > 0 ? allTermGradeRows : gradeRows;
+    const gradeStats = buildGradeStatsByStudent(sourceRows, {
       preferredQuarter,
     });
     return enrollments.map((enrollment) =>
@@ -244,10 +266,7 @@ export function useClassDetails(classId) {
     termClassIds,
     availableTerms:
       availableTerms.length > 0 ? availableTerms : TERM_OPTIONS.map((t) => Number(t.value)),
-    termOptions: (availableTerms.length > 0
-      ? availableTerms
-      : [1, 2, 3, 4]
-    ).map((n) => ({
+    termOptions: [1, 2, 3, 4].map((n) => ({
       value: n,
       label: termLabel(n),
       classId: termClassIds[n] ?? null,

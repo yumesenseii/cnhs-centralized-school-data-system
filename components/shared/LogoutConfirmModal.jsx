@@ -40,7 +40,7 @@ export default function LogoutConfirmModal({
         if (e.target === e.currentTarget && !confirming) onCancel?.();
       }}
     >
-      <div className="relative z-10 w-[min(22rem,94vw)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+      <div className="relative z-10 w-[min(22rem,94vw)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl">
         <div className="px-5 pt-5 pb-4">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cnhs-green/10 text-cnhs-green-dark">

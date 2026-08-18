@@ -22,6 +22,8 @@ export default function UsersTable({
   onEdit,
   onResetPassword,
   onToggleStatus,
+  onDelete,
+  currentAuthUserId,
 }) {
   const [search, setSearch] = useState("");
   const [role, setRole] = useState(filters.roles[0]);
@@ -67,9 +69,6 @@ export default function UsersTable({
           <h2 className="text-sm font-semibold text-slate-900">
             Users Directory
           </h2>
-          <p className="mt-0.5 text-[10px] text-slate-500">
-            Teacher and Head Teacher accounts
-          </p>
         </div>
         <span className="shrink-0 rounded-full bg-cnhs-green-soft px-2.5 py-1 text-[10px] font-semibold text-cnhs-green-dark">
           {filteredUsers.length === users.length
@@ -134,6 +133,8 @@ export default function UsersTable({
                   onEdit={onEdit}
                   onResetPassword={onResetPassword}
                   onToggleStatus={onToggleStatus}
+                  onDelete={onDelete}
+                  currentAuthUserId={currentAuthUserId}
                 />
               ))
             ) : (
@@ -160,6 +161,8 @@ export default function UsersTable({
               onEdit={onEdit}
               onResetPassword={onResetPassword}
               onToggleStatus={onToggleStatus}
+              onDelete={onDelete}
+              currentAuthUserId={currentAuthUserId}
             />
           ))
         ) : (

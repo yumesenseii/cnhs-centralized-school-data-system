@@ -1,15 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Plus } from "lucide-react";
+import { Plus, Eraser } from "lucide-react";
 import Header from "@/components/layout/Header";
 import AssignmentFormModal from "@/components/class-assignments/AssignmentFormModal";
 import AssignmentSummaryCards from "@/components/class-assignments/AssignmentSummaryCards";
 import AssignmentsTable from "@/components/class-assignments/AssignmentsTable";
+import DeleteConfirmModal from "@/components/shared/DeleteConfirmModal";
+import DeleteRequestsPanel from "@/components/admin/DeleteRequestsPanel";
 import { useClassAssignments } from "@/hooks/admin/useClassAssignments";
 import { suggestCurrentSchoolYear } from "@/lib/admin/sectionMappers";
-import { confirmClearClassGrades, confirmDelete } from "@/lib/ui/confirmAction";
+import {
+  approveDeleteRequest,
+  listPendingDeleteRequests,
+  rejectDeleteRequest,
+} from "@/lib/supabase/queries/deleteRequests";
 
 export default function ClassAssignmentManagement({ embedded = false }) {
   const {
@@ -29,12 +35,32 @@ export default function ClassAssignmentManagement({ embedded = false }) {
     handleUpdate,
     handleDelete,
     handleClearGrades,
+    handleClearAllGrades,
   } = useClassAssignments();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("create");
   const [selected, setSelected] = useState(null);
   const [toast, setToast] = useState("");
+  const [confirm, setConfirm] = useState(null);
+  const [confirming, setConfirming] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [requestsError, setRequestsError] = useState("");
+
+  async function refreshRequests() {
+    const result = await listPendingDeleteRequests();
+    if (result.error) {
+      setRequestsError(result.error.message);
+      setPendingRequests([]);
+      return;
+    }
+    setRequestsError("");
+    setPendingRequests(result.data ?? []);
+  }
+
+  useEffect(() => {
+    refreshRequests();
+  }, []);
 
   const defaultSchoolYear = schoolYears[0] || suggestCurrentSchoolYear();
 
@@ -79,23 +105,85 @@ export default function ClassAssignmentManagement({ embedded = false }) {
 
   async function onClearGrades(assignment) {
     const label = `${assignment.subjectName} · ${assignment.gradeLabel} ${assignment.sectionName} · ${assignment.quarterLabel} · ${assignment.schoolYear}`;
-    if (!confirmClearClassGrades(label)) return;
-    const result = await handleClearGrades(assignment.id);
-    if (result.ok) {
-      const grades = result.gradesDeleted ?? 0;
-      const enrollments = result.enrollmentsDeleted ?? 0;
-      showToast(
-        grades || enrollments
-          ? `Cleared ${grades} grade row(s) and ${enrollments} enrollment(s). Class assignment kept.`
-          : "No grades found for this class. Assignment unchanged."
-      );
-    }
+    setConfirm({
+      kind: "clear",
+      assignment,
+      title: "Clear grades",
+      itemLabel: label,
+      consequence:
+        "Imported grades and the class list for this term will be removed. The assignment stays. The teacher can re-upload the E-Class Record.",
+      confirmLabel: "Clear grades",
+      icon: "clear",
+    });
   }
 
   async function onDelete(assignment) {
     const label = `${assignment.teacherName} — ${assignment.subjectName} (${assignment.gradeLabel} ${assignment.sectionName}, ${assignment.schoolYear}, ${assignment.quarterLabel})`;
-    if (!confirmDelete(label)) return;
-    const result = await handleDelete(assignment.id);
+    setConfirm({
+      kind: "delete",
+      assignment,
+      title: "Delete class",
+      itemLabel: label,
+      consequence: "This class assignment will be removed. This cannot be undone.",
+      confirmLabel: "Delete",
+      icon: "delete",
+    });
+  }
+
+  async function onClearAll() {
+    const yearLabel = filters.schoolYear || "All School Years";
+    const scope =
+      yearLabel === "All School Years"
+        ? "all school years"
+        : yearLabel;
+    setConfirm({
+      kind: "clear-all",
+      title: "Clear all",
+      itemLabel: scope,
+      consequence:
+        "Imported grades and class lists will be removed. Class assignments, teachers, sections, and lesson plans stay. Teachers can re-upload E-Class Records afterward.",
+      confirmLabel: "Clear all",
+      icon: "clear",
+    });
+  }
+
+  async function runConfirm() {
+    if (confirm?.kind === "clear-all") {
+      setConfirming(true);
+      const result = await handleClearAllGrades(filters.schoolYear);
+      setConfirming(false);
+      setConfirm(null);
+      if (result.ok) {
+        const grades = result.gradesDeleted ?? 0;
+        const enrollments = result.enrollmentsDeleted ?? 0;
+        showToast(
+          grades || enrollments
+            ? `Cleared ${grades} grade row(s) and ${enrollments} enrollment(s). Assignments kept.`
+            : "No imported grades to clear."
+        );
+      }
+      return;
+    }
+    if (!confirm?.assignment) return;
+    setConfirming(true);
+    if (confirm.kind === "clear") {
+      const result = await handleClearGrades(confirm.assignment.id);
+      setConfirming(false);
+      setConfirm(null);
+      if (result.ok) {
+        const grades = result.gradesDeleted ?? 0;
+        const enrollments = result.enrollmentsDeleted ?? 0;
+        showToast(
+          grades || enrollments
+            ? `Cleared ${grades} grade row(s) and ${enrollments} enrollment(s). Class assignment kept.`
+            : "No grades found for this class. Assignment unchanged."
+        );
+      }
+      return;
+    }
+    const result = await handleDelete(confirm.assignment.id);
+    setConfirming(false);
+    setConfirm(null);
     if (result.ok) showToast("Class assignment removed.");
   }
 
@@ -126,6 +214,21 @@ export default function ClassAssignmentManagement({ embedded = false }) {
     </button>
   );
 
+  const headerControls = (
+    <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={onClearAll}
+        disabled={saving || confirming}
+        className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-red-200 bg-white px-3 text-[11px] font-semibold text-red-600 shadow-sm transition-colors duration-200 hover:bg-red-50 disabled:opacity-50"
+      >
+        <Eraser size={13} />
+        Clear all
+      </button>
+      {assignButton}
+    </div>
+  );
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -138,14 +241,14 @@ export default function ClassAssignmentManagement({ embedded = false }) {
           <p className="text-[11px] text-slate-500">
             Assign teachers to subjects and sections by school year and quarter. Teachers only see classes assigned to them.
           </p>
-          {assignButton}
+          {headerControls}
         </div>
       ) : (
         <Header
           breadcrumb="Home / Classes & Sections / Class Assignments"
           title="Class Assignments"
           description="Assign teachers to subjects and sections by school year and quarter. Teachers only see classes assigned to them."
-          controls={assignButton}
+          controls={headerControls}
         />
       )}
 
@@ -154,6 +257,23 @@ export default function ClassAssignmentManagement({ embedded = false }) {
           {error}
         </p>
       ) : null}
+
+      <DeleteRequestsPanel
+        requests={pendingRequests}
+        error={requestsError}
+        onApprove={async (row) => {
+          const result = await approveDeleteRequest(row.id);
+          if (result.error) showToast(result.error.message);
+          else showToast("Request approved.");
+          await refreshRequests();
+        }}
+        onReject={async (row) => {
+          const result = await rejectDeleteRequest(row.id);
+          if (result.error) showToast(result.error.message);
+          else showToast("Request declined.");
+          await refreshRequests();
+        }}
+      />
 
       <AssignmentSummaryCards cards={summary} />
 
@@ -183,6 +303,23 @@ export default function ClassAssignmentManagement({ embedded = false }) {
         saving={saving}
         onClose={() => setModalOpen(false)}
         onSubmit={submitForm}
+      />
+
+      <DeleteConfirmModal
+        open={Boolean(confirm)}
+        title={confirm?.title}
+        itemLabel={confirm?.itemLabel}
+        consequence={confirm?.consequence}
+        confirmLabel={confirm?.confirmLabel}
+        confirming={confirming}
+        confirmingLabel={
+          confirm?.kind === "clear" || confirm?.kind === "clear-all"
+            ? "Clearing…"
+            : "Deleting…"
+        }
+        icon={confirm?.icon}
+        onCancel={() => !confirming && setConfirm(null)}
+        onConfirm={runConfirm}
       />
 
       {toast ? (

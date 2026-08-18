@@ -2,11 +2,11 @@
 
 **School:** Cambaog National High School (CNHS)  
 **Document type:** Fixes, gaps, and planned enhancements  
-**Last updated:** August 3, 2026  
+**Last updated:** August 18, 2026  
 
 Use this roadmap to prioritize remaining work before defense, school pilot, or production hardening. Items are grouped by priority. Status reflects the codebase as of this document.
 
-**Pilot readiness (estimate):** ~85–90% for desktop admin/teacher/student portals. Remaining critical path is mostly QA evidence (P0-5) plus optional Export Users / Forgot Password (P1-3 / P1-7). P3 stays post-pilot.
+**Pilot readiness (estimate):** ~90% for desktop admin/teacher/student portals. Remaining critical path is **P0-5** Test Summary Pass/Fail (defense evidence). P3 stays post-pilot.
 
 ---
 
@@ -26,10 +26,10 @@ Use this roadmap to prioritize remaining work before defense, school pilot, or p
 
 | Bucket | Items |
 |--------|--------|
-| **Done (recent)** | Reports Excel + embedded charts · Multi-term ECR · Term UI · Academic Records live · Class-Record parser · LP Reviewed By · Reset / Activate users · Password change (all portals) · Naming (P2-5) · Unused LP cleanup (P2-6) · Admin School/Appearance persist · Notifications live (P2-3) · Shared roster caches / soft-nav performance · Unique-learner Overview KPIs · Teacher dashboard `filteredMonitoring` fix · Portal landing at `/` |
+| **Done (recent)** | Reports Excel + embedded charts · Multi-term ECR · Term UI · Academic Records live · Class-Record parser · LP Reviewed By · Reset / Activate users · Password change (all portals) · Naming (P2-5) · Unused LP cleanup (P2-6) · Admin School/Appearance persist · Notifications live (P2-3) · Shared roster caches / soft-nav performance · Unique-learner Overview KPIs · Teacher dashboard `filteredMonitoring` fix · Portal landing at `/` · Export Users (P1-3) · Login forgot-password built then hidden; HT Reset Password is the supported path (P1-7) · Live DB: `018` delete_requests + `019` Values Education (do not re-run 001–017) |
 | **In progress** | **P0-5** Test Summary Pass/Fail |
-| **Todo (pilot)** | **P1-3** Export Users · **P1-7** Forgot Password |
-| **Won’t do (now)** | **P2-7** Mobile QA (out of scope — desktop pilot) · DOCX extract · student self-reg |
+| **Todo (pilot)** | — |
+| **Won’t do (now)** | **P2-7** Mobile QA (out of scope — desktop pilot) · DOCX extract · student self-reg · Login “Forgot password?” email self-service (hidden; Gmail one-time links unreliable) |
 | **Post-pilot (P3)** | AI LP checks · ONNX · Email/SMS · Audit UI · Bulk ECR/SF2 |
 
 ---
@@ -58,6 +58,9 @@ These were delivered in recent iterations and should stay regression-tested:
 | Unique-learner Overview KPIs | Risk cards / distribution count unique students (worst risk), aligned with Academic Records totals |
 | Teacher dashboard model fix | Restored `filteredMonitoring` filter so dashboard build no longer throws |
 | Public portal landing | `/` light landing (hero, who-can-sign-in, footer) → Portal Login `/login`; logged-in users still redirect to role home |
+| Export Users | Header export writes managed-users Excel via `exportManagedUsersExcel` |
+| Password recovery | Login “Forgot password?” was implemented (Supabase email + `/login/reset-password`) then **hidden**. Supported path: User Management → Reset Password (temp password shown once). Route `/login/reset-password` kept for leftover email links. |
+| Live schema (do not re-run 001–017) | `delete_requests` table (018) and Values Education subject (019) already on the live Supabase project |
 
 ---
 
@@ -79,11 +82,11 @@ These were delivered in recent iterations and should stay regression-tested:
 |----|------|--------|-------|
 | P1-1 | **Admin Settings live data** | Done | Personal Account from session/profiles; Security uses `changePassword`. School Information + Appearance persist via localStorage (device-level) and apply theme/font/sidebar. |
 | P1-2 | **Head Teacher login email editable (safe path)** | Done | Edge `admin-update-user-email` syncs Auth + `users` / `teachers`. |
-| P1-3 | **Export Users** | Todo | Header button has no export handler. |
+| P1-3 | **Export Users** | Done | Header export via `exportManagedUsersExcel` (`lib/admin/userExport.js`). |
 | P1-4 | **Admin Recent Activity (Lesson Plans)** | Done | Sidebar from `lesson_plan_events` via `getRecentLessonPlanActivity`. |
 | P1-5 | **School year / quarter filters on Lesson Plan Review** | Done | Filters → `getAllLessonPlansForReview({ schoolYear, quarter })`. |
 | P1-6 | **USER_MANUAL updates** | Done | Classes & Sections; LP review; teacher Settings; User Management live actions. |
-| P1-7 | **Forgot Password (login)** | Todo | UI-only; decide: real reset email vs. “contact Head Teacher”. |
+| P1-7 | **Forgot Password (login)** | Done (hidden) | Email reset was built (`ForgotPasswordModal` + `/login/reset-password`). Link is **hidden** on login. Supported recovery: Head Teacher → User Management → Reset Password. Do not rely on Gmail one-time links for pilot. |
 | P1-8 | **Persist upload-form fields not in DB** | Done | Unused wizard fields removed; title / week / competency kept. |
 
 ---
@@ -126,10 +129,9 @@ These were delivered in recent iterations and should stay regression-tested:
 ## Suggested implementation order
 
 1. **P0-5** — Fill Test Summary Pass/Fail (defense evidence)  
-2. **P1-3 / P1-7** — Export Users, Forgot Password (as needed for pilot)  
+2. Production deploy: Site URL + Redirect URLs on the live origin; edge functions; env on host. Live DB already has 018 `delete_requests` and 019 Values Education — **do not re-run migrations 001–017**.  
 3. Keep **P3** out of the critical path unless requested  
-4. **P2-7 Mobile QA** — explicitly out of scope (desktop pilot)  
-5. Confirm production deploy includes performance + teacher dashboard fix + landing  
+4. **P2-7 Mobile QA** — explicitly out of scope (desktop pilot)
 
 ---
 
@@ -137,8 +139,8 @@ These were delivered in recent iterations and should stay regression-tested:
 
 | Module | Health | Main remaining gap |
 |--------|--------|--------------------|
-| Auth / portals | Good | Landing at `/`; Forgot password still open; password change live on all portals |
-| User Management | Good | Edit, reset password, activate/deactivate live; Export Users still Todo |
+| Auth / portals | Good | Landing at `/`; login Forgot password hidden; HT Reset Password is the supported path; password change live on all portals |
+| User Management | Good | Edit, reset password, activate/deactivate, export, delete-request queue live |
 | Classes & Sections | Good | Combined organization page; naming aligned (P2-5) |
 | Academic records / ECR | Good | Multi-term import + Class-Record/AVE parsers live; soft-nav cache with Overview |
 | Lesson plans | Good | Reviewed By denormalized; unused review cards removed (P2-6) |

@@ -403,10 +403,6 @@ export default function AdminAralFacilitatorAssignPanel({
           <h2 className="text-sm font-semibold text-slate-900">
             Assign ARAL Facilitators
           </h2>
-          <p className="mt-0.5 max-w-2xl text-[11px] text-slate-500">
-            Open a grade folder, then assign one facilitator per section. Roster
-            comes from identified ARAL learners — no separate student upload.
-          </p>
         </div>
         <span className="inline-flex rounded-full bg-violet-100 px-2.5 py-0.5 text-[10px] font-semibold text-violet-700">
           {uniqueLearnerCount} learner

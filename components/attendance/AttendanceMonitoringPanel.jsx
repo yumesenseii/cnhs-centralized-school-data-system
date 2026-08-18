@@ -36,7 +36,6 @@ const statusStyles = {
  * Completely separate from Academic Prediction.
  */
 export default function AttendanceMonitoringPanel({
-  title = "Attendance Analytics",
   showUpload = true,
   compact = false,
 }) {
@@ -160,15 +159,6 @@ export default function AttendanceMonitoringPanel({
 
   return (
     <div className={cn("space-y-3", compact ? "" : "pb-2")}>
-      <div>
-        <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
-        <p className="mt-0.5 text-[11px] text-slate-500">
-          Attendance Monitoring is separate from Academic Prediction. Risk scores
-          use ECR grades only; SF2 attendance powers reports and 20% absence
-          warnings.
-        </p>
-      </div>
-
       {error ? (
         <div className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
           {error}
@@ -333,10 +323,6 @@ export default function AttendanceMonitoringPanel({
           <h3 className="text-sm font-semibold text-slate-900">
             Upload SF2 Attendance
           </h3>
-          <p className="mt-1 text-[11px] text-slate-500">
-            Excel/CSV with columns: student_number, present, absent, late,
-            school_days.
-          </p>
           <form
             onSubmit={handleImport}
             className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"

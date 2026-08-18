@@ -3,13 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft, ChevronDown, Loader2, Menu, Save } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { ArrowLeft, ChevronDown, Loader2, Save } from "lucide-react";
+import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import {
   Pill,
@@ -27,7 +22,6 @@ import {
 import {
   MONITORING_STATUS,
 } from "@/lib/monitoring/recommendations";
-import { SIDEBAR_SHEET_CLASS } from "@/lib/constants/layout";
 import { cn } from "@/lib/utils";
 
 const PROGRESS_OPTIONS = ARAL_PROGRESS_OPTIONS;
@@ -74,7 +68,6 @@ function InfoCell({ label, value }) {
 export default function StudentMonitoringDetails({ classId, studentId }) {
   const { detail, loading, error, saving, saveRecord } =
     useStudentMonitoringDetail(classId, studentId);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(true);
   const [formError, setFormError] = useState("");
   const [toast, setToast] = useState("");
@@ -158,27 +151,9 @@ export default function StudentMonitoringDetails({ classId, studentId }) {
           </div>
         </div>
 
-        <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-          <SheetTrigger
-            render={
-              <button
-                type="button"
-                aria-label="Open teacher menu"
-                className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm lg:hidden"
-              />
-            }
-          >
-            <Menu size={16} />
-          </SheetTrigger>
-          <SheetContent
-            side="left"
-            showCloseButton={false}
-            className={SIDEBAR_SHEET_CLASS}
-          >
-            <SheetTitle className="sr-only">Teacher navigation</SheetTitle>
-            <TeacherSidebar mobile onNavigate={() => setMenuOpen(false)} />
-          </SheetContent>
-        </Sheet>
+        <MobileNavSheet ariaLabel="Open teacher menu" title="Teacher navigation">
+          {(close) => <TeacherSidebar mobile onNavigate={close} />}
+        </MobileNavSheet>
       </header>
 
       {error ? (

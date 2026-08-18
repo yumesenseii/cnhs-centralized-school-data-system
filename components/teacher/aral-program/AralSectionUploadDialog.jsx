@@ -63,7 +63,7 @@ export default function AralSectionUploadDialog({
     >
       <form
         onSubmit={handleSubmit}
-        className="w-[min(520px,96vw)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+        className="w-[min(520px,96vw)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl"
       >
         <header className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-3.5">
           <div>

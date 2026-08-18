@@ -36,7 +36,7 @@ export const settingsData = {
     },
   },
   system: {
-    systemName: "CNHS Centralized School Data System",
+    systemName: "CNHS Learn",
     researchTitle:
       "A Centralized School Data System for Generating Personalized Learning Plans for High School Students",
     version: "v1.0.0",

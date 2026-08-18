@@ -27,10 +27,6 @@ export default function AcademicPerformanceAnalysis({ analysis }) {
           <dt className="text-slate-500">Records Processed</dt>
           <dd className="font-semibold text-cnhs-green-dark">{analysis.recordsProcessed}</dd>
         </div>
-        <div className="flex items-center justify-between gap-4">
-          <dt className="text-slate-500">Learners Requiring Intervention</dt>
-          <dd className="font-semibold text-cnhs-green-dark">{analysis.learnersRequiringIntervention}</dd>
-        </div>
       </dl>
     </section>
   );

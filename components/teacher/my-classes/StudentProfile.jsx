@@ -1,20 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft, Menu } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { ArrowLeft } from "lucide-react";
+import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import AcademicSummary from "@/components/teacher/my-classes/AcademicSummary";
 import { PageBreadcrumb } from "@/components/teacher/my-classes/shared";
 import { useStudentProfile } from "@/hooks/teacher/useMyClasses";
-import { SIDEBAR_SHEET_CLASS } from "@/lib/constants/layout";
 import { cn } from "@/lib/utils";
 
 const avatarTones = {
@@ -27,8 +20,6 @@ export default function StudentProfile({ classId, studentId }) {
     classId,
     studentId
   );
-  const [menuOpen, setMenuOpen] = useState(false);
-
   if (loading) {
     return (
       <div className="rounded-xl border border-slate-100 bg-white px-4 py-10 text-center text-sm text-slate-400">
@@ -77,27 +68,9 @@ export default function StudentProfile({ classId, studentId }) {
             </p>
           </div>
 
-          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-            <SheetTrigger
-              render={
-                <button
-                  type="button"
-                  aria-label="Open teacher menu"
-                  className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm lg:hidden"
-                />
-              }
-            >
-              <Menu size={18} />
-            </SheetTrigger>
-            <SheetContent
-              side="left"
-              showCloseButton={false}
-              className={SIDEBAR_SHEET_CLASS}
-            >
-              <SheetTitle className="sr-only">Teacher navigation</SheetTitle>
-              <TeacherSidebar mobile onNavigate={() => setMenuOpen(false)} />
-            </SheetContent>
-          </Sheet>
+          <MobileNavSheet ariaLabel="Open teacher menu" title="Teacher navigation">
+            {(close) => <TeacherSidebar mobile onNavigate={close} />}
+          </MobileNavSheet>
         </div>
 
         <Link

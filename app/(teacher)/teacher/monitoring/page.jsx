@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import MonitoringDashboard from "@/components/teacher/monitoring/MonitoringDashboard";
 
 export const metadata = {
-  title: "Academic Monitoring | CNHS Teacher Portal",
+  title: "Academic Monitoring | CNHS Learn",
   description:
     "Class report files for monitoring — generate in My Classes, review Passing/Failing tabs, and send ARAL recommendations to the Head Teacher.",
 };

@@ -1,53 +1,45 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { buildAcademicRecordsModel } from "@/lib/admin/academicRecordsMappers";
+import { buildAcademicRecordsModel, groupAcademicRecordClassCards } from "@/lib/admin/academicRecordsMappers";
 import {
   getCachedAdminSchoolYears,
   invalidateAdminRosterCache,
 } from "@/lib/admin/adminRosterCache";
 import { getAdminReportsBundle } from "@/lib/supabase/queries/reports";
 import { QUARTER_OPTIONS, TERM_ALL_LABEL } from "@/lib/teacher/reportsConstants";
-import {
-  normalizeRiskLevel,
-  RECOMMENDATION,
-  RISK_LEVEL,
-} from "@/lib/monitoring/recommendations";
 import { useSoftLoadState } from "@/hooks/useSoftLoadState";
 
-/** Match folder labels ("Grade 7") to learner.grade ("Grade 7" or "7"). */
 function gradesMatch(rowGrade, filter) {
   if (!filter || filter === "All Grades") return true;
   const a = String(rowGrade ?? "").trim();
   const b = String(filter).trim();
   if (!a) return false;
   if (a === b) return true;
-  const aNum = a.replace(/^Grade\s+/i, "");
-  const bNum = b.replace(/^Grade\s+/i, "");
-  return aNum === bNum;
+  return a.replace(/^Grade\s+/i, "") === b.replace(/^Grade\s+/i, "");
 }
 
-function isUngradedLearner(row) {
-  return (
-    row.generalAverageValue === null || row.generalAverageValue === undefined
-  );
+function normalizeTeacherName(value) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
 }
 
-function isAtRiskLearner(row) {
-  if (isUngradedLearner(row)) return false;
-  const risk = normalizeRiskLevel(row.riskLevel);
-  return risk === RISK_LEVEL.HIGH || risk === RISK_LEVEL.MODERATE;
+function teacherNameKey(name) {
+  const normalized = normalizeTeacherName(name);
+  const parts = normalized.split(" ").filter(Boolean);
+  if (parts.length >= 2) return `${parts[0]} ${parts[parts.length - 1]}`;
+  return normalized;
 }
 
-function isAralLearner(row) {
-  return row.systemRecommendation === RECOMMENDATION.ARAL;
+function classMatchesTeacher(cls, teacherFilter) {
+  if (!teacherFilter || teacherFilter === "All Teachers") return true;
+  return teacherNameKey(cls.teacherName) === teacherNameKey(teacherFilter);
 }
 
 /**
- * Live Academic Records — same roster / ECR source as Admin Reports.
- * Shares adminRosterCache with Overview; skips SF2 attendance + lesson plans.
- *
- * Boot: resolve school year once, then one heavy fetch (no setSchoolYear→refetch loop).
+ * Academic Records — class lists from ECR uploads (not monitoring risk/ARAL).
  */
 export function useAcademicRecords() {
   const [error, setError] = useState("");
@@ -55,19 +47,16 @@ export function useAcademicRecords() {
   const [quarter, setQuarter] = useState("");
   const [schoolYears, setSchoolYears] = useState([]);
   const [model, setModel] = useState(null);
-  /** False until default SY is known — prevents empty-year roster fetch. */
   const [filtersReady, setFiltersReady] = useState(false);
   const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(true);
 
   const [search, setSearch] = useState("");
   const [gradeFilter, setGradeFilter] = useState("All Grades");
   const [sectionFilter, setSectionFilter] = useState("All Sections");
-  const [riskFilter, setRiskFilter] = useState("All Risk Levels");
   const [teacherFilter, setTeacherFilter] = useState("All Teachers");
-  /** all | at-risk | aral | ungraded — aligns with Reports Eng/Fil ARAL rules. */
+  const [selectedClassId, setSelectedClassId] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
 
-  // Resolve default school year before any roster request.
   useEffect(() => {
     let cancelled = false;
 
@@ -106,7 +95,6 @@ export function useAcademicRecords() {
       try {
         if (bustCache) invalidateAdminRosterCache();
 
-        // Same key as Overview: admin:roster|{SY}|all when quarter is empty.
         const result = await getAdminReportsBundle({
           schoolYear: schoolYear || null,
           quarter: quarter || null,
@@ -151,8 +139,6 @@ export function useAcademicRecords() {
         endLoad(false);
       }
     },
-    // schoolYears omitted on purpose — updating it must not re-trigger roster fetch.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- schoolYears is display-only after boot
     [filtersReady, schoolYear, quarter, beginLoad, endLoad]
   );
 
@@ -161,68 +147,131 @@ export function useAcademicRecords() {
     refresh();
   }, [filtersReady, refresh]);
 
-  const scopedStudents = useMemo(() => {
-    const students = model?.students ?? [];
-    const query = search.trim().toLowerCase();
+  const catalog = useMemo(() => {
+    const classes = model?.classes ?? [];
+    if (quarter) return classes;
+    return groupAcademicRecordClassCards(classes);
+  }, [model, quarter]);
 
-    return students.filter((row) => {
+  const classesInGrade = useMemo(() => {
+    if (gradeFilter === "All Grades") return [];
+    return catalog.filter((cls) => {
+      if (!gradesMatch(cls.gradeLabel, gradeFilter)) return false;
+      if (!classMatchesTeacher(cls, teacherFilter)) return false;
+      return true;
+    });
+  }, [catalog, gradeFilter, teacherFilter]);
+
+  const sectionFolders = useMemo(() => {
+    const map = new Map();
+    for (const cls of classesInGrade) {
+      const key = cls.section || "—";
+      const entry = map.get(key) ?? {
+        section: key,
+        classCount: 0,
+        students: 0,
+        graded: 0,
+        pending: 0,
+        uploaded: 0,
+      };
+      entry.classCount += 1;
+      entry.students += cls.learnerCount;
+      entry.graded += cls.gradedCount;
+      entry.pending += cls.pendingCount;
+      if (cls.hasUpload) entry.uploaded += 1;
+      map.set(key, entry);
+    }
+    return [...map.values()].sort((a, b) =>
+      String(a.section).localeCompare(String(b.section))
+    );
+  }, [classesInGrade]);
+
+  const scopedClasses = useMemo(() => {
+    if (sectionFilter === "All Sections") return [];
+    return classesInGrade.filter((cls) => cls.section === sectionFilter);
+  }, [classesInGrade, sectionFilter]);
+
+  const selectedClass = useMemo(() => {
+    if (!selectedClassId) return null;
+    return (
+      catalog.find(
+        (cls) =>
+          cls.id === selectedClassId ||
+          (cls.relatedClassIds ?? []).includes(selectedClassId)
+      ) || null
+    );
+  }, [catalog, selectedClassId]);
+
+  const rosterStudents = useMemo(() => {
+    if (!selectedClass) return [];
+    const query = search.trim().toLowerCase();
+    return (selectedClass.students ?? []).filter((row) => {
       if (query) {
         const haystack = `${row.studentName} ${row.studentNumber}`.toLowerCase();
         if (!haystack.includes(query)) return false;
       }
-      if (!gradesMatch(row.grade, gradeFilter)) return false;
-      if (sectionFilter !== "All Sections" && row.section !== sectionFilter) {
-        return false;
-      }
-      if (riskFilter !== "All Risk Levels") {
-        if (
-          normalizeRiskLevel(row.riskLevel) !== normalizeRiskLevel(riskFilter)
-        ) {
-          return false;
-        }
-      }
-      if (teacherFilter !== "All Teachers") {
-        if (!(row.teacherNames ?? []).includes(teacherFilter)) return false;
-      }
+      if (statusFilter === "graded") return row.hasGrade;
+      if (statusFilter === "ungraded") return !row.hasGrade;
       return true;
     });
-  }, [model, search, gradeFilter, sectionFilter, riskFilter, teacherFilter]);
+  }, [selectedClass, search, statusFilter]);
 
   const statusCounts = useMemo(() => {
-    let atRisk = 0;
-    let aral = 0;
+    const rows = selectedClass?.students ?? [];
+    let graded = 0;
     let ungraded = 0;
-    for (const row of scopedStudents) {
-      if (isAtRiskLearner(row)) atRisk += 1;
-      if (isAralLearner(row)) aral += 1;
-      if (isUngradedLearner(row)) ungraded += 1;
+    for (const row of rows) {
+      if (row.hasGrade) graded += 1;
+      else ungraded += 1;
     }
-    return {
-      all: scopedStudents.length,
-      atRisk,
-      aral,
-      ungraded,
-    };
-  }, [scopedStudents]);
-
-  const filteredStudents = useMemo(() => {
-    if (statusFilter === "all") return scopedStudents;
-    return scopedStudents.filter((row) => {
-      if (statusFilter === "at-risk") return isAtRiskLearner(row);
-      if (statusFilter === "aral") return isAralLearner(row);
-      if (statusFilter === "ungraded") return isUngradedLearner(row);
-      return true;
-    });
-  }, [scopedStudents, statusFilter]);
+    return { all: rows.length, graded, ungraded };
+  }, [selectedClass]);
 
   const selectGradeFolder = useCallback((gradeLabel) => {
     setGradeFilter(gradeLabel || "All Grades");
     setSectionFilter("All Sections");
+    setTeacherFilter("All Teachers");
+    setSelectedClassId(null);
     setStatusFilter("all");
+    setSearch("");
   }, []);
 
   const clearGradeFolder = useCallback(() => {
     setGradeFilter("All Grades");
+    setSectionFilter("All Sections");
+    setSelectedClassId(null);
+    setStatusFilter("all");
+    setSearch("");
+  }, []);
+
+  const selectSectionFolder = useCallback((sectionName) => {
+    setSectionFilter(sectionName || "All Sections");
+    setSelectedClassId(null);
+    setStatusFilter("all");
+    setSearch("");
+  }, []);
+
+  const clearSectionFolder = useCallback(() => {
+    setSectionFilter("All Sections");
+    setSelectedClassId(null);
+    setStatusFilter("all");
+    setSearch("");
+  }, []);
+
+  const selectClass = useCallback((cls) => {
+    if (!cls) return;
+    setSelectedClassId(cls.id);
+    setGradeFilter(cls.gradeLabel || "All Grades");
+    setSectionFilter(cls.section || "All Sections");
+    setTeacherFilter(cls.teacherName || "All Teachers");
+    setStatusFilter("all");
+    setSearch("");
+  }, []);
+
+  const clearClass = useCallback(() => {
+    setSelectedClassId(null);
+    setStatusFilter("all");
+    setSearch("");
   }, []);
 
   return {
@@ -238,12 +287,12 @@ export function useAcademicRecords() {
     refresh: () => refresh({ bustCache: true }),
     summaryCards: model?.summaryCards ?? [],
     gradeSummary: model?.gradeSummary ?? [],
-    students: filteredStudents,
-    allStudents: model?.students ?? [],
+    sectionFolders,
+    classes: scopedClasses,
+    selectedClass,
+    students: rosterStudents,
     filterOptions: model?.filters ?? {
-      grades: ["All Grades"],
       sections: ["All Sections"],
-      risks: ["All Risk Levels"],
       teachers: ["All Teachers"],
     },
     teacherSubmissions: model?.teacherSubmissions ?? [],
@@ -264,17 +313,18 @@ export function useAcademicRecords() {
     search,
     setSearch,
     gradeFilter,
-    setGradeFilter,
     selectGradeFolder,
     clearGradeFolder,
+    selectSectionFolder,
+    clearSectionFolder,
     sectionFilter,
     setSectionFilter,
-    riskFilter,
-    setRiskFilter,
     teacherFilter,
     setTeacherFilter,
     statusFilter,
     setStatusFilter,
     statusCounts,
+    selectClass,
+    clearClass,
   };
 }

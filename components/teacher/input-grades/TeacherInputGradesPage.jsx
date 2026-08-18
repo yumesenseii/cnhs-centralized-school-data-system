@@ -2,13 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle2, Menu } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { CheckCircle2 } from "lucide-react";
+import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import InputGradesConfirmClassStep from "@/components/teacher/input-grades/InputGradesConfirmClassStep";
 import InputGradesPreviewStep from "@/components/teacher/input-grades/InputGradesPreviewStep";
@@ -16,11 +11,11 @@ import InputGradesShell from "@/components/teacher/input-grades/InputGradesShell
 import InputGradesUploadStep from "@/components/teacher/input-grades/InputGradesUploadStep";
 import { useTeacherClasses } from "@/hooks/teacher/useMyClasses";
 import { findBestMatchingClass } from "@/lib/eclass/matchAssignedClass";
-import { SIDEBAR_SHEET_CLASS } from "@/lib/constants/layout";
 
 const INITIAL = {
   step: 1,
   file: null,
+  arrayBuffer: null,
   fileMeta: null,
   metadata: null,
   learnerCount: 0,
@@ -30,7 +25,6 @@ const INITIAL = {
 
 export default function TeacherInputGradesPage() {
   const { classes, teacherId, loading, error, refresh } = useTeacherClasses();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [state, setState] = useState(INITIAL);
 
   const selectedClass = useMemo(
@@ -50,11 +44,12 @@ export default function TeacherInputGradesPage() {
     setState(INITIAL);
   }
 
-  function handleParsed({ file, fileMeta, metadata, learnerCount }) {
+  function handleParsed({ file, fileMeta, metadata, learnerCount, arrayBuffer }) {
     const match = findBestMatchingClass(classes, metadata);
     setState((prev) => ({
       ...prev,
       file,
+      arrayBuffer: arrayBuffer ?? null,
       fileMeta,
       metadata,
       learnerCount,
@@ -68,6 +63,7 @@ export default function TeacherInputGradesPage() {
       ...prev,
       step: 1,
       file: null,
+      arrayBuffer: null,
       fileMeta: null,
       metadata: null,
       learnerCount: 0,
@@ -83,27 +79,9 @@ export default function TeacherInputGradesPage() {
       transition={{ duration: 0.3, ease: "easeOut" }}
     >
       <div className="mb-2 flex justify-end lg:hidden">
-        <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-          <SheetTrigger
-            render={
-              <button
-                type="button"
-                aria-label="Open teacher menu"
-                className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm"
-              />
-            }
-          >
-            <Menu size={18} />
-          </SheetTrigger>
-          <SheetContent
-            side="left"
-            showCloseButton={false}
-            className={SIDEBAR_SHEET_CLASS}
-          >
-            <SheetTitle className="sr-only">Teacher navigation</SheetTitle>
-            <TeacherSidebar mobile onNavigate={() => setMenuOpen(false)} />
-          </SheetContent>
-        </Sheet>
+        <MobileNavSheet ariaLabel="Open teacher menu" title="Teacher navigation">
+          {(close) => <TeacherSidebar mobile onNavigate={close} />}
+        </MobileNavSheet>
       </div>
 
       {error ? (
@@ -188,6 +166,7 @@ export default function TeacherInputGradesPage() {
           {state.step === 3 ? (
             <InputGradesPreviewStep
               file={state.file}
+              arrayBuffer={state.arrayBuffer}
               fileMeta={state.fileMeta}
               metadata={state.metadata}
               learnerCount={state.learnerCount}

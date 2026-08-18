@@ -2,14 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, FileText, Menu } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { ArrowLeft, FileText } from "lucide-react";
+import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import EClassUploadDialog from "@/components/teacher/my-classes/EClassUploadDialog";
 import EmptyLearnersState from "@/components/teacher/my-classes/EmptyLearnersState";
@@ -30,11 +26,11 @@ import {
   exportClassReportExcel,
   exportTeacherReportsPdf,
 } from "@/lib/teacher/reportsExport";
-import { SIDEBAR_SHEET_CLASS } from "@/lib/constants/layout";
 import { UPLOAD_STORAGE_KEY } from "@/data/teacher/lessonPlans";
 import { buildQuarterlyAverages } from "@/lib/teacher/myClassesMappers";
 import { termLabel } from "@/lib/academic/termLabels";
-import { useRouter } from "next/navigation";
+import { createDeleteRequest } from "@/lib/supabase/queries/deleteRequests";
+import DeleteConfirmModal from "@/components/shared/DeleteConfirmModal";
 
 export default function ClassOverview({ classId }) {
   const router = useRouter();
@@ -46,6 +42,7 @@ export default function ClassOverview({ classId }) {
     error,
     refresh,
     viewQuarter,
+    setViewQuarter,
     termOptions,
     allTermGradeRows,
   } = useClassDetails(classId);
@@ -55,11 +52,12 @@ export default function ClassOverview({ classId }) {
     generate: generateReport,
     reset: resetReport,
   } = useClassReport(classId);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [teacherId, setTeacherId] = useState(null);
   const [toast, setToast] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [requesting, setRequesting] = useState(false);
 
   async function openUpload() {
     const session = await getCurrentTeacherSession();
@@ -113,6 +111,22 @@ export default function ClassOverview({ classId }) {
       router.push(
         `/teacher/lesson-plans/upload?classId=${encodeURIComponent(targetClassId)}`
       );
+      return;
+    }
+    if (action.id === "qa-ecr" || action.id === "qa-class") {
+      const label = `${classItem.subject} · ${classItem.gradeSection} · ${termLabel(viewQuarter) || classItem.currentQuarter} · ${classItem.schoolYear}`;
+      setDeleteConfirm({
+        kind: action.id === "qa-ecr" ? "ecr" : "class",
+        title:
+          action.id === "qa-ecr"
+            ? "Request clear ECR"
+            : "Request delete class",
+        itemLabel: label,
+        consequence:
+          action.id === "qa-ecr"
+            ? "The head teacher must approve before imported grades are cleared."
+            : "The head teacher must approve before this class assignment is removed.",
+      });
     }
   }
 
@@ -267,23 +281,12 @@ export default function ClassOverview({ classId }) {
             </h1>
           </div>
 
-          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-            <SheetTrigger
-              render={
-                <button
-                  type="button"
-                  aria-label="Open teacher menu"
-                  className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm lg:hidden"
-                />
-              }
-            >
-              <Menu size={18} />
-            </SheetTrigger>
-            <SheetContent side="left" showCloseButton={false} className={SIDEBAR_SHEET_CLASS}>
-              <SheetTitle className="sr-only">Teacher navigation</SheetTitle>
-              <TeacherSidebar mobile onNavigate={() => setMenuOpen(false)} />
-            </SheetContent>
-          </Sheet>
+          <MobileNavSheet
+            ariaLabel="Open teacher menu"
+            title="Teacher navigation"
+          >
+            {(close) => <TeacherSidebar mobile onNavigate={close} />}
+          </MobileNavSheet>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
@@ -291,8 +294,7 @@ export default function ClassOverview({ classId }) {
             <FileText size={12} />
             {classItem.gradeSection}
           </span>
-          {termOptions?.length > 1 ? (
-            <label className="inline-flex h-8 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 text-[11px] font-semibold text-slate-600 shadow-sm">
+          <label className="inline-flex h-8 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 text-[11px] font-semibold text-slate-600 shadow-sm">
               <span className="text-slate-400">Term</span>
               <select
                 value={String(viewQuarter)}
@@ -303,6 +305,7 @@ export default function ClassOverview({ classId }) {
                     router.push(`/teacher/my-classes/${target.classId}`);
                     return;
                   }
+                  setViewQuarter(n);
                 }}
                 className="cursor-pointer bg-transparent text-[11px] font-semibold text-slate-700 outline-none"
               >
@@ -313,7 +316,6 @@ export default function ClassOverview({ classId }) {
                 ))}
               </select>
             </label>
-          ) : null}
           <Link
             href="/teacher/my-classes"
             className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 shadow-sm hover:bg-slate-50"
@@ -380,6 +382,8 @@ export default function ClassOverview({ classId }) {
                 { id: "qa1", label: "Upload E-Class Record", tone: "primary", icon: "upload" },
                 { id: "qa2", label: "Upload Lesson Plan", tone: "violet", icon: "file" },
                 { id: "qa3", label: "Generate Class Report", tone: "orange", icon: "report" },
+                { id: "qa-ecr", label: "Request clear ECR", tone: "violet", icon: "file" },
+                { id: "qa-class", label: "Request delete class", tone: "danger", icon: "trash" },
               ]}
               classId={classItem.id}
               busyId={reportLoading ? "qa3" : null}
@@ -424,6 +428,36 @@ export default function ClassOverview({ classId }) {
         onExport={handleExportReportPdf}
         onExportExcel={handleExportReportExcel}
         closeLabel="Close"
+      />
+
+      <DeleteConfirmModal
+        open={Boolean(deleteConfirm)}
+        title={deleteConfirm?.title}
+        itemLabel={deleteConfirm?.itemLabel}
+        consequence={deleteConfirm?.consequence}
+        confirmLabel="Send request"
+        confirming={requesting}
+        confirmingLabel="Sending…"
+        tone="request"
+        icon="request"
+        onCancel={() => !requesting && setDeleteConfirm(null)}
+        onConfirm={async () => {
+          if (!deleteConfirm || !classItem?.id) return;
+          setRequesting(true);
+          const result = await createDeleteRequest({
+            targetType: deleteConfirm.kind,
+            targetId: classItem.id,
+            label: deleteConfirm.itemLabel,
+          });
+          setRequesting(false);
+          setDeleteConfirm(null);
+          setToast(
+            result.error
+              ? result.error.message
+              : "Request sent to the head teacher."
+          );
+          window.setTimeout(() => setToast(""), 3200);
+        }}
       />
     </motion.div>
   );

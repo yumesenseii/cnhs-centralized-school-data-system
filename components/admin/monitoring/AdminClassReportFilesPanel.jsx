@@ -175,11 +175,6 @@ export default function AdminClassReportFilesPanel({
               Received class report files
             </h2>
           </div>
-          <p className="mt-0.5 text-[12px] text-slate-500">
-            Eng/Fil ARAL packages teachers sent for HT review. Open Failing /
-            Moderate / Passing tabs, then Approve or Return. Does not require
-            the teacher&apos;s local “Generate report” file meta.
-          </p>
         </div>
         {reviewing || approvalsLoading ? (
           <Loader2 size={16} className="animate-spin text-slate-400" />

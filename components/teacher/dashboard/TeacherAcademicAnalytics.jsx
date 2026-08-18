@@ -46,7 +46,6 @@ function PanelCard({ title, children, className }) {
  * Teacher Academic Analytics shell — simplified Summary; other panels live in tabs.
  */
 export default function TeacherAcademicAnalytics({
-  schoolYear,
   stats = [],
   classes = [],
   recentActivities = [],
@@ -70,7 +69,7 @@ export default function TeacherAcademicAnalytics({
     <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
       <div className="border-b border-slate-100 bg-cnhs-green-soft/30 px-4 py-3.5 sm:px-5">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-          <div className="flex items-start gap-3">
+          <div className="flex items-center gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-cnhs-green-dark shadow-sm ring-1 ring-slate-100">
               <BarChart3 size={16} strokeWidth={1.8} aria-hidden="true" />
             </span>
@@ -78,11 +77,6 @@ export default function TeacherAcademicAnalytics({
               <h2 className="text-sm font-semibold text-slate-900">
                 Academic Analytics
               </h2>
-              <p className="mt-0.5 text-[11px] leading-4 text-slate-500">
-                Risk predictions use academic performance (ECR grades) only
-                {schoolYear ? ` · ${schoolYear}` : ""}. Attendance is not a
-                prediction input.
-              </p>
             </div>
           </div>
 

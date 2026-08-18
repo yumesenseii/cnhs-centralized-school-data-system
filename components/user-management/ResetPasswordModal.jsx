@@ -78,7 +78,7 @@ export default function ResetPasswordModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="reset-password-title"
-        className="relative z-10 w-full max-w-[440px] overflow-hidden rounded-2xl bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]"
+        className="relative z-10 w-full max-w-[440px] overflow-hidden rounded-lg bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]"
       >
         <div className="border-b border-slate-100 px-4 py-3.5">
           <h2

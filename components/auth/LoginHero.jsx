@@ -8,7 +8,7 @@ export default function LoginHero() {
     <div
       className="image-panel relative hidden min-h-[560px] overflow-hidden lg:block lg:w-[48%]"
       role="img"
-      aria-label={`${schoolName} official portal branding`}
+      aria-label={`${schoolName} CNHS Learn branding`}
     >
       <Image
         src={brandingPanelSrc}

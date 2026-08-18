@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import ClassOrganizationPage from "@/components/class-organization/ClassOrganizationPage";
 
 export const metadata = {
-  title: "Classes & Sections | CNHS Admin Portal",
+  title: "Classes & Sections | CNHS Learn",
   description:
     "Manage grade sections and teacher class assignments in one place.",
 };

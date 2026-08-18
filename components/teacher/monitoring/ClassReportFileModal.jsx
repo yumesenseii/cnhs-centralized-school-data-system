@@ -232,7 +232,7 @@ export default function ClassReportFileModal({
     >
       <div
         className={cn(
-          "flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl",
+          "flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl",
           expanded
             ? "h-[96vh] w-[98vw]"
             : "h-[min(85vh,780px)] w-[min(1180px,96vw)]"

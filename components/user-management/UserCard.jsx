@@ -23,6 +23,8 @@ export default function UserCard({
   onEdit,
   onResetPassword,
   onToggleStatus,
+  onDelete,
+  currentAuthUserId,
 }) {
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-3 shadow-[0_4px_12px_rgba(15,23,42,0.035)]">
@@ -103,6 +105,8 @@ export default function UserCard({
           onEdit={onEdit}
           onResetPassword={onResetPassword}
           onToggleStatus={onToggleStatus}
+          onDelete={onDelete}
+          currentAuthUserId={currentAuthUserId}
         />
       </div>
     </article>

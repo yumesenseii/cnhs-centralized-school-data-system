@@ -51,14 +51,6 @@ export default function ReportAttendancePanel({
 
   return (
     <div className="space-y-4">
-      <p className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
-        SF2 attendance monitoring only ·{" "}
-        <span className="font-semibold text-slate-700">
-          not used in academic risk prediction
-        </span>{" "}
-        (ECR grades only).
-      </p>
-
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {metrics.map((item) => (
           <div

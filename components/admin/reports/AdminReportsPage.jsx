@@ -429,7 +429,7 @@ export default function AdminReportsPage() {
 
           <ReportModule
             title="Attendance (SF2)"
-            subtitle="Monthly attendance · separate from academic risk"
+            subtitle="Monthly attendance"
             icon={<CalendarDays size={16} strokeWidth={1.8} />}
             open={attendanceOpen}
             onOpenChange={setAttendanceOpen}

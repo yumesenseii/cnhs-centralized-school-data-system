@@ -51,8 +51,10 @@ export default function InputGradesUploadStep({
     setStatusLabel("Opening workbook...");
 
     try {
+      const buffer = await selected.arrayBuffer();
       const parsed = await parseEClassRecord(selected, {
         includeGrades: false,
+        arrayBuffer: buffer,
         onProgress: ({ label }) => {
           setStatusLabel(label || "Reading INPUT DATA...");
         },
@@ -66,6 +68,7 @@ export default function InputGradesUploadStep({
 
       onParsed?.({
         file: selected,
+        arrayBuffer: buffer,
         fileMeta: buildFileMeta(selected),
         metadata: parsed.metadata,
         learnerCount: parsed.learners?.length ?? 0,
@@ -90,12 +93,6 @@ export default function InputGradesUploadStep({
   return (
     <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-3.5">
       <h2 className="text-sm font-semibold text-slate-900">Upload ECR</h2>
-      <p className="mt-1 text-[11px] text-slate-400">
-        Official DepEd Excel (.xlsx), including Class-Record-v1 (INPUT + TERM
-        sheets). The system reads grade, section, subject, and Term Grades from
-        the matching quarter sheet. Visual student numbers (104793 + 6 digits)
-        are generated when the file has learner names only.
-      </p>
 
       {!fileMeta ? (
         <button

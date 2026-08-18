@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 
-const PUBLIC_PATHS = new Set(["/login", "/"]);
+const PUBLIC_PATHS = new Set(["/login", "/", "/login/reset-password"]);
 
 const ADMIN_PREFIXES = [
   "/dashboard",
@@ -155,6 +155,9 @@ export async function middleware(request) {
   }
 
   if (pathname === "/login" || pathname === "/") {
+    if (pathname === "/login" && request.nextUrl.searchParams.get("reset") === "1") {
+      return response;
+    }
     const home = request.nextUrl.clone();
     home.pathname = roleHome(role);
     return NextResponse.redirect(home);
@@ -185,6 +188,7 @@ export const config = {
   matcher: [
     "/",
     "/login",
+    "/login/reset-password",
     "/dashboard/:path*",
     "/academic-records/:path*",
     "/lesson-plan-review/:path*",

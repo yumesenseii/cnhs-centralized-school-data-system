@@ -26,6 +26,7 @@ export default function EClassUploadDialog({
   const [uploading, setUploading] = useState(false);
   const [previewMeta, setPreviewMeta] = useState(null);
   const [previewing, setPreviewing] = useState(false);
+  const [workbookBuffer, setWorkbookBuffer] = useState(null);
 
   if (!open || !classItem) return null;
 
@@ -37,6 +38,7 @@ export default function EClassUploadDialog({
     setUploading(false);
     setPreviewMeta(null);
     setPreviewing(false);
+    setWorkbookBuffer(null);
   }
 
   function handleClose() {
@@ -57,14 +59,18 @@ export default function EClassUploadDialog({
     setError("");
     setFile(selected);
     setPreviewMeta(null);
+    setWorkbookBuffer(null);
     setPreviewing(true);
     setStatusLabel("Opening workbook...");
 
     try {
+      const buffer = await selected.arrayBuffer();
+      setWorkbookBuffer(buffer);
       const parsed = await parseEClassRecord(selected, {
         assignedClass: classItem,
         teacherName: classItem.teacher,
         includeGrades: false,
+        arrayBuffer: buffer,
         onProgress: ({ label }) => {
           setStatusLabel(label || "Reading INPUT DATA...");
         },
@@ -91,8 +97,8 @@ export default function EClassUploadDialog({
     if (!file || error) return;
     setUploading(true);
     setError("");
-    setProgress(5);
-    setStatusLabel("Opening workbook...");
+    setProgress(10);
+    setStatusLabel("Preparing assigned classes...");
 
     try {
       const result = await importEClassRecord({
@@ -112,8 +118,9 @@ export default function EClassUploadDialog({
           quarterLabel: classItem.quarterLabel,
         },
         file,
+        arrayBuffer: workbookBuffer,
         onProgress: ({ percent, label }) => {
-          setProgress(Math.max(5, percent));
+          setProgress(Math.max(10, percent ?? 10));
           setStatusLabel(label);
         },
       });
@@ -144,7 +151,7 @@ export default function EClassUploadDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="eclass-upload-title"
-        className="relative z-10 w-full max-w-lg overflow-hidden rounded-t-2xl border border-slate-100 bg-white shadow-2xl sm:rounded-2xl"
+        className="relative z-10 w-full max-w-lg overflow-hidden rounded-t-lg border border-slate-100 bg-white shadow-2xl sm:rounded-lg"
       >
         <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
           <div>

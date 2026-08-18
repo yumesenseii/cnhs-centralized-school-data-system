@@ -132,17 +132,13 @@ export default function SectionManagement({ embedded = false }) {
       className={embedded ? "pb-2" : "pb-5"}
     >
       {embedded ? (
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[11px] text-slate-500">
-            Create and manage grade sections by school year. Archived sections remain available for historical records.
-          </p>
+        <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
           {createButton}
         </div>
       ) : (
         <Header
           breadcrumb="Home / Classes & Sections / Sections"
           title="Sections"
-          description="Create and manage grade sections by school year. Archived sections remain available for historical records."
           controls={createButton}
         />
       )}

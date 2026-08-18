@@ -85,7 +85,7 @@ function DetailPanel({ detail, loading, onClose }) {
         if (e.target === e.currentTarget) onClose?.();
       }}
     >
-      <div className="relative z-10 flex max-h-[72vh] w-[min(920px,94vw)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+      <div className="relative z-10 flex max-h-[72vh] w-[min(920px,94vw)] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl">
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-5 py-3.5">
           <div className="min-w-0">
             <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">

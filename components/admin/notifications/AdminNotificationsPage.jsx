@@ -16,7 +16,12 @@ import RecentActivity from "@/components/notifications/RecentActivity";
 import TeacherNotificationFilters from "@/components/teacher/notifications/TeacherNotificationFilters";
 import NotificationsSkeleton from "@/components/teacher/notifications/NotificationsSkeleton";
 import { useTeacherNotifications } from "@/hooks/teacher/useTeacherNotifications";
-import { getRecentLessonPlanActivity } from "@/lib/supabase/queries/lessonPlans";
+import DeleteRequestsPanel from "@/components/admin/DeleteRequestsPanel";
+import {
+  approveDeleteRequest,
+  listPendingDeleteRequests,
+  rejectDeleteRequest,
+} from "@/lib/supabase/queries/deleteRequests";
 
 function mapLessonPlanEvents(rows = []) {
   return rows.map((row) => {
@@ -96,15 +101,28 @@ export default function AdminNotificationsPage() {
 
   const [activity, setActivity] = useState([]);
   const [activityLoading, setActivityLoading] = useState(true);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [requestsError, setRequestsError] = useState("");
+  const [requestToast, setRequestToast] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setActivityLoading(true);
-      const result = await getRecentLessonPlanActivity(8);
+      const [activityResult, requestsResult] = await Promise.all([
+        getRecentLessonPlanActivity(8),
+        listPendingDeleteRequests(),
+      ]);
       if (cancelled) return;
-      if (!result.error) {
-        setActivity(mapLessonPlanEvents(result.data ?? []));
+      if (!activityResult.error) {
+        setActivity(mapLessonPlanEvents(activityResult.data ?? []));
+      }
+      if (requestsResult.error) {
+        setRequestsError(requestsResult.error.message);
+        setPendingRequests([]);
+      } else {
+        setRequestsError("");
+        setPendingRequests(requestsResult.data ?? []);
       }
       setActivityLoading(false);
     })();
@@ -174,6 +192,31 @@ export default function AdminNotificationsPage() {
           <NotificationStats cards={summaryCards} />
 
           <div className="mt-4">
+            <DeleteRequestsPanel
+              requests={pendingRequests}
+              error={requestsError}
+              onApprove={async (row) => {
+                const result = await approveDeleteRequest(row.id);
+                setRequestToast(
+                  result.error ? result.error.message : "Request approved."
+                );
+                const next = await listPendingDeleteRequests();
+                setPendingRequests(next.data ?? []);
+                setRequestsError(next.error?.message ?? "");
+              }}
+              onReject={async (row) => {
+                const result = await rejectDeleteRequest(row.id);
+                setRequestToast(
+                  result.error ? result.error.message : "Request declined."
+                );
+                const next = await listPendingDeleteRequests();
+                setPendingRequests(next.data ?? []);
+                setRequestsError(next.error?.message ?? "");
+              }}
+            />
+          </div>
+
+          <div className="mt-4">
             <TeacherNotificationFilters
               filters={filterOptions}
               search={filters.search}
@@ -210,6 +253,11 @@ export default function AdminNotificationsPage() {
           </div>
         </>
       )}
+      {requestToast ? (
+        <div className="fixed bottom-5 right-5 z-[70] rounded-xl bg-slate-900 px-4 py-2.5 text-[11px] font-medium text-white shadow-lg">
+          {requestToast}
+        </div>
+      ) : null}
     </motion.div>
   );
 }

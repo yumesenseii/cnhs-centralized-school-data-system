@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { User } from "lucide-react";
+import ForgotPasswordModal from "@/components/auth/ForgotPasswordModal";
 import HelpFooter from "@/components/auth/HelpFooter";
 import LoginButton from "@/components/auth/LoginButton";
 import LoginInput from "@/components/auth/LoginInput";
@@ -40,6 +41,15 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({ email: "", password: "" });
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [resetNotice, setResetNotice] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("reset") === "1") {
+      setResetNotice(form.resetSuccess);
+    }
+  }, [form.resetSuccess]);
 
   function validateFields() {
     const nextErrors = { email: "", password: "" };
@@ -123,6 +133,20 @@ export default function LoginForm() {
         </header>
 
         <AnimatePresence>
+          {resetNotice ? (
+            <motion.p
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              className="mb-4 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2.5 text-[12px] font-medium text-cnhs-green-dark"
+              role="status"
+            >
+              {resetNotice}
+            </motion.p>
+          ) : null}
+        </AnimatePresence>
+
+        <AnimatePresence>
           {serverError ? (
             <motion.p
               initial={{ opacity: 0, y: -6 }}
@@ -183,9 +207,7 @@ export default function LoginForm() {
               onChange={setRememberMe}
               label={form.rememberMe}
               forgotLabel={form.forgotPassword}
-              onForgot={() => {
-                // UI only — password reset will connect later.
-              }}
+              onForgot={() => setForgotOpen(true)}
             />
           </div>
 
@@ -198,6 +220,11 @@ export default function LoginForm() {
           <HelpFooter text={form.help} />
         </div>
       </motion.div>
+
+      <ForgotPasswordModal
+        open={forgotOpen}
+        onClose={() => setForgotOpen(false)}
+      />
     </div>
   );
 }

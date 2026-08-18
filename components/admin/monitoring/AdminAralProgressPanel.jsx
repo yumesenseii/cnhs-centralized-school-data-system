@@ -192,10 +192,6 @@ export default function AdminAralProgressPanel({
           <h2 className="text-sm font-semibold text-slate-900">
             ARAL Assessments
           </h2>
-          <p className="mt-0.5 text-[11px] text-slate-500">
-            View-only Pre / Mid / Post scores by section. Post comments for
-            facilitators; weekly learner progress remains available per student.
-          </p>
         </div>
         <span className="inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
           {aralLearners.length} learner

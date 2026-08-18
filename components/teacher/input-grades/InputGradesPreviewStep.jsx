@@ -19,6 +19,7 @@ function SummaryItem({ label, value }) {
 
 export default function InputGradesPreviewStep({
   file,
+  arrayBuffer,
   fileMeta,
   metadata,
   learnerCount = 0,
@@ -36,8 +37,8 @@ export default function InputGradesPreviewStep({
     if (!selectedClass || !file) return;
     setUploading(true);
     setError("");
-    setProgress(5);
-    setStatusLabel("Opening workbook...");
+    setProgress(10);
+    setStatusLabel("Preparing assigned classes...");
 
     try {
       const result = await importEClassRecord({
@@ -58,8 +59,9 @@ export default function InputGradesPreviewStep({
           quarterLabel: selectedClass.quarterLabel,
         },
         file,
+        arrayBuffer,
         onProgress: ({ percent, label }) => {
-          setProgress(Math.max(5, percent ?? 5));
+          setProgress(Math.max(10, percent ?? 10));
           setStatusLabel(label || "Importing...");
         },
       });

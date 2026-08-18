@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, FileBarChart2, FileUp, Upload } from "lucide-react";
+import { ChevronRight, FileBarChart2, FileUp, Trash2, Upload } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -8,12 +8,14 @@ const icons = {
   upload: Upload,
   file: FileUp,
   report: FileBarChart2,
+  trash: Trash2,
 };
 
 const tones = {
   primary: "bg-cnhs-green-dark text-white hover:bg-[#246f54]",
   violet: "border border-violet-200 bg-white text-violet-700 hover:bg-violet-50",
   orange: "border border-orange-200 bg-white text-cnhs-orange hover:bg-orange-50",
+  danger: "border border-red-200 bg-white text-red-600 hover:bg-red-50",
 };
 
 export default function QuickActions({ actions, classId, onAction, busyId = null }) {

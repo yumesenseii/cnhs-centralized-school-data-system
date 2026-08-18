@@ -35,13 +35,15 @@ export default function RememberMe({ checked, onChange, label, forgotLabel, onFo
         <span className="text-[12px] font-medium text-slate-600">{label}</span>
       </label>
 
-      <button
-        type="button"
-        onClick={onForgot}
-        className="cursor-pointer text-[12px] font-semibold text-[#F4C430] transition-opacity hover:opacity-80"
-      >
-        {forgotLabel}
-      </button>
+      {forgotLabel && onForgot ? (
+        <button
+          type="button"
+          onClick={onForgot}
+          className="cursor-pointer text-[12px] font-semibold text-[#F4C430] transition-opacity hover:opacity-80"
+        >
+          {forgotLabel}
+        </button>
+      ) : null}
     </div>
   );
 }

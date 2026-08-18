@@ -87,9 +87,6 @@ export default function StudentDashboard() {
               <div className="mt-3">
                 <RiskPill value={data.summary.riskLevel} />
               </div>
-              <p className="mt-2 text-[11px] text-slate-500">
-                Based on ECR grades only (not attendance)
-              </p>
             </div>
             <StatCard
               label="Active Interventions"
@@ -222,13 +219,6 @@ export default function StudentDashboard() {
           </div>
 
           <div className="mt-3 border-t border-slate-100 pt-3">
-            <h2 className="text-sm font-semibold text-slate-900">
-              Attendance Analytics
-            </h2>
-            <p className="mt-0.5 text-[11px] text-slate-500">
-              Monitoring only — not used in academic risk prediction. Status
-              warns when approaching the 20% absence threshold.
-            </p>
             <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <StatCard
                 label="Present"

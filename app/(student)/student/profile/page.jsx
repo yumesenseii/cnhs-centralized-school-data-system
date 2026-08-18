@@ -1,7 +1,7 @@
 import StudentProfilePage from "@/components/student/profile/StudentProfilePage";
 
 export const metadata = {
-  title: "Profile | CNHS Student",
+  title: "Profile | CNHS Learn",
   description: "View your learner profile.",
 };
 

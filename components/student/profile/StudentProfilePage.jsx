@@ -157,10 +157,6 @@ export default function StudentProfilePage() {
 
           <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-3.5">
             <h2 className="text-sm font-semibold text-slate-900">Attendance</h2>
-            <p className="mt-1 text-[11px] text-slate-500">
-              Attendance monitoring only — not used in academic risk prediction.
-              Warning when approaching the 20% absence threshold.
-            </p>
 
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
               <InfoCard
@@ -243,7 +239,7 @@ export default function StudentProfilePage() {
           </section>
 
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start">
-            <ThemeSettingsCard description="Choose how the student portal looks on this browser. The theme stays after logout and when you return." />
+            <ThemeSettingsCard description="Choose how CNHS Learn looks on this browser. The theme stays after logout and when you return." />
             <StudentSecurityCard />
           </div>
         </div>

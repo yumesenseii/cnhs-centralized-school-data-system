@@ -1,7 +1,7 @@
 import LessonPlansDashboard from "@/components/teacher/lesson-plans/LessonPlansDashboard";
 
 export const metadata = {
-  title: "Lesson Plans | CNHS Teacher Portal",
+  title: "Lesson Plans | CNHS Learn",
   description: "Manage and submit lesson plans for Head Teacher review.",
 };
 

@@ -272,7 +272,7 @@ export default function AdminReportCharts({
       {!hideAttendance ? (
         <ChartCard
           title="Attendance Rate by Month"
-          subtitle="SF2 monitoring only · not used in academic risk prediction"
+          subtitle="SF2 monthly trend"
         >
           {!hasAttendance ? (
             <EmptyChart />

@@ -1,19 +1,33 @@
 "use client";
 
 import { useMemo } from "react";
-import { Eye } from "lucide-react";
 import {
   createColumnHelper,
   flexRender,
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import RecommendationBadge from "@/components/academic-records/RecommendationBadge";
-import RiskBadge from "@/components/academic-records/RiskBadge";
-import StatusBadge from "@/components/academic-records/StatusBadge";
 import StudentTableRow from "@/components/academic-records/StudentTableRow";
 
 const columnHelper = createColumnHelper();
+
+function formatGrade(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) {
+    return <span className="text-[11px] font-medium text-slate-400">—</span>;
+  }
+  return (
+    <span
+      className={
+        n < 75
+          ? "text-[12px] font-semibold tabular-nums text-red-600"
+          : "text-[12px] font-semibold tabular-nums text-slate-800"
+      }
+    >
+      {n.toFixed(0)}
+    </span>
+  );
+}
 
 function StudentNameCell({ row }) {
   return (
@@ -30,13 +44,14 @@ function StudentNameCell({ row }) {
 
 export default function AcademicRecordsTable({
   students = [],
-  title = "Academic Records",
+  title = "Class list",
   recordCount,
+  termHeader = "Term grade",
 }) {
   const displayCount =
     typeof recordCount === "number" ? recordCount : students.length;
-  const columns = useMemo(
-    () => [
+  const columns = useMemo(() => {
+    const cols = [
       columnHelper.accessor("studentNumber", {
         header: "Student No.",
         cell: (info) => (
@@ -50,74 +65,41 @@ export default function AcademicRecordsTable({
         header: "Learner",
         cell: StudentNameCell,
       }),
-      columnHelper.accessor("gradeSection", {
-        header: "Grade / Section",
+      columnHelper.accessor("gender", {
+        header: "Gender",
         cell: (info) => (
           <span className="whitespace-nowrap text-[11px] text-slate-600">
-            {info.getValue()}
+            {info.getValue() || "—"}
           </span>
         ),
       }),
-      columnHelper.accessor("generalAverage", {
-        header: "GA",
-        cell: (info) => {
-          const value = Number(info.getValue());
-          if (!Number.isFinite(value)) {
-            return (
-              <span className="text-[11px] font-medium text-slate-400">—</span>
-            );
-          }
-          return (
-            <span
-              className={
-                value < 75
-                  ? "text-[12px] font-semibold tabular-nums text-red-600"
-                  : "text-[12px] font-semibold tabular-nums text-cnhs-green-dark"
-              }
-            >
-              {value.toFixed(2)}
-            </span>
-          );
-        },
+      columnHelper.accessor("term1", {
+        header: "Term 1",
+        cell: (info) => formatGrade(info.getValue()),
       }),
-      columnHelper.accessor("weakSubject", {
-        header: "Weak Subj.",
-        cell: (info) => (
-          <span className="whitespace-nowrap text-[11px]">
-            {info.getValue() ?? "—"}
-          </span>
-        ),
+      columnHelper.accessor("term2", {
+        header: "Term 2",
+        cell: (info) => formatGrade(info.getValue()),
       }),
-      columnHelper.accessor("riskLevel", {
-        header: "Risk",
-        cell: (info) => <RiskBadge value={info.getValue()} dense />,
+      columnHelper.accessor("term3", {
+        header: "Term 3",
+        cell: (info) => formatGrade(info.getValue()),
       }),
-      columnHelper.accessor("systemRecommendation", {
-        header: "Rec.",
-        cell: (info) => <RecommendationBadge value={info.getValue()} dense />,
+      columnHelper.accessor("final", {
+        header: "Final",
+        cell: (info) => formatGrade(info.getValue()),
       }),
-      columnHelper.accessor("reviewStatus", {
-        header: "Status",
-        cell: (info) => <StatusBadge value={info.getValue()} dense />,
-      }),
-      columnHelper.display({
-        id: "action",
-        header: "",
-        cell: () => (
-          <button
-            type="button"
-            title="View profile"
-            aria-label="View profile"
-            className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-lg bg-cnhs-green-dark px-2 text-[10px] font-semibold text-white transition-colors duration-200 hover:bg-[#246f54]"
-          >
-            <Eye size={12} aria-hidden="true" />
-            View
-          </button>
-        ),
-      }),
-    ],
-    []
-  );
+    ];
+    if (termHeader) {
+      cols.push(
+        columnHelper.accessor("termGrade", {
+          header: termHeader,
+          cell: (info) => formatGrade(info.getValue()),
+        })
+      );
+    }
+    return cols;
+  }, [termHeader]);
 
   const table = useReactTable({
     data: students,
@@ -126,17 +108,17 @@ export default function AcademicRecordsTable({
   });
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
+    <section className="overflow-hidden rounded-lg border border-slate-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
       <div className="flex items-center justify-between gap-4 border-b border-slate-50 px-3 py-2">
         <h2 className="text-[13px] font-semibold text-slate-800">{title}</h2>
         <p className="text-[10px] tabular-nums text-slate-400">
           {typeof recordCount === "number"
-            ? `${students.length} on page · ${displayCount} filtered`
+            ? `${students.length} on page · ${displayCount} in list`
             : `${students.length} records`}
         </p>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px] text-left">
+        <table className="w-full min-w-[720px] text-left">
           <thead className="bg-slate-50/90">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
@@ -168,7 +150,7 @@ export default function AcademicRecordsTable({
                   colSpan={columns.length}
                   className="px-3 py-8 text-center text-sm text-slate-400"
                 >
-                  No learners for the selected filters.
+                  Open a class card to view the full ECR class list.
                 </td>
               </tr>
             )}

@@ -12,6 +12,7 @@ import {
   applyAppearanceToDocument,
   loadAppearanceSettings,
   loadSchoolSettings,
+  saveAppearanceSettings,
 } from "@/lib/settings/adminSettingsStorage";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +22,7 @@ import { cn } from "@/lib/utils";
 export default function AdminShell({ children }) {
   const [collapsed, setCollapsed] = useState(false);
   const [schoolName, setSchoolName] = useState("Cambaog National High School");
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     applyAppearanceToDocument();
@@ -28,6 +30,7 @@ export default function AdminShell({ children }) {
     setCollapsed(appearance.sidebar === "collapsed");
     const school = loadSchoolSettings();
     setSchoolName(school.schoolName || "Cambaog National High School");
+    setHydrated(true);
 
     function onSettingsChange() {
       applyAppearanceToDocument();
@@ -45,18 +48,35 @@ export default function AdminShell({ children }) {
     };
   }, []);
 
+  function toggleCollapsed() {
+    setCollapsed((prev) => {
+      const next = !prev;
+      const current = loadAppearanceSettings();
+      saveAppearanceSettings({
+        ...current,
+        sidebar: next ? "collapsed" : "expanded",
+      });
+      return next;
+    });
+  }
+
+  const sidebarCollapsed = hydrated && collapsed;
+
   return (
     <div className="min-h-screen bg-cnhs-page">
       <Sidebar
         className="hidden lg:flex"
-        collapsed={collapsed}
-        widthClass={collapsed ? SIDEBAR_WIDTH_COLLAPSED_CLASS : SIDEBAR_WIDTH_CLASS}
+        collapsed={sidebarCollapsed}
+        widthClass={
+          sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED_CLASS : SIDEBAR_WIDTH_CLASS
+        }
         schoolName={schoolName}
+        onToggleCollapse={toggleCollapsed}
       />
       <div
         className={cn(
-          "min-h-screen",
-          collapsed
+          "min-h-screen transition-[padding] duration-200",
+          sidebarCollapsed
             ? SIDEBAR_CONTENT_OFFSET_COLLAPSED_CLASS
             : SIDEBAR_CONTENT_OFFSET_CLASS
         )}

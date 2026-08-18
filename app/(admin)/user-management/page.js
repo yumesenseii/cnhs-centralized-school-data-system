@@ -14,11 +14,13 @@ import { exportManagedUsersExcel } from "@/lib/admin/userExport";
 import { createClient } from "@/lib/supabase/client";
 import {
   createManagedUser,
+  deleteManagedUser,
   getManagedUsers,
   resetManagedUserPassword,
   toggleManagedUserStatus,
   updateManagedUser,
 } from "@/lib/supabase/queries/userManagement";
+import DeleteConfirmModal from "@/components/shared/DeleteConfirmModal";
 
 const EMPTY_DATA = {
   users: [],
@@ -35,7 +37,17 @@ const EMPTY_DATA = {
   },
   formOptions: {
     roles: ["Teacher", "Head Teacher"],
-    learningAreas: ["English", "Filipino", "Mathematics", "Science", "Administration"],
+    learningAreas: [
+      "English",
+      "Filipino",
+      "Mathematics",
+      "Science",
+      "Araling Panlipunan",
+      "MAPEH",
+      "TLE",
+      "Values Education",
+      "Administration",
+    ],
     statuses: ["Active", "Inactive"],
   },
 };
@@ -93,6 +105,9 @@ export default function UserManagementPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
+  const [deleteUser, setDeleteUser] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [currentAuthUserId, setCurrentAuthUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
@@ -114,6 +129,18 @@ export default function UserManagementPage() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    let cancelled = false;
+    createClient()
+      .auth.getUser()
+      .then(({ data }) => {
+        if (!cancelled) setCurrentAuthUserId(data?.user?.id ?? null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -151,6 +178,22 @@ export default function UserManagementPage() {
       setError(result.error.message || `Unable to ${nextLabel} user.`);
       return;
     }
+    await refresh();
+  }
+
+  async function handleDeleteUser() {
+    if (!deleteUser) return;
+    setDeleting(true);
+    setError("");
+    const result = await deleteManagedUser(deleteUser);
+    setDeleting(false);
+    if (result.error) {
+      setError(result.error.message || "Unable to delete user.");
+      return;
+    }
+    setDeleteUser(null);
+    setDrawerOpen(false);
+    setToast("User deleted.");
     await refresh();
   }
 
@@ -242,6 +285,8 @@ export default function UserManagementPage() {
             onEdit={openEdit}
             onResetPassword={openReset}
             onToggleStatus={handleToggleStatus}
+            onDelete={setDeleteUser}
+            currentAuthUserId={currentAuthUserId}
           />
         )}
       </div>
@@ -275,6 +320,20 @@ export default function UserManagementPage() {
         user={selectedUser}
         onClose={() => setResetOpen(false)}
         onReset={handleResetPassword}
+      />
+
+      <DeleteConfirmModal
+        open={Boolean(deleteUser)}
+        title="Delete user"
+        itemLabel={deleteUser?.fullName ?? ""}
+        consequence="This removes their login and profile. Teachers with assigned classes cannot be deleted until those classes are reassigned."
+        confirmLabel="Delete user"
+        confirming={deleting}
+        confirmingLabel="Deleting…"
+        onCancel={() => {
+          if (!deleting) setDeleteUser(null);
+        }}
+        onConfirm={handleDeleteUser}
       />
     </motion.div>
   );

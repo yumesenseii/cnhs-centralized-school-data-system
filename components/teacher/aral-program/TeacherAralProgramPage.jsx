@@ -3,23 +3,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Folder, Loader2, Menu, Users } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Folder, Loader2, Users } from "lucide-react";
+import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import AralSectionWorkspace from "@/components/teacher/aral-program/AralSectionWorkspace";
 import { resolveTeacherSessionForMonitoring } from "@/lib/supabase/queries/monitoring";
 import { listMyAralFacilitatorAssignments } from "@/lib/supabase/queries/aralProgram";
 import { groupAralAssignmentsBySection } from "@/lib/reports/aralWeeklyProgressExport";
-import { SIDEBAR_SHEET_CLASS } from "@/lib/constants/layout";
 import { cn } from "@/lib/utils";
 
 export default function TeacherAralProgramPage() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [assignments, setAssignments] = useState([]);
@@ -111,27 +104,9 @@ export default function TeacherAralProgramPage() {
             Open a section folder for weekly, assessment, and report files.
           </p>
         </div>
-        <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-          <SheetTrigger
-            render={
-              <button
-                type="button"
-                aria-label="Open teacher menu"
-                className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm lg:hidden"
-              />
-            }
-          >
-            <Menu size={18} />
-          </SheetTrigger>
-          <SheetContent
-            side="left"
-            showCloseButton={false}
-            className={SIDEBAR_SHEET_CLASS}
-          >
-            <SheetTitle className="sr-only">Teacher navigation</SheetTitle>
-            <TeacherSidebar mobile onNavigate={() => setMenuOpen(false)} />
-          </SheetContent>
-        </Sheet>
+        <MobileNavSheet ariaLabel="Open teacher menu" title="Teacher navigation">
+          {(close) => <TeacherSidebar mobile onNavigate={close} />}
+        </MobileNavSheet>
       </header>
 
       {error ? (
@@ -218,7 +193,7 @@ export default function TeacherAralProgramPage() {
               ))}
             </div>
           ) : (
-            <div className="px-4 py-10 text-center text-[12px] text-slate-400">
+            <div className="px-4 py-10 text-center text-[12px] text-slate-400 dark:text-slate-200">
               You have no Summer ARAL facilitator assignments yet. The Head
               Teacher assigns facilitators on Academic Monitoring.
             </div>

@@ -32,7 +32,7 @@ export default function AuthLayout() {
         />
       </div>
 
-      <main className="portal-page relative z-10 w-full max-w-[980px]" aria-label="School portal login">
+      <main className="portal-page relative z-10 w-full max-w-[980px]" aria-label="CNHS Learn login">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}

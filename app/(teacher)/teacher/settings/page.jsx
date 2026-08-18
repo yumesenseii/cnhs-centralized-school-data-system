@@ -1,7 +1,7 @@
 import TeacherSettingsPage from "@/components/teacher/settings/TeacherSettingsPage";
 
 export const metadata = {
-  title: "Settings | CNHS Teacher Portal",
+  title: "Settings | CNHS Learn",
   description: "Manage your teacher account security and password.",
 };
 

@@ -15,10 +15,13 @@ import {
   Layers3,
   LayoutDashboard,
   LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings,
   Users,
 } from "lucide-react";
 import { SIDEBAR_WIDTH_CLASS } from "@/lib/constants/layout";
+import { SCHOOL_NAME } from "@/lib/constants/brand";
 import { createClient } from "@/lib/supabase/client";
 import LogoutConfirmModal from "@/components/shared/LogoutConfirmModal";
 import { cn } from "@/lib/utils";
@@ -107,7 +110,8 @@ export default function Sidebar({
   onNavigate,
   collapsed = false,
   widthClass = SIDEBAR_WIDTH_CLASS,
-  schoolName = "Cambaog National High School",
+  schoolName = SCHOOL_NAME,
+  onToggleCollapse,
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -118,6 +122,7 @@ export default function Sidebar({
   });
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const showCollapseToggle = !mobile && typeof onToggleCollapse === "function";
 
   useEffect(() => {
     let cancelled = false;
@@ -176,29 +181,53 @@ export default function Sidebar({
     >
       <div
         className={cn(
-          "flex items-start gap-2.5 px-3 pb-3 pt-3",
-          collapsed && "justify-center px-2"
+          "flex px-3 pb-3 pt-3",
+          collapsed && !mobile
+            ? "flex-col items-center gap-1.5 px-2"
+            : "items-center gap-2"
         )}
       >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-0.5 shadow-sm">
-          <Image
-            src="/cnhs-logo.png"
-            alt="Cambaog National High School logo"
-            width={34}
-            height={34}
-            priority
-            className="h-full w-full rounded-md object-cover"
-          />
-        </div>
-        {!collapsed ? (
-          <div className="min-w-0 pt-0.5">
-            <p className="truncate text-[13px] font-semibold leading-5 text-white">
-              CNHS Admin
-            </p>
-            <p className="line-clamp-2 text-[11px] leading-4 text-white/58">
-              {schoolName}
-            </p>
+        <div
+          className={cn(
+            "flex min-w-0 items-center gap-2.5",
+            !collapsed && "min-w-0 flex-1"
+          )}
+        >
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-0.5 shadow-sm">
+            <Image
+              src="/cnhs-logo.png"
+              alt="Cambaog National High School logo"
+              width={34}
+              height={34}
+              priority
+              className="h-full w-full rounded-md object-cover"
+            />
           </div>
+          {!collapsed ? (
+            <div className="min-w-0 pt-0.5">
+              <p className="truncate text-[13px] font-semibold leading-5 text-white">
+                CNHS Learn
+              </p>
+              <p className="line-clamp-2 text-[11px] leading-4 text-white/58">
+                {String(schoolName ?? "").trim() || SCHOOL_NAME}
+              </p>
+            </div>
+          ) : null}
+        </div>
+        {showCollapseToggle ? (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/8 hover:text-white"
+          >
+            {collapsed ? (
+              <PanelLeftOpen size={16} strokeWidth={1.9} />
+            ) : (
+              <PanelLeftClose size={16} strokeWidth={1.9} />
+            )}
+          </button>
         ) : null}
       </div>
 

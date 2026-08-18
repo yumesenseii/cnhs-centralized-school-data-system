@@ -2,13 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { CalendarDays, Layers3, Menu, Search, X } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { CalendarDays, Layers3, Search, X } from "lucide-react";
+import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import ClassCard from "@/components/teacher/my-classes/ClassCard";
 import EClassUploadDialog from "@/components/teacher/my-classes/EClassUploadDialog";
@@ -20,13 +15,13 @@ import {
 } from "@/components/teacher/my-classes/shared";
 import { useTeacherClasses } from "@/hooks/teacher/useMyClasses";
 import { TERM_ALL_LABEL, termLabel } from "@/lib/academic/termLabels";
-import { SIDEBAR_SHEET_CLASS } from "@/lib/constants/layout";
 import {
   generateClassReportFilesForTerms,
   REPORT_TERM_ALL,
 } from "@/lib/monitoring/classReportFiles";
 import { formatPersonName } from "@/lib/teacher/monitoringMappers";
-import Link from "next/link";
+import { createDeleteRequest } from "@/lib/supabase/queries/deleteRequests";
+import DeleteConfirmModal from "@/components/shared/DeleteConfirmModal";
 
 export default function MyClasses() {
   const {
@@ -40,7 +35,6 @@ export default function MyClasses() {
     error,
     refresh,
   } = useTeacherClasses();
-  const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [subject, setSubject] = useState("All Subjects");
   const [grade, setGrade] = useState("All Grades");
@@ -52,6 +46,8 @@ export default function MyClasses() {
   const [toast, setToast] = useState("");
   const [toastClassId, setToastClassId] = useState("");
   const [generatingId, setGeneratingId] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [requesting, setRequesting] = useState(false);
 
   const teacherDisplayName = useMemo(() => {
     const named = formatPersonName(teacher);
@@ -206,27 +202,12 @@ export default function MyClasses() {
             </p>
           </div>
 
-          <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger
-              render={
-                <button
-                  type="button"
-                  aria-label="Open teacher menu"
-                  className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm lg:hidden"
-                />
-              }
-            >
-              <Menu size={18} />
-            </SheetTrigger>
-            <SheetContent
-              side="left"
-              showCloseButton={false}
-              className={SIDEBAR_SHEET_CLASS}
-            >
-              <SheetTitle className="sr-only">Teacher navigation</SheetTitle>
-              <TeacherSidebar mobile onNavigate={() => setOpen(false)} />
-            </SheetContent>
-          </Sheet>
+          <MobileNavSheet
+            ariaLabel="Open teacher menu"
+            title="Teacher navigation"
+          >
+            {(close) => <TeacherSidebar mobile onNavigate={close} />}
+          </MobileNavSheet>
         </div>
 
         {hasAssignedClasses ? (
@@ -377,6 +358,22 @@ export default function MyClasses() {
                 onUploadRecord={() => setUploadClass(classItem)}
                 onGenerateReport={handleGenerateReport}
                 generating={generatingId === classItem.id}
+                onRequestDelete={(item, kind) => {
+                  const label = `${item.subject} · ${item.gradeSection} · ${item.quarterLabel || item.currentQuarter} · ${item.schoolYear}`;
+                  setDeleteConfirm({
+                    kind,
+                    classItem: item,
+                    itemLabel: label,
+                    title:
+                      kind === "ecr"
+                        ? "Request clear ECR"
+                        : "Request delete class",
+                    consequence:
+                      kind === "ecr"
+                        ? "The head teacher must approve before imported grades are cleared."
+                        : "The head teacher must approve before this class assignment is removed.",
+                  });
+                }}
               />
             ))}
           </div>
@@ -415,6 +412,36 @@ export default function MyClasses() {
           if (!generatingId) setGenerateClass(null);
         }}
         onConfirm={handleConfirmGenerate}
+      />
+
+      <DeleteConfirmModal
+        open={Boolean(deleteConfirm)}
+        title={deleteConfirm?.title}
+        itemLabel={deleteConfirm?.itemLabel}
+        consequence={deleteConfirm?.consequence}
+        confirmLabel="Send request"
+        confirming={requesting}
+        confirmingLabel="Sending…"
+        tone="request"
+        icon="request"
+        onCancel={() => !requesting && setDeleteConfirm(null)}
+        onConfirm={async () => {
+          if (!deleteConfirm?.classItem) return;
+          setRequesting(true);
+          const result = await createDeleteRequest({
+            targetType: deleteConfirm.kind,
+            targetId: deleteConfirm.classItem.id,
+            label: deleteConfirm.itemLabel,
+          });
+          setRequesting(false);
+          setDeleteConfirm(null);
+          setToast(
+            result.error
+              ? result.error.message
+              : "Request sent to the head teacher."
+          );
+          window.setTimeout(() => setToast(""), 3200);
+        }}
       />
     </motion.div>
   );

@@ -260,14 +260,17 @@ html.dark [class~="text-slate-700"] {
   color: #d8dfdb;
 }
 
-html.dark [class~="text-slate-600"],
-html.dark [class~="text-slate-500"] {
+html.dark [class~="text-slate-600"] {
   color: #c5cdc9;
+}
+
+html.dark [class~="text-slate-500"] {
+  color: #e2e8e5;
 }
 
 html.dark [class~="text-slate-400"],
 html.dark [class~="text-slate-300"] {
-  color: #b8c0bc;
+  color: #e2e8e5;
 }
 
 html.dark [class~="border-slate-100"],
@@ -295,13 +298,17 @@ html.dark [class~="bg-red-50"] {
 }
 
 html.dark [class~="bg-orange-50"],
-html.dark [class~="bg-amber-50"] {
-  background-color: rgba(146, 64, 14, 0.28);
+html.dark [class~="bg-amber-50"],
+html.dark [class~="bg-amber-50/80"] {
+  background-color: rgba(146, 64, 14, 0.42);
 }
 
 html.dark [class~="bg-sky-50"],
+html.dark [class~="bg-sky-50/30"],
+html.dark [class~="bg-sky-50/40"],
+html.dark [class~="bg-sky-100"],
 html.dark [class~="bg-teal-50"] {
-  background-color: rgba(14, 116, 144, 0.26);
+  background-color: rgba(14, 116, 144, 0.38);
 }
 
 html.dark [class~="bg-violet-50"] {
@@ -314,13 +321,21 @@ html.dark [class~="text-cnhs-green-dark"] {
 
 html.dark [class~="text-amber-700"],
 html.dark [class~="text-amber-800"] {
-  color: #fcd34d;
+  color: #fde68a;
 }
 
-html.dark [class~="text-red-600"],
+html.dark [class~="text-emerald-700"],
+html.dark [class~="text-emerald-800"] {
+  color: #a7f3d0;
+}
+
+html.dark [class~="text-red-600"] {
+  color: #fca5a5;
+}
+
 html.dark [class~="text-red-700"],
 html.dark [class~="text-red-800"] {
-  color: #fca5a5;
+  color: #fecaca;
 }
 
 html.dark [class~="text-sky-600"],
@@ -353,6 +368,55 @@ html.dark .recharts-default-tooltip {
   border-color: #2a3531 !important;
   background-color: #161d1b !important;
   color: #e2e8e5 !important;
+}
+
+.lesson-plan-docx {
+  width: 100%;
+}
+
+.lesson-plan-docx p,
+.lesson-plan-docx h1,
+.lesson-plan-docx h2,
+.lesson-plan-docx h3,
+.lesson-plan-docx h4,
+.lesson-plan-docx ul,
+.lesson-plan-docx ol {
+  margin: 0 0 0.35em;
+}
+
+.lesson-plan-docx h1,
+.lesson-plan-docx h2,
+.lesson-plan-docx h3,
+.lesson-plan-docx h4 {
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.lesson-plan-docx table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.4em 0;
+  font-size: 12px;
+  table-layout: auto;
+}
+
+.lesson-plan-docx table table {
+  width: 100%;
+  margin: 0;
+}
+
+.lesson-plan-docx td,
+.lesson-plan-docx th {
+  border: 1px solid #334155;
+  padding: 5px 7px;
+  vertical-align: top;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.lesson-plan-docx img {
+  max-width: 100%;
+  height: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {

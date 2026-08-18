@@ -112,7 +112,6 @@ export default function DashboardPage() {
               }
             >
               <AttendanceMonitoringPanel
-                title="Attendance Analytics"
                 showUpload={false}
                 compact
               />

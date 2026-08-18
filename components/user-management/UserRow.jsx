@@ -21,6 +21,8 @@ export default function UserRow({
   onEdit,
   onResetPassword,
   onToggleStatus,
+  onDelete,
+  currentAuthUserId,
 }) {
   return (
     <tr className="border-t border-slate-100 transition-colors hover:bg-slate-50/70">
@@ -103,6 +105,8 @@ export default function UserRow({
           onEdit={onEdit}
           onResetPassword={onResetPassword}
           onToggleStatus={onToggleStatus}
+          onDelete={onDelete}
+          currentAuthUserId={currentAuthUserId}
         />
       </td>
     </tr>

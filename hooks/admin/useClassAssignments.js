@@ -9,9 +9,11 @@ import {
   listAssignmentSubjects,
   listAssignmentTeachers,
   listClassAssignments,
+  syncAllTermAssignmentRosters,
   updateClassAssignment,
 } from "@/lib/supabase/queries/classAssignments";
-import { clearGradesForClass } from "@/lib/supabase/queries/classGrades";
+import { invalidateAdminRosterCache } from "@/lib/admin/adminRosterCache";
+import { clearAllImportedGrades, clearGradesForClass } from "@/lib/supabase/queries/classGrades";
 import {
   buildAssignmentSummary,
   mapClassAssignment,
@@ -166,11 +168,26 @@ export function useClassAssignments() {
       return { ok: false, error: errors.join(" ") };
     }
 
+    const synced = await syncAllTermAssignmentRosters({
+      teacher_id: base.teacher_id,
+      subject_id: base.subject_id,
+      section_id: base.section_id,
+      school_year: base.school_year,
+    });
+    invalidateAdminRosterCache();
+
+    const syncNote =
+      synced.error
+        ? ""
+        : synced.copied
+          ? ` Copied ${synced.copied} enrollment(s) onto empty term classes.`
+          : "";
+
     return {
       ok: true,
       message: `Created ${created} term assignment(s)${
         skipped ? `, skipped ${skipped} existing` : ""
-      }.`,
+      }.${syncNote}`,
     };
   }
 
@@ -247,11 +264,33 @@ export function useClassAssignments() {
       setError(result.error.message);
       return { ok: false, error: result.error.message };
     }
+    invalidateAdminRosterCache();
     await refresh();
     return {
       ok: true,
       gradesDeleted: result.data?.gradesDeleted ?? 0,
       enrollmentsDeleted: result.data?.enrollmentsDeleted ?? 0,
+    };
+  }
+
+  async function handleClearAllGrades(schoolYear) {
+    setSaving(true);
+    setError("");
+    const year =
+      !schoolYear || schoolYear === "All School Years" ? null : schoolYear;
+    const result = await clearAllImportedGrades({ schoolYear: year });
+    setSaving(false);
+    if (result.error) {
+      setError(result.error.message);
+      return { ok: false, error: result.error.message };
+    }
+    invalidateAdminRosterCache();
+    await refresh();
+    return {
+      ok: true,
+      gradesDeleted: result.data?.gradesDeleted ?? 0,
+      enrollmentsDeleted: result.data?.enrollmentsDeleted ?? 0,
+      classCount: result.data?.classCount ?? 0,
     };
   }
 
@@ -275,5 +314,6 @@ export function useClassAssignments() {
     handleUpdate,
     handleDelete,
     handleClearGrades,
+    handleClearAllGrades,
   };
 }

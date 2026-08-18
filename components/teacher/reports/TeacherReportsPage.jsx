@@ -13,14 +13,8 @@ import {
   FileSpreadsheet,
   Layers3,
   Loader2,
-  Menu,
 } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import ClassReportsTable from "@/components/teacher/reports/ClassReportsTable";
 import ReportCharts from "@/components/teacher/reports/ReportCharts";
@@ -33,7 +27,6 @@ import ReportModule from "@/components/reports/ReportModule";
 import ReportSubmissionsPanel from "@/components/reports/ReportSubmissionsPanel";
 import ReportSummaryMetrics from "@/components/reports/ReportSummaryMetrics";
 import { useTeacherReports } from "@/hooks/teacher/useTeacherReports";
-import { SIDEBAR_SHEET_CLASS } from "@/lib/constants/layout";
 import { buildReportInsight } from "@/lib/reports/buildReportInsight";
 import {
   QUARTER_OPTIONS,
@@ -94,7 +87,6 @@ export default function TeacherReportsPage() {
     getPreview,
   } = useTeacherReports();
 
-  const [menuOpen, setMenuOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [preview, setPreview] = useState(null);
   const [toast, setToast] = useState("");
@@ -266,27 +258,12 @@ export default function TeacherReportsPage() {
             </p>
           </div>
 
-          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-            <SheetTrigger
-              render={
-                <button
-                  type="button"
-                  aria-label="Open teacher menu"
-                  className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm lg:hidden"
-                />
-              }
-            >
-              <Menu size={18} />
-            </SheetTrigger>
-            <SheetContent
-              side="left"
-              showCloseButton={false}
-              className={SIDEBAR_SHEET_CLASS}
-            >
-              <SheetTitle className="sr-only">Teacher navigation</SheetTitle>
-              <TeacherSidebar mobile onNavigate={() => setMenuOpen(false)} />
-            </SheetContent>
-          </Sheet>
+          <MobileNavSheet
+            ariaLabel="Open teacher menu"
+            title="Teacher navigation"
+          >
+            {(close) => <TeacherSidebar mobile onNavigate={close} />}
+          </MobileNavSheet>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
@@ -491,7 +468,7 @@ export default function TeacherReportsPage() {
 
           <ReportModule
             title="Attendance (SF2)"
-            subtitle="Monthly attendance · separate from academic risk"
+            subtitle="Monthly attendance"
             icon={<CalendarDays size={16} strokeWidth={1.8} />}
             open={attendanceOpen}
             onOpenChange={setAttendanceOpen}

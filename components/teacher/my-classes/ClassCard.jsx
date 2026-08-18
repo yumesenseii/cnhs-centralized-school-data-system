@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, FileSpreadsheet, Loader2, Upload, Users } from "lucide-react";
+import { BookOpen, FileSpreadsheet, Loader2, Trash2, Upload, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const iconTones = {
@@ -18,6 +18,7 @@ export default function ClassCard({
   classItem,
   onUploadRecord,
   onGenerateReport,
+  onRequestDelete,
   generating = false,
 }) {
   return (
@@ -116,6 +117,21 @@ export default function ClassCard({
           <Users size={12} />
           View Students
         </Link>
+        <button
+          type="button"
+          onClick={() => onRequestDelete?.(classItem, "ecr")}
+          className="inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-500 transition-colors hover:bg-slate-50"
+        >
+          Request clear ECR
+        </button>
+        <button
+          type="button"
+          onClick={() => onRequestDelete?.(classItem, "class")}
+          className="inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 text-[11px] font-semibold text-red-600 transition-colors hover:bg-red-50"
+        >
+          <Trash2 size={12} />
+          Request delete
+        </button>
       </div>
     </article>
   );

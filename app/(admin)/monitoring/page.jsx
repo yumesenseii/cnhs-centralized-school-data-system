@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import AdminMonitoringPage from "@/components/admin/monitoring/AdminMonitoringPage";
 
 export const metadata = {
-  title: "Academic Monitoring | CNHS Admin",
+  title: "Academic Monitoring | CNHS Learn",
   description:
     "View at-risk students, ARAL Learners and remediation recommendations, and teacher monitoring progress.",
 };

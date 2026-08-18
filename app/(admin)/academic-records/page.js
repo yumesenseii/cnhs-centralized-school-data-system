@@ -10,8 +10,10 @@ import {
   RefreshCw,
 } from "lucide-react";
 import AcademicRecordsTable from "@/components/academic-records/AcademicRecordsTable";
+import ClassFolderCards from "@/components/academic-records/ClassFolderCards";
 import FilterDropdown from "@/components/academic-records/FilterDropdown";
 import GradeFolderCards from "@/components/academic-records/GradeFolderCards";
+import SectionFolderCards from "@/components/academic-records/SectionFolderCards";
 import OperationsAccordion from "@/components/academic-records/OperationsAccordion";
 import RecordsBrowseBar from "@/components/academic-records/RecordsBrowseBar";
 import SummaryCard from "@/components/academic-records/SummaryCard";
@@ -38,8 +40,10 @@ export default function AcademicRecordsPage() {
     refresh,
     summaryCards,
     gradeSummary,
+    sectionFolders,
+    classes,
+    selectedClass,
     students,
-    allStudents,
     filterOptions,
     teacherSubmissions,
     submissionProgress,
@@ -53,6 +57,8 @@ export default function AcademicRecordsPage() {
     gradeFilter,
     selectGradeFolder,
     clearGradeFolder,
+    selectSectionFolder,
+    clearSectionFolder,
     sectionFilter,
     setSectionFilter,
     teacherFilter,
@@ -60,6 +66,8 @@ export default function AcademicRecordsPage() {
     statusFilter,
     setStatusFilter,
     statusCounts,
+    selectClass: openClass,
+    clearClass,
   } = useAcademicRecords();
 
   const [toast, setToast] = useState("");
@@ -75,12 +83,17 @@ export default function AcademicRecordsPage() {
   }, [quarter, quarters]);
 
   const gradeFocused = gradeFilter !== "All Grades";
+  const sectionFocused = sectionFilter !== "All Sections";
+  const classOpen = Boolean(selectedClass);
 
-  const breadcrumb = gradeFocused
-    ? `Home / Academic Records / ${gradeFilter}`
-    : "Home / Academic Records";
+  const breadcrumb = classOpen
+    ? `Home / Academic Records / ${selectedClass.gradeLabel} / ${selectedClass.section} / ${selectedClass.subject}`
+    : gradeFocused && sectionFocused
+      ? `Home / Academic Records / ${gradeFilter} / ${sectionFilter}`
+      : gradeFocused
+        ? `Home / Academic Records / ${gradeFilter}`
+        : "Home / Academic Records";
 
-  // Reset to first page whenever browse filters change.
   useEffect(() => {
     setPage(1);
   }, [
@@ -91,6 +104,7 @@ export default function AcademicRecordsPage() {
     statusFilter,
     schoolYear,
     quarter,
+    selectedClass?.id,
   ]);
 
   const totalStudents = students.length;
@@ -115,11 +129,15 @@ export default function AcademicRecordsPage() {
     try {
       setExporting(true);
       await exportAcademicRecordsExcel({
-        students: allStudents,
+        students: classOpen ? students : [],
+        classes: classOpen ? [selectedClass] : classes,
         summaryCards,
         schoolYear,
         quarter: quarterLabel,
         periodLabel,
+        classTitle: selectedClass
+          ? `${selectedClass.subject} · ${selectedClass.gradeSection} · ${selectedClass.termLabel}`
+          : "",
       });
       setToast("Academic records Excel downloaded.");
     } catch (err) {
@@ -166,7 +184,7 @@ export default function AcademicRecordsPage() {
               </select>
             </label>
             <label>
-              <span className="sr-only">Quarter</span>
+              <span className="sr-only">Term</span>
               <select
                 value={quarter}
                 onChange={(e) => setQuarter(e.target.value)}
@@ -196,7 +214,7 @@ export default function AcademicRecordsPage() {
             <button
               type="button"
               onClick={handleExportRecords}
-              disabled={exporting || loading}
+              disabled={exporting || loading || (!classOpen && !classes.length)}
               className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-[#246f54] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {exporting ? (
@@ -223,24 +241,18 @@ export default function AcademicRecordsPage() {
         </div>
       ) : (
         <>
-          {/* Slim KPI strip */}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
             {summaryCards.map((card) => (
               <SummaryCard key={card.id} card={card} />
             ))}
           </div>
 
-          {/* Level-1 grade folders — hidden when a grade is focused */}
-          {!gradeFocused ? (
+          {!gradeFocused && !classOpen ? (
             <section className="mt-4">
               <div className="mb-2">
                 <h2 className="text-sm font-semibold text-slate-800">
                   Grade folders
                 </h2>
-                <p className="text-[11px] text-slate-500">
-                  Browse by grade level — high risk and ARAL (Eng/Fil) shown on
-                  each folder.
-                </p>
               </div>
               <GradeFolderCards
                 rows={gradeSummary}
@@ -250,8 +262,7 @@ export default function AcademicRecordsPage() {
             </section>
           ) : null}
 
-          {/* Learner browse */}
-          <section className={gradeFocused ? "mt-3 space-y-2" : "mt-4 space-y-3"}>
+          <section className={gradeFocused || classOpen ? "mt-3 space-y-2" : "mt-4 space-y-3"}>
             <div className="flex flex-wrap items-center gap-1 text-[12px] text-slate-500">
               <button
                 type="button"
@@ -263,20 +274,52 @@ export default function AcademicRecordsPage() {
               {gradeFocused ? (
                 <>
                   <ChevronRight size={12} className="text-slate-300" />
-                  <span className="font-semibold text-slate-800">
-                    {gradeFilter}
-                  </span>
                   <button
                     type="button"
-                    onClick={clearGradeFolder}
-                    className="ml-2 cursor-pointer text-[11px] font-semibold text-cnhs-green-dark hover:underline"
+                    onClick={clearSectionFolder}
+                    className="cursor-pointer font-semibold text-slate-800 hover:text-cnhs-green-dark"
                   >
-                    Show all grades
+                    {gradeFilter}
                   </button>
                 </>
               ) : null}
+              {sectionFocused ? (
+                <>
+                  <ChevronRight size={12} className="text-slate-300" />
+                  <button
+                    type="button"
+                    onClick={clearClass}
+                    className="cursor-pointer font-semibold text-slate-800 hover:text-cnhs-green-dark"
+                  >
+                    {sectionFilter}
+                  </button>
+                </>
+              ) : null}
+              {classOpen ? (
+                <>
+                  <ChevronRight size={12} className="text-slate-300" />
+                  <span className="font-semibold text-slate-800">
+                    {selectedClass.subject}
+                  </span>
+                </>
+              ) : null}
+              {gradeFocused ? (
+                <button
+                  type="button"
+                  onClick={clearGradeFolder}
+                  className="ml-2 cursor-pointer text-[11px] font-semibold text-cnhs-green-dark hover:underline"
+                >
+                  Show all grades
+                </button>
+              ) : null}
               <span className="ml-auto text-[10px] text-slate-400">
-                {totalStudents} filtered · {periodLabel}
+                {classOpen
+                  ? `${totalStudents} in list · ${periodLabel}`
+                  : sectionFocused
+                    ? `${classes.length} classes · ${periodLabel}`
+                    : gradeFocused
+                      ? `${sectionFolders.length} sections · ${periodLabel}`
+                      : periodLabel}
               </span>
             </div>
 
@@ -286,43 +329,63 @@ export default function AcademicRecordsPage() {
               statusFilter={statusFilter}
               onStatusChange={setStatusFilter}
               counts={statusCounts}
+              showGradePills={classOpen}
               extraFilters={
                 <div className="flex flex-wrap gap-2 lg:shrink-0">
                   <FilterDropdown
                     label="Section Filter"
                     options={filterOptions.sections}
                     value={sectionFilter}
-                    onChange={setSectionFilter}
+                    onChange={(value) => {
+                      if (value === "All Sections") {
+                        selectSectionFolder("All Sections");
+                      } else {
+                        selectSectionFolder(value);
+                      }
+                    }}
                   />
                   <FilterDropdown
                     label="Teacher Filter"
                     options={filterOptions.teachers}
                     value={teacherFilter}
-                    onChange={setTeacherFilter}
+                    onChange={(value) => {
+                      setTeacherFilter(value);
+                      clearClass();
+                    }}
                   />
                 </div>
               }
             />
 
-            <AcademicRecordsTable
-              students={pagedStudents}
-              title={
-                gradeFocused
-                  ? `Learners · ${gradeFilter}`
-                  : "Learners · All Grades"
-              }
-              recordCount={totalStudents}
-            />
-
-            <TablePagination
-              page={safePage}
-              pageSize={ACADEMIC_RECORDS_PAGE_SIZE}
-              total={totalStudents}
-              onPageChange={setPage}
-            />
+            {classOpen ? (
+              <>
+                <AcademicRecordsTable
+                  students={pagedStudents}
+                  title={`${selectedClass.subject} · ${selectedClass.gradeSection} · ${selectedClass.teacherName} · ${selectedClass.termLabel}`}
+                  recordCount={totalStudents}
+                  termHeader={
+                    selectedClass.isTermGroup
+                      ? ""
+                      : `${selectedClass.termLabel} grade`
+                  }
+                />
+                <TablePagination
+                  page={safePage}
+                  pageSize={ACADEMIC_RECORDS_PAGE_SIZE}
+                  total={totalStudents}
+                  onPageChange={setPage}
+                />
+              </>
+            ) : gradeFocused && sectionFocused ? (
+              <ClassFolderCards classes={classes} onSelect={openClass} />
+            ) : gradeFocused ? (
+              <SectionFolderCards
+                rows={sectionFolders}
+                onSelect={selectSectionFolder}
+              />
+            ) : null}
           </section>
 
-          {/* Secondary panels — collapsed by default */}
           <OperationsAccordion
             recentUploadActivity={recentUploadActivity}
             teacherSubmissions={teacherSubmissions}

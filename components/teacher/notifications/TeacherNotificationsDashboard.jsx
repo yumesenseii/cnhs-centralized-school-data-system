@@ -1,23 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { BellOff, CheckCheck, Menu, RefreshCw, TriangleAlert } from "lucide-react";
+import { BellOff, CheckCheck, RefreshCw, TriangleAlert } from "lucide-react";
+import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import NotificationList from "@/components/notifications/NotificationList";
 import NotificationStats from "@/components/notifications/NotificationStats";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import NotificationsSkeleton from "@/components/teacher/notifications/NotificationsSkeleton";
 import TeacherNotificationFilters from "@/components/teacher/notifications/TeacherNotificationFilters";
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { useTeacherNotifications } from "@/hooks/teacher/useTeacherNotifications";
-import { SIDEBAR_SHEET_CLASS } from "@/lib/constants/layout";
 
 export default function TeacherNotificationsDashboard() {
   const router = useRouter();
@@ -41,8 +34,6 @@ export default function TeacherNotificationsDashboard() {
     markRead,
     markAllRead,
   } = useTeacherNotifications();
-
-  const [menuOpen, setMenuOpen] = useState(false);
 
   async function handleAction(notification) {
     if (notification.unread) await markRead(notification.id);
@@ -76,27 +67,9 @@ export default function TeacherNotificationsDashboard() {
             </p>
           </div>
 
-          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-            <SheetTrigger
-              render={
-                <button
-                  type="button"
-                  aria-label="Open teacher menu"
-                  className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm lg:hidden"
-                />
-              }
-            >
-              <Menu size={18} />
-            </SheetTrigger>
-            <SheetContent
-              side="left"
-              showCloseButton={false}
-              className={SIDEBAR_SHEET_CLASS}
-            >
-              <SheetTitle className="sr-only">Teacher navigation</SheetTitle>
-              <TeacherSidebar mobile onNavigate={() => setMenuOpen(false)} />
-            </SheetContent>
-          </Sheet>
+          <MobileNavSheet ariaLabel="Open teacher menu" title="Teacher navigation">
+            {(close) => <TeacherSidebar mobile onNavigate={close} />}
+          </MobileNavSheet>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
