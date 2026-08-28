@@ -271,6 +271,7 @@ export function useAdminMonitoring() {
     completed: 0,
     ongoing: 0,
   });
+  const [profile, setProfile] = useState(null);
   const [error, setError] = useState("");
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -280,88 +281,121 @@ export function useAdminMonitoring() {
     beginLoad();
     setError("");
 
-    if (filters.bustCache) invalidateAdminRosterCache();
+    try {
+      if (filters.bustCache) invalidateAdminRosterCache();
 
-    const session = await getAdminSession();
-    if (session.error) {
-      setError(session.error.message);
-      endLoad(false);
-      return;
-    }
+      const session = await getAdminSession();
+      if (session.error) {
+        setError(session.error.message || "Unable to verify admin session.");
+        return;
+      }
+      setProfile(session.data ?? null);
 
-    const schoolYear = filters.schoolYear || null;
-    const quarter = filters.quarterNumber || null;
+      const schoolYear = filters.schoolYear || null;
+      const quarter = filters.quarterNumber || null;
 
-    const result = await getCachedAdminRoster({ schoolYear, quarter });
+      const result = await getCachedAdminRoster({ schoolYear, quarter });
 
-    if (result.error) {
-      setError(result.error.message);
-      endLoad(false);
-      return;
-    }
+      if (result.error) {
+        setError(
+          result.error.message || "Unable to load monitoring data. Try Refresh."
+        );
+        return;
+      }
 
-    const scoped = filterRosterPayload(result.data, {
-      gradeLevel: filters.gradeLevel || null,
-      sectionName: filters.sectionName || null,
-    });
+      const scoped = filterRosterPayload(result.data, {
+        gradeLevel: filters.gradeLevel || null,
+        sectionName: filters.sectionName || null,
+      });
 
-    const scope =
-      filters.gradeLevel || filters.sectionName
-        ? `g${filters.gradeLevel || "all"}-s${filters.sectionName || "all"}`
-        : "default";
+      const scope =
+        filters.gradeLevel || filters.sectionName
+          ? `g${filters.gradeLevel || "all"}-s${filters.sectionName || "all"}`
+          : "default";
 
-    const roster = await getCachedBuiltMonitoringRoster(scoped, {
-      schoolYear,
-      quarter,
-      scope,
-    });
+      const roster = await getCachedBuiltMonitoringRoster(scoped, {
+        schoolYear,
+        quarter,
+        scope,
+      });
 
-    const assignmentMap = await getAralAssignmentMapByStudent({
-      schoolYear:
-        schoolYear || roster.students[0]?.schoolYear || "SY 2026-2027",
-    });
+      const resolvedSchoolYear =
+        schoolYear || roster.students[0]?.schoolYear || "SY 2026-2027";
 
-    const studentsWithFacilitators = roster.students.map((student) => {
-      const assignment = assignmentMap.data?.get(student.studentId);
-      if (!assignment) {
+      let facilitatorMap = new Map();
+      try {
+        const assignmentMap = await getAralAssignmentMapByStudent({
+          schoolYear: resolvedSchoolYear,
+        });
+        if (assignmentMap.error) {
+          console.warn(
+            "[admin monitoring] facilitator assignments unavailable",
+            assignmentMap.error
+          );
+        } else {
+          facilitatorMap = assignmentMap.data ?? new Map();
+        }
+      } catch (assignmentErr) {
+        console.warn(
+          "[admin monitoring] facilitator assignments fetch failed",
+          assignmentErr
+        );
+      }
+
+      const studentsWithFacilitators = roster.students.map((student) => {
+        const assignment = facilitatorMap.get(student.studentId);
+        if (!assignment) {
+          return {
+            ...student,
+            aralFacilitatorAssigned: false,
+            aralFacilitatorTeacherId: null,
+            aralFacilitatorName: null,
+            aralAssignmentId: null,
+          };
+        }
         return {
           ...student,
-          aralFacilitatorAssigned: false,
-          aralFacilitatorTeacherId: null,
-          aralFacilitatorName: null,
-          aralAssignmentId: null,
+          aralFacilitatorAssigned: true,
+          aralFacilitatorTeacherId: assignment.facilitatorTeacherId,
+          aralFacilitatorName: assignment.facilitatorName,
+          aralAssignmentId: assignment.id,
         };
+      });
+
+      let approvalMap = new Map();
+      try {
+        const approvals = await listAralApprovals({
+          schoolYear: resolvedSchoolYear,
+          // Always load all terms so Term 1 Send-to-HT rows stay visible under All Terms
+          // and when the page term filter differs from the report term.
+          quarter: null,
+        });
+        approvalMap = approvals.data ?? new Map();
+      } catch (approvalErr) {
+        console.warn("[admin monitoring] approval fetch failed", approvalErr);
       }
-      return {
-        ...student,
-        aralFacilitatorAssigned: true,
-        aralFacilitatorTeacherId: assignment.facilitatorTeacherId,
-        aralFacilitatorName: assignment.facilitatorName,
-        aralAssignmentId: assignment.id,
-      };
-    });
 
-    const approvals = await listAralApprovals({
-      schoolYear:
-        schoolYear || roster.students[0]?.schoolYear || "SY 2026-2027",
-      // Always load all terms so Term 1 Send-to-HT rows stay visible under All Terms
-      // and when the page term filter differs from the report term.
-      quarter: null,
-    });
-    const studentsWithApprovals = attachAralApprovals(
-      studentsWithFacilitators,
-      approvals.data ?? new Map()
-    );
+      const studentsWithApprovals = attachAralApprovals(
+        studentsWithFacilitators,
+        approvalMap
+      );
 
-    setStudents(studentsWithApprovals);
-    setClassSummaries(roster.classSummaries);
-    setStats(
-      buildAdminMonitoringStats(
-        studentsWithApprovals,
-        roster.classSummaries
-      )
-    );
-    endLoad(true);
+      setStudents(studentsWithApprovals);
+      setClassSummaries(roster.classSummaries);
+      setStats(
+        buildAdminMonitoringStats(
+          studentsWithApprovals,
+          roster.classSummaries
+        )
+      );
+    } catch (err) {
+      console.error("[admin monitoring] refresh failed", err);
+      setError(
+        err?.message || "Unable to refresh monitoring data. Please try again."
+      );
+    } finally {
+      endLoad(true);
+    }
   }, [beginLoad, endLoad]);
 
   useEffect(() => {
@@ -394,6 +428,7 @@ export function useAdminMonitoring() {
     students,
     classSummaries,
     stats,
+    profile,
     filterOptions,
     loading,
     refreshing,

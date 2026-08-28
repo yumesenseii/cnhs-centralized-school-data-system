@@ -5,6 +5,7 @@ import {
   Pill,
   RiskPill,
   avatarTones,
+  classroomRemedialStyles,
   interventionStyles,
   monitoringStatusStyles,
 } from "@/components/teacher/monitoring/shared";
@@ -14,7 +15,42 @@ import {
   ARAL_APPROVAL_STATUS,
   aralApprovalStyles,
 } from "@/lib/monitoring/aralApproval";
+import { RECOMMENDATION } from "@/lib/monitoring/recommendations";
+import { CLASSROOM_REMEDIAL } from "@/lib/teacher/reportsConstants";
 import { cn } from "@/lib/utils";
+
+function subjectGradeDisplay(learner, layout) {
+  if (layout === "htAral") {
+    const grade =
+      learner.aralClassSubjectGrade ??
+      learner.classSubjectGrade ??
+      learner.generalAverage ??
+      "—";
+    const subjects =
+      learner.aralSubjects?.length > 0
+        ? learner.aralSubjects
+        : learner.subjects?.filter(Boolean) ?? [];
+    return { grade, subjects };
+  }
+
+  if (layout === "htNonAral") {
+    const grade =
+      learner.nonAralClassSubjectGrade ??
+      learner.classSubjectGrade ??
+      learner.generalAverage ??
+      "—";
+    const subjects =
+      learner.nonAralSubjects?.length > 0
+        ? learner.nonAralSubjects
+        : learner.subjects?.filter(Boolean) ?? [];
+    return { grade, subjects };
+  }
+
+  return {
+    grade: learner.classSubjectGrade ?? learner.generalAverage ?? "—",
+    subjects: learner.subjects ?? [],
+  };
+}
 
 export default function LearnersInterventionTable({
   learners,
@@ -27,10 +63,13 @@ export default function LearnersInterventionTable({
   quarter,
   onViewMonitoring,
   title = "Students for Monitoring",
+  /** default | htAral | htNonAral */
+  layout = "default",
   /** When true (Eng/Fil teacher portal), show approval status + Submit */
   showAralApproval = false,
   onSubmitAralReview = null,
   submittingAralId = "",
+  emptyMessage = "No students match your current filters.",
 }) {
   const displayTotal =
     typeof totalCount === "number" ? totalCount : learners.length;
@@ -39,17 +78,29 @@ export default function LearnersInterventionTable({
       ? atRiskCount
       : learners.filter((l) => l.atRisk).length;
 
-  const columns = [
-    "Student Name",
-    "Student Number",
-    "Subject Grade",
-    "Risk Level",
-    "Recommendation",
-    ...(showAralApproval ? ["HT Approval"] : []),
-    "Latest Progress",
-    "Monitoring Status",
-    "Action",
-  ];
+  const columns =
+    layout === "htNonAral"
+      ? [
+          "Student Name",
+          "Student Number",
+          "Subject Grade",
+          "Risk Level",
+          "Intervention",
+          "Class Remedial",
+          "Monitoring Status",
+          "Action",
+        ]
+      : [
+          "Student Name",
+          "Student Number",
+          "Subject Grade",
+          "Risk Level",
+          "Recommendation",
+          ...(showAralApproval || layout === "htAral" ? ["HT Approval"] : []),
+          ...(layout === "htNonAral" ? [] : ["Latest Progress"]),
+          "Monitoring Status",
+          "Action",
+        ];
 
   return (
     <section className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
@@ -89,15 +140,20 @@ export default function LearnersInterventionTable({
                 learner.aralApprovalStatus || ARAL_APPROVAL_STATUS.SUGGESTED;
               const canSubmit =
                 showAralApproval &&
+                layout !== "htNonAral" &&
                 aral &&
                 typeof onSubmitAralReview === "function" &&
                 approvalStatus !== ARAL_APPROVAL_STATUS.APPROVED &&
                 approvalStatus !== ARAL_APPROVAL_STATUS.SUBMITTED;
               const submitting = submittingAralId === learner.id;
+              const { grade, subjects } = subjectGradeDisplay(learner, layout);
+              const remedialLabel = learner.classroomRemedialRecommended
+                ? CLASSROOM_REMEDIAL.RECOMMENDED
+                : CLASSROOM_REMEDIAL.NOT_NEEDED;
 
               return (
                 <tr
-                  key={learner.id}
+                  key={learner.selectKey || learner.id}
                   className="border-t border-slate-100 transition-colors hover:bg-slate-50/70"
                 >
                   <td className="px-3 py-1.5">
@@ -124,29 +180,55 @@ export default function LearnersInterventionTable({
                     {learner.studentNumber}
                   </td>
                   <td className="px-3 py-1.5 text-[12px] font-semibold text-slate-800">
-                    {learner.classSubjectGrade ?? learner.generalAverage ?? "—"}
+                    <p>{grade}</p>
+                    {subjects.length > 0 ? (
+                      <p
+                        className="mt-0.5 text-[10px] font-medium text-slate-400"
+                        title={subjects.join(", ")}
+                      >
+                        {subjects.slice(0, 3).join(", ")}
+                        {subjects.length > 3 ? ` +${subjects.length - 3}` : ""}
+                      </p>
+                    ) : null}
                   </td>
                   <td className="px-3 py-1.5">
                     <RiskPill value={learner.riskLevel} />
                   </td>
-                  <td className="px-3 py-1.5">
-                    {learner.recommendationDisplay ? (
-                      <Pill
-                        value={learner.recommendationDisplay}
-                        styles={interventionStyles}
-                      />
-                    ) : (
-                      <span
-                        title="ARAL Learners applies to English and Filipino only."
-                        className="text-[11px] font-medium text-slate-400"
-                      >
-                        Not applicable
-                      </span>
-                    )}
-                  </td>
-                  {showAralApproval ? (
+
+                  {layout === "htNonAral" ? (
+                    <>
+                      <td className="px-3 py-1.5">
+                        <Pill
+                          value={RECOMMENDATION.NONE}
+                          styles={interventionStyles}
+                        />
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <Pill
+                          value={remedialLabel}
+                          styles={classroomRemedialStyles}
+                        />
+                      </td>
+                    </>
+                  ) : (
                     <td className="px-3 py-1.5">
-                      {aral ? (
+                      {learner.recommendationDisplay ? (
+                        <Pill
+                          value={learner.recommendationDisplay}
+                          styles={interventionStyles}
+                        />
+                      ) : (
+                        <Pill
+                          value={RECOMMENDATION.NONE}
+                          styles={interventionStyles}
+                        />
+                      )}
+                    </td>
+                  )}
+
+                  {layout !== "htNonAral" && (showAralApproval || layout === "htAral") ? (
+                    <td className="px-3 py-1.5">
+                      {aral || layout === "htAral" ? (
                         <div>
                           <Pill
                             value={approvalStatus}
@@ -164,22 +246,26 @@ export default function LearnersInterventionTable({
                       )}
                     </td>
                   ) : null}
-                  <td className="px-3 py-1.5">
-                    <div>
-                      <p className="text-[12px] font-medium text-slate-700">
-                        {learner.latestProgress || "—"}
-                      </p>
-                      {learner.inAralProgram ? (
-                        <p className="text-[10px] text-slate-400">
-                          {learner.weeklyUpdateCount
-                            ? `${learner.weeklyUpdateCount} weekly update${
-                                learner.weeklyUpdateCount === 1 ? "" : "s"
-                              }`
-                            : "No weekly updates yet"}
+
+                  {layout !== "htNonAral" ? (
+                    <td className="px-3 py-1.5">
+                      <div>
+                        <p className="text-[12px] font-medium text-slate-700">
+                          {learner.latestProgress || "—"}
                         </p>
-                      ) : null}
-                    </div>
-                  </td>
+                        {learner.inAralProgram ? (
+                          <p className="text-[10px] text-slate-400">
+                            {learner.weeklyUpdateCount
+                              ? `${learner.weeklyUpdateCount} weekly update${
+                                  learner.weeklyUpdateCount === 1 ? "" : "s"
+                                }`
+                              : "No weekly updates yet"}
+                          </p>
+                        ) : null}
+                      </div>
+                    </td>
+                  ) : null}
+
                   <td className="px-3 py-1.5">
                     <Pill
                       value={learner.monitoringStatus}
@@ -223,7 +309,7 @@ export default function LearnersInterventionTable({
 
       {displayTotal === 0 ? (
         <div className="px-4 py-10 text-center text-sm text-slate-500">
-          No students match your current filters.
+          {emptyMessage}
         </div>
       ) : null}
 

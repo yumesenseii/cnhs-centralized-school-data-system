@@ -9,18 +9,18 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock3,
-  FileSpreadsheet,
   Loader2,
   RefreshCw,
   Users,
   X,
+  FileText,
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import AdminAralFacilitatorAssignPanel from "@/components/admin/monitoring/AdminAralFacilitatorAssignPanel";
 import AdminAralApprovalPanel from "@/components/admin/monitoring/AdminAralApprovalPanel";
 import AdminAralProgressPanel from "@/components/admin/monitoring/AdminAralProgressPanel";
 import AdminClassReportFilesPanel from "@/components/admin/monitoring/AdminClassReportFilesPanel";
-import LearnersInterventionTable from "@/components/teacher/monitoring/LearnersInterventionTable";
+import AdminMonitoredStudentsPanel from "@/components/admin/monitoring/AdminMonitoredStudentsPanel";
 import {
   Pill,
   RiskPill,
@@ -28,15 +28,16 @@ import {
   monitoringStatusStyles,
 } from "@/components/teacher/monitoring/shared";
 import { useAdminMonitoring } from "@/hooks/teacher/useMonitoring";
+import { groupMonitoredStudentsForAdmin } from "@/lib/teacher/monitoringMappers";
 import {
   RISK_LEVEL,
   normalizeRecommendationType,
   normalizeRiskLevel,
 } from "@/lib/monitoring/recommendations";
 import {
-  exportAralRecommendedExcel,
   filterAralRecommendedLearners,
 } from "@/lib/reports/aralRecommendedExport";
+import { exportAralRecommendedPdf } from "@/lib/reports/aralRecommendedPdfExport";
 import { cn } from "@/lib/utils";
 
 const MONITORING_TABS = [
@@ -271,6 +272,7 @@ export default function AdminMonitoringPage() {
     students,
     classSummaries,
     stats,
+    profile,
     filterOptions,
     loading,
     refreshing,
@@ -373,6 +375,11 @@ export default function AdminMonitoringPage() {
     [filtered]
   );
 
+  const dedupedMonitored = useMemo(
+    () => groupMonitoredStudentsForAdmin(filtered, classSummaries),
+    [filtered, classSummaries]
+  );
+
   const exportScopeLabel = useMemo(() => {
     const parts = [];
     if (grade && grade !== "All Grades") parts.push(grade);
@@ -384,18 +391,17 @@ export default function AdminMonitoringPage() {
     if (exportingAral) return;
     setExportingAral(true);
     try {
-      const result = await exportAralRecommendedExcel({
+      const result = exportAralRecommendedPdf({
         learners: filtered,
         schoolYear: activeSchoolYear,
         quarter: quarter === "All Terms" ? "All Terms" : quarter,
-        periodLabel: quarter === "All Terms" ? "All Terms" : quarter,
-        generatedBy: "Head Teacher / Admin",
         scopeLabel: exportScopeLabel,
+        preparedBy: profile?.full_name || "Head Teacher / Administrator",
         includeTeacherColumn: true,
       });
       if (result.count === 0) {
         window.alert(
-          "No ARAL-recommended learners under the current filters. The Excel file still downloaded for review."
+          "No ARAL-recommended learners under the current filters. The PDF still downloaded for review."
         );
       }
     } catch (err) {
@@ -472,13 +478,13 @@ export default function AdminMonitoringPage() {
               type="button"
               onClick={handleExportAralRecommended}
               disabled={loading || exportingAral}
-              title="Export English/Filipino learners recommended for ARAL (for review)"
+              title="Export ARAL-recommended learners as a formal PDF report"
               className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50 px-3 text-[12px] font-semibold text-sky-800 transition-colors hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {exportingAral ? (
                 <Loader2 size={13} className="animate-spin" />
               ) : (
-                <FileSpreadsheet size={13} />
+                <FileText size={13} />
               )}
               Export ARAL
               {aralExportCount > 0 ? (
@@ -489,15 +495,9 @@ export default function AdminMonitoringPage() {
             </button>
             <button
               type="button"
-              onClick={() =>
-                handleServerFilterChange({
-                  schoolYear,
-                  quarter,
-                  grade,
-                  section,
-                })
-              }
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+              onClick={() => refreshWithCurrentFilters({ bustCache: true })}
+              disabled={loading || refreshing}
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <RefreshCw
                 size={13}
@@ -770,21 +770,13 @@ export default function AdminMonitoringPage() {
         ) : null}
 
         {activeTab === "students" ? (
-          loading && students.length === 0 ? (
-            <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-100 bg-white py-10 text-sm text-slate-500">
-              <Loader2 size={16} className="animate-spin" />
-              Loading monitoring data…
-            </div>
-          ) : (
-            <LearnersInterventionTable
-              learners={filtered}
-              schoolYear={activeSchoolYear}
-              quarter={quarter === "All Terms" ? "All Terms" : quarter}
-              onViewMonitoring={openStudent}
-              title="Monitored Students"
-              showAralApproval
-            />
-          )
+          <AdminMonitoredStudentsPanel
+            learners={dedupedMonitored}
+            schoolYear={activeSchoolYear}
+            quarter={quarter === "All Terms" ? "All Terms" : quarter}
+            onViewMonitoring={openStudent}
+            loading={loading}
+          />
         ) : null}
       </div>
 

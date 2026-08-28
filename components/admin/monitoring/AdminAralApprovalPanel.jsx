@@ -196,7 +196,6 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
   const [busyKey, setBusyKey] = useState("");
   const [batchBusy, setBatchBusy] = useState(false);
   const [noteDrafts, setNoteDrafts] = useState({});
-  const [batchNote, setBatchNote] = useState("");
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
 
@@ -301,12 +300,9 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
       for (const row of learner.sourceRows) {
         rows.push({
           ...row,
-          // Prefer section batch note, else per-learner note draft
+          // Per-learner note draft for this approval row
           _reviewNote:
-            batchNote ||
-            noteDrafts[learner.selectKey] ||
-            learner.note ||
-            null,
+            noteDrafts[learner.selectKey] || learner.note || null,
         });
       }
     }
@@ -320,8 +316,7 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
     setToast("");
     const session = await getAdminSession();
     const profileId = session.data?.id ?? null;
-    const note =
-      noteDrafts[learner.selectKey] || learner.note || batchNote || null;
+    const note = noteDrafts[learner.selectKey] || learner.note || null;
 
     let failed = null;
     for (const row of learner.sourceRows) {
@@ -373,7 +368,7 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
         quarter: row.quarter,
       })),
       status,
-      reviewNote: batchNote || null,
+      reviewNote: null,
       profileId: session.data?.id ?? null,
     });
     setBatchBusy(false);
@@ -411,11 +406,6 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
           <h2 className="text-sm font-semibold text-slate-900">
             Approve ARAL Recommendations
           </h2>
-          <p className="mt-0.5 max-w-2xl text-[11px] text-slate-500">
-            Open a grade folder, then a section to Approve / Return. After
-            Approve, the row is locked. Eng/Fil teachers identify ARAL
-            Learners; HT sign-off is recorded here.
-          </p>
         </div>
         <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-800">
           {uniqueLearnerCount} learner
@@ -437,18 +427,6 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
           {error || toast}
         </div>
       )}
-
-      <div className="border-b border-slate-100 px-3 py-2.5 sm:px-4">
-        <label className="block text-[11px] font-medium text-slate-500">
-          Batch note (optional — used for section Approve / Return selected)
-          <input
-            value={batchNote}
-            onChange={(e) => setBatchNote(e.target.value)}
-            placeholder="e.g. Reviewed in grade-level meeting"
-            className="mt-1 h-8 w-full max-w-xl rounded-full border border-slate-200 px-3 text-[12px] text-slate-700 outline-none focus:border-cnhs-green"
-          />
-        </label>
-      </div>
 
       {!selectedGrade ? (
         <div className="p-3 sm:p-4">

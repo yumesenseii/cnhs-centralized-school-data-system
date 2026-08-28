@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { FileDown, Loader2 } from "lucide-react";
+import { FileDown, Loader2, BookOpen } from "lucide-react";
 import StudentPageHeader from "@/components/student/layout/StudentPageHeader";
+import StudentSectionCard from "@/components/student/layout/StudentSectionCard";
 import { Pill, gradeStatusStyles } from "@/components/student/shared";
 import { useStudentPortal } from "@/hooks/student/useStudentPortal";
 import { exportStudentGradesPdf } from "@/lib/student/gradesExport";
@@ -63,58 +64,57 @@ export default function StudentGradesPage() {
       />
 
       {error ? (
-        <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+        <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
           {error}
         </div>
       ) : null}
 
       {exportError ? (
-        <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+        <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
           {exportError}
         </div>
       ) : null}
 
       {loading || !data ? (
-        <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-100 bg-white py-12 text-sm text-slate-500">
+        <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-100 bg-white py-12 text-sm text-slate-500">
           <Loader2 size={16} className="animate-spin" />
           Loading grades…
         </div>
       ) : (
-        <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-3.5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">
-                Grade records
-              </h2>
-              <p className="mt-0.5 text-[11px] text-slate-500">
-                {data.period.schoolYear
-                  ? `Showing ${data.period.schoolYear} · ${termLabel(data.period.quarter)}`
-                  : "No grading period available yet"}
-                {data.summary.average != null
-                  ? ` · Average ${data.summary.average}`
-                  : ""}
-              </p>
-            </div>
+        <StudentSectionCard
+          icon={BookOpen}
+          title="Grade records"
+          subtitle={
+            data.period.schoolYear
+              ? `Showing ${data.period.schoolYear} · ${termLabel(data.period.quarter)}${
+                  data.summary.average != null
+                    ? ` · Average ${data.summary.average}`
+                    : ""
+                }`
+              : "No grading period available yet"
+          }
+          actions={
             <button
               type="button"
               onClick={handleExportPdf}
               disabled={exporting || !data.allGrades.length}
-              className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-cnhs-green/30 bg-cnhs-green-soft px-3 text-[11px] font-semibold text-cnhs-green-dark transition-colors hover:bg-cnhs-green/15 disabled:cursor-not-allowed disabled:opacity-50 sm:hidden"
+              className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-cnhs-green/30 bg-white px-3 text-[11px] font-semibold text-cnhs-green-dark transition-colors hover:bg-cnhs-green/10 disabled:cursor-not-allowed disabled:opacity-50 sm:hidden"
             >
               <FileDown size={13} />
               Export PDF
             </button>
-          </div>
-
-          <div className="mt-4 overflow-x-auto">
+          }
+          bodyClassName="p-0 sm:p-0"
+        >
+          <div className="overflow-x-auto">
             <table className="w-full min-w-[520px] text-left">
               <thead className="bg-slate-50/80">
                 <tr className="text-[10px] uppercase tracking-[0.08em] text-slate-500">
-                  <th className="px-3 py-2 font-semibold">Subject</th>
-                  <th className="px-3 py-2 font-semibold">School Year</th>
-                  <th className="px-3 py-2 font-semibold">Term</th>
-                  <th className="px-3 py-2 font-semibold">Final Grade</th>
-                  <th className="px-3 py-2 font-semibold">Status</th>
+                  <th className="px-4 py-2.5 font-semibold sm:px-5">Subject</th>
+                  <th className="px-4 py-2.5 font-semibold sm:px-5">School Year</th>
+                  <th className="px-4 py-2.5 font-semibold sm:px-5">Term</th>
+                  <th className="px-4 py-2.5 font-semibold sm:px-5">Final Grade</th>
+                  <th className="px-4 py-2.5 font-semibold sm:px-5">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -124,19 +124,19 @@ export default function StudentGradesPage() {
                       key={row.id}
                       className="border-t border-slate-100 text-[12px]"
                     >
-                      <td className="px-3 py-2 font-medium text-slate-700">
+                      <td className="px-4 py-2.5 font-medium text-slate-700 sm:px-5">
                         {row.subject}
                       </td>
-                      <td className="px-3 py-2 text-slate-600">
+                      <td className="px-4 py-2.5 text-slate-600 sm:px-5">
                         {row.schoolYear}
                       </td>
-                      <td className="px-3 py-2 text-slate-600">
+                      <td className="px-4 py-2.5 text-slate-600 sm:px-5">
                         {termLabel(row.quarter)}
                       </td>
-                      <td className="px-3 py-2 font-semibold text-slate-800">
+                      <td className="px-4 py-2.5 font-semibold text-slate-800 sm:px-5">
                         {row.finalGrade ?? "—"}
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-4 py-2.5 sm:px-5">
                         <Pill value={row.status} styles={gradeStatusStyles} />
                       </td>
                     </tr>
@@ -145,7 +145,7 @@ export default function StudentGradesPage() {
                   <tr>
                     <td
                       colSpan={5}
-                      className="px-3 py-12 text-center text-xs text-slate-400"
+                      className="px-4 py-12 text-center text-xs text-slate-400 sm:px-5"
                     >
                       No enrolled subjects or grades yet for your account.
                     </td>
@@ -154,7 +154,7 @@ export default function StudentGradesPage() {
               </tbody>
             </table>
           </div>
-        </section>
+        </StudentSectionCard>
       )}
     </motion.div>
   );

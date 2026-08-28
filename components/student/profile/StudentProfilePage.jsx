@@ -1,8 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Loader2 } from "lucide-react";
+import { BarChart3, CalendarDays, Loader2, UserRound } from "lucide-react";
 import StudentPageHeader from "@/components/student/layout/StudentPageHeader";
+import StudentSectionCard from "@/components/student/layout/StudentSectionCard";
 import StudentSecurityCard from "@/components/student/profile/StudentSecurityCard";
 import ThemeSettingsCard from "@/components/settings/ThemeSettingsCard";
 import {
@@ -49,19 +50,19 @@ export default function StudentProfilePage() {
       />
 
       {error ? (
-        <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+        <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
           {error}
         </div>
       ) : null}
 
       {loading || !data ? (
-        <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-100 bg-white py-12 text-sm text-slate-500">
+        <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-100 bg-white py-12 text-sm text-slate-500">
           <Loader2 size={16} className="animate-spin" />
           Loading profile…
         </div>
       ) : (
         <div className="space-y-3">
-          <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-3.5">
+          <StudentSectionCard icon={UserRound} title="Student profile">
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-cnhs-green-soft text-sm font-semibold text-cnhs-green-dark">
                 {data.profile.fullName
@@ -73,26 +74,22 @@ export default function StudentProfilePage() {
                   .toUpperCase()}
               </div>
               <div>
-                <h2 className="text-base font-semibold text-slate-900">
+                <h3 className="text-base font-semibold text-slate-900">
                   {data.profile.fullName}
-                </h2>
+                </h3>
                 <p className="text-[12px] text-slate-500">
                   {data.profile.studentNumber} · {data.profile.gradeSection}
                 </p>
               </div>
             </div>
-          </section>
+          </StudentSectionCard>
 
-          <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-3.5">
-            <h2 className="text-sm font-semibold text-slate-900">
-              Academic Performance
-            </h2>
-            <p className="mt-1 text-[11px] text-slate-500">
-              Risk predictions are based on academic performance (ECR grades)
-              only.
-            </p>
-
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <StudentSectionCard
+            icon={BarChart3}
+            title="Academic Performance"
+            subtitle="Risk predictions are based on academic performance (ECR grades) only."
+          >
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 sm:col-span-2">
                 <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
                   Subject Grades
@@ -153,12 +150,10 @@ export default function StudentProfilePage() {
                 </p>
               </div>
             </div>
-          </section>
+          </StudentSectionCard>
 
-          <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-3.5">
-            <h2 className="text-sm font-semibold text-slate-900">Attendance</h2>
-
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <StudentSectionCard icon={CalendarDays} title="Attendance">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <InfoCard
                 label="Present"
                 value={String(data.attendance?.summary?.present ?? 0)}
@@ -236,7 +231,7 @@ export default function StudentProfilePage() {
                 No SF2 attendance records uploaded for you yet.
               </p>
             )}
-          </section>
+          </StudentSectionCard>
 
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start">
             <ThemeSettingsCard description="Choose how CNHS Learn looks on this browser. The theme stays after logout and when you return." />

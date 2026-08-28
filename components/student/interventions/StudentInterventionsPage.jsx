@@ -1,8 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Loader2 } from "lucide-react";
+import { ClipboardList, Loader2 } from "lucide-react";
 import StudentPageHeader from "@/components/student/layout/StudentPageHeader";
+import StudentSectionCard from "@/components/student/layout/StudentSectionCard";
 import {
   Pill,
   RiskPill,
@@ -27,19 +28,23 @@ export default function StudentInterventionsPage() {
       />
 
       {error ? (
-        <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+        <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
           {error}
         </div>
       ) : null}
 
       {loading || !data ? (
-        <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-100 bg-white py-12 text-sm text-slate-500">
+        <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-100 bg-white py-12 text-sm text-slate-500">
           <Loader2 size={16} className="animate-spin" />
           Loading interventions…
         </div>
       ) : (
         <div className="space-y-3">
-          <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-3.5">
+          <StudentSectionCard
+            icon={ClipboardList}
+            title="Your PLP summary"
+            subtitle="These are school support recommendations based on your grades, not punishment."
+          >
             <div className="flex flex-wrap items-center gap-2">
               <RiskPill value={data.summary.riskLevel} />
               <span className="text-[12px] text-slate-600">
@@ -49,16 +54,12 @@ export default function StudentInterventionsPage() {
               </span>
             </div>
             <p className="mt-3 text-[12px] leading-5 text-slate-500">
-              These are school support recommendations based on your grades, not
-              punishment. Talk to your subject teacher or adviser for next steps.
+              Talk to your subject teacher or adviser for next steps.
             </p>
-          </section>
+          </StudentSectionCard>
 
-          <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-3.5">
-            <h2 className="text-sm font-semibold text-slate-900">
-              Active interventions
-            </h2>
-            <div className="mt-3 space-y-3">
+          <StudentSectionCard title="Active interventions">
+            <div className="space-y-3">
               {data.interventions.length ? (
                 data.interventions.map((item) => (
                   <div
@@ -111,17 +112,14 @@ export default function StudentInterventionsPage() {
                 </p>
               )}
             </div>
-          </section>
+          </StudentSectionCard>
 
           {data.summary.weakSubjects.length ? (
-            <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-3.5">
-              <h2 className="text-sm font-semibold text-slate-900">
-                Weak subjects
-              </h2>
-              <p className="mt-1 text-[11px] text-slate-500">
-                Subjects with final grade below 75
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
+            <StudentSectionCard
+              title="Weak subjects"
+              subtitle="Subjects with final grade below 75"
+            >
+              <div className="flex flex-wrap gap-2">
                 {data.summary.weakSubjects.map((subject) => (
                   <span
                     key={subject}
@@ -131,15 +129,12 @@ export default function StudentInterventionsPage() {
                   </span>
                 ))}
               </div>
-            </section>
+            </StudentSectionCard>
           ) : null}
 
-          <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-3.5">
-            <h2 className="text-sm font-semibold text-slate-900">
-              Teacher follow-up status
-            </h2>
+          <StudentSectionCard title="Teacher follow-up status">
             {data.monitoring ? (
-              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5">
                   <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
                     Status
@@ -174,7 +169,7 @@ export default function StudentInterventionsPage() {
                 </div>
               </div>
             ) : (
-              <p className="mt-3 text-[12px] text-slate-500">
+              <p className="text-[12px] text-slate-500">
                 No monitoring follow-up has been recorded by your teacher yet.
               </p>
             )}
@@ -182,7 +177,7 @@ export default function StudentInterventionsPage() {
               Follow-up status tracks support progress in school. It is not a
               lesson or module upload.
             </p>
-          </section>
+          </StudentSectionCard>
         </div>
       )}
     </motion.div>
