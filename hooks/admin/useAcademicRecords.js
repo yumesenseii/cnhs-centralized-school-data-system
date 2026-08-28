@@ -1,11 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { buildAcademicRecordsModel, groupAcademicRecordClassCards } from "@/lib/admin/academicRecordsMappers";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  buildAcademicRecordsModel,
+  groupAcademicRecordClassCards,
+} from "@/lib/admin/academicRecordsMappers";
 import {
   getCachedAdminSchoolYears,
   invalidateAdminRosterCache,
 } from "@/lib/admin/adminRosterCache";
+import { createClient } from "@/lib/supabase/client";
 import { getAdminReportsBundle } from "@/lib/supabase/queries/reports";
 import { QUARTER_OPTIONS, TERM_ALL_LABEL } from "@/lib/teacher/reportsConstants";
 import { useSoftLoadState } from "@/hooks/useSoftLoadState";
@@ -38,6 +42,25 @@ function classMatchesTeacher(cls, teacherFilter) {
   return teacherNameKey(cls.teacherName) === teacherNameKey(teacherFilter);
 }
 
+function isTransientFetchError(err) {
+  const message = String(err?.message ?? err ?? "").toLowerCase();
+  return (
+    message.includes("failed to fetch") ||
+    message.includes("network") ||
+    message.includes("aborted") ||
+    err?.name === "AbortError"
+  );
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function ensureAuthSession() {
+  const supabase = createClient();
+  await supabase.auth.getSession();
+}
+
 /**
  * Academic Records — class lists from ECR uploads (not monitoring risk/ARAL).
  */
@@ -50,6 +73,10 @@ export function useAcademicRecords() {
   const [filtersReady, setFiltersReady] = useState(false);
   const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(true);
 
+  const loadSeq = useRef(0);
+  const hasBootedRef = useRef(false);
+  const schoolYearsRef = useRef([]);
+
   const [search, setSearch] = useState("");
   const [gradeFilter, setGradeFilter] = useState("All Grades");
   const [sectionFilter, setSectionFilter] = useState("All Sections");
@@ -57,10 +84,110 @@ export function useAcademicRecords() {
   const [selectedClassId, setSelectedClassId] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
 
+  const loadData = useCallback(
+    async ({
+      schoolYear: year,
+      quarter: term,
+      bustCache = false,
+      retryCount = 0,
+    } = {}) => {
+      const seq = ++loadSeq.current;
+      const resolvedYear = year ?? "";
+      const resolvedQuarter = term ?? "";
+
+      beginLoad();
+      setError("");
+
+      try {
+        await ensureAuthSession();
+        if (seq !== loadSeq.current) return;
+
+        if (bustCache) invalidateAdminRosterCache();
+
+        const result = await getAdminReportsBundle({
+          schoolYear: resolvedYear || null,
+          quarter: resolvedQuarter || null,
+          includeAttendance: false,
+          includeLessonPlans: false,
+        });
+
+        if (seq !== loadSeq.current) return;
+
+        if (result.error) {
+          if (isTransientFetchError(result.error) && retryCount < 1) {
+            await delay(350);
+            if (seq !== loadSeq.current) return;
+            return loadData({
+              schoolYear: resolvedYear,
+              quarter: resolvedQuarter,
+              bustCache,
+              retryCount: retryCount + 1,
+            });
+          }
+
+          setError(result.error.message || "Unable to load academic records.");
+          setModel(null);
+          endLoad(false);
+          return;
+        }
+
+        const yearsForModel =
+          result.data.schoolYears?.length > 0
+            ? result.data.schoolYears
+            : schoolYearsRef.current;
+
+        if (result.data.schoolYears?.length) {
+          schoolYearsRef.current = result.data.schoolYears;
+          setSchoolYears((prev) =>
+            prev.length === result.data.schoolYears.length &&
+            prev.every((y, i) => y === result.data.schoolYears[i])
+              ? prev
+              : result.data.schoolYears
+          );
+        }
+
+        const built = await buildAcademicRecordsModel({
+          ...result.data,
+          schoolYears: yearsForModel,
+          filters: {
+            schoolYear: resolvedYear || undefined,
+            quarter: resolvedQuarter || undefined,
+          },
+        });
+
+        if (seq !== loadSeq.current) return;
+
+        setModel(built);
+        endLoad(true);
+      } catch (err) {
+        if (seq !== loadSeq.current) return;
+
+        if (isTransientFetchError(err) && retryCount < 1) {
+          await delay(350);
+          if (seq !== loadSeq.current) return;
+          return loadData({
+            schoolYear: resolvedYear,
+            quarter: resolvedQuarter,
+            bustCache,
+            retryCount: retryCount + 1,
+          });
+        }
+
+        setError(err?.message || "Unable to load academic records.");
+        setModel(null);
+        endLoad(false);
+      }
+    },
+    [beginLoad, endLoad]
+  );
+
   useEffect(() => {
     let cancelled = false;
 
-    async function resolveYear() {
+    async function boot() {
+      await ensureAuthSession();
+      if (cancelled) return;
+
       const yearsResult = await getCachedAdminSchoolYears();
       if (cancelled) return;
 
@@ -74,78 +201,29 @@ export function useAcademicRecords() {
       }
 
       const years = yearsResult.data ?? [];
+      const resolvedYear = years[0] ?? "";
+
+      schoolYearsRef.current = years;
       setSchoolYears(years);
-      setSchoolYear((current) => current || years[0] || "");
+      setSchoolYear(resolvedYear);
       setFiltersReady(true);
+
+      await loadData({ schoolYear: resolvedYear, quarter: "" });
+      if (!cancelled) hasBootedRef.current = true;
     }
 
-    resolveYear();
+    boot();
+
     return () => {
       cancelled = true;
+      loadSeq.current += 1;
     };
-  }, [endLoad]);
-
-  const refresh = useCallback(
-    async ({ bustCache = false } = {}) => {
-      if (!filtersReady) return;
-
-      beginLoad();
-      setError("");
-
-      try {
-        if (bustCache) invalidateAdminRosterCache();
-
-        const result = await getAdminReportsBundle({
-          schoolYear: schoolYear || null,
-          quarter: quarter || null,
-          includeAttendance: false,
-          includeLessonPlans: false,
-        });
-
-        if (result.error) {
-          setError(result.error.message || "Unable to load academic records.");
-          setModel(null);
-          endLoad(false);
-          return;
-        }
-
-        const yearsForModel =
-          result.data.schoolYears?.length > 0
-            ? result.data.schoolYears
-            : schoolYears;
-
-        if (result.data.schoolYears?.length) {
-          setSchoolYears((prev) =>
-            prev.length === result.data.schoolYears.length &&
-            prev.every((y, i) => y === result.data.schoolYears[i])
-              ? prev
-              : result.data.schoolYears
-          );
-        }
-
-        const built = await buildAcademicRecordsModel({
-          ...result.data,
-          schoolYears: yearsForModel,
-          filters: {
-            schoolYear: schoolYear || undefined,
-            quarter: quarter || undefined,
-          },
-        });
-        setModel(built);
-        endLoad(true);
-      } catch (err) {
-        setError(err?.message || "Unable to load academic records.");
-        setModel(null);
-        endLoad(false);
-      }
-    },
-    [filtersReady, schoolYear, quarter, beginLoad, endLoad]
-  );
+  }, [endLoad, loadData]);
 
   useEffect(() => {
-    if (!filtersReady) return;
-    refresh();
-  }, [filtersReady, refresh]);
+    if (!filtersReady || !hasBootedRef.current) return;
+    loadData({ schoolYear, quarter });
+  }, [filtersReady, schoolYear, quarter, loadData]);
 
   const catalog = useMemo(() => {
     const classes = model?.classes ?? [];
@@ -274,6 +352,10 @@ export function useAcademicRecords() {
     setSearch("");
   }, []);
 
+  const refresh = useCallback(() => {
+    loadData({ schoolYear, quarter, bustCache: true });
+  }, [loadData, schoolYear, quarter]);
+
   return {
     loading: (loading || !filtersReady) && !model,
     refreshing,
@@ -284,7 +366,7 @@ export function useAcademicRecords() {
     quarters: [{ value: "", label: TERM_ALL_LABEL }, ...QUARTER_OPTIONS],
     setSchoolYear,
     setQuarter,
-    refresh: () => refresh({ bustCache: true }),
+    refresh,
     summaryCards: model?.summaryCards ?? [],
     gradeSummary: model?.gradeSummary ?? [],
     sectionFolders,
