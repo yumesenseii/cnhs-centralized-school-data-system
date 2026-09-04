@@ -106,6 +106,10 @@ export function useAdminReports() {
     refresh();
   }, [filtersReady, refresh]);
 
+  useEffect(() => {
+    if (quarter === "4") setQuarter("");
+  }, [quarter]);
+
   return {
     loading: (loading || !filtersReady) && !model,
     refreshing,
@@ -113,7 +117,10 @@ export function useAdminReports() {
     schoolYear,
     quarter,
     schoolYears,
-    quarters: [{ value: "", label: TERM_ALL_LABEL }, ...QUARTER_OPTIONS],
+    quarters: [
+      { value: "", label: TERM_ALL_LABEL },
+      ...QUARTER_OPTIONS.filter((opt) => opt.value !== "4"),
+    ],
     quickStats: model?.quickStats ?? [],
     reportCards: model?.reportCards ?? [],
     classReports: model?.classReports ?? [],

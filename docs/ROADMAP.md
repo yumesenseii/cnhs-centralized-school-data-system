@@ -26,7 +26,7 @@ Use this roadmap to prioritize remaining work before defense, school pilot, or p
 
 | Bucket | Items |
 |--------|--------|
-| **Done (recent)** | Reports Excel + embedded charts · Multi-term ECR · Term UI · Academic Records live · Class-Record parser · LP Reviewed By · Reset / Activate users · Password change (all portals) · Naming (P2-5) · Unused LP cleanup (P2-6) · Admin School/Appearance persist · Notifications live (P2-3) · Shared roster caches / soft-nav performance · Unique-learner Overview KPIs · Teacher dashboard `filteredMonitoring` fix · Portal landing at `/` · Export Users (P1-3) · Login forgot-password built then hidden; HT Reset Password is the supported path (P1-7) · Live DB: `018` delete_requests + `019` Values Education (do not re-run 001–017) |
+| **Done (recent)** | PONCE **Class-Record-v1 Excel export** (template-based) · In-system **E-Record** (My Classes spreadsheet entry, `ecr_*` tables, PONCE layout) · Reports Excel + embedded charts · Multi-term ECR · Term UI · Academic Records live · Class-Record parser · LP Reviewed By · Reset / Activate users · Password change (all portals) · Naming (P2-5) · Unused LP cleanup (P2-6) · Admin School/Appearance persist · Notifications live (P2-3) · Shared roster caches / soft-nav performance · Unique-learner Overview KPIs · Teacher dashboard `filteredMonitoring` fix · Portal landing at `/` · Export Users (P1-3) · Login forgot-password built then hidden; HT Reset Password is the supported path (P1-7) · Live DB: `018` delete_requests + `019` Values Education + `020` ECR module (do not re-run 001–017) |
 | **In progress** | **P0-5** Test Summary Pass/Fail |
 | **Todo (pilot)** | — |
 | **Won’t do (now)** | **P2-7** Mobile QA (out of scope — desktop pilot) · DOCX extract · student self-reg · Login “Forgot password?” email self-service (hidden; Gmail one-time links unreliable) |
@@ -52,7 +52,8 @@ These were delivered in recent iterations and should stay regression-tested:
 | User Management Edit / Reset / Activate | Live HT + teacher updates; edge reset password; `is_active` toggle |
 | Password change (Teacher / Student / Admin) | Settings / Profile Security via `useAuth().changePassword` |
 | ARAL facilitator flow | Admin assign + teacher weekly progress gate |
-| Input Grades stepped flow | Upload → confirm class → preview & import |
+| Input Grades stepped flow | Upload → confirm class → preview & import (optional; primary path is **E-Record** grid) |
+| Teacher E-Record (in-system) | `/teacher/my-classes/[classId]/e-record` — WW/PT/QA grid, HPS row, PS/WS/Term formulas, AVE summary; `ecr_*` tables sync to `grades` on publish; **PONCE Class-Record-v1 Excel export** via template |
 | Student My Grades | Shows enrolled subjects even when ungraded |
 | Admin + teacher performance caches | Shared TTL/`globalThis` roster caches; soft-nav reuse Overview → Academic Records / Monitoring / Reports; `preferLocal` recommendations; deferred attendance where applicable |
 | Unique-learner Overview KPIs | Risk cards / distribution count unique students (worst risk), aligned with Academic Records totals |

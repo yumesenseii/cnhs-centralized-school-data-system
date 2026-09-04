@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { BarChart3, Layers3 } from "lucide-react";
 import ChartCard from "@/components/dashboard/ChartCard";
-import EmptyState from "@/components/dashboard/EmptyState";
 import PerformanceChart from "@/components/dashboard/PerformanceChart";
 import PriorityLearnersTable from "@/components/dashboard/PriorityLearnersTable";
 import RecentActivity from "@/components/dashboard/RecentActivity";
@@ -27,6 +26,13 @@ const RISK_FILTERS = [
   { id: "aral", label: "ARAL Learners" },
 ];
 
+const EMPTY_GRADE_PERFORMANCE = [
+  { grade: "Grade 7", average: 0 },
+  { grade: "Grade 8", average: 0 },
+  { grade: "Grade 9", average: 0 },
+  { grade: "Grade 10", average: 0 },
+];
+
 function matchesRiskFilter(learner, filter) {
   const risk = String(learner.riskLevel ?? "").toLowerCase();
   const intervention = String(learner.suggestedIntervention ?? "").toLowerCase();
@@ -48,6 +54,10 @@ export default function AdminAcademicAnalytics({
 }) {
   const [activeTab, setActiveTab] = useState("summary");
   const [riskFilter, setRiskFilter] = useState("all");
+
+  const performanceData = academicPerformance.length
+    ? academicPerformance
+    : EMPTY_GRADE_PERFORMANCE;
 
   const filteredLearners = useMemo(
     () =>
@@ -157,36 +167,15 @@ export default function AdminAcademicAnalytics({
           <>
             <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[1.08fr_1fr]">
               <ChartCard title="Academic Performance by Grade Level">
-                {academicPerformance.length ? (
-                  <PerformanceChart data={academicPerformance} />
-                ) : (
-                  <EmptyState
-                    title="No grade averages yet"
-                    description="Import E-Class records so grade-level averages can appear here."
-                  />
-                )}
+                <PerformanceChart data={performanceData} />
               </ChartCard>
               <ChartCard title="Risk Distribution">
-                {riskDistribution.length ? (
-                  <RiskDistributionChart data={riskDistribution} />
-                ) : (
-                  <EmptyState
-                    title="No risk distribution yet"
-                    description="Learner risk appears after grades are available for recommendation scoring."
-                  />
-                )}
+                <RiskDistributionChart data={riskDistribution} />
               </ChartCard>
             </div>
             <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-[1.08fr_1fr]">
               <ChartCard title="All Subject Weak-Learner Counts">
-                {weakSubjects.length ? (
-                  <WeakSubjectChart data={weakSubjects} />
-                ) : (
-                  <EmptyState
-                    title="No assigned subjects yet"
-                    description="Assigned class subjects will appear here, including subjects with zero weak learners."
-                  />
-                )}
+                <WeakSubjectChart data={weakSubjects} />
               </ChartCard>
               <ChartCard title="Recent Activity">
                 <RecentActivity activities={recentActivity} />
@@ -199,36 +188,15 @@ export default function AdminAcademicAnalytics({
           <>
             <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[1.08fr_1fr]">
               <ChartCard title="Academic Performance by Grade Level">
-                {academicPerformance.length ? (
-                  <PerformanceChart data={academicPerformance} />
-                ) : (
-                  <EmptyState
-                    title="No grade averages yet"
-                    description="Import E-Class records so grade-level averages can appear here."
-                  />
-                )}
+                <PerformanceChart data={performanceData} />
               </ChartCard>
               <ChartCard title="Risk Distribution">
-                {riskDistribution.length ? (
-                  <RiskDistributionChart data={riskDistribution} />
-                ) : (
-                  <EmptyState
-                    title="No risk distribution yet"
-                    description="Learner risk appears after grades are available for recommendation scoring."
-                  />
-                )}
+                <RiskDistributionChart data={riskDistribution} />
               </ChartCard>
             </div>
             <div className="mt-3">
               <ChartCard title="All Subject Weak-Learner Counts">
-                {weakSubjects.length ? (
-                  <WeakSubjectChart data={weakSubjects} />
-                ) : (
-                  <EmptyState
-                    title="No assigned subjects yet"
-                    description="Assigned class subjects will appear here, including subjects with zero weak learners."
-                  />
-                )}
+                <WeakSubjectChart data={weakSubjects} />
               </ChartCard>
             </div>
           </>
@@ -237,14 +205,7 @@ export default function AdminAcademicAnalytics({
         {activeTab === "by-level" ? (
           <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[1.25fr_0.75fr]">
             <ChartCard title="Academic Performance by Grade Level">
-              {academicPerformance.length ? (
-                <PerformanceChart data={academicPerformance} />
-              ) : (
-                <EmptyState
-                  title="No grade-level data yet"
-                  description="Import E-Class records to compare grade-level averages."
-                />
-              )}
+              <PerformanceChart data={performanceData} />
             </ChartCard>
             <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
               <div className="flex items-center gap-2">
@@ -258,25 +219,19 @@ export default function AdminAcademicAnalytics({
                 </h3>
               </div>
               <div className="mt-3 space-y-2">
-                {academicPerformance.length ? (
-                  academicPerformance.map((row) => (
-                    <div
-                      key={row.grade}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5"
-                    >
-                      <span className="text-[12px] font-medium text-slate-600">
-                        {row.grade}
-                      </span>
-                      <span className="text-[13px] font-semibold text-cnhs-green-dark">
-                        {row.average}%
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="py-8 text-center text-xs text-slate-400">
-                    No grade-level averages available.
-                  </p>
-                )}
+                {performanceData.map((row) => (
+                  <div
+                    key={row.grade}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5"
+                  >
+                    <span className="text-[12px] font-medium text-slate-600">
+                      {row.grade}
+                    </span>
+                    <span className="text-[13px] font-semibold text-cnhs-green-dark">
+                      {row.average}%
+                    </span>
+                  </div>
+                ))}
               </div>
             </section>
           </div>
@@ -284,14 +239,7 @@ export default function AdminAcademicAnalytics({
 
         {activeTab === "breakdown" ? (
           <div className="mt-4">
-            {filteredLearners.length ? (
-              <PriorityLearnersTable learners={filteredLearners} />
-            ) : (
-              <EmptyState
-                title="No matching priority learners"
-                description="No learners in the priority review list match the selected risk filter."
-              />
-            )}
+            <PriorityLearnersTable learners={filteredLearners} />
           </div>
         ) : null}
       </div>

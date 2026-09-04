@@ -1,11 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { FileText } from "lucide-react";
 
 /**
  * @param {{
  *   reports: Array<Record<string, unknown>>,
  *   onDetails: (row: Record<string, unknown>) => void,
+ *   onGenerateSystemReport?: (row: Record<string, unknown>) => void,
  *   mapRow?: (row: Record<string, unknown>) => {
  *     id: string,
  *     title: string,
@@ -13,12 +15,14 @@ import { motion } from "framer-motion";
  *     metric: string|number,
  *     metricLabel?: string,
  *     needsLabel?: string,
+ *     passingRate?: string,
  *   },
  * }} props
  */
 export default function ReportByClassGrid({
   reports = [],
   onDetails,
+  onGenerateSystemReport,
   mapRow,
 }) {
   if (!reports.length) {
@@ -64,16 +68,31 @@ export default function ReportByClassGrid({
             </p>
             <p className="mt-1.5 text-[11px] text-slate-400">
               {row.metricLabel || "Average grade"}
+              {row.passingRate ? ` · Passing ${row.passingRate}` : ""}
             </p>
-            <div className="mt-4 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
-              <span className="text-[11px] text-slate-500">{row.needsLabel}</span>
-              <button
-                type="button"
-                onClick={() => onDetails?.(raw)}
-                className="cursor-pointer text-[11px] font-semibold text-cnhs-green-dark transition-colors hover:text-[#246f54]"
-              >
-                Details →
-              </button>
+            <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">
+              <span className="block text-[11px] text-slate-500">
+                {row.needsLabel}
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onDetails?.(raw)}
+                  className="cursor-pointer text-[11px] font-semibold text-cnhs-green-dark transition-colors hover:text-[#246f54]"
+                >
+                  Preview →
+                </button>
+                {onGenerateSystemReport ? (
+                  <button
+                    type="button"
+                    onClick={() => onGenerateSystemReport(raw)}
+                    className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-cnhs-green-dark/30 bg-white px-2 py-1 text-[10px] font-semibold text-cnhs-green-dark hover:bg-green-50"
+                  >
+                    <FileText size={11} />
+                    Generate report
+                  </button>
+                ) : null}
+              </div>
             </div>
           </motion.article>
         );

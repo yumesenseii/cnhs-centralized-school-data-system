@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import EClassUploadDialog from "@/components/teacher/my-classes/EClassUploadDialog";
@@ -84,6 +84,10 @@ export default function ClassOverview({ classId }) {
   function handleQuickAction(action) {
     if (action.id === "qa3") {
       handleGenerateReport();
+      return;
+    }
+    if (action.id === "qa-ecr-enter") {
+      router.push(`/teacher/my-classes/${classItem?.id ?? classId}/e-record`);
       return;
     }
     if (action.id === "qa1") {
@@ -241,7 +245,7 @@ export default function ClassOverview({ classId }) {
       name: "Active",
       value: students.filter((s) => {
         const grade = Number(s.averageGrade);
-        return !(Number.isFinite(grade) && grade < 75);
+        return Number.isFinite(grade) && grade >= 75;
       }).length,
       color: "#52b788",
     },
@@ -269,7 +273,7 @@ export default function ClassOverview({ classId }) {
     >
       <header className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <PageBreadcrumb
               items={[
                 { label: "My Classes", href: "/teacher/my-classes" },
@@ -279,6 +283,15 @@ export default function ClassOverview({ classId }) {
             <h1 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-slate-800 sm:text-[22px]">
               {classItem.subject}
             </h1>
+            <p className="mt-1 truncate text-[12px] font-medium text-slate-500">
+              {[
+                classItem.gradeSection,
+                classItem.schoolYear,
+                `${classItem.students} students`,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
           </div>
 
           <MobileNavSheet
@@ -290,32 +303,28 @@ export default function ClassOverview({ classId }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-          <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 text-[11px] font-semibold text-sky-700">
-            <FileText size={12} />
-            {classItem.gradeSection}
-          </span>
           <label className="inline-flex h-8 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 text-[11px] font-semibold text-slate-600 shadow-sm">
-              <span className="text-slate-400">Term</span>
-              <select
-                value={String(viewQuarter)}
-                onChange={(e) => {
-                  const n = Number(e.target.value);
-                  const target = termOptions.find((opt) => opt.value === n);
-                  if (target?.classId && target.classId !== classId) {
-                    router.push(`/teacher/my-classes/${target.classId}`);
-                    return;
-                  }
-                  setViewQuarter(n);
-                }}
-                className="cursor-pointer bg-transparent text-[11px] font-semibold text-slate-700 outline-none"
-              >
-                {termOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <span className="text-slate-400">Term</span>
+            <select
+              value={String(viewQuarter)}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                const target = termOptions.find((opt) => opt.value === n);
+                if (target?.classId && target.classId !== classId) {
+                  router.push(`/teacher/my-classes/${target.classId}`);
+                  return;
+                }
+                setViewQuarter(n);
+              }}
+              className="cursor-pointer bg-transparent text-[11px] font-semibold text-slate-700 outline-none"
+            >
+              {termOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <Link
             href="/teacher/my-classes"
             className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 shadow-sm hover:bg-slate-50"
@@ -332,6 +341,58 @@ export default function ClassOverview({ classId }) {
         </div>
       ) : null}
 
+      <div className="mb-4">
+        <QuickActions
+          align="end"
+          menuLabel={`More actions for ${classItem.subject}`}
+          primary={{
+            id: "qa-ecr-enter",
+            label: "Enter Grades (E-Record)",
+            icon: "upload",
+          }}
+          secondary={[
+            {
+              id: "qa-students",
+              label: "View Students",
+              icon: "users",
+              href: `/teacher/my-classes/${classItem.id}/students`,
+            },
+            {
+              id: "qa1",
+              label: "Import ECR",
+              icon: "file",
+              tone: "orange",
+            },
+          ]}
+          overflow={[
+            {
+              id: "qa2",
+              label: "Upload Lesson Plan",
+              icon: "file",
+            },
+            {
+              id: "qa3",
+              label: "Generate Class Report",
+              icon: "report",
+            },
+            {
+              id: "qa-ecr",
+              label: "Request clear ECR",
+              icon: "eraser",
+              dividerBefore: true,
+            },
+            {
+              id: "qa-class",
+              label: "Request delete class",
+              icon: "trash",
+              tone: "danger",
+            },
+          ]}
+          busyId={reportLoading ? "qa3" : null}
+          onAction={handleQuickAction}
+        />
+      </div>
+
       <SummaryKpiCards kpis={kpis} />
 
       {!hasLearners ? (
@@ -339,7 +400,7 @@ export default function ClassOverview({ classId }) {
           <EmptyLearnersState onUpload={openUpload} />
         </div>
       ) : (
-        <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr_0.9fr]">
+        <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
           <div className="space-y-3">
             <GradeDistributionChart
               data={gradeDistribution}
@@ -355,13 +416,18 @@ export default function ClassOverview({ classId }) {
           <div className="space-y-3">
             <SubmissionStatus submission={submission} />
             <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-              <h3 className="text-sm font-semibold text-slate-900">Class Information</h3>
+              <h3 className="text-sm font-semibold text-slate-900">
+                Class Information
+              </h3>
               <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {[
                   ["Subject", classItem.subject],
                   ["Grade & Section", classItem.gradeSection],
                   ["School Year", classItem.schoolYear],
-                  ["Term", termLabel(viewQuarter) || classItem.currentQuarter],
+                  [
+                    "Term",
+                    termLabel(viewQuarter) || classItem.currentQuarter,
+                  ],
                   ["Teacher", classItem.teacher],
                   ["Total Enrolled", `${classItem.students} students`],
                 ].map(([label, value]) => (
@@ -369,26 +435,13 @@ export default function ClassOverview({ classId }) {
                     <dt className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
                       {label}
                     </dt>
-                    <dd className="mt-1 text-[12px] font-semibold text-slate-800">{value}</dd>
+                    <dd className="mt-1 text-[12px] font-semibold text-slate-800">
+                      {value}
+                    </dd>
                   </div>
                 ))}
               </dl>
             </section>
-          </div>
-
-          <div className="space-y-3">
-            <QuickActions
-              actions={[
-                { id: "qa1", label: "Upload E-Class Record", tone: "primary", icon: "upload" },
-                { id: "qa2", label: "Upload Lesson Plan", tone: "violet", icon: "file" },
-                { id: "qa3", label: "Generate Class Report", tone: "orange", icon: "report" },
-                { id: "qa-ecr", label: "Request clear ECR", tone: "violet", icon: "file" },
-                { id: "qa-class", label: "Request delete class", tone: "danger", icon: "trash" },
-              ]}
-              classId={classItem.id}
-              busyId={reportLoading ? "qa3" : null}
-              onAction={handleQuickAction}
-            />
             <UpcomingTasks
               tasks={[
                 {
@@ -408,7 +461,7 @@ export default function ClassOverview({ classId }) {
         classItem={classItem}
         teacherId={teacherId}
         onClose={() => setUploadOpen(false)}
-        onSuccess={(result) => {
+        onSuccess={async (result) => {
           const learners = result?.imported ?? 0;
           const grades = result?.gradesUpserted ?? 0;
           setToast(
@@ -416,7 +469,7 @@ export default function ClassOverview({ classId }) {
               grades ? ` and ${grades} grade record${grades === 1 ? "" : "s"}` : ""
             }.`
           );
-          refresh();
+          await refresh();
           window.setTimeout(() => setToast(""), 3200);
         }}
       />

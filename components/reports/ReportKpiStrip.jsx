@@ -31,24 +31,24 @@ const toneStyles = {
  */
 export default function ReportKpiStrip({ items = [] }) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
       {items.map((item) => {
         const tone = toneStyles[item.tone] ?? toneStyles.slate;
         return (
           <motion.section
             key={item.id}
-            whileHover={{ y: -2 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-            className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_6px_16px_rgba(15,23,42,0.04)]"
+            whileHover={{ y: -1 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_4px_12px_rgba(15,23,42,0.03)]"
           >
             <div className="flex items-start justify-between gap-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400">
                 {item.label}
               </p>
               {item.badge ? (
                 <span
                   className={cn(
-                    "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                    "rounded-full px-1.5 py-0.5 text-[9px] font-semibold",
                     tone.badge
                   )}
                 >
@@ -58,14 +58,14 @@ export default function ReportKpiStrip({ items = [] }) {
             </div>
             <p
               className={cn(
-                "mt-2 text-[28px] font-semibold leading-none tracking-[-0.03em]",
+                "mt-1.5 text-[22px] font-semibold leading-none tracking-[-0.03em]",
                 tone.value
               )}
             >
               {item.value}
             </p>
             {item.hint ? (
-              <p className="mt-2 text-[11px] text-slate-400">{item.hint}</p>
+              <p className="mt-1.5 text-[10px] text-slate-400">{item.hint}</p>
             ) : null}
           </motion.section>
         );

@@ -1,0 +1,115 @@
+{
+  "model_configuration": "Model B (production)",
+  "general_average_in_features": false,
+  "accuracy": 0.96875,
+  "precision_macro": 0.9667518062455903,
+  "recall_macro": 0.9688835358882346,
+  "f1_macro": 0.9675530277946783,
+  "precision_weighted": 0.9696819557356133,
+  "recall_weighted": 0.96875,
+  "f1_weighted": 0.9689731281896162,
+  "confusion_matrix": {
+    "labels": [
+      "High Risk",
+      "Low Risk",
+      "Moderate Risk"
+    ],
+    "matrix": [
+      [
+        167,
+        0,
+        5
+      ],
+      [
+        0,
+        164,
+        6
+      ],
+      [
+        2,
+        2,
+        134
+      ]
+    ]
+  },
+  "classification_report": {
+    "High Risk": {
+      "precision": 0.9881656804733728,
+      "recall": 0.9709302325581395,
+      "f1-score": 0.9794721407624634,
+      "support": 172.0
+    },
+    "Low Risk": {
+      "precision": 0.9879518072289156,
+      "recall": 0.9647058823529412,
+      "f1-score": 0.9761904761904762,
+      "support": 170.0
+    },
+    "Moderate Risk": {
+      "precision": 0.9241379310344827,
+      "recall": 0.9710144927536232,
+      "f1-score": 0.9469964664310954,
+      "support": 138.0
+    },
+    "accuracy": 0.96875,
+    "macro avg": {
+      "precision": 0.9667518062455903,
+      "recall": 0.9688835358882346,
+      "f1-score": 0.9675530277946783,
+      "support": 480.0
+    },
+    "weighted avg": {
+      "precision": 0.9696819557356133,
+      "recall": 0.96875,
+      "f1-score": 0.9689731281896162,
+      "support": 480.0
+    }
+  },
+  "n_train": 1920,
+  "n_test": 480,
+  "feature_names": [
+    "english_grade",
+    "filipino_grade",
+    "mathematics_grade",
+    "science_grade",
+    "mapeh_grade",
+    "araling_panlipunan_grade",
+    "tle_grade",
+    "values_education_grade",
+    "failing_subject_count",
+    "language_fail_count",
+    "non_language_fail_count",
+    "lowest_grade",
+    "available_grade_count"
+  ],
+  "label_basis": {
+    "official_scale": {
+      "90-100": "Outstanding -> Low Risk",
+      "85-89": "Very Satisfactory -> Low Risk",
+      "80-84": "Satisfactory -> Moderate Risk",
+      "75-79": "Fairly Satisfactory -> Moderate Risk",
+      "<75": "Did Not Meet Expectations -> High Risk"
+    },
+    "ml_classes": {
+      "85-100": "Low Risk",
+      "75-84": "Moderate Risk",
+      "<75": "High Risk"
+    },
+    "label_source": "general_average (GWA) \u2014 labels only, not an RF feature"
+  },
+  "feature_importances": {
+    "english_grade": 0.03628715790118178,
+    "filipino_grade": 0.045492105844539464,
+    "mathematics_grade": 0.04291831496527773,
+    "science_grade": 0.06532599355326305,
+    "mapeh_grade": 0.05037216305704308,
+    "araling_panlipunan_grade": 0.075264442904205,
+    "tle_grade": 0.07249245057645802,
+    "values_education_grade": 0.028902803091392024,
+    "failing_subject_count": 0.23250050281147336,
+    "language_fail_count": 0.02095299720179531,
+    "non_language_fail_count": 0.13175474849065608,
+    "lowest_grade": 0.19738715187294545,
+    "available_grade_count": 0.0003491677297697641
+  }
+}

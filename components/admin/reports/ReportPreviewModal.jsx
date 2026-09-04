@@ -329,28 +329,34 @@ export default function ReportPreviewModal({
                       </div>
                       <div className="px-2 py-2">
                         <p className="text-[9px] font-semibold uppercase text-cnhs-orange">
-                          75–80
+                          75–84
                         </p>
                         <p className="mt-0.5 text-lg font-semibold text-cnhs-orange">
-                          {gradeBands.band75to80 ?? 0}
+                          {gradeBands.band75to84 ?? gradeBands.band75to80 ?? 0}
                         </p>
                         <p className="text-[9px] text-slate-400">
                           {Math.round(
-                            ((gradeBands.band75to80 ?? 0) / bandTotal) * 100
+                            ((gradeBands.band75to84 ??
+                              gradeBands.band75to80 ??
+                              0) /
+                              bandTotal) *
+                              100
                           )}
                           %
                         </p>
                       </div>
                       <div className="px-2 py-2">
                         <p className="text-[9px] font-semibold uppercase text-cnhs-green-dark">
-                          &gt;80
+                          85–100
                         </p>
                         <p className="mt-0.5 text-lg font-semibold text-cnhs-green-dark">
-                          {gradeBands.above80 ?? 0}
+                          {gradeBands.band85plus ?? gradeBands.above80 ?? 0}
                         </p>
                         <p className="text-[9px] text-slate-400">
                           {Math.round(
-                            ((gradeBands.above80 ?? 0) / bandTotal) * 100
+                            ((gradeBands.band85plus ?? gradeBands.above80 ?? 0) /
+                              bandTotal) *
+                              100
                           )}
                           %
                         </p>
@@ -450,9 +456,10 @@ export default function ReportPreviewModal({
               </section>
 
               <p className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2 text-[10px] leading-relaxed text-slate-500">
-                Academic risk uses ECR grades only (&lt;75 High · 75–80 Moderate ·
-                &gt;80 Low). Risk and grade bands count graded learners only;
-                ungraded are not High Risk. SF2 attendance is tracked under{" "}
+                Academic risk uses ECR grades only (&lt;75 High · 75–84 Moderate ·
+                85–100 Low) via the trained Random Forest. Risk and grade bands
+                count graded learners only; ungraded are not High Risk. SF2
+                attendance is tracked under{" "}
                 <span className="font-semibold text-slate-600">
                   Attendance Monitoring
                 </span>

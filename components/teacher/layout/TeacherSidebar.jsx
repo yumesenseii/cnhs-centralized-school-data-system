@@ -29,6 +29,7 @@ import { SIDEBAR_WIDTH_CLASS } from "@/lib/constants/layout";
 import { SCHOOL_NAME } from "@/lib/constants/brand";
 import { createClient } from "@/lib/supabase/client";
 import { getCurrentTeacherSession } from "@/lib/supabase/queries/myClasses";
+import { clearTeacherMonitoringUiSnapshot } from "@/lib/teacher/teacherMonitoringUiCache";
 import { cn } from "@/lib/utils";
 
 const menuNavigation = [
@@ -62,7 +63,15 @@ function NavLink({
   return (
     <Link
       href={href}
-      onClick={onNavigate}
+      scroll={!isActive}
+      onClick={(event) => {
+        if (isActive) {
+          event.preventDefault();
+          onNavigate?.(event);
+          return;
+        }
+        onNavigate?.(event);
+      }}
       title={label}
       aria-current={isActive ? "page" : undefined}
       className={cn(
@@ -190,6 +199,7 @@ export default function TeacherSidebar({
         data: { portal_role: null, portal_active: null },
       });
       await supabase.auth.signOut();
+      clearTeacherMonitoringUiSnapshot();
       router.replace("/login");
       router.refresh();
     } finally {

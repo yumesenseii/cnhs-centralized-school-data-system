@@ -6,7 +6,8 @@ import StatCard from "@/components/dashboard/StatCard";
 import LearnersAttention from "@/components/teacher/dashboard/LearnersAttention";
 import MonitoringProgress from "@/components/teacher/dashboard/MonitoringProgress";
 import MyClassesTable from "@/components/teacher/dashboard/MyClassesTable";
-import QuickActions from "@/components/teacher/dashboard/QuickActions";
+import DashboardQuickActions from "@/components/teacher/dashboard/QuickActions";
+import ClassQuickActions from "@/components/teacher/my-classes/QuickActions";
 import RecentActivities from "@/components/teacher/dashboard/RecentActivities";
 import SystemRecommendations from "@/components/teacher/dashboard/SystemRecommendations";
 import TodaysTasks from "@/components/teacher/dashboard/TodaysTasks";
@@ -21,6 +22,7 @@ const TABS = [
 ];
 
 const RECENT_ACTIVITY_LIMIT = 5;
+const SUMMARY_ATTENTION_LIMIT = 5;
 
 function PanelCard({ title, children, className }) {
   return (
@@ -43,7 +45,7 @@ function PanelCard({ title, children, className }) {
 }
 
 /**
- * Teacher Academic Analytics shell — simplified Summary; other panels live in tabs.
+ * Teacher Academic Analytics shell — Summary answers who / what / next.
  */
 export default function TeacherAcademicAnalytics({
   stats = [],
@@ -55,15 +57,30 @@ export default function TeacherAcademicAnalytics({
   upcomingDeadlines = [],
   monitoringProgress,
   systemRecommendations = [],
+  primaryClassId = null,
+  primaryClassLabel = null,
+  onSelectTab,
 }) {
   const [activeTab, setActiveTab] = useState("summary");
+
+  function selectTab(id) {
+    setActiveTab(id);
+    onSelectTab?.(id);
+  }
 
   const summaryActivities = useMemo(
     () => recentActivities.slice(0, RECENT_ACTIVITY_LIMIT),
     [recentActivities]
   );
-
+  const hasRecentActivity = summaryActivities.length > 0;
   const hasDeadlines = upcomingDeadlines.length > 0;
+
+  const openClassHref = primaryClassId
+    ? `/teacher/my-classes/${primaryClassId}`
+    : "/teacher/my-classes";
+  const eRecordHref = primaryClassId
+    ? `/teacher/my-classes/${primaryClassId}/e-record`
+    : "/teacher/my-classes";
 
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
@@ -95,7 +112,7 @@ export default function TeacherAcademicAnalytics({
                   role="tab"
                   aria-selected={active}
                   aria-controls={`teacher-analytics-panel-${tab.id}`}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => selectTab(tab.id)}
                   className={cn(
                     "min-w-max cursor-pointer rounded-lg px-3 py-1.5 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cnhs-green/35",
                     active
@@ -117,30 +134,103 @@ export default function TeacherAcademicAnalytics({
         aria-labelledby={`teacher-analytics-tab-${activeTab}`}
         className="p-4 sm:p-5"
       >
-        {/* StatCards stay visible on every tab for Admin-like orientation */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {stats.map((stat) => (
-            <StatCard key={stat.id} stat={stat} />
+            <StatCard
+              key={stat.id}
+              stat={{
+                ...stat,
+                href:
+                  stat.href ||
+                  (stat.id === "aral-learners"
+                    ? "/teacher/monitoring"
+                    : undefined),
+              }}
+            />
           ))}
         </div>
 
         {activeTab === "summary" ? (
           <>
-            <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[1.08fr_1fr]">
+            <div className="mt-4">
+              <ClassQuickActions
+                title="Do now"
+                align="end"
+                menuLabel="More dashboard actions"
+                primary={{
+                  id: "open-class",
+                  label: primaryClassLabel
+                    ? `Open ${primaryClassLabel}`
+                    : "Open class",
+                  icon: "book",
+                  href: openClassHref,
+                }}
+                secondary={[
+                  {
+                    id: "enter-grades",
+                    label: "Enter Grades",
+                    icon: "upload",
+                    href: eRecordHref,
+                  },
+                  {
+                    id: "import-ecr",
+                    label: "Import ECR",
+                    icon: "file",
+                    tone: "orange",
+                    href: "/teacher/my-classes",
+                  },
+                ]}
+                overflow={[
+                  {
+                    id: "lesson-plan",
+                    label: "Upload Lesson Plan",
+                    icon: "file",
+                    href: "/teacher/lesson-plans/upload",
+                  },
+                  {
+                    id: "monitoring",
+                    label: "Academic Monitoring",
+                    icon: "report",
+                    href: "/teacher/monitoring",
+                  },
+                  {
+                    id: "all-classes",
+                    label: "View all classes",
+                    icon: "classes",
+                    href: "/teacher/my-classes",
+                    dividerBefore: true,
+                  },
+                ]}
+              />
+            </div>
+
+            <div
+              className={cn(
+                "mt-4 grid grid-cols-1 gap-3",
+                hasRecentActivity && "xl:grid-cols-[1.4fr_1fr]"
+              )}
+            >
               <PanelCard title="My Classes Overview">
                 <MyClassesTable classes={classes} embedded />
               </PanelCard>
-              <PanelCard title="Recent Activity">
-                <div className="px-4 pb-3">
-                  <RecentActivities
-                    activities={summaryActivities}
-                    embedded
-                  />
-                </div>
-              </PanelCard>
+              {hasRecentActivity ? (
+                <PanelCard title="Recent Activity">
+                  <div className="px-4 pb-3">
+                    <RecentActivities
+                      activities={summaryActivities}
+                      embedded
+                    />
+                  </div>
+                </PanelCard>
+              ) : null}
             </div>
+
             <div className="mt-3">
-              <LearnersAttention learners={learnersAttention} embedded />
+              <LearnersAttention
+                learners={learnersAttention}
+                embedded
+                limit={SUMMARY_ATTENTION_LIMIT}
+              />
             </div>
           </>
         ) : null}
@@ -160,7 +250,7 @@ export default function TeacherAcademicAnalytics({
                 hasDeadlines ? "xl:grid-cols-2" : "xl:grid-cols-1"
               )}
             >
-              <QuickActions actions={quickActions} />
+              <DashboardQuickActions actions={quickActions} />
               {hasDeadlines ? (
                 <UpcomingDeadlines deadlines={upcomingDeadlines} />
               ) : null}
@@ -169,11 +259,14 @@ export default function TeacherAcademicAnalytics({
         ) : null}
 
         {activeTab === "attention" ? (
-          <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[0.85fr_1.15fr]">
-            {monitoringProgress ? (
-              <MonitoringProgress monitoring={monitoringProgress} />
-            ) : null}
-            <SystemRecommendations recommendations={systemRecommendations} />
+          <div className="mt-4 space-y-3">
+            <LearnersAttention learners={learnersAttention} />
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-[0.85fr_1.15fr]">
+              {monitoringProgress ? (
+                <MonitoringProgress monitoring={monitoringProgress} />
+              ) : null}
+              <SystemRecommendations recommendations={systemRecommendations} />
+            </div>
           </div>
         ) : null}
       </div>

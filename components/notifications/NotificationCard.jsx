@@ -45,27 +45,27 @@ export default function NotificationCard({ notification, onAction, onMarkRead })
   return (
     <motion.article
       whileHover={{ y: -1 }}
-      transition={{ duration: 0.18, ease: "easeOut" }}
+      transition={{ duration: 0.15, ease: "easeOut" }}
       className={cn(
-        "rounded-xl border bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] transition-shadow hover:shadow-[0_12px_30px_rgba(15,23,42,0.08)] sm:p-3.5",
+        "rounded-xl border bg-white p-2.5 shadow-[0_4px_12px_rgba(15,23,42,0.03)] transition-shadow hover:shadow-[0_8px_20px_rgba(15,23,42,0.06)] sm:p-3",
         notification.unread ? "border-cnhs-green/25" : "border-slate-100"
       )}
     >
-      <div className="flex gap-3.5">
+      <div className="flex gap-2.5">
         <span
           className={cn(
-            "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
             iconTones[notification.iconTone] ?? iconTones.green
           )}
         >
-          <Icon size={18} strokeWidth={1.8} />
+          <Icon size={16} strokeWidth={1.8} />
         </span>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h3 className="truncate text-sm font-semibold tracking-[-0.01em] text-slate-900">
+              <div className="flex items-center gap-1.5">
+                <h3 className="truncate text-[13px] font-semibold tracking-[-0.01em] text-slate-900">
                   {notification.title}
                 </h3>
                 {notification.unread ? (
@@ -75,43 +75,46 @@ export default function NotificationCard({ notification, onAction, onMarkRead })
                   />
                 ) : null}
               </div>
-              <p className="mt-1.5 text-xs leading-5 text-slate-500">
+              <p className="mt-1 text-[11px] leading-4 text-slate-500">
                 {notification.description}
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1">
               <PriorityBadge value={notification.priority} />
-              <ModuleBadge label={notification.module} tone={notification.moduleTone} />
+              <ModuleBadge
+                label={notification.module}
+                tone={notification.moduleTone}
+              />
             </div>
           </div>
 
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-slate-400">
-              <span className="inline-flex items-center gap-1.5">
-                <UserRound size={12} />
+          <div className="mt-2.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-400">
+              <span className="inline-flex items-center gap-1">
+                <UserRound size={11} />
                 {notification.user}
               </span>
-              <span className="inline-flex items-center gap-1.5">
-                <Clock3 size={12} />
+              <span className="inline-flex items-center gap-1">
+                <Clock3 size={11} />
                 {notification.timestamp}
               </span>
               {notification.context ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <Layers3 size={12} />
-                  {notification.context}
+                <span className="inline-flex min-w-0 items-center gap-1">
+                  <Layers3 size={11} className="shrink-0" />
+                  <span className="truncate">{notification.context}</span>
                 </span>
               ) : null}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
               {onMarkRead && notification.unread ? (
                 <button
                   type="button"
                   onClick={() => onMarkRead(notification)}
-                  className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 shadow-sm transition-colors duration-200 hover:bg-slate-50"
+                  className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-600 shadow-sm transition-colors duration-200 hover:bg-slate-50"
                 >
-                  <Check size={13} strokeWidth={2.2} />
+                  <Check size={12} strokeWidth={2.2} />
                   Mark as Read
                 </button>
               ) : null}

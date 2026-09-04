@@ -173,12 +173,12 @@ export default function TeacherInputGradesPage() {
               selectedClass={selectedClass}
               teacherId={teacherId}
               onBack={() => setState((prev) => ({ ...prev, step: 2 }))}
-              onSuccess={(result) => {
+              onSuccess={async (result) => {
                 setState((prev) => ({
                   ...prev,
                   importResult: result,
                 }));
-                refresh?.();
+                await refresh?.();
               }}
             />
           ) : null}

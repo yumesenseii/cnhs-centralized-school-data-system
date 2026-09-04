@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { SIDEBAR_WIDTH_CLASS } from "@/lib/constants/layout";
 import { SCHOOL_NAME } from "@/lib/constants/brand";
+import { clearAdminMonitoringUiSnapshot } from "@/lib/admin/adminMonitoringUiCache";
 import { createClient } from "@/lib/supabase/client";
 import LogoutConfirmModal from "@/components/shared/LogoutConfirmModal";
 import { cn } from "@/lib/utils";
@@ -61,7 +62,16 @@ function NavLink({ href, label, icon: Icon, isActive, onNavigate, collapsed }) {
   return (
     <Link
       href={href}
-      onClick={onNavigate}
+      scroll={!isActive}
+      onClick={(event) => {
+        // Already on this route — skip navigation so the page does not remount/refetch.
+        if (isActive) {
+          event.preventDefault();
+          onNavigate?.(event);
+          return;
+        }
+        onNavigate?.(event);
+      }}
       title={label}
       aria-current={isActive ? "page" : undefined}
       className={cn(
@@ -157,6 +167,7 @@ export default function Sidebar({
         data: { portal_role: null, portal_active: null },
       });
       await supabase.auth.signOut();
+      clearAdminMonitoringUiSnapshot();
       router.replace("/login");
       router.refresh();
     } finally {

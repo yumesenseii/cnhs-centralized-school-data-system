@@ -1,6 +1,7 @@
 "use client";
 
-import { BookOpen, Download, Eye, Filter } from "lucide-react";
+import { BookOpen, Download, Eye } from "lucide-react";
+import { termLabel } from "@/lib/academic/termLabels";
 import { cn } from "@/lib/utils";
 
 const iconTones = {
@@ -19,6 +20,16 @@ const statusStyles = {
   Approved: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
 };
 
+const cell = "px-2 py-1.5 text-[12px] align-middle";
+const thCell =
+  "px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-slate-400";
+
+function rowTermLabel(row) {
+  const source = row?.quarter ?? row?.quarterNumber;
+  if (source === null || source === undefined || source === "") return "—";
+  return termLabel(source);
+}
+
 export default function ClassReportsTable({
   reports,
   onPreview,
@@ -36,46 +47,48 @@ export default function ClassReportsTable({
             {reports.length} classes
           </span>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <button
-            type="button"
-            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
-          >
-            <Filter size={12} />
-            Filter
-          </button>
-          <button
-            type="button"
-            onClick={onExportAll}
-            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white transition-colors hover:bg-[#246f54]"
-          >
-            <Download size={12} />
-            Export All
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onExportAll}
+          className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white transition-colors hover:bg-[#246f54]"
+        >
+          <Download size={12} />
+          Export All
+        </button>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-[980px] w-full border-collapse text-left">
+        <table className="w-full min-w-[920px] table-fixed border-collapse text-left">
+          <colgroup>
+            <col className="w-[16%]" />
+            <col className="w-[9%]" />
+            <col className="w-[11%]" />
+            <col className="w-[14%]" />
+            <col className="w-[7%]" />
+            <col className="w-[7%]" />
+            <col className="w-[8%]" />
+            <col className="w-[8%]" />
+            <col className="w-[9%]" />
+            <col className="w-[11%]" />
+          </colgroup>
           <thead>
             <tr className="bg-slate-50/80">
-              {[
-                "Class",
-                "Subject",
-                "Students",
-                "Avg Grade",
-                "At Intervention",
-                "Latest Upload",
-                "Status",
-                "Actions",
-              ].map((column) => (
-                <th
-                  key={column}
-                  className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400"
-                >
-                  {column}
-                </th>
-              ))}
+              <th className={thCell}>Class</th>
+              <th className={cn(thCell, "whitespace-nowrap")}>Subject</th>
+              <th className={cn(thCell, "whitespace-nowrap")}>Term</th>
+              <th className={thCell}>Teacher</th>
+              <th className={cn(thCell, "whitespace-nowrap text-center")}>
+                Students
+              </th>
+              <th className={cn(thCell, "whitespace-nowrap text-center")}>
+                Avg Grade
+              </th>
+              <th className={cn(thCell, "whitespace-nowrap text-center")}>
+                At Interv.
+              </th>
+              <th className={cn(thCell, "whitespace-nowrap")}>Upload</th>
+              <th className={cn(thCell, "whitespace-nowrap")}>Status</th>
+              <th className={cn(thCell, "text-right")}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -84,40 +97,69 @@ export default function ClassReportsTable({
                 key={row.id}
                 className="border-t border-slate-100 transition-colors hover:bg-slate-50/70"
               >
-                <td className="px-3 py-2">
-                  <div className="flex items-center gap-2">
+                <td className={cell}>
+                  <div className="flex min-w-0 items-center gap-1.5">
                     <span
                       className={cn(
-                        "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+                        "flex h-6 w-6 shrink-0 items-center justify-center rounded-md",
                         iconTones[row.iconTone] ?? iconTones.blue
                       )}
                     >
-                      <BookOpen size={13} />
+                      <BookOpen size={12} />
                     </span>
-                    <span className="text-[12px] font-semibold text-slate-800">
+                    <span className="truncate text-[12px] font-semibold text-slate-800">
                       {row.className}
                     </span>
                   </div>
                 </td>
-                <td className="px-3 py-2 text-[12px] text-slate-600">
+                <td className={cn(cell, "whitespace-nowrap text-slate-600")}>
                   {row.subject}
                 </td>
-                <td className="px-3 py-2 text-[12px] font-semibold text-slate-700">
+                <td className={cn(cell, "whitespace-nowrap text-slate-600")}>
+                  {rowTermLabel(row)}
+                </td>
+                <td className={cn(cell, "text-slate-600")}>
+                  <span className="line-clamp-2 break-words">
+                    {row.teacherName || "—"}
+                  </span>
+                </td>
+                <td
+                  className={cn(
+                    cell,
+                    "whitespace-nowrap text-center font-semibold text-slate-700"
+                  )}
+                >
                   {row.students}
                 </td>
-                <td className="px-3 py-2 text-[12px] font-semibold text-cnhs-green-dark">
+                <td
+                  className={cn(
+                    cell,
+                    "whitespace-nowrap text-center font-semibold text-cnhs-green-dark"
+                  )}
+                >
                   {row.averageGrade}
                 </td>
-                <td className="px-3 py-2 text-[12px] font-semibold text-red-600">
+                <td
+                  className={cn(
+                    cell,
+                    "whitespace-nowrap text-center font-semibold text-red-600"
+                  )}
+                >
                   {row.requiringIntervention}
                 </td>
-                <td className="px-3 py-2 text-[12px] text-slate-500">
-                  {row.latestUpload}
+                <td
+                  className={cn(
+                    cell,
+                    "truncate whitespace-nowrap text-slate-500"
+                  )}
+                  title={row.latestUpload || undefined}
+                >
+                  {row.latestUpload || "—"}
                 </td>
-                <td className="px-3 py-2">
+                <td className={cell}>
                   <span
                     className={cn(
-                      "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                      "inline-flex whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
                       statusStyles[row.reportStatus] ??
                         statusStyles["Not Generated"]
                     )}
@@ -125,23 +167,25 @@ export default function ClassReportsTable({
                     {row.reportStatus}
                   </span>
                 </td>
-                <td className="px-3 py-2">
-                  <div className="flex flex-wrap items-center gap-1.5">
+                <td className={cn(cell, "text-right")}>
+                  <div className="inline-flex items-center justify-end gap-1">
                     <button
                       type="button"
                       onClick={() => onPreview(row)}
-                      className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+                      title="Preview"
+                      className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 text-[10px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
                     >
-                      <Eye size={12} />
-                      Preview
+                      <Eye size={11} />
+                      View
                     </button>
                     <button
                       type="button"
                       onClick={() => onExport(row)}
-                      className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+                      title="Export PDF"
+                      className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 text-[10px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
                     >
-                      <Download size={12} />
-                      Export PDF
+                      <Download size={11} />
+                      PDF
                     </button>
                   </div>
                 </td>

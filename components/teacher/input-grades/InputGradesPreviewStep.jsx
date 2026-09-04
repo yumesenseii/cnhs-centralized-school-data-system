@@ -68,7 +68,7 @@ export default function InputGradesPreviewStep({
 
       setProgress(100);
       setStatusLabel("Import complete.");
-      onSuccess?.(result);
+      await onSuccess?.(result);
     } catch (err) {
       setError(err?.message ?? "Failed to import E-Class Record.");
       setUploading(false);

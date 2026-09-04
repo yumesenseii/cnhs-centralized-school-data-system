@@ -7,7 +7,6 @@ import {
   KeyRound,
   MoreHorizontal,
   Pencil,
-  Trash2,
   UserCheck,
   UserX,
 } from "lucide-react";
@@ -18,13 +17,8 @@ export default function ActionButtons({
   onEdit,
   onResetPassword,
   onToggleStatus,
-  onDelete,
-  currentAuthUserId,
 }) {
   const isActive = user.status === "Active";
-  const isSelf = Boolean(
-    currentAuthUserId && user.authUserId && currentAuthUserId === user.authUserId
-  );
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ top: 0, right: 0 });
   const triggerRef = useRef(null);
@@ -145,20 +139,6 @@ export default function ActionButtons({
                 )}
                 {isActive ? "Deactivate user" : "Activate user"}
               </button>
-              {isSelf ? null : (
-                <>
-                  <div className="my-1 border-t border-slate-100" />
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => runAction(onDelete)}
-                    className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-medium text-red-600 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200"
-                  >
-                    <Trash2 size={13} aria-hidden="true" />
-                    Delete user
-                  </button>
-                </>
-              )}
             </div>,
             document.body
           )

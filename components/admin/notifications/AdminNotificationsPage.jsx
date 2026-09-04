@@ -22,6 +22,7 @@ import {
   listPendingDeleteRequests,
   rejectDeleteRequest,
 } from "@/lib/supabase/queries/deleteRequests";
+import { getRecentLessonPlanActivity } from "@/lib/supabase/queries/lessonPlans";
 
 function mapLessonPlanEvents(rows = []) {
   return rows.map((row) => {
@@ -146,7 +147,6 @@ export default function AdminNotificationsPage() {
       <Header
         breadcrumb="Home / Notifications"
         title="Notifications"
-        description="Your personal inbox for system alerts, plus recent lesson plan activity across the school."
         controls={
           <>
             <button

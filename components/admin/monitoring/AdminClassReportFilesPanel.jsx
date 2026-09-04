@@ -191,13 +191,52 @@ export default function AdminClassReportFilesPanel({
       ) : null}
 
       {files.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
-          <p>No submitted class report files yet.</p>
-          <p className="mt-2 text-[12px] text-slate-400">
-            After a teacher clicks Send to HT on an Eng/Fil class report, it
-            appears here. If you expect a file: set School Year correctly, use
-            All Terms (or the term they sent), then Refresh.
-          </p>
+        <div className="space-y-3">
+          <div
+            className="flex flex-wrap gap-1.5"
+            role="tablist"
+            aria-label="Filter by HT status"
+          >
+            {HT_STATUS_FILTERS.map((pill) => {
+              const active = htFilter === pill.id;
+              const count = statusCounts[pill.id] ?? 0;
+              return (
+                <button
+                  key={pill.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setHtFilter(pill.id)}
+                  className={cn(
+                    "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-3 text-[11px] font-semibold transition-colors",
+                    active
+                      ? "bg-cnhs-green-dark text-white"
+                      : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                  )}
+                >
+                  {pill.label}
+                  <span
+                    className={cn(
+                      "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
+                      active
+                        ? "bg-white/20 text-white"
+                        : "bg-slate-100 text-slate-500"
+                    )}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <ClassReportFilesTable
+            files={[]}
+            totalCount={0}
+            emptyMessage="No submitted class report files yet. After a teacher clicks Send to HT on an Eng/Fil class report, it appears here."
+            showHtActions={false}
+            onView={(f) => setModalFile(f)}
+            onEdit={(f) => setModalFile(f)}
+          />
         </div>
       ) : (
         <div className="space-y-3">
@@ -240,9 +279,14 @@ export default function AdminClassReportFilesPanel({
           </div>
 
           {filteredFiles.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
-              No {emptyFilterLabel} class reports.
-            </div>
+            <ClassReportFilesTable
+              files={[]}
+              totalCount={0}
+              emptyMessage={`No ${emptyFilterLabel} class reports.`}
+              showHtActions={false}
+              onView={(f) => setModalFile(f)}
+              onEdit={(f) => setModalFile(f)}
+            />
           ) : (
             <div className="space-y-2">
               <ClassReportFilesTable

@@ -13,6 +13,7 @@ import {
 import {
   ARAL_APPROVAL_DB,
   ARAL_APPROVAL_STATUS,
+  aralApprovalDisplayLabel,
   aralApprovalStyles,
   isAralHtTrackedLearner,
 } from "@/lib/monitoring/aralApproval";
@@ -684,8 +685,18 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
                                   </td>
                                   <td className="px-2.5 py-2">
                                     <Pill
-                                      value={learner.displayStatus}
-                                      styles={aralApprovalStyles}
+                                      value={aralApprovalDisplayLabel(
+                                        learner.displayStatus
+                                      )}
+                                      styles={{
+                                        ...aralApprovalStyles,
+                                        [aralApprovalDisplayLabel(
+                                          learner.displayStatus
+                                        )]:
+                                          aralApprovalStyles[
+                                            learner.displayStatus
+                                          ],
+                                      }}
                                     />
                                   </td>
                                   <td className="px-2.5 py-2">

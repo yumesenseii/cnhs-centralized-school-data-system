@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyRound, Pencil, UserX, X } from "lucide-react";
+import { KeyRound, Pencil, UserCheck, UserX, X } from "lucide-react";
 import AccountInformation from "@/components/user-management/AccountInformation";
 import ClassAssignments from "@/components/user-management/ClassAssignments";
 import ProfileInformation from "@/components/user-management/ProfileInformation";
@@ -18,6 +18,8 @@ export default function UserDrawer({
   onToggleStatus,
 }) {
   if (!open || !user) return null;
+
+  const isActive = user.status === "Active";
 
   return (
     <div
@@ -85,8 +87,8 @@ export default function UserDrawer({
             onClick={() => onToggleStatus?.(user)}
             className="inline-flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
           >
-            <UserX size={14} />
-            Deactivate
+            {isActive ? <UserX size={14} /> : <UserCheck size={14} />}
+            {isActive ? "Deactivate" : "Activate"}
           </button>
           <button
             type="button"

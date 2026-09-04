@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { CalendarDays, Layers3, Search, X } from "lucide-react";
 import MobileNavSheet from "@/components/layout/MobileNavSheet";
@@ -8,7 +9,6 @@ import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import ClassCard from "@/components/teacher/my-classes/ClassCard";
 import EClassUploadDialog from "@/components/teacher/my-classes/EClassUploadDialog";
 import GenerateClassReportDialog from "@/components/teacher/my-classes/GenerateClassReportDialog";
-import EmptyAssignedClassesState from "@/components/teacher/my-classes/EmptyAssignedClassesState";
 import {
   PageBreadcrumb,
   SummaryKpiCards,
@@ -210,47 +210,45 @@ export default function MyClasses() {
           </MobileNavSheet>
         </div>
 
-        {hasAssignedClasses ? (
-          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-            <label className="relative">
-              <span className="sr-only">School Year</span>
-              <CalendarDays
-                size={12}
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-              <select
-                value={schoolYear}
-                onChange={(e) => setSchoolYear(e.target.value)}
-                className="h-8 cursor-pointer rounded-full border border-slate-200 bg-white pl-8 pr-7 text-[11px] font-medium text-slate-600 shadow-sm outline-none hover:bg-slate-50 focus:border-cnhs-green"
-              >
-                {filterOptions.schoolYears.map((year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
-            </label>
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <label className="relative">
+            <span className="sr-only">School Year</span>
+            <CalendarDays
+              size={12}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            <select
+              value={schoolYear}
+              onChange={(e) => setSchoolYear(e.target.value)}
+              className="h-8 cursor-pointer rounded-full border border-slate-200 bg-white pl-8 pr-7 text-[11px] font-medium text-slate-600 shadow-sm outline-none hover:bg-slate-50 focus:border-cnhs-green"
+            >
+              {filterOptions.schoolYears.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </label>
 
-            <label className="relative">
-              <span className="sr-only">Term</span>
-              <Layers3
-                size={12}
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-              <select
-                value={quarter}
-                onChange={(e) => setQuarter(e.target.value)}
-                className="h-8 cursor-pointer rounded-full border border-slate-200 bg-white pl-8 pr-7 text-[11px] font-medium text-slate-600 shadow-sm outline-none hover:bg-slate-50 focus:border-cnhs-green"
-              >
-                {filterOptions.quarters.map((q) => (
-                  <option key={q} value={q}>
-                    {q}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        ) : null}
+          <label className="relative">
+            <span className="sr-only">Term</span>
+            <Layers3
+              size={12}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            <select
+              value={quarter}
+              onChange={(e) => setQuarter(e.target.value)}
+              className="h-8 cursor-pointer rounded-full border border-slate-200 bg-white pl-8 pr-7 text-[11px] font-medium text-slate-600 shadow-sm outline-none hover:bg-slate-50 focus:border-cnhs-green"
+            >
+              {filterOptions.quarters.map((q) => (
+                <option key={q} value={q}>
+                  {q}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </header>
 
       {toast ? (
@@ -289,11 +287,44 @@ export default function MyClasses() {
         <div className="rounded-xl border border-slate-100 bg-white px-4 py-10 text-center text-sm text-slate-400">
           Loading assigned classes...
         </div>
-      ) : !hasAssignedClasses && !refreshing ? (
-        <EmptyAssignedClassesState />
       ) : (
         <>
-          <SummaryKpiCards kpis={kpis} />
+          <SummaryKpiCards
+            kpis={
+              kpis.length
+                ? kpis
+                : [
+                    {
+                      id: "assigned",
+                      label: "Assigned Classes",
+                      value: 0,
+                      icon: "book",
+                      tone: "green",
+                    },
+                    {
+                      id: "students",
+                      label: "Students Enrolled",
+                      value: 0,
+                      icon: "users",
+                      tone: "blue",
+                    },
+                    {
+                      id: "subjects",
+                      label: "Subjects",
+                      value: 0,
+                      icon: "file",
+                      tone: "orange",
+                    },
+                    {
+                      id: "sections",
+                      label: "Grade & Sections",
+                      value: 0,
+                      icon: "clipboard",
+                      tone: "red",
+                    },
+                  ]
+            }
+          />
 
           <section className="mt-4 rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -350,7 +381,13 @@ export default function MyClasses() {
             </div>
           </section>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div
+            className={
+              filtered.length === 1
+                ? "mt-4 grid max-w-sm grid-cols-1 gap-4"
+                : "mt-4 grid grid-cols-1 gap-4 md:grid-cols-2"
+            }
+          >
             {filtered.map((classItem) => (
               <ClassCard
                 key={classItem.id}
@@ -378,7 +415,12 @@ export default function MyClasses() {
             ))}
           </div>
 
-          {hasFilterMiss ? (
+          {!hasAssignedClasses ? (
+            <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
+              No classes have been assigned yet. Assignments from the school
+              administrator will appear here.
+            </div>
+          ) : hasFilterMiss ? (
             <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
               No assigned classes match your current filters.
             </div>
@@ -391,7 +433,7 @@ export default function MyClasses() {
         classItem={uploadClass}
         teacherId={teacherId}
         onClose={() => setUploadClass(null)}
-        onSuccess={(result) => {
+        onSuccess={async (result) => {
           const learners = result?.imported ?? 0;
           const grades = result?.gradesUpserted ?? 0;
           setToast(
@@ -399,7 +441,7 @@ export default function MyClasses() {
               grades ? ` and ${grades} grade record${grades === 1 ? "" : "s"}` : ""
             }.`
           );
-          refresh();
+          await refresh();
           window.setTimeout(() => setToast(""), 3200);
         }}
       />

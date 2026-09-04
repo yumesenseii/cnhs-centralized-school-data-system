@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
-import AttendanceMonitoringPanel from "@/components/attendance/AttendanceMonitoringPanel";
+import TeacherAttendancePanel from "@/components/teacher/attendance/TeacherAttendancePanel";
 
 export default function TeacherAttendancePage() {
   const [refreshToken, setRefreshToken] = useState(0);
@@ -37,11 +37,11 @@ export default function TeacherAttendancePage() {
             </Link>
             <div className="min-w-0">
               <h1 className="text-xl font-semibold tracking-[-0.03em] text-slate-800">
-                Attendance Monitoring
+                My section attendance
               </h1>
               <p className="mt-0.5 text-[12px] text-slate-500">
-                Track SF2 attendance and learners near the 20% absence
-                threshold. Independent from academic risk prediction.
+                Upload your class monthly summary, then review ADA, PA, and
+                absences for your section.
               </p>
             </div>
           </div>
@@ -60,13 +60,16 @@ export default function TeacherAttendancePage() {
             />
             Refresh
           </button>
-          <MobileNavSheet ariaLabel="Open teacher menu" title="Teacher navigation">
+          <MobileNavSheet
+            ariaLabel="Open teacher menu"
+            title="Teacher navigation"
+          >
             {(close) => <TeacherSidebar mobile onNavigate={close} />}
           </MobileNavSheet>
         </div>
       </header>
 
-      <AttendanceMonitoringPanel
+      <TeacherAttendancePanel
         refreshToken={refreshToken}
         onRefreshingChange={setRefreshing}
       />

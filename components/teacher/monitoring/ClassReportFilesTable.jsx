@@ -18,6 +18,9 @@ const htStyles = {
   ...aralApprovalStyles,
   Draft: aralApprovalStyles[ARAL_APPROVAL_STATUS.SUGGESTED],
   "Not applicable": "bg-slate-100 text-slate-500 ring-1 ring-slate-200",
+  "Not for HT": "bg-slate-100 text-slate-500 ring-1 ring-slate-200",
+  "Sent to HT": aralApprovalStyles[ARAL_APPROVAL_STATUS.SUBMITTED],
+  "For your review": aralApprovalStyles[ARAL_APPROVAL_STATUS.SUBMITTED],
   "—": "bg-slate-100 text-slate-500 ring-1 ring-slate-200",
 };
 
@@ -27,13 +30,18 @@ const htStyles = {
 export default function ClassReportFilesTable({
   files = [],
   totalCount,
+  emptyMessage = "No files to display.",
   onView,
   onEdit,
   onSubmitToHt,
   submittingFileId = "",
   showHtActions = true,
+  showHtHint = true,
 }) {
   const total = typeof totalCount === "number" ? totalCount : files.length;
+  const hasNotForHt = files.some(
+    (f) => f.htLabel === "Not for HT" || f.htStatus === "Not applicable"
+  );
 
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
@@ -42,6 +50,14 @@ export default function ClassReportFilesTable({
           Showing {files.length} of {total}{" "}
           {total === 1 ? "file" : "files"}
         </p>
+        {showHtHint ? (
+          <p className="mt-1 text-[11px] text-slate-400">
+            HT receives Eng/Fil class reports after you Send to HT
+            {hasNotForHt
+              ? " · Other subjects show “Not for HT”."
+              : "."}
+          </p>
+        ) : null}
       </div>
 
       <div className="overflow-x-auto">
@@ -61,7 +77,17 @@ export default function ClassReportFilesTable({
             </tr>
           </thead>
           <tbody>
-            {files.map((file) => {
+            {files.length === 0 ? (
+              <tr className="border-t border-slate-100">
+                <td
+                  colSpan={6}
+                  className="px-4 py-10 text-center text-sm text-slate-500"
+                >
+                  {emptyMessage}
+                </td>
+              </tr>
+            ) : (
+              files.map((file) => {
               const submitting = submittingFileId === file.id;
               const canSubmit =
                 showHtActions &&
@@ -160,16 +186,11 @@ export default function ClassReportFilesTable({
                   </td>
                 </tr>
               );
-            })}
+            })
+            )}
           </tbody>
         </table>
       </div>
-
-      {files.length === 0 ? (
-        <div className="px-4 py-12 text-center text-sm text-slate-500">
-          No class report files match your filters.
-        </div>
-      ) : null}
     </section>
   );
 }

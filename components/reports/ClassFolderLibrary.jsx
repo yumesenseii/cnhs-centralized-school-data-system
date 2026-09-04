@@ -15,7 +15,7 @@ import { isAralEligibleSubject } from "@/lib/services/recommendation/subjectCapa
 
 /**
  * Hybrid class browse for Admin Reports → School Performance → By Class.
- * On All Terms, multi-term siblings collapse into one folder card.
+ * On All Terms, multi-term siblings (Terms 1–3) collapse into one folder card.
  */
 
 function classNeedsAttention(row = {}) {
@@ -67,7 +67,7 @@ export default function ClassFolderLibrary({
   reports = [],
   onDetails,
   onExport,
-  /** When true (All Terms), group Term 1–3 + Final into one folder. */
+  /** When true (All Terms), group Term 1–3 siblings into one folder. */
   groupMultiTerm = false,
 }) {
   const [query, setQuery] = useState("");
@@ -112,62 +112,62 @@ export default function ClassFolderLibrary({
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-[0_4px_12px_rgba(15,23,42,0.03)]">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-[0_4px_12px_rgba(15,23,42,0.03)]">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400">
             Classes
           </p>
-          <p className="mt-1 text-lg font-semibold tracking-[-0.02em] text-slate-900">
+          <p className="mt-0.5 text-sm font-semibold tracking-[-0.02em] text-slate-900">
             {counts.all} folder{counts.all === 1 ? "" : "s"}
           </p>
           {groupMultiTerm ? (
-            <p className="mt-0.5 text-[10px] text-slate-400">
-              Multi-term classes grouped · Terms 1–3 + Final
+            <p className="mt-0.5 text-[9px] text-slate-400">
+              Multi-term grouped · Terms 1–3
             </p>
           ) : null}
         </div>
-        <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-[0_4px_12px_rgba(15,23,42,0.03)]">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
+        <div className="rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-[0_4px_12px_rgba(15,23,42,0.03)]">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400">
             Showing
           </p>
-          <p className="mt-1 text-lg font-semibold tracking-[-0.02em] text-slate-900">
+          <p className="mt-0.5 text-sm font-semibold tracking-[-0.02em] text-slate-900">
             {filtered.length} of {counts.all}
           </p>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-100 bg-white p-3 shadow-[0_4px_12px_rgba(15,23,42,0.03)] sm:p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="rounded-xl border border-slate-100 bg-white p-2.5 shadow-[0_4px_12px_rgba(15,23,42,0.03)] sm:p-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <label className="relative min-w-0 flex-1">
             <span className="sr-only">Search classes</span>
             <Search
-              size={14}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={13}
+              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
             />
             <input
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search classes by name, subject, or teacher…"
-              className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/80 pl-9 pr-3 text-[12px] text-slate-700 outline-none transition-colors placeholder:text-slate-400 focus:border-cnhs-green focus:bg-white"
+              className="h-8 w-full rounded-lg border border-slate-200 bg-slate-50/80 pl-8 pr-2.5 text-[11px] text-slate-700 outline-none transition-colors placeholder:text-slate-400 focus:border-cnhs-green focus:bg-white"
             />
           </label>
 
-          <div className="flex shrink-0 items-center gap-1.5 self-end lg:self-auto">
+          <div className="flex shrink-0 items-center gap-1 self-end sm:self-auto">
             <button
               type="button"
               aria-label="Grid view"
               aria-pressed={view === "grid"}
               onClick={() => setView("grid")}
               className={cn(
-                "inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg transition-colors",
+                "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg transition-colors",
                 view === "grid"
                   ? "bg-cnhs-green-dark text-white"
                   : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
               )}
             >
-              <LayoutGrid size={15} />
+              <LayoutGrid size={14} />
             </button>
             <button
               type="button"
@@ -175,18 +175,18 @@ export default function ClassFolderLibrary({
               aria-pressed={view === "list"}
               onClick={() => setView("list")}
               className={cn(
-                "inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg transition-colors",
+                "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg transition-colors",
                 view === "list"
                   ? "bg-cnhs-green-dark text-white"
                   : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
               )}
             >
-              <List size={15} />
+              <List size={14} />
             </button>
           </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-2 flex flex-wrap gap-1">
           {pills.map((pill) => {
             const active = filter === pill.id;
             return (
@@ -195,7 +195,7 @@ export default function ClassFolderLibrary({
                 type="button"
                 onClick={() => setFilter(pill.id)}
                 className={cn(
-                  "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-3 text-[11px] font-semibold transition-colors",
+                  "inline-flex h-7 cursor-pointer items-center gap-1 rounded-full px-2.5 text-[10px] font-semibold transition-colors",
                   active
                     ? "bg-cnhs-green-dark text-white"
                     : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
@@ -204,7 +204,7 @@ export default function ClassFolderLibrary({
                 {pill.label}
                 <span
                   className={cn(
-                    "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
+                    "rounded-full px-1.5 py-0.5 text-[9px] font-bold",
                     active ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
                   )}
                 >
@@ -217,11 +217,11 @@ export default function ClassFolderLibrary({
       </div>
 
       {!filtered.length ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-12 text-center text-xs text-slate-500">
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-xs text-slate-500">
           No classes match the selected filters.
         </div>
       ) : view === "grid" ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 justify-items-start gap-2 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((row) => {
             const atRisk = Number(row.highRisk ?? 0);
             const aral = classHasAral(row)
@@ -238,18 +238,18 @@ export default function ClassFolderLibrary({
                     : row.id
                 }
                 type="button"
-                whileHover={{ y: -2 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
+                whileHover={{ y: -1 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
                 onClick={() => onDetails?.(actionRow)}
-                className="group flex cursor-pointer flex-col rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-[0_6px_16px_rgba(15,23,42,0.04)] transition-colors hover:border-green-100 hover:bg-cnhs-green-soft/20"
+                className="group flex w-full max-w-sm cursor-pointer flex-col rounded-xl border border-slate-100 bg-white p-3 text-left shadow-[0_4px_12px_rgba(15,23,42,0.04)] transition-colors hover:border-green-100 hover:bg-cnhs-green-soft/20"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cnhs-green-soft text-cnhs-green-dark ring-1 ring-green-100">
-                    <Folder size={18} strokeWidth={1.75} />
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-cnhs-green-soft text-cnhs-green-dark ring-1 ring-green-100">
+                    <Folder size={15} strokeWidth={1.75} />
                   </span>
                   <span
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                      "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold",
                       attention
                         ? "bg-orange-50 text-cnhs-orange ring-1 ring-orange-100"
                         : "bg-green-50 text-cnhs-green-dark ring-1 ring-green-100"
@@ -265,10 +265,10 @@ export default function ClassFolderLibrary({
                   </span>
                 </div>
 
-                <p className="mt-4 text-[13px] font-semibold tracking-[-0.01em] text-slate-900">
+                <p className="mt-2 truncate text-[12px] font-semibold tracking-[-0.01em] text-slate-900">
                   {row.className || "Class"}
                 </p>
-                <p className="mt-0.5 text-[11px] text-slate-500">
+                <p className="mt-0.5 truncate text-[10px] text-slate-500">
                   {row.subject || "—"}
                   {row.isTermGroup
                     ? ` · ${row.termCount} terms`
@@ -278,11 +278,11 @@ export default function ClassFolderLibrary({
                 </p>
 
                 {row.isTermGroup && row.termLabels?.length ? (
-                  <div className="mt-2 flex flex-wrap gap-1">
+                  <div className="mt-1.5 flex flex-wrap gap-0.5">
                     {row.termLabels.map((label) => (
                       <span
                         key={label}
-                        className="rounded-md bg-slate-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-500 ring-1 ring-slate-100"
+                        className="rounded bg-slate-50 px-1 py-px text-[8px] font-semibold uppercase tracking-wide text-slate-500 ring-1 ring-slate-100"
                       >
                         {label}
                       </span>
@@ -290,37 +290,37 @@ export default function ClassFolderLibrary({
                   </div>
                 ) : null}
 
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600 ring-1 ring-slate-100">
+                <div className="mt-2 flex flex-wrap gap-1">
+                  <span className="rounded-full bg-slate-50 px-1.5 py-0.5 text-[9px] font-medium text-slate-600 ring-1 ring-slate-100">
                     {row.students ?? 0} learners
                   </span>
                   {!row.isTermGroup &&
                   row.averageGrade != null &&
                   row.averageGrade !== "" ? (
-                    <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600 ring-1 ring-slate-100">
+                    <span className="rounded-full bg-slate-50 px-1.5 py-0.5 text-[9px] font-medium text-slate-600 ring-1 ring-slate-100">
                       Avg {row.averageGrade}
                     </span>
                   ) : null}
                   {atRisk > 0 ? (
-                    <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-medium text-cnhs-orange ring-1 ring-orange-100">
+                    <span className="rounded-full bg-orange-50 px-1.5 py-0.5 text-[9px] font-medium text-cnhs-orange ring-1 ring-orange-100">
                       {atRisk} high risk
                     </span>
                   ) : null}
                   {aral > 0 ? (
-                    <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-100">
+                    <span className="rounded-full bg-sky-50 px-1.5 py-0.5 text-[9px] font-medium text-sky-700 ring-1 ring-sky-100">
                       {aral} ARAL
                     </span>
                   ) : null}
                 </div>
 
-                <div className="mt-4 flex items-center justify-between gap-2 border-t border-slate-50 pt-3">
-                  <span className="inline-flex min-w-0 items-center gap-1.5 text-[11px] text-slate-500">
-                    <UserRound size={12} className="shrink-0 text-slate-400" />
+                <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-50 pt-2">
+                  <span className="inline-flex min-w-0 items-center gap-1 text-[10px] text-slate-500">
+                    <UserRound size={11} className="shrink-0 text-slate-400" />
                     <span className="truncate">
                       {row.teacherName || row.teacher || "—"}
                     </span>
                   </span>
-                  <span className="shrink-0 text-[11px] font-semibold text-cnhs-green-dark opacity-0 transition-opacity group-hover:opacity-100">
+                  <span className="shrink-0 text-[10px] font-semibold text-cnhs-green-dark opacity-0 transition-opacity group-hover:opacity-100">
                     Open →
                   </span>
                 </div>

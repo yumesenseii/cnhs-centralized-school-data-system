@@ -22,8 +22,6 @@ export default function UsersTable({
   onEdit,
   onResetPassword,
   onToggleStatus,
-  onDelete,
-  currentAuthUserId,
 }) {
   const [search, setSearch] = useState("");
   const [role, setRole] = useState(filters.roles[0]);
@@ -133,8 +131,6 @@ export default function UsersTable({
                   onEdit={onEdit}
                   onResetPassword={onResetPassword}
                   onToggleStatus={onToggleStatus}
-                  onDelete={onDelete}
-                  currentAuthUserId={currentAuthUserId}
                 />
               ))
             ) : (
@@ -161,8 +157,6 @@ export default function UsersTable({
               onEdit={onEdit}
               onResetPassword={onResetPassword}
               onToggleStatus={onToggleStatus}
-              onDelete={onDelete}
-              currentAuthUserId={currentAuthUserId}
             />
           ))
         ) : (

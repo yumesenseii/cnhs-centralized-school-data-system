@@ -7,9 +7,14 @@ import Header from "@/components/layout/Header";
 import SectionFormModal from "@/components/section-management/SectionFormModal";
 import SectionSummaryCards from "@/components/section-management/SectionSummaryCards";
 import SectionsTable from "@/components/section-management/SectionsTable";
+import DeleteConfirmModal from "@/components/shared/DeleteConfirmModal";
 import { useSectionManagement } from "@/hooks/admin/useSections";
 import { suggestCurrentSchoolYear } from "@/lib/admin/sectionMappers";
-import { confirmDestructive } from "@/lib/ui/confirmAction";
+
+function sectionLabel(section) {
+  if (!section) return "";
+  return `${section.gradeLabel} — ${section.sectionName} (${section.schoolYear})`;
+}
 
 export default function SectionManagement({ embedded = false }) {
   const {
@@ -33,6 +38,7 @@ export default function SectionManagement({ embedded = false }) {
   const [modalMode, setModalMode] = useState("create");
   const [selected, setSelected] = useState(null);
   const [toast, setToast] = useState("");
+  const [confirmAction, setConfirmAction] = useState(null);
 
   const defaultSchoolYear =
     schoolYears[0] || suggestCurrentSchoolYear();
@@ -72,29 +78,34 @@ export default function SectionManagement({ embedded = false }) {
     return result;
   }
 
-  async function onArchive(section) {
-    const label = `${section.gradeLabel} — ${section.sectionName} (${section.schoolYear})`;
-    if (
-      !confirmDestructive(
-        `Are you sure you want to archive ${label}? Historical records will be kept.`
-      )
-    ) {
-      return;
-    }
-    const result = await handleArchive(section.id);
-    if (result.ok) showToast("Section archived.");
+  function onArchive(section) {
+    setConfirmAction({ type: "archive", section });
   }
 
-  async function onRestore(section) {
-    if (
-      !confirmDestructive(
-        `Are you sure you want to restore ${section.gradeLabel} — ${section.sectionName}?`
-      )
-    ) {
+  function onRestore(section) {
+    setConfirmAction({ type: "restore", section });
+  }
+
+  async function confirmPendingAction() {
+    if (!confirmAction?.section) return;
+    const { type, section } = confirmAction;
+
+    if (type === "archive") {
+      const result = await handleArchive(section.id);
+      if (result.ok) {
+        setConfirmAction(null);
+        showToast("Section archived.");
+      }
       return;
     }
-    const result = await handleRestore(section.id);
-    if (result.ok) showToast("Section restored to Active.");
+
+    if (type === "restore") {
+      const result = await handleRestore(section.id);
+      if (result.ok) {
+        setConfirmAction(null);
+        showToast("Section restored to Active.");
+      }
+    }
   }
 
   if (loading && !sections.length && !refreshing) {
@@ -123,6 +134,9 @@ export default function SectionManagement({ embedded = false }) {
       Create Section
     </button>
   );
+
+  const isArchive = confirmAction?.type === "archive";
+  const pendingSection = confirmAction?.section;
 
   return (
     <motion.div
@@ -174,6 +188,25 @@ export default function SectionManagement({ embedded = false }) {
         saving={saving}
         onClose={() => setModalOpen(false)}
         onSubmit={submitForm}
+      />
+
+      <DeleteConfirmModal
+        open={Boolean(confirmAction)}
+        title={isArchive ? "Archive section" : "Restore section"}
+        itemLabel={sectionLabel(pendingSection)}
+        consequence={
+          isArchive
+            ? "Historical records will be kept."
+            : "This section will be set back to Active."
+        }
+        confirmLabel={isArchive ? "Archive" : "Restore"}
+        confirming={saving}
+        confirmingLabel={isArchive ? "Archiving…" : "Restoring…"}
+        tone={isArchive ? "danger" : "request"}
+        onCancel={() => {
+          if (!saving) setConfirmAction(null);
+        }}
+        onConfirm={confirmPendingAction}
       />
 
       {toast ? (

@@ -127,7 +127,7 @@ export default function EClassUploadDialog({
 
       setProgress(100);
       setStatusLabel("Import complete.");
-      onSuccess?.(result);
+      await onSuccess?.(result);
       resetState();
       onClose?.();
     } catch (err) {

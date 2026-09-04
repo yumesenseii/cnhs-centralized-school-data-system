@@ -275,7 +275,7 @@ export default function StudentTable({ classId }) {
         classItem={classItem}
         teacherId={teacherId}
         onClose={() => setUploadOpen(false)}
-        onSuccess={(result) => {
+        onSuccess={async (result) => {
           const learners = result?.imported ?? 0;
           const grades = result?.gradesUpserted ?? 0;
           setToast(
@@ -283,7 +283,7 @@ export default function StudentTable({ classId }) {
               grades ? ` and ${grades} grade record${grades === 1 ? "" : "s"}` : ""
             }.`
           );
-          refresh();
+          await refresh();
           window.setTimeout(() => setToast(""), 3200);
         }}
       />

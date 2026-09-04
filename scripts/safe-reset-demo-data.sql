@@ -1,0 +1,105 @@
+-- =============================================================================
+-- CNHS LEARN — SAFE DEMO / TEST DATA RESET
+-- =============================================================================
+-- Purpose: Clear demo/test academic & monitoring artifacts before ML retest.
+-- Does NOT drop tables, schema, source code, env, or Supabase config.
+--
+-- BEFORE RUNNING:
+-- 1. Backup the project (Dashboard → Database → Backups) or export critical rows.
+-- 2. Identify your real administrator profile id(s) and DO NOT delete them.
+-- 3. Review the SELECT dry-run section and adjust filters to your demo markers.
+-- 4. Run inside a transaction; COMMIT only after verifying counts.
+--
+-- Demo identification strategy (adjust to your data):
+--   - Emails / usernames containing: demo, test, dummy, sample
+--   - Student numbers matching known dummy patterns
+--   - Optional: set a SQL variable list of demo student ids
+-- =============================================================================
+
+BEGIN;
+
+-- -----------------------------------------------------------------------------
+-- DRY RUN — inspect candidates (run these SELECTs first in the SQL editor)
+-- -----------------------------------------------------------------------------
+-- SELECT id, email, username, role, full_name
+-- FROM profiles
+-- WHERE email ILIKE '%demo%' OR email ILIKE '%test%' OR username ILIKE '%demo%'
+--    OR username ILIKE '%dummy%' OR full_name ILIKE '%demo student%';
+--
+-- SELECT id, student_number, first_name, last_name
+-- FROM students
+-- WHERE student_number ILIKE 'DUMMY%' OR student_number ILIKE 'TEST%'
+--    OR first_name ILIKE '%demo%' OR last_name ILIKE '%sample%';
+
+-- -----------------------------------------------------------------------------
+-- OPTIONAL: pin demo student / profile ids after inspection
+-- -----------------------------------------------------------------------------
+-- CREATE TEMP TABLE demo_students AS
+-- SELECT id FROM students WHERE student_number ILIKE 'DUMMY%' OR student_number ILIKE 'TEST%';
+--
+-- CREATE TEMP TABLE demo_profiles AS
+-- SELECT id FROM profiles
+-- WHERE (email ILIKE '%demo%' OR email ILIKE '%test%@%' OR username ILIKE '%demo%')
+--   AND role <> 'admin';  -- never wipe required admin here
+
+-- -----------------------------------------------------------------------------
+-- Child tables first (examples — uncomment after temp tables are filled)
+-- -----------------------------------------------------------------------------
+-- DELETE FROM aral_assessment_scores
+-- WHERE facilitator_assignment_id IN (
+--   SELECT id FROM aral_facilitator_assignments
+--   WHERE student_id IN (SELECT id FROM demo_students)
+-- );
+--
+-- DELETE FROM aral_facilitator_assignments
+-- WHERE student_id IN (SELECT id FROM demo_students);
+--
+-- DELETE FROM aral_recommendation_approvals
+-- WHERE student_id IN (SELECT id FROM demo_students);
+--
+-- DELETE FROM monitoring_records
+-- WHERE student_id IN (SELECT id FROM demo_students);
+--
+-- DELETE FROM grades
+-- WHERE student_id IN (SELECT id FROM demo_students);
+--
+-- DELETE FROM ecr_component_scores
+-- WHERE student_id IN (SELECT id FROM demo_students);
+--
+-- DELETE FROM ecr_computed_grades
+-- WHERE student_id IN (SELECT id FROM demo_students);
+--
+-- DELETE FROM attendance_records
+-- WHERE student_id IN (SELECT id FROM demo_students);
+--
+-- DELETE FROM class_students
+-- WHERE student_id IN (SELECT id FROM demo_students);
+--
+-- DELETE FROM notifications
+-- WHERE recipient_profile_id IN (SELECT id FROM demo_profiles);
+--
+-- DELETE FROM students WHERE id IN (SELECT id FROM demo_students);
+--
+-- -- Soft-disable demo auth profiles only (prefer deactivate over hard delete)
+-- UPDATE profiles SET is_active = false
+-- WHERE id IN (SELECT id FROM demo_profiles);
+
+-- ECR workbook demo wipe (only if the workbook is known demo)
+-- DELETE FROM ecr_component_scores WHERE term_sheet_id IN (
+--   SELECT id FROM ecr_term_sheets WHERE workbook_id IN (
+--     SELECT id FROM ecr_workbooks WHERE /* demo filter */ false
+--   )
+-- );
+
+-- -----------------------------------------------------------------------------
+-- Always preserve
+-- -----------------------------------------------------------------------------
+-- - public schema / tables
+-- - subjects, sections structure you still need
+-- - profiles where role = 'admin' and authorized staff
+-- - environment variables / Supabase project settings (not in SQL)
+
+-- Default: roll back until you uncomment deletes and verify.
+ROLLBACK;
+
+-- When ready after editing: change the final line to COMMIT;

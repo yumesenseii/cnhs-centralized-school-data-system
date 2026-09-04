@@ -1,6 +1,8 @@
 "use client";
 
-import { Download, Eye } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Download, Eye, FileText, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CLASSROOM_REMEDIAL } from "@/lib/teacher/reportsConstants";
 
@@ -9,39 +11,170 @@ const remedialStyles = {
   [CLASSROOM_REMEDIAL.NOT_NEEDED]: "bg-green-50 text-cnhs-green-dark",
 };
 
-export default function ClassReportsTable({ reports, onPreview, onExport }) {
+const MENU_WIDTH = 144;
+
+function shortRemedialLabel(value) {
+  if (value === CLASSROOM_REMEDIAL.RECOMMENDED) return "Remedial";
+  if (value === CLASSROOM_REMEDIAL.NOT_NEEDED) return "OK";
+  const text = String(value ?? "");
+  if (/recommend/i.test(text)) return "Remedial";
+  if (/not needed|ok/i.test(text)) return "OK";
+  return text || "—";
+}
+
+function RowActionsMenu({ row, onPreview, onExport }) {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef(null);
+  const menuRef = useRef(null);
+
+  function updatePosition() {
+    const button = buttonRef.current;
+    if (!button) return;
+    const rect = button.getBoundingClientRect();
+    const left = Math.min(
+      Math.max(8, rect.right - MENU_WIDTH),
+      window.innerWidth - MENU_WIDTH - 8
+    );
+    const top = Math.min(rect.bottom + 4, window.innerHeight - 8);
+    setCoords({ top, left });
+  }
+
+  useLayoutEffect(() => {
+    if (!open) return undefined;
+    updatePosition();
+    function onReposition() {
+      updatePosition();
+    }
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+    return () => {
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    function onDocClick(event) {
+      const target = event.target;
+      if (buttonRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      setOpen(false);
+    }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  const menu =
+    open && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            ref={menuRef}
+            role="menu"
+            className="fixed z-[80] w-36 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+            style={{ top: coords.top, left: coords.left }}
+          >
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onPreview?.(row);
+              }}
+              className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              <Eye size={12} />
+              Preview
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onExport?.(row);
+              }}
+              className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              <Download size={12} />
+              Excel
+            </button>
+          </div>,
+          document.body
+        )
+      : null;
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        aria-label="More actions"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50"
+      >
+        <MoreHorizontal size={14} />
+      </button>
+      {menu}
+    </>
+  );
+}
+
+export default function ClassReportsTable({
+  reports,
+  onPreview,
+  onExport,
+  onGenerateSystemReport,
+}) {
   return (
     <section className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-      <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-3 py-2.5 sm:px-4">
+      <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-slate-900">My Class Reports</h2>
+          <h2 className="text-sm font-semibold text-slate-900">
+            My Class Reports
+          </h2>
           <span className="text-[11px] font-medium text-slate-400">
-            {reports.length} classes
+            {reports.length} {reports.length === 1 ? "class" : "classes"}
           </span>
         </div>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-[980px] w-full border-collapse text-left">
+        <table className="min-w-[760px] w-full border-collapse text-left">
           <thead>
             <tr className="bg-slate-50/80">
-              {[
-                "Section",
-                "Subject",
-                "Students",
-                "Average Grade",
-                "ARAL Learners",
-                "Classroom Remedial",
-                "Monitoring Status",
-                "Actions",
-              ].map((column) => (
-                <th
-                  key={column}
-                  className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400"
-                >
-                  {column}
-                </th>
-              ))}
+              <th className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                Section
+              </th>
+              <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                Subject
+              </th>
+              <th className="px-3 py-2.5 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                Students
+              </th>
+              <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                Avg
+              </th>
+              <th className="px-3 py-2.5 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                ARAL
+              </th>
+              <th className="px-3 py-2.5 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                Status
+              </th>
+              <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                Monitoring
+              </th>
+              <th className="whitespace-nowrap px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -55,65 +188,70 @@ export default function ClassReportsTable({ reports, onPreview, onExport }) {
                 </td>
               </tr>
             ) : (
-              reports.map((row) => (
-                <tr
-                  key={row.id}
-                  className="border-t border-slate-100 transition-colors hover:bg-slate-50/70"
-                >
-                  <td className="px-3 py-2.5 text-xs text-slate-600">
-                    {row.section ?? row.gradeSection}
-                  </td>
-                  <td className="px-3 py-2.5 text-xs font-semibold text-slate-800">
-                    {row.subject}
-                  </td>
-                  <td className="px-3 py-2.5 text-xs font-semibold text-slate-700">
-                    {row.students}
-                  </td>
-                  <td className="px-3 py-2.5 text-xs font-semibold text-cnhs-green-dark">
-                    {row.averageGrade}
-                  </td>
-                  <td className="px-3 py-2.5 text-xs font-semibold text-red-600">
-                    {row.aralScreeningDisplay ??
-                      (row.aralEligible === false
-                        ? "—"
-                        : (row.aralScreening ?? row.intervention ?? 0))}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <span
-                      className={cn(
-                        "inline-flex max-w-[220px] rounded-full px-2.5 py-1 text-[10px] font-semibold",
-                        remedialStyles[row.classroomRemedial] ??
-                          remedialStyles[CLASSROOM_REMEDIAL.NOT_NEEDED]
-                      )}
-                    >
-                      {row.classroomRemedial}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2.5 text-xs text-slate-500">
-                    {row.monitoringStatus}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => onPreview(row)}
-                        className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-cnhs-green-dark/35 bg-white px-2.5 text-[10px] font-semibold text-cnhs-green-dark transition-colors hover:bg-green-50"
+              reports.map((row) => {
+                const aralDisplay =
+                  row.aralScreeningDisplay ??
+                  (row.aralEligible === false
+                    ? "—"
+                    : (row.aralScreening ?? row.intervention ?? 0));
+                const remedialLabel = shortRemedialLabel(row.classroomRemedial);
+
+                return (
+                  <tr
+                    key={row.id}
+                    className="border-t border-slate-100 transition-colors hover:bg-slate-50/70"
+                  >
+                    <td className="px-4 py-3 text-[12px] text-slate-600">
+                      {row.section ?? row.gradeSection}
+                    </td>
+                    <td className="px-3 py-3 text-[12px] font-semibold text-slate-800">
+                      {row.subject}
+                    </td>
+                    <td className="px-3 py-3 text-center text-[12px] font-semibold text-slate-700">
+                      {row.students}
+                    </td>
+                    <td className="px-3 py-3 text-right text-[12px] font-semibold text-cnhs-green-dark">
+                      {row.averageGrade}
+                    </td>
+                    <td className="px-3 py-3 text-center text-[12px] font-semibold text-slate-600">
+                      {aralDisplay}
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      <span
+                        className={cn(
+                          "inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold",
+                          remedialStyles[row.classroomRemedial] ??
+                            remedialStyles[CLASSROOM_REMEDIAL.NOT_NEEDED]
+                        )}
                       >
-                        <Eye size={11} />
-                        Preview
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onExport(row)}
-                        className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
-                      >
-                        <Download size={11} />
-                        Export
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+                        {remedialLabel}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-[12px] text-slate-500">
+                      {row.monitoringStatus}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {onGenerateSystemReport ? (
+                          <button
+                            type="button"
+                            onClick={() => onGenerateSystemReport(row)}
+                            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-2.5 text-[11px] font-semibold text-white transition-colors hover:bg-[#246f54]"
+                          >
+                            <FileText size={12} />
+                            Generate
+                          </button>
+                        ) : null}
+                        <RowActionsMenu
+                          row={row}
+                          onPreview={onPreview}
+                          onExport={onExport}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

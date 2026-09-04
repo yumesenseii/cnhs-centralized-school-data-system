@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { buildFeatureVector } from "@/lib/services/recommendation/features";
 import {
   isRemoteInferenceConfigured,
+  mapInferenceResponse,
   predictViaRemoteInference,
 } from "@/lib/services/recommendation/inferenceClient";
 import { predictViaLocalEnsemble } from "@/lib/services/recommendation/localEnsemble";
@@ -10,49 +11,54 @@ import { predictViaLocalEnsemble } from "@/lib/services/recommendation/localEnse
 /**
  * POST /api/recommendations/predict
  *
- * Academic Prediction gateway. Features are always rebuilt from ECR grades
- * via buildFeatureVector — client-supplied feature maps are ignored so
- * attendance / SF2 keys can never enter the model.
+ * Academic risk gateway → FastAPI Random Forest.
+ * Features rebuilt from ECR grades only (never trust client feature maps).
  */
+async function requireStaff(supabase) {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { error: NextResponse.json({ error: "Authentication required." }, { status: 401 }) };
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role, is_active")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+
+  if (!profile || profile.is_active === false) {
+    return {
+      error: NextResponse.json(
+        { error: "Inactive or missing profile." },
+        { status: 403 }
+      ),
+    };
+  }
+
+  if (profile.role !== "admin" && profile.role !== "teacher") {
+    return {
+      error: NextResponse.json(
+        { error: "Insufficient role for recommendations." },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return { user, profile };
+}
+
 export async function POST(request) {
   try {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Authentication required." },
-        { status: 401 }
-      );
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role, is_active")
-      .eq("auth_user_id", user.id)
-      .maybeSingle();
-
-    if (!profile || profile.is_active === false) {
-      return NextResponse.json(
-        { error: "Inactive or missing profile." },
-        { status: 403 }
-      );
-    }
-
-    if (profile.role !== "admin" && profile.role !== "teacher") {
-      return NextResponse.json(
-        { error: "Insufficient role for recommendations." },
-        { status: 403 }
-      );
-    }
+    const auth = await requireStaff(supabase);
+    if (auth.error) return auth.error;
 
     const body = await request.json().catch(() => ({}));
     const student = body.student ?? body ?? {};
-
-    // Always rebuild from academic grades — never trust client feature payloads.
     const features = buildFeatureVector(student);
 
     if (isRemoteInferenceConfigured()) {
@@ -72,13 +78,11 @@ export async function POST(request) {
       }
     }
 
-    const local = predictViaLocalEnsemble(features);
-    return NextResponse.json(local);
+    const fallback = predictViaLocalEnsemble(features);
+    return NextResponse.json(fallback);
   } catch (error) {
     return NextResponse.json(
-      {
-        error: error?.message ?? "Failed to generate recommendation.",
-      },
+      { error: error?.message ?? "Failed to generate prediction." },
       { status: 500 }
     );
   }

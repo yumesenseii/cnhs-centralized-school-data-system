@@ -13,10 +13,21 @@ import {
   invalidateAdminRosterCache,
 } from "@/lib/admin/adminRosterCache";
 import {
+  getEmptyAdminMonitoringStats,
+  hasAdminMonitoringUiSnapshot,
+  peekAdminMonitoringUiSnapshot,
+  saveAdminMonitoringUiSnapshot,
+} from "@/lib/admin/adminMonitoringUiCache";
+import {
   getCachedBuiltTeacherRoster,
   getCachedTeacherRoster,
   invalidateTeacherRosterCache,
 } from "@/lib/teacher/teacherRosterCache";
+import {
+  hasTeacherMonitoringUiSnapshot,
+  peekTeacherMonitoringUiSnapshot,
+  saveTeacherMonitoringUiSnapshot,
+} from "@/lib/teacher/teacherMonitoringUiCache";
 import {
   getAralAssignmentMapByStudent,
   isCurrentTeacherAralFacilitator,
@@ -66,13 +77,21 @@ function filterRosterPayload(
 }
 
 export function useTeacherMonitoring() {
-  const [students, setStudents] = useState([]);
-  const [classSummaries, setClassSummaries] = useState([]);
-  const [kpis, setKpis] = useState([]);
-  const [teacher, setTeacher] = useState(null);
-  const [profile, setProfile] = useState(null);
+  const cached = peekTeacherMonitoringUiSnapshot();
+  const hadSnapshot = hasTeacherMonitoringUiSnapshot();
+
+  const [students, setStudents] = useState(() => cached?.students ?? []);
+  const [classSummaries, setClassSummaries] = useState(
+    () => cached?.classSummaries ?? []
+  );
+  const [kpis, setKpis] = useState(() => cached?.kpis ?? []);
+  const [teacher, setTeacher] = useState(() => cached?.teacher ?? null);
+  const [profile, setProfile] = useState(() => cached?.profile ?? null);
   const [error, setError] = useState("");
-  const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(true);
+  const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(
+    !hadSnapshot,
+    hadSnapshot
+  );
 
   const refresh = useCallback(async ({ bustCache = false } = {}) => {
     beginLoad();
@@ -114,11 +133,21 @@ export function useTeacherMonitoring() {
       approvals.data ?? new Map()
     );
 
+    const nextKpis = buildMonitoringKpis(
+      studentsWithApprovals,
+      roster.classSummaries
+    );
+
     setStudents(studentsWithApprovals);
     setClassSummaries(roster.classSummaries);
-    setKpis(
-      buildMonitoringKpis(studentsWithApprovals, roster.classSummaries)
-    );
+    setKpis(nextKpis);
+    saveTeacherMonitoringUiSnapshot({
+      students: studentsWithApprovals,
+      classSummaries: roster.classSummaries,
+      kpis: nextKpis,
+      teacher: session.data.teacher,
+      profile: session.data.profile,
+    });
     endLoad(true);
 
     syncRecommendationNotifications({
@@ -262,20 +291,24 @@ export function useStudentMonitoringDetail(classId, studentId) {
 }
 
 export function useAdminMonitoring() {
-  const [students, setStudents] = useState([]);
-  const [classSummaries, setClassSummaries] = useState([]);
-  const [stats, setStats] = useState({
-    totalAtRisk: 0,
-    aral: 0,
-    remediation: 0,
-    completed: 0,
-    ongoing: 0,
-  });
-  const [profile, setProfile] = useState(null);
+  const cached = peekAdminMonitoringUiSnapshot();
+  const hadSnapshot = hasAdminMonitoringUiSnapshot();
+
+  const [students, setStudents] = useState(() => cached?.students ?? []);
+  const [classSummaries, setClassSummaries] = useState(
+    () => cached?.classSummaries ?? []
+  );
+  const [stats, setStats] = useState(
+    () => cached?.stats ?? getEmptyAdminMonitoringStats()
+  );
+  const [profile, setProfile] = useState(() => cached?.profile ?? null);
   const [error, setError] = useState("");
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(true);
+  const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(
+    !hadSnapshot,
+    hadSnapshot
+  );
 
   const refresh = useCallback(async (filters = {}) => {
     beginLoad();
@@ -380,14 +413,20 @@ export function useAdminMonitoring() {
         approvalMap
       );
 
+      const nextStats = buildAdminMonitoringStats(
+        studentsWithApprovals,
+        roster.classSummaries
+      );
+
       setStudents(studentsWithApprovals);
       setClassSummaries(roster.classSummaries);
-      setStats(
-        buildAdminMonitoringStats(
-          studentsWithApprovals,
-          roster.classSummaries
-        )
-      );
+      setStats(nextStats);
+      saveAdminMonitoringUiSnapshot({
+        students: studentsWithApprovals,
+        classSummaries: roster.classSummaries,
+        stats: nextStats,
+        profile: session.data ?? null,
+      });
     } catch (err) {
       console.error("[admin monitoring] refresh failed", err);
       setError(
@@ -399,6 +438,8 @@ export function useAdminMonitoring() {
   }, [beginLoad, endLoad]);
 
   useEffect(() => {
+    // Soft revisit: paint cached UI immediately; quiet background refresh.
+    // Hard wipe only when Refresh passes bustCache (roster TTL invalidated).
     refresh();
   }, [refresh]);
 

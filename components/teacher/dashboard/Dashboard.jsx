@@ -85,6 +85,8 @@ export default function Dashboard() {
             upcomingDeadlines={data.upcomingDeadlines}
             monitoringProgress={data.monitoringProgress}
             systemRecommendations={data.systemRecommendations}
+            primaryClassId={data.primaryClassId}
+            primaryClassLabel={data.primaryClassLabel}
           />
 
           <div className="mt-3 border-t border-slate-100 pt-3">
@@ -94,16 +96,6 @@ export default function Dashboard() {
                 compact
               />
             </DeferredMount>
-            <p className="mt-2 text-[11px] text-slate-400">
-              Manage SF2 uploads on{" "}
-              <a
-                href="/teacher/attendance"
-                className="font-semibold text-cnhs-green-dark hover:underline"
-              >
-                Attendance Monitoring
-              </a>
-              .
-            </p>
           </div>
         </>
       ) : (

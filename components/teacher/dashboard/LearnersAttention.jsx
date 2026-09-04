@@ -43,22 +43,34 @@ function shortIntervention(value) {
 export default function LearnersAttention({
   learners = [],
   embedded = false,
+  limit = null,
 }) {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
     setPage(1);
-  }, [learners]);
+  }, [learners, limit]);
 
+  const cappedLearners = useMemo(() => {
+    if (limit != null && Number.isFinite(Number(limit))) {
+      return learners.slice(0, Number(limit));
+    }
+    return learners;
+  }, [learners, limit]);
+
+  const useLimit = limit != null && Number.isFinite(Number(limit));
+  const pageSize = useLimit ? Number(limit) : ATTENTION_PAGE_SIZE;
   const totalPages = Math.max(
     1,
-    Math.ceil(learners.length / ATTENTION_PAGE_SIZE) || 1
+    Math.ceil((useLimit ? cappedLearners.length : learners.length) / pageSize) ||
+      1
   );
   const safePage = Math.min(Math.max(page, 1), totalPages);
   const pagedLearners = useMemo(() => {
+    if (useLimit) return cappedLearners;
     const start = (safePage - 1) * ATTENTION_PAGE_SIZE;
     return learners.slice(start, start + ATTENTION_PAGE_SIZE);
-  }, [learners, safePage]);
+  }, [learners, cappedLearners, safePage, useLimit]);
 
   return (
     <section
@@ -180,7 +192,7 @@ export default function LearnersAttention({
         </table>
       </div>
 
-      {learners.length ? (
+      {!useLimit && learners.length ? (
         <div className="border-t border-slate-100 px-3 py-1.5">
           <TablePagination
             page={safePage}

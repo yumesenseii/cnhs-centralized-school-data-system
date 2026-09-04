@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -38,6 +38,9 @@ import {
   filterAralRecommendedLearners,
 } from "@/lib/reports/aralRecommendedExport";
 import { exportAralRecommendedPdf } from "@/lib/reports/aralRecommendedPdfExport";
+import { ARAL_APPROVAL_STATUS } from "@/lib/monitoring/aralApproval";
+import { isAralRecommended } from "@/lib/monitoring/aralProgress";
+import { buildHtReceivedClassReportFiles } from "@/lib/monitoring/classReportFiles";
 import { cn } from "@/lib/utils";
 
 const MONITORING_TABS = [
@@ -48,9 +51,20 @@ const MONITORING_TABS = [
   { id: "students", label: "Monitored students" },
 ];
 
-function StatCard({ label, value, icon: Icon, tone, alert }) {
+function StatCard({ label, value, icon: Icon, tone, alert, onClick, hint }) {
+  const clickable = typeof onClick === "function";
+  const Comp = clickable ? "button" : "div";
   return (
-    <div className="relative flex min-w-0 items-center gap-2 rounded-lg border border-slate-100 bg-white px-2.5 py-2 shadow-[0_4px_12px_rgba(15,23,42,0.03)]">
+    <Comp
+      type={clickable ? "button" : undefined}
+      onClick={onClick}
+      title={hint}
+      className={cn(
+        "relative flex min-w-0 items-center gap-2 rounded-lg border border-slate-100 bg-white px-2.5 py-2 text-left shadow-[0_4px_12px_rgba(15,23,42,0.03)]",
+        clickable &&
+          "cursor-pointer transition-colors hover:border-cnhs-green/40 hover:bg-emerald-50/40"
+      )}
+    >
       {alert ? (
         <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
       ) : null}
@@ -70,7 +84,7 @@ function StatCard({ label, value, icon: Icon, tone, alert }) {
           {label}
         </p>
       </div>
-    </div>
+    </Comp>
   );
 }
 
@@ -294,7 +308,9 @@ export default function AdminMonitoringPage() {
   const [status, setStatus] = useState("All Status");
   const [exportingAral, setExportingAral] = useState(false);
   const [activeTab, setActiveTab] = useState("received");
+  const [monitoredSubview, setMonitoredSubview] = useState("aral");
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
+  const didAutoLandRef = useRef(false);
 
   useEffect(() => {
     const riskParam = searchParams.get("risk");
@@ -379,6 +395,57 @@ export default function AdminMonitoringPage() {
     () => groupMonitoredStudentsForAdmin(filtered, classSummaries),
     [filtered, classSummaries]
   );
+
+  const actionCounts = useMemo(() => {
+    const files = buildHtReceivedClassReportFiles({
+      students,
+      classSummaries,
+      teacherName: "Teacher",
+    });
+    const pendingFiles = files.filter(
+      (f) => f.htStatus === ARAL_APPROVAL_STATUS.SUBMITTED
+    ).length;
+    const pendingAralApprovals = students.filter(
+      (s) =>
+        isAralRecommended(s) &&
+        (s.aralApprovalStatus === ARAL_APPROVAL_STATUS.SUBMITTED ||
+          s.aralApprovalStatus === ARAL_APPROVAL_STATUS.SUGGESTED)
+    ).length;
+    return { pendingFiles, pendingAralApprovals };
+  }, [students, classSummaries]);
+
+  // Needs-attention landing: once per visit when data is ready.
+  useEffect(() => {
+    if (didAutoLandRef.current || loading) return;
+    if (!students.length && !classSummaries.length) return;
+    didAutoLandRef.current = true;
+    if (actionCounts.pendingFiles > 0) {
+      setActiveTab("received");
+    } else if (actionCounts.pendingAralApprovals > 0) {
+      setActiveTab("approve");
+    } else if (stats.aral > 0) {
+      setActiveTab("students");
+      setMonitoredSubview("aral");
+    } else if (stats.totalAtRisk > 0) {
+      setActiveTab("students");
+      setMonitoredSubview("nonAral");
+    } else {
+      setActiveTab("received");
+    }
+  }, [
+    loading,
+    students.length,
+    classSummaries.length,
+    actionCounts.pendingFiles,
+    actionCounts.pendingAralApprovals,
+    stats.aral,
+    stats.totalAtRisk,
+  ]);
+
+  function goToTab(tabId, subview) {
+    setActiveTab(tabId);
+    if (subview) setMonitoredSubview(subview);
+  }
 
   const exportScopeLabel = useMemo(() => {
     const parts = [];
@@ -662,6 +729,33 @@ export default function AdminMonitoringPage() {
         ) : null}
       </section>
 
+      {actionCounts.pendingFiles > 0 ||
+      actionCounts.pendingAralApprovals > 0 ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-amber-100 bg-amber-50/80 px-3 py-2 text-[12px] text-amber-950">
+          <span className="font-semibold">Needs your action</span>
+          {actionCounts.pendingFiles > 0 ? (
+            <button
+              type="button"
+              onClick={() => goToTab("received")}
+              className="cursor-pointer rounded-full bg-white px-2.5 py-0.5 text-[11px] font-semibold text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100"
+            >
+              {actionCounts.pendingFiles} file
+              {actionCounts.pendingFiles === 1 ? "" : "s"} for review
+            </button>
+          ) : null}
+          {actionCounts.pendingAralApprovals > 0 ? (
+            <button
+              type="button"
+              onClick={() => goToTab("approve")}
+              className="cursor-pointer rounded-full bg-white px-2.5 py-0.5 text-[11px] font-semibold text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100"
+            >
+              {actionCounts.pendingAralApprovals} ARAL approval
+              {actionCounts.pendingAralApprovals === 1 ? "" : "s"}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="mb-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-2.5 sm:p-3">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
           <StatCard
@@ -670,6 +764,8 @@ export default function AdminMonitoringPage() {
             icon={Users}
             tone="bg-sky-50 text-sky-600"
             alert={stats.totalAtRisk > 0}
+            hint="Open Monitored · At-Risk Non-ARAL"
+            onClick={() => goToTab("students", "nonAral")}
           />
           <StatCard
             label="ARAL"
@@ -677,12 +773,25 @@ export default function AdminMonitoringPage() {
             icon={Clock3}
             tone="bg-orange-50 text-cnhs-orange"
             alert={stats.aral > 0}
+            hint={
+              actionCounts.pendingAralApprovals > 0
+                ? "Open Approve ARAL"
+                : "Open Monitored · ARAL Learners"
+            }
+            onClick={() =>
+              goToTab(
+                actionCounts.pendingAralApprovals > 0 ? "approve" : "students",
+                actionCounts.pendingAralApprovals > 0 ? undefined : "aral"
+              )
+            }
           />
           <StatCard
             label="Remedial"
             value={stats.remediation}
             icon={BookOpen}
             tone="bg-green-50 text-cnhs-green-dark"
+            hint="Open Monitored · At-Risk Non-ARAL"
+            onClick={() => goToTab("students", "nonAral")}
           />
           <StatCard
             label="Ongoing"
@@ -690,12 +799,16 @@ export default function AdminMonitoringPage() {
             icon={AlertTriangle}
             tone="bg-red-50 text-red-500"
             alert={stats.ongoing > 0}
+            hint="Open ARAL assessments"
+            onClick={() => goToTab("progress")}
           />
           <StatCard
             label="Completed"
             value={stats.completed}
             icon={CheckCircle2}
             tone="bg-emerald-50 text-emerald-600"
+            hint="Open Monitored students"
+            onClick={() => goToTab("students", "aral")}
           />
         </div>
       </div>
@@ -776,6 +889,8 @@ export default function AdminMonitoringPage() {
             quarter={quarter === "All Terms" ? "All Terms" : quarter}
             onViewMonitoring={openStudent}
             loading={loading}
+            subview={monitoredSubview}
+            onSubviewChange={setMonitoredSubview}
           />
         ) : null}
       </div>

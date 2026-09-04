@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 import AdminAcademicAnalytics from "@/components/dashboard/AdminAcademicAnalytics";
-import EmptyState from "@/components/dashboard/EmptyState";
 import Header from "@/components/dashboard/Header";
 import LoadingSkeleton from "@/components/dashboard/LoadingSkeleton";
 import AttendanceMonitoringPanel from "@/components/attendance/AttendanceMonitoringPanel";
@@ -73,8 +72,6 @@ export default function DashboardPage() {
   const weakSubjects = data?.weakSubjects ?? [];
   const recentActivity = data?.recentActivity ?? [];
   const priorityLearners = data?.priorityLearners ?? [];
-  const meta = data?.meta ?? {};
-  const emptySchool = !meta.hasStudents && !meta.hasClasses;
 
   return (
     <motion.div
@@ -85,50 +82,38 @@ export default function DashboardPage() {
     >
       <Header description={data?.welcomeDescription} />
 
-      {emptySchool ? (
-        <EmptyState
-          title="No school data yet"
-          description="Create sections, assign classes, and import E-Class records to populate this overview."
-        />
-      ) : (
-        <>
-          <AdminAcademicAnalytics
-            schoolYear={data?.schoolYear}
-            stats={stats}
-            academicPerformance={academicPerformance}
-            riskDistribution={riskDistribution}
-            weakSubjects={weakSubjects}
-            recentActivity={recentActivity}
-            priorityLearners={priorityLearners}
-          />
+      <AdminAcademicAnalytics
+        schoolYear={data?.schoolYear}
+        stats={stats}
+        academicPerformance={academicPerformance}
+        riskDistribution={riskDistribution}
+        weakSubjects={weakSubjects}
+        recentActivity={recentActivity}
+        priorityLearners={priorityLearners}
+      />
 
-          <div className="mt-3 border-t border-slate-100 pt-3">
-            <DeferredMount
-              delayMs={100}
-              fallback={
-                <p className="py-4 text-center text-[12px] text-slate-400">
-                  Loading attendance analytics…
-                </p>
-              }
-            >
-              <AttendanceMonitoringPanel
-                showUpload={false}
-                compact
-              />
-            </DeferredMount>
-            <p className="mt-2 text-[11px] text-slate-400">
-              Upload SF2 files and manage monthly reports on{" "}
-              <a
-                href="/attendance"
-                className="font-semibold text-cnhs-green-dark hover:underline"
-              >
-                Attendance Monitoring
-              </a>
-              .
+      <div className="mt-3 border-t border-slate-100 pt-3">
+        <DeferredMount
+          delayMs={100}
+          fallback={
+            <p className="py-4 text-center text-[12px] text-slate-400">
+              Loading attendance analytics…
             </p>
-          </div>
-        </>
-      )}
+          }
+        >
+          <AttendanceMonitoringPanel showUpload={false} compact />
+        </DeferredMount>
+        <p className="mt-2 text-[11px] text-slate-400">
+          Upload SF2 files and manage monthly reports on{" "}
+          <a
+            href="/attendance"
+            className="font-semibold text-cnhs-green-dark hover:underline"
+          >
+            Attendance Monitoring
+          </a>
+          .
+        </p>
+      </div>
     </motion.div>
   );
 }

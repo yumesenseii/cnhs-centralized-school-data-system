@@ -22,11 +22,10 @@ export default function AdminMonitoredStudentsPanel({
   quarter = "All Terms",
   onViewMonitoring,
   loading = false,
+  /** Controlled subview from parent KPI clicks */
+  subview: controlledSubview,
+  onSubviewChange,
 }) {
-  const [subview, setSubview] = useState("aral");
-  const [aralPage, setAralPage] = useState(1);
-  const [nonAralPage, setNonAralPage] = useState(1);
-
   const aralLearners = useMemo(
     () => filterAralMonitoredStudents(learners),
     [learners]
@@ -36,13 +35,31 @@ export default function AdminMonitoredStudentsPanel({
     [learners]
   );
 
+  const [internalSubview, setInternalSubview] = useState(() => {
+    if (controlledSubview) return controlledSubview;
+    if (aralLearners.length === 0 && nonAralLearners.length > 0) {
+      return "nonAral";
+    }
+    return "aral";
+  });
+
+  const subview = controlledSubview ?? internalSubview;
+
+  function setSubview(next) {
+    if (onSubviewChange) onSubviewChange(next);
+    else setInternalSubview(next);
+  }
+
+  const [aralPage, setAralPage] = useState(1);
+  const [nonAralPage, setNonAralPage] = useState(1);
+
   const activeLearners = subview === "aral" ? aralLearners : nonAralLearners;
   const activePage = subview === "aral" ? aralPage : nonAralPage;
   const setActivePage = subview === "aral" ? setAralPage : setNonAralPage;
 
   const pagedLearners = useMemo(() => {
     const start = (activePage - 1) * PAGE_SIZE;
-    return activeLearners.slice(start, start + PAGE_SIZE);
+    return activeLearners.slice(start, activePage * PAGE_SIZE);
   }, [activeLearners, activePage]);
 
   const atRiskCount = useMemo(
@@ -54,6 +71,14 @@ export default function AdminMonitoredStudentsPanel({
     setAralPage(1);
     setNonAralPage(1);
   }, [learners.length, schoolYear, quarter]);
+
+  // When uncontrolled and ARAL empty but Non-ARAL has rows, prefer Non-ARAL once.
+  useEffect(() => {
+    if (controlledSubview) return;
+    if (aralLearners.length === 0 && nonAralLearners.length > 0) {
+      setInternalSubview("nonAral");
+    }
+  }, [aralLearners.length, nonAralLearners.length, controlledSubview]);
 
   if (loading && learners.length === 0) {
     return (
@@ -130,6 +155,13 @@ export default function AdminMonitoredStudentsPanel({
           subview === "aral"
             ? "No ARAL-recommended learners under the current filters."
             : "No at-risk non-ARAL learners under the current filters."
+        }
+        emptyHint={
+          subview === "aral" && nonAralLearners.length > 0
+            ? `See At-Risk · Non-ARAL (${nonAralLearners.length}) for other learners who need attention.`
+            : subview === "nonAral" && aralLearners.length > 0
+              ? `ARAL Learners (${aralLearners.length}) are listed in the other view.`
+              : ""
         }
       />
     </div>

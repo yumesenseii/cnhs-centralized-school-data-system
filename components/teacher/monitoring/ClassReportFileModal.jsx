@@ -45,8 +45,10 @@ function displayGrade(value) {
 }
 
 function riskLabel(value) {
-  if (!value) return "—";
-  return String(value);
+  if (value === null || value === undefined || value === "") return "—";
+  const text = String(value).trim();
+  if (!text || text === "—" || text.toLowerCase() === "no grade") return "—";
+  return text;
 }
 
 function termColumnClass(quarterNumber, columnQuarter) {
@@ -63,9 +65,8 @@ const td =
   "border border-slate-200 bg-white px-2 py-1 text-[12px] leading-snug text-slate-800 whitespace-nowrap";
 
 /**
- * LIS Enrollment–style landscape file modal with Failing | Moderate | Passing tabs.
- * Failing = grade < 75 · Moderate = 75–80 · Passing = >80 (or ungraded).
- * "At Risk" is reserved elsewhere for failing / High / ARAL — not this middle band.
+ * LIS Enrollment–style landscape file modal with Failing | Moderate | Passing | Ungraded tabs.
+ * Failing = grade < 75 · Moderate = 75–84 · Passing = ≥85 · Ungraded = no term grade (Risk —).
  */
 export default function ClassReportFileModal({
   file,
@@ -95,6 +96,7 @@ export default function ClassReportFileModal({
       ...(file?.failingLearners || []),
       ...(file?.moderateLearners || file?.atRiskLearners || []),
       ...(file?.passingLearners || []),
+      ...(file?.ungradedLearners || []),
     ],
     [file]
   );
@@ -104,7 +106,9 @@ export default function ClassReportFileModal({
       ? file?.failingLearners || []
       : tab === "moderate"
         ? file?.moderateLearners || file?.atRiskLearners || []
-        : file?.passingLearners || [];
+        : tab === "ungraded"
+          ? file?.ungradedLearners || []
+          : file?.passingLearners || [];
 
   const tabs = useMemo(
     () => [
@@ -123,6 +127,11 @@ export default function ClassReportFileModal({
         label: "PASSING",
         count: file?.passingCount ?? 0,
       },
+      {
+        id: "ungraded",
+        label: "UNGRADED",
+        count: file?.ungradedCount ?? 0,
+      },
     ],
     [file]
   );
@@ -132,7 +141,8 @@ export default function ClassReportFileModal({
     if ((file?.failingCount ?? 0) > 0) setTab("failing");
     else if ((file?.moderateCount ?? file?.atRiskCount ?? 0) > 0) {
       setTab("moderate");
-    } else setTab("passing");
+    } else if ((file?.passingCount ?? 0) > 0) setTab("passing");
+    else setTab("ungraded");
   }, [file?.id]);
 
   useEffect(() => {

@@ -335,25 +335,10 @@ export default function MonitoringDashboard() {
         </div>
       ) : null}
 
-      {loading && files.length === 0 ? (
+      {loading && files.length === 0 && classSummaries.length === 0 ? (
         <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-100 bg-white py-16 text-sm text-slate-500">
           <Loader2 size={16} className="animate-spin" />
           Loading class report files…
-        </div>
-      ) : files.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-14 text-center">
-          <p className="text-sm font-semibold text-slate-800">
-            No class reports yet
-          </p>
-          <p className="mt-1 text-[13px] text-slate-500">
-            Generate a report from My Classes to create a class file here.
-          </p>
-          <Link
-            href="/teacher/my-classes"
-            className="mt-4 inline-flex h-9 items-center rounded-lg bg-cnhs-green-dark px-4 text-[12px] font-semibold text-white hover:bg-[#246f54]"
-          >
-            Go to My Classes
-          </Link>
         </div>
       ) : (
         <>
@@ -413,20 +398,19 @@ export default function MonitoringDashboard() {
             </div>
           </div>
 
-          {filtered.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-10 text-center text-sm text-slate-500">
-              No generated reports match your filters.
-            </div>
-          ) : (
-            <ClassReportFilesTable
-              files={filtered}
-              onView={(f) => openModal(f, "view")}
-              onEdit={(f) => openModal(f, "edit")}
-              onSubmitToHt={handleSubmitToHt}
-              submittingFileId={submittingFileId}
-              showHtActions={Boolean(filterOptions.hasAralClass)}
-            />
-          )}
+          <ClassReportFilesTable
+            files={filtered}
+            emptyMessage={
+              files.length === 0
+                ? "No class reports yet. Generate a report from My Classes to create a class file here."
+                : "No generated reports match your filters."
+            }
+            onView={(f) => openModal(f, "view")}
+            onEdit={(f) => openModal(f, "edit")}
+            onSubmitToHt={handleSubmitToHt}
+            submittingFileId={submittingFileId}
+            showHtActions={Boolean(filterOptions.hasAralClass)}
+          />
         </>
       )}
 

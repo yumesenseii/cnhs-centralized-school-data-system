@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { RefreshCw } from "lucide-react";
-import AttendanceMonitoringPanel from "@/components/attendance/AttendanceMonitoringPanel";
+import AdminAttendancePanel from "@/components/admin/attendance/AdminAttendancePanel";
 import Header from "@/components/layout/Header";
 
 export default function AdminAttendancePage() {
@@ -17,10 +17,9 @@ export default function AdminAttendancePage() {
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="pb-5"
     >
-      <Header
+          <Header
         breadcrumb="Home > Attendance Monitoring"
         title="Attendance Monitoring"
-        description="Track SF2 attendance, monthly rates, and learners near the 20% absence threshold. Independent from academic risk prediction."
         controls={
           <button
             type="button"
@@ -36,7 +35,7 @@ export default function AdminAttendancePage() {
           </button>
         }
       />
-      <AttendanceMonitoringPanel
+      <AdminAttendancePanel
         refreshToken={refreshToken}
         onRefreshingChange={setRefreshing}
       />

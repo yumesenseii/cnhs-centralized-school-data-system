@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   CartesianGrid,
   Line,
@@ -12,8 +13,14 @@ import {
 
 function EmptyChart() {
   return (
-    <div className="flex h-[200px] items-center justify-center text-xs text-slate-400">
-      No SF2 attendance data for the selected filters.
+    <div className="flex h-[200px] flex-col items-center justify-center gap-2 px-4 text-center text-xs text-slate-400">
+      <p>No SF2 attendance data for the selected filters.</p>
+      <Link
+        href="/teacher/attendance"
+        className="font-semibold text-cnhs-green-dark hover:underline"
+      >
+        Open Attendance Monitoring →
+      </Link>
     </div>
   );
 }
@@ -29,23 +36,30 @@ export default function ReportAttendancePanel({
 
   const metrics = [
     {
-      label: "Monthly attendance rate",
+      label: "Avg ADA",
       value:
-        attendance?.monthlyAttendanceRate == null
+        attendance?.avgAda == null && attendance?.monthlyAttendanceRate == null
           ? "—"
-          : `${attendance.monthlyAttendanceRate}%`,
+          : attendance?.avgAda != null
+            ? String(attendance.avgAda)
+            : `${attendance.monthlyAttendanceRate}%`,
+      hint: "From submitted SF2",
     },
     {
-      label: "Near 20% absence",
-      value: String(attendance?.nearThresholdCount ?? 0),
+      label: "Avg PA",
+      value: attendance?.avgPa == null ? "—" : `${attendance.avgPa}%`,
+      hint: "Percentage of attendance",
     },
     {
-      label: "Present days (total)",
-      value: String(attendance?.presentTotal ?? 0),
+      label: "Total absences",
+      value: String(attendance?.totalAbsences ?? attendance?.absentTotal ?? 0),
     },
     {
-      label: "Absent days (total)",
-      value: String(attendance?.absentTotal ?? 0),
+      label: "Flagged months",
+      value: String(
+        attendance?.flaggedCount ?? attendance?.nearThresholdCount ?? 0
+      ),
+      hint: "Low PA / NLS / 5c",
     },
   ];
 
@@ -63,58 +77,37 @@ export default function ReportAttendancePanel({
             <p className="mt-1 text-[16px] font-semibold text-slate-800">
               {item.value}
             </p>
+            {item.hint ? (
+              <p className="mt-0.5 text-[10px] text-slate-400">{item.hint}</p>
+            ) : null}
           </div>
         ))}
       </div>
 
       <div className="rounded-xl border border-slate-100 bg-white p-3">
         <h3 className="text-sm font-semibold text-slate-800">
-          Attendance rate by month
+          PA by month
         </h3>
-        <p className="mt-0.5 text-[10px] text-slate-400">SF2 monthly trend</p>
+        <p className="mt-0.5 text-[10px] text-slate-400">
+          SF2 percentage of attendance · your sections
+        </p>
         <div className="mt-3">
           {!hasChart ? (
             <EmptyChart />
           ) : (
             <div className="h-[220px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={chartData}
-                  margin={{ top: 12, right: 12, left: -12, bottom: 0 }}
-                >
-                  <CartesianGrid
-                    stroke="#eef2f7"
-                    strokeDasharray="3 3"
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="name"
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fontSize: 11, fill: "#94a3b8" }}
-                  />
-                  <YAxis
-                    domain={[0, 100]}
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fontSize: 11, fill: "#94a3b8" }}
-                    width={32}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      border: "1px solid #e5e7eb",
-                      borderRadius: 12,
-                      fontSize: 12,
-                    }}
-                    formatter={(value) => [`${value}%`, "Attendance rate"]}
-                  />
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} domain={[0, 100]} />
+                  <Tooltip />
                   <Line
                     type="monotone"
                     dataKey="rate"
-                    stroke="#2f7d5f"
-                    strokeWidth={2.5}
-                    dot={{ r: 3, fill: "#2f7d5f" }}
-                    activeDot={{ r: 5 }}
+                    stroke="#246f54"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
                   />
                 </LineChart>
               </ResponsiveContainer>

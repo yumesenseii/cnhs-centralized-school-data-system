@@ -5,8 +5,15 @@
 
 import { useCallback, useRef, useState } from "react";
 
-export function useSoftLoadState(initialLoading = true) {
-  const hasLoadedRef = useRef(false);
+/**
+ * @param {boolean} [initialLoading=true]
+ * @param {boolean} [initialHasLoaded=false] — set true when hydrating from a soft cache
+ */
+export function useSoftLoadState(
+  initialLoading = true,
+  initialHasLoaded = false
+) {
+  const hasLoadedRef = useRef(initialHasLoaded);
   const [loading, setLoading] = useState(initialLoading);
   const [refreshing, setRefreshing] = useState(false);
 

@@ -225,6 +225,10 @@ export function useAcademicRecords() {
     loadData({ schoolYear, quarter });
   }, [filtersReady, schoolYear, quarter, loadData]);
 
+  useEffect(() => {
+    if (quarter === "4") setQuarter("");
+  }, [quarter]);
+
   const catalog = useMemo(() => {
     const classes = model?.classes ?? [];
     if (quarter) return classes;
@@ -363,7 +367,10 @@ export function useAcademicRecords() {
     schoolYear,
     quarter,
     schoolYears,
-    quarters: [{ value: "", label: TERM_ALL_LABEL }, ...QUARTER_OPTIONS],
+    quarters: [
+      { value: "", label: TERM_ALL_LABEL },
+      ...QUARTER_OPTIONS.filter((opt) => opt.value !== "4"),
+    ],
     setSchoolYear,
     setQuarter,
     refresh,
