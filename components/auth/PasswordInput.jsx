@@ -14,6 +14,7 @@ export default function PasswordInput({
   autoComplete = "current-password",
   required = false,
   error = "",
+  maxLength,
 }) {
   const [visible, setVisible] = useState(false);
 
@@ -42,6 +43,7 @@ export default function PasswordInput({
           placeholder={placeholder}
           autoComplete={autoComplete}
           required={required}
+          maxLength={maxLength}
           aria-invalid={error ? "true" : "false"}
           aria-describedby={error ? `${id}Error` : undefined}
           className="h-full w-full bg-transparent text-[13px] text-slate-700 outline-none placeholder:text-slate-400"

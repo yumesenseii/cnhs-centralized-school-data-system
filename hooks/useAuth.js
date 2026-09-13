@@ -1,5 +1,6 @@
 "use client";
 
+import { validateNewPassword } from "@/lib/auth/passwordPolicy";
 import { createClient } from "@/lib/supabase/client";
 
 const supabase = createClient();
@@ -90,17 +91,9 @@ export function useAuth() {
         error: new Error("Current and new passwords are required."),
       };
     }
-    if (next.length < 8) {
-      return {
-        data: null,
-        error: new Error("New password must be at least 8 characters."),
-      };
-    }
-    if (current === next) {
-      return {
-        data: null,
-        error: new Error("New password must be different from the current password."),
-      };
+    const policyError = validateNewPassword(next, current);
+    if (policyError) {
+      return { data: null, error: new Error(policyError) };
     }
 
     const {

@@ -8,6 +8,7 @@ import { ShieldCheck } from "lucide-react";
 import LoginButton from "@/components/auth/LoginButton";
 import PasswordInput from "@/components/auth/PasswordInput";
 import { loginContent } from "@/lib/constants/loginContent";
+import { PASSWORD_HINT, validateNewPassword } from "@/lib/auth/passwordPolicy";
 import { useAuth } from "@/hooks/useAuth";
 
 function resolveHome(role) {
@@ -25,6 +26,7 @@ export default function FirstLoginForm() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({
     current: "",
     password: "",
@@ -38,14 +40,14 @@ export default function FirstLoginForm() {
     event.preventDefault();
     const nextErrors = { current: "", password: "", confirm: "", terms: "" };
     if (!currentPassword) nextErrors.current = "Temporary password is required.";
-    if (!password || password.length < 8) {
-      nextErrors.password = form.resetTooShort;
+    const policyError = validateNewPassword(password, currentPassword);
+    if (policyError) {
+      nextErrors.password =
+        policyError.includes("different")
+          ? form.firstLoginPasswordSame
+          : form.firstLoginPasswordPolicy;
     }
     if (password !== confirm) nextErrors.confirm = form.resetMismatch;
-    if (currentPassword && password && currentPassword === password) {
-      nextErrors.password =
-        "New password must be different from the temporary password.";
-    }
     if (!acceptedTerms) {
       nextErrors.terms = "Accept the Terms of Use and Privacy Policy to continue.";
     }
@@ -149,6 +151,7 @@ export default function FirstLoginForm() {
               placeholder={form.passwordPlaceholder}
               value={password}
               autoComplete="new-password"
+              maxLength={32}
               onChange={(event) => {
                 setPassword(event.target.value);
                 if (fieldErrors.password) {
@@ -158,6 +161,9 @@ export default function FirstLoginForm() {
               required
               error={fieldErrors.password}
             />
+            <p className="-mt-2 mb-3 text-[11px] leading-4 text-slate-400">
+              {form.firstLoginPasswordHint || PASSWORD_HINT}
+            </p>
             <PasswordInput
               id="confirm-password"
               name="confirm-password"
@@ -165,6 +171,7 @@ export default function FirstLoginForm() {
               placeholder={form.passwordPlaceholder}
               value={confirm}
               autoComplete="new-password"
+              maxLength={32}
               onChange={(event) => {
                 setConfirm(event.target.value);
                 if (fieldErrors.confirm) {
@@ -174,15 +181,6 @@ export default function FirstLoginForm() {
               required
               error={fieldErrors.confirm}
             />
-
-            <section className="mb-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
-                {form.firstLoginTermsTitle}
-              </h2>
-              <p className="mt-1.5 max-h-28 overflow-y-auto text-[12px] leading-5 text-slate-600">
-                {form.firstLoginTerms}
-              </p>
-            </section>
 
             <label className="mb-3 flex items-start gap-2 text-[12px] leading-5 text-slate-600">
               <input
@@ -196,7 +194,17 @@ export default function FirstLoginForm() {
                 }}
                 className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-slate-300 text-cnhs-green-dark"
               />
-              <span>{form.firstLoginAccept}</span>
+              <span>
+                {form.firstLoginAcceptPrefix}
+                <button
+                  type="button"
+                  onClick={() => setTermsOpen(true)}
+                  className="inline cursor-pointer font-semibold text-[#174D37] underline underline-offset-2 hover:text-[#123D2C]"
+                >
+                  {form.firstLoginAcceptLink}
+                </button>
+                {form.firstLoginAcceptSuffix}
+              </span>
             </label>
             {fieldErrors.terms ? (
               <p className="mb-2 text-[11px] font-medium text-red-600">
@@ -208,6 +216,44 @@ export default function FirstLoginForm() {
           </form>
         </div>
       </main>
+
+      {termsOpen ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px]"
+            aria-label="Close terms"
+            onClick={() => setTermsOpen(false)}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="first-login-terms-title"
+            className="relative z-10 w-full max-w-[480px] overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.18)]"
+          >
+            <div className="border-b border-slate-100 px-5 py-3.5">
+              <h2
+                id="first-login-terms-title"
+                className="text-base font-semibold tracking-[-0.02em] text-slate-900"
+              >
+                {form.firstLoginTermsTitle}
+              </h2>
+            </div>
+            <div className="max-h-[50vh] overflow-y-auto px-5 py-4 text-[13px] leading-6 text-slate-600">
+              {form.firstLoginTerms}
+            </div>
+            <div className="border-t border-slate-100 px-5 py-3">
+              <button
+                type="button"
+                onClick={() => setTermsOpen(false)}
+                className="inline-flex h-9 w-full cursor-pointer items-center justify-center rounded-xl bg-[#174D37] text-[12px] font-semibold text-white hover:bg-[#123D2C]"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </motion.div>
   );
 }
