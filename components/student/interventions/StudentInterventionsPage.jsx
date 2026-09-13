@@ -22,9 +22,9 @@ export default function StudentInterventionsPage() {
       className="pb-5"
     >
       <StudentPageHeader
-        breadcrumb="Home / Interventions / PLP"
-        title="Interventions / PLP"
-        subtitle="Personalized Learning Plan recommendations for you and your class"
+        breadcrumb="Home / Interventions"
+        title="Interventions"
+        subtitle="Recommendations and recorded progress from your teachers. You cannot edit these records."
       />
 
       {error ? (
@@ -42,8 +42,8 @@ export default function StudentInterventionsPage() {
         <div className="space-y-3">
           <StudentSectionCard
             icon={ClipboardList}
-            title="Your PLP summary"
-            subtitle="These are school support recommendations based on your grades, not punishment."
+            title="Your recommendation summary"
+            subtitle="Based on your grades (ECR). Attendance is shown separately and is not used for academic risk."
           >
             <div className="flex flex-wrap items-center gap-2">
               <RiskPill value={data.summary.riskLevel} />
@@ -108,7 +108,7 @@ export default function StudentInterventionsPage() {
                 ))
               ) : (
                 <p className="py-8 text-center text-xs text-slate-400">
-                  No PLP interventions at this time.
+                  No intervention recommended at this time.
                 </p>
               )}
             </div>
@@ -129,6 +129,22 @@ export default function StudentInterventionsPage() {
                   </span>
                 ))}
               </div>
+            </StudentSectionCard>
+          ) : null}
+
+          {data.recordedProgress?.checkCount ? (
+            <StudentSectionCard
+              title="Recorded Progress"
+              subtitle="Latest Assessment from saved Pre / Mid / Post. Not a claim that intervention caused the change."
+            >
+              <p className="text-[13px] font-semibold text-slate-800">
+                Latest Assessment {data.recordedProgress.label}
+              </p>
+              <p className="mt-1 text-[12px] text-slate-500">
+                Baseline vs Latest:{" "}
+                {data.recordedProgress.baseline?.percent ?? "—"}% →{" "}
+                {data.recordedProgress.latest?.percent ?? "—"}%
+              </p>
             </StudentSectionCard>
           ) : null}
 
@@ -167,6 +183,26 @@ export default function StudentInterventionsPage() {
                     {data.monitoring.observationDate || "—"}
                   </p>
                 </div>
+                {data.monitoring.evaluation ? (
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
+                      Teacher Evaluation
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-800">
+                      {data.monitoring.evaluation}
+                    </p>
+                  </div>
+                ) : null}
+                {data.monitoring.nextAction ? (
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
+                      Next action
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-800">
+                      {data.monitoring.nextAction}
+                    </p>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <p className="text-[12px] text-slate-500">

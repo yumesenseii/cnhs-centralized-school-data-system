@@ -3,6 +3,8 @@
 import { Upload } from "lucide-react";
 import { useCallback, useMemo, useRef } from "react";
 import { scoreKey } from "@/lib/ecr/constants";
+import { termGradeDescription } from "@/lib/ecr/computeGrades";
+import { formatSf2LearnerName } from "@/lib/attendance/sf2Daily";
 import EcrHpsRow, {
   EcrHeaderGroups,
   EcrSubHeaders,
@@ -83,6 +85,9 @@ function ScoreCells({
   onPasteColumn,
 }) {
   const groups = ["WW", "PT", "QA"];
+  const termGrade = Number(computed?.term_grade);
+  const hasTermGrade = Number.isFinite(termGrade);
+  const desc = termGradeDescription(computed?.term_grade);
 
   return (
     <>
@@ -108,13 +113,27 @@ function ScoreCells({
       <td className={`${tdBase} relative z-0 bg-slate-50 text-center font-medium`}>
         {computed?.initial_grade ?? "—"}
       </td>
-      <td
-        className={`${tdBase} relative z-0 bg-[#f0faf4] text-center font-semibold text-cnhs-green-dark`}
-      >
-        {computed?.term_grade ?? "—"}
+      <td className={`${tdBase} relative z-0 bg-[#f0faf4] text-center font-semibold`}>
+        <span
+          className={
+            hasTermGrade
+              ? termGrade < 75
+                ? "!text-red-600"
+                : "!text-cnhs-green-dark"
+              : ""
+          }
+        >
+          {computed?.term_grade ?? "—"}
+        </span>
       </td>
       <td className={`${tdBase} relative z-0 text-center`}>
-        {computed?.description || "—"}
+        <span
+          className={
+            desc === "Did Not Meet Expectations" ? "font-medium !text-red-600" : ""
+          }
+        >
+          {desc || "—"}
+        </span>
       </td>
     </>
   );
@@ -196,9 +215,20 @@ export default function EcrGrid({
     const q = String(searchQuery ?? "").trim().toLowerCase();
     if (!q) return students;
     return students.filter((student) => {
-      const name = String(student.name ?? "").toLowerCase();
+      const display = formatSf2LearnerName(student).toLowerCase();
+      const first = String(student.first_name ?? "").toLowerCase();
+      const last = String(student.last_name ?? "").toLowerCase();
+      const middle = String(student.middle_name ?? "").toLowerCase();
+      const given = String(student.name ?? "").toLowerCase();
       const lrn = String(student.studentNumber ?? "").toLowerCase();
-      return name.includes(q) || lrn.includes(q);
+      return (
+        display.includes(q) ||
+        first.includes(q) ||
+        last.includes(q) ||
+        middle.includes(q) ||
+        given.includes(q) ||
+        lrn.includes(q)
+      );
     });
   }, [students, searchQuery]);
 
@@ -313,7 +343,9 @@ export default function EcrGrid({
                 {student.studentNumber ?? "—"}
               </td>
               <td className={`${tdBase} ${stickyName}`}>
-                <span className="block truncate font-medium">{student.name}</span>
+                <span className="block truncate font-medium">
+                  {formatSf2LearnerName(student)}
+                </span>
                 <RowStatusBadge status={status} />
               </td>
               <ScoreCells

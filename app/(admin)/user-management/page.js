@@ -171,7 +171,15 @@ export default function UserManagementPage() {
 
   async function handleCreateUser(payload) {
     const result = await createManagedUser(payload);
-    if (!result.error) await refresh();
+    if (!result.error) {
+      const email = String(payload.email ?? "").trim();
+      setToast(
+        email
+          ? `Account created. Temporary password sent to ${email}.`
+          : "Account created. Temporary password sent."
+      );
+      await refresh();
+    }
     return result;
   }
 

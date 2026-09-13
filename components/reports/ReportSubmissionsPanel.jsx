@@ -66,7 +66,7 @@ function LessonPlanStatusBar({ approved, pending, needsRevision, total }) {
 }
 
 /**
- * Lesson plan + monitoring follow-up snapshot for Submissions module.
+ * Lesson plan + monitoring follow-up overview for Submissions module.
  */
 export default function ReportSubmissionsPanel({
   lessonSummary = null,

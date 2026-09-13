@@ -74,7 +74,7 @@ function riskTextTone(level) {
 }
 
 /**
- * Admin class-folder snapshot — wide formal report with priority learners.
+ * Admin class-folder overview — wide formal report with priority learners.
  */
 export default function ReportPreviewModal({
   open,
@@ -443,7 +443,7 @@ export default function ReportPreviewModal({
                             className="px-3 py-6 text-center text-[11px] text-slate-400"
                           >
                             No high-risk or ARAL-priority learners in this
-                            class snapshot.
+                            class overview.
                           </td>
                         </tr>
                       )}

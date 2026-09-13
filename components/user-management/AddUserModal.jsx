@@ -8,20 +8,14 @@ function makeEmployeeId() {
   return `EMP-${year}-${digits}`;
 }
 
-function makeTempPassword() {
-  return `CNHS-Tmp-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-}
-
 export default function AddUserModal({ open, options, onClose, onSubmit }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [employeeId, setEmployeeId] = useState(makeEmployeeId);
-  const [temporaryPassword, setTemporaryPassword] = useState(makeTempPassword);
 
   useEffect(() => {
     if (!open) return;
     setEmployeeId(makeEmployeeId());
-    setTemporaryPassword(makeTempPassword());
     setError("");
     setSaving(false);
   }, [open]);
@@ -43,7 +37,6 @@ export default function AddUserModal({ open, options, onClose, onSubmit }) {
       email: form.get("email"),
       role: form.get("role"),
       learningArea: form.get("learningArea"),
-      temporaryPassword: temporaryPassword || form.get("temporaryPassword"),
       status: form.get("status"),
     });
 
@@ -106,21 +99,13 @@ export default function AddUserModal({ open, options, onClose, onSubmit }) {
             <SelectField label="Learning Area" name="learningArea" options={options.learningAreas} />
           </div>
           <p className="text-[11px] leading-4 text-slate-400">
+            A temporary password will be emailed to this address. They must
+            change it on first login.
+          </p>
+          <p className="text-[11px] leading-4 text-slate-400">
             Assign sections and class offerings from Class Assignments after
             creating the teacher account.
           </p>
-          <label className="block">
-            <span className="mb-1.5 block text-[11px] font-semibold text-slate-600">
-              Temporary Password
-            </span>
-            <input
-              name="temporaryPassword"
-              value={temporaryPassword}
-              readOnly
-              required
-              className="h-10 w-full rounded-xl border border-slate-200 bg-slate-100 px-3 text-xs text-slate-700 outline-none"
-            />
-          </label>
           <SelectField label="Status" name="status" options={options.statuses} />
 
           {error ? (

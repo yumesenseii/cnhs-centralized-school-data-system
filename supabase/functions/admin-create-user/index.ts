@@ -1,5 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  loginUrlFromEnv,
+  requireBrevoConfig,
+  sendBrevoTransactionalEmail,
+  welcomeAccountEmail,
+} from "../_shared/brevo.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,6 +27,17 @@ function usernameFromEmail(email: string) {
   return email.split("@")[0].toLowerCase().replace(/[^a-z0-9._-]/g, "");
 }
 
+function generateTemporaryPassword() {
+  const bytes = new Uint8Array(9);
+  crypto.getRandomValues(bytes);
+  const token = Array.from(bytes, (b) => b.toString(36).padStart(2, "0"))
+    .join("")
+    .replace(/[^a-z0-9]/gi, "")
+    .slice(0, 10)
+    .toUpperCase();
+  return `CNHS-${token || "TMP9X7K2"}`;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -32,6 +49,11 @@ Deno.serve(async (req: Request) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !anonKey || !serviceRoleKey) {
     return json({ ok: false, error: "Supabase function environment is incomplete." }, 500);
+  }
+
+  const brevo = requireBrevoConfig();
+  if (!brevo.ok) {
+    return json({ ok: false, error: brevo.error }, 500);
   }
 
   const authorization = req.headers.get("Authorization");
@@ -70,24 +92,22 @@ Deno.serve(async (req: Request) => {
   const lastName = clean(body.lastName);
   const employeeId = clean(body.employeeId);
   const email = clean(body.email).toLowerCase();
-  const password = clean(body.temporaryPassword);
+  // Ignore any client-supplied password. HT never sees or shares it.
+  const password = generateTemporaryPassword();
   const role = body.role === "admin" ? "admin" : "teacher";
   const status = body.status === "inactive" ? "inactive" : "active";
   const learningArea = clean(body.learningArea) || (role === "admin" ? "Administration" : "");
   const fullName = `${firstName} ${lastName}`.trim();
 
-  if (!firstName || !lastName || !employeeId || !email || !password) {
-    return json({ ok: false, error: "First name, last name, employee ID, email, and password are required." }, 400);
-  }
-  if (password.length < 8) {
-    return json({ ok: false, error: "Temporary password must contain at least 8 characters." }, 400);
+  if (!firstName || !lastName || !employeeId || !email) {
+    return json({ ok: false, error: "First name, last name, employee ID, and email are required." }, 400);
   }
 
   const { data: authData, error: authError } = await admin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
-    user_metadata: { full_name: fullName, role },
+    user_metadata: { full_name: fullName, role, must_change_password: true },
   });
   if (authError || !authData.user) {
     return json({ ok: false, error: authError?.message || "Unable to create Auth user." }, 400);
@@ -130,6 +150,23 @@ Deno.serve(async (req: Request) => {
       });
       if (teacherError) throw teacherError;
     }
+
+    // Safer: keep the account only if the welcome email is sent.
+    // HT can retry Add User; the teacher never gets an account they cannot sign into.
+    const message = welcomeAccountEmail({
+      fullName,
+      email,
+      temporaryPassword: password,
+      loginUrl: loginUrlFromEnv(),
+    });
+    const emailed = await sendBrevoTransactionalEmail({
+      toEmail: email,
+      toName: fullName,
+      subject: message.subject,
+      textContent: message.textContent,
+      htmlContent: message.htmlContent,
+    });
+    if (!emailed.ok) throw new Error(emailed.error);
 
     return json({
       ok: true,

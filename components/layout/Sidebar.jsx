@@ -15,9 +15,11 @@ import {
   Layers3,
   LayoutDashboard,
   LogOut,
+  Moon,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
+  Sun,
   Users,
 } from "lucide-react";
 import { SIDEBAR_WIDTH_CLASS } from "@/lib/constants/layout";
@@ -25,6 +27,7 @@ import { SCHOOL_NAME } from "@/lib/constants/brand";
 import { clearAdminMonitoringUiSnapshot } from "@/lib/admin/adminMonitoringUiCache";
 import { createClient } from "@/lib/supabase/client";
 import LogoutConfirmModal from "@/components/shared/LogoutConfirmModal";
+import { useTheme } from "@/components/theme/ThemeProvider";
 import { cn } from "@/lib/utils";
 
 const menuNavigation = [
@@ -125,6 +128,7 @@ export default function Sidebar({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { resolvedTheme, hydrated, setTheme } = useTheme();
   const [profile, setProfile] = useState({
     initials: "HT",
     name: "Head Teacher",
@@ -133,6 +137,11 @@ export default function Sidebar({
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const showCollapseToggle = !mobile && typeof onToggleCollapse === "function";
+  const isDark = resolvedTheme === "dark";
+
+  function toggleTheme() {
+    setTheme(isDark ? "light" : "dark");
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -284,7 +293,20 @@ export default function Sidebar({
         </NavSection>
       </nav>
 
-      <div className={cn("mt-auto space-y-2 px-3 pb-3", collapsed && "px-2")}>
+      <div className={cn("mt-auto space-y-2 px-3 pb-3 pt-2", collapsed && "px-2")}>
+        {hydrated ? (
+          <div className={cn("flex px-0.5", collapsed ? "justify-center" : "justify-end")}>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              title={isDark ? "Light mode" : "Dark mode"}
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/8 hover:text-white"
+            >
+              {isDark ? <Sun size={15} strokeWidth={1.9} /> : <Moon size={15} strokeWidth={1.9} />}
+            </button>
+          </div>
+        ) : null}
         <div
           className={cn(
             "flex items-center gap-2.5 rounded-lg bg-white/10 px-2.5 py-2",

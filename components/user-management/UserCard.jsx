@@ -3,7 +3,6 @@ import ClassBadge from "@/components/user-management/ClassBadge";
 import StatusBadge, {
   RoleBadge,
 } from "@/components/user-management/StatusBadge";
-import SubmissionProgress from "@/components/user-management/SubmissionProgress";
 import { cn } from "@/lib/utils";
 
 const avatarTones = {
@@ -71,29 +70,6 @@ export default function UserCard({
         ) : (
           <p className="mt-1 text-[10px] text-slate-400">No assigned classes</p>
         )}
-      </div>
-
-      <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-2.5">
-        <div>
-          <p className="text-[9px] font-medium uppercase tracking-[0.06em] text-slate-400">
-            E-Class
-          </p>
-          <SubmissionProgress
-            compact
-            label={user.eClassSubmission.label}
-            tone={user.eClassSubmission.tone}
-          />
-        </div>
-        <div>
-          <p className="text-[9px] font-medium uppercase tracking-[0.06em] text-slate-400">
-            Lesson Plan
-          </p>
-          <SubmissionProgress
-            compact
-            label={user.lessonPlanSubmission.label}
-            tone={user.lessonPlanSubmission.tone}
-          />
-        </div>
       </div>
 
       <div className="mt-3 border-t border-slate-100 pt-3">

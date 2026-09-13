@@ -133,16 +133,47 @@ export function useTeacherMonitoring() {
       approvals.data ?? new Map()
     );
 
+    let facilitatorMap = new Map();
+    try {
+      const assignmentMap = await getAralAssignmentMapByStudent({
+        schoolYear: schoolYear || "SY 2026-2027",
+      });
+      if (!assignmentMap.error) {
+        facilitatorMap = assignmentMap.data ?? new Map();
+      }
+    } catch {
+      facilitatorMap = new Map();
+    }
+
+    const studentsWithFacilitators = studentsWithApprovals.map((student) => {
+      const assignment = facilitatorMap.get(student.studentId);
+      if (!assignment) {
+        return {
+          ...student,
+          aralFacilitatorAssigned: Boolean(student.aralFacilitatorAssigned),
+          aralFacilitatorTeacherId: student.aralFacilitatorTeacherId ?? null,
+          aralFacilitatorName: student.aralFacilitatorName ?? null,
+        };
+      }
+      return {
+        ...student,
+        aralFacilitatorAssigned: true,
+        aralFacilitatorTeacherId: assignment.facilitatorTeacherId,
+        aralFacilitatorName: assignment.facilitatorName,
+        aralAssignmentId: assignment.id,
+      };
+    });
+
     const nextKpis = buildMonitoringKpis(
-      studentsWithApprovals,
+      studentsWithFacilitators,
       roster.classSummaries
     );
 
-    setStudents(studentsWithApprovals);
+    setStudents(studentsWithFacilitators);
     setClassSummaries(roster.classSummaries);
     setKpis(nextKpis);
     saveTeacherMonitoringUiSnapshot({
-      students: studentsWithApprovals,
+      students: studentsWithFacilitators,
       classSummaries: roster.classSummaries,
       kpis: nextKpis,
       teacher: session.data.teacher,
@@ -152,7 +183,7 @@ export function useTeacherMonitoring() {
 
     syncRecommendationNotifications({
       profileId: session.data.profile?.id ?? null,
-      students: studentsWithApprovals,
+      students: studentsWithFacilitators,
       classSummaries: roster.classSummaries,
     });
   }, [beginLoad, endLoad]);
@@ -304,6 +335,7 @@ export function useAdminMonitoring() {
   const [profile, setProfile] = useState(() => cached?.profile ?? null);
   const [error, setError] = useState("");
   const [selectedDetail, setSelectedDetail] = useState(null);
+  const [selectedLearner, setSelectedLearner] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(
     !hadSnapshot,
@@ -450,6 +482,7 @@ export function useAdminMonitoring() {
 
   const openStudent = useCallback(async (learner) => {
     if (!learner?.classId || !learner?.studentId) return;
+    setSelectedLearner(learner);
     setDetailLoading(true);
     const result = await getStudentMonitoringDetail({
       classId: learner.classId,
@@ -463,6 +496,7 @@ export function useAdminMonitoring() {
 
   const closeStudent = useCallback(() => {
     setSelectedDetail(null);
+    setSelectedLearner(null);
   }, []);
 
   return {
@@ -476,6 +510,7 @@ export function useAdminMonitoring() {
     error,
     refresh,
     selectedDetail,
+    selectedLearner,
     detailLoading,
     openStudent,
     closeStudent,

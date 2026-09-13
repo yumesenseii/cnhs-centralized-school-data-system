@@ -14,6 +14,7 @@ import {
   Users,
   X,
   FileText,
+  Download,
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import AdminAralFacilitatorAssignPanel from "@/components/admin/monitoring/AdminAralFacilitatorAssignPanel";
@@ -21,6 +22,11 @@ import AdminAralApprovalPanel from "@/components/admin/monitoring/AdminAralAppro
 import AdminAralProgressPanel from "@/components/admin/monitoring/AdminAralProgressPanel";
 import AdminClassReportFilesPanel from "@/components/admin/monitoring/AdminClassReportFilesPanel";
 import AdminMonitoredStudentsPanel from "@/components/admin/monitoring/AdminMonitoredStudentsPanel";
+import InterventionDetailPanel from "@/components/teacher/monitoring/InterventionDetailPanel";
+import { buildHtInterventionSummary } from "@/lib/monitoring/interventionLifecycle";
+import { downloadInterventionCaseloadExcel } from "@/lib/reports/interventionCaseloadExport";
+import { isInterventionCandidate, buildRecordedProgress } from "@/lib/monitoring/interventionLifecycle";
+import { listAralAssessmentScoresForStudents } from "@/lib/supabase/queries/aralProgram";
 import {
   Pill,
   RiskPill,
@@ -293,6 +299,7 @@ export default function AdminMonitoringPage() {
     error,
     refresh,
     selectedDetail,
+    selectedLearner,
     detailLoading,
     openStudent,
     closeStudent,
@@ -307,6 +314,7 @@ export default function AdminMonitoringPage() {
   const [risk, setRisk] = useState("All Risks");
   const [status, setStatus] = useState("All Status");
   const [exportingAral, setExportingAral] = useState(false);
+  const [exportingIntervention, setExportingIntervention] = useState(false);
   const [activeTab, setActiveTab] = useState("received");
   const [monitoredSubview, setMonitoredSubview] = useState("aral");
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
@@ -396,6 +404,11 @@ export default function AdminMonitoringPage() {
     [filtered, classSummaries]
   );
 
+  const htIntervention = useMemo(
+    () => buildHtInterventionSummary(students, classSummaries),
+    [students, classSummaries]
+  );
+
   const actionCounts = useMemo(() => {
     const files = buildHtReceivedClassReportFiles({
       students,
@@ -453,6 +466,43 @@ export default function AdminMonitoringPage() {
     if (section && section !== "All Sections") parts.push(section);
     return parts.length ? parts.join(" ") : "School-wide";
   }, [grade, section]);
+
+  async function handleExportInterventionCaseload() {
+    if (exportingIntervention) return;
+    setExportingIntervention(true);
+    try {
+      const learners = students.filter(isInterventionCandidate);
+      const ids = learners.map((row) => row.studentId).filter(Boolean);
+      let progressByStudent = {};
+      if (ids.length) {
+        const result = await listAralAssessmentScoresForStudents(ids);
+        if (!result.error) {
+          const byStudent = new Map();
+          for (const row of result.data ?? []) {
+            const list = byStudent.get(row.studentId) ?? [];
+            list.push(row);
+            byStudent.set(row.studentId, list);
+          }
+          progressByStudent = {};
+          for (const [studentId, list] of byStudent) {
+            progressByStudent[studentId] = buildRecordedProgress(list);
+          }
+        }
+      }
+      await downloadInterventionCaseloadExcel({
+        learners,
+        progressByStudent,
+        generatedBy: profile?.full_name || "Head Teacher / Administrator",
+        scopeLabel: exportScopeLabel,
+        gradeSection: exportScopeLabel,
+      });
+    } catch (err) {
+      console.error(err);
+      window.alert("Unable to export intervention caseload. Please try again.");
+    } finally {
+      setExportingIntervention(false);
+    }
+  }
 
   async function handleExportAralRecommended() {
     if (exportingAral) return;
@@ -541,6 +591,20 @@ export default function AdminMonitoringPage() {
         description="Track at-risk learners, ARAL approvals, and remediation across classes."
         controls={
           <>
+            <button
+              type="button"
+              onClick={handleExportInterventionCaseload}
+              disabled={loading || exportingIntervention}
+              title="Export learners under intervention (Recorded Progress, not a causation claim)"
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-[12px] font-semibold text-cnhs-green-dark transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {exportingIntervention ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <Download size={13} />
+              )}
+              Intervention Excel
+            </button>
             <button
               type="button"
               onClick={handleExportAralRecommended}
@@ -811,6 +875,56 @@ export default function AdminMonitoringPage() {
             onClick={() => goToTab("students", "aral")}
           />
         </div>
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <StatCard
+            label="Not started"
+            value={htIntervention.notStarted}
+            icon={Clock3}
+            tone="bg-slate-50 text-slate-500"
+            onClick={() => goToTab("students")}
+          />
+          <StatCard
+            label="Further support"
+            value={htIntervention.needsFurtherSupport}
+            icon={AlertTriangle}
+            tone="bg-orange-50 text-cnhs-orange"
+            onClick={() => goToTab("students")}
+          />
+          <StatCard
+            label="Further monitoring"
+            value={htIntervention.forFurtherMonitoring}
+            icon={Clock3}
+            tone="bg-amber-50 text-amber-700"
+            onClick={() => goToTab("students")}
+          />
+          <StatCard
+            label="Classroom remedial classes"
+            value={htIntervention.classroomRemedial}
+            icon={BookOpen}
+            tone="bg-green-50 text-cnhs-green-dark"
+            onClick={() => goToTab("students", "nonAral")}
+          />
+        </div>
+        {htIntervention.bySection.length ? (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {htIntervention.bySection.slice(0, 8).map((row) => (
+              <span
+                key={row.label}
+                className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200"
+              >
+                {row.label} · {row.count}
+              </span>
+            ))}
+            {htIntervention.bySubject.slice(0, 6).map((row) => (
+              <span
+                key={`sub-${row.label}`}
+                className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-cnhs-green-dark ring-1 ring-emerald-100"
+              >
+                {row.label} · {row.count}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <div
@@ -895,11 +1009,19 @@ export default function AdminMonitoringPage() {
         ) : null}
       </div>
 
-      <DetailPanel
-        detail={selectedDetail}
-        loading={detailLoading}
-        onClose={closeStudent}
-      />
+      {selectedLearner || selectedDetail ? (
+        <InterventionDetailPanel
+          learner={selectedLearner || selectedDetail}
+          canWrite={false}
+          onClose={closeStudent}
+        />
+      ) : detailLoading ? (
+        <DetailPanel
+          detail={null}
+          loading
+          onClose={closeStudent}
+        />
+      ) : null}
     </motion.div>
   );
 }

@@ -10,7 +10,6 @@ const columns = [
   "User",
   "Role / Learning Area",
   "Assigned Classes",
-  "Submissions",
   "Account Status",
   "Actions",
 ];
@@ -100,14 +99,13 @@ export default function UsersTable({
       </div>
 
       <div className="hidden overflow-x-auto lg:block">
-        <table className="w-full min-w-[920px] border-collapse text-left">
+        <table className="w-full min-w-[800px] border-collapse text-left">
           <colgroup>
-            <col className="w-[24%]" />
-            <col className="w-[16%]" />
-            <col className="w-[22%]" />
-            <col className="w-[18%]" />
-            <col className="w-[10%]" />
-            <col className="w-[10%]" />
+            <col className="w-[28%]" />
+            <col className="w-[20%]" />
+            <col className="w-[28%]" />
+            <col className="w-[12%]" />
+            <col className="w-[12%]" />
           </colgroup>
           <thead>
             <tr className="bg-slate-50/80">

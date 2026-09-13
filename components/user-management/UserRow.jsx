@@ -1,7 +1,6 @@
 import ActionButtons from "@/components/user-management/ActionButtons";
 import ClassBadge from "@/components/user-management/ClassBadge";
 import StatusBadge, { RoleBadge } from "@/components/user-management/StatusBadge";
-import SubmissionProgress from "@/components/user-management/SubmissionProgress";
 import { cn } from "@/lib/utils";
 
 const avatarTones = {
@@ -68,30 +67,6 @@ export default function UserRow({
         ) : (
           <span className="text-[11px] text-slate-300">—</span>
         )}
-      </td>
-      <td className="px-3 py-3 align-middle">
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[9px] font-medium uppercase tracking-[0.06em] text-slate-400">
-              E-Class
-            </span>
-            <SubmissionProgress
-              compact
-              label={user.eClassSubmission.label}
-              tone={user.eClassSubmission.tone}
-            />
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[9px] font-medium uppercase tracking-[0.06em] text-slate-400">
-              Lesson Plan
-            </span>
-            <SubmissionProgress
-              compact
-              label={user.lessonPlanSubmission.label}
-              tone={user.lessonPlanSubmission.tone}
-            />
-          </div>
-        </div>
       </td>
       <td className="px-3 py-3 align-middle">
         <StatusBadge value={user.status} />

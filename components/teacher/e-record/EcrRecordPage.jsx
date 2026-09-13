@@ -108,7 +108,7 @@ export default function EcrRecordPage({ classId }) {
 
   async function handleExport() {
     setExporting(true);
-    setToast("Preparing Class Record Excel…");
+    setToast("Preparing official E-Class Record…");
     try {
       if (dirty && activeTerm !== "summary") {
         const saved = await saveDraft();
@@ -136,7 +136,7 @@ export default function EcrRecordPage({ classId }) {
         computedByStudent,
         termDataByTerm,
       });
-      setToast("Class Record Excel downloaded.");
+      setToast("Official E-Class Record downloaded.");
     } catch (err) {
       setToast(err?.message ?? "Unable to export Excel.");
     } finally {

@@ -38,6 +38,8 @@ export const monitoringStatusStyles = {
   [MONITORING_STATUS.ONGOING]: "bg-sky-50 text-sky-700",
   [MONITORING_STATUS.IMPROVED]: "bg-emerald-50 text-emerald-700",
   [MONITORING_STATUS.NEEDS_FOLLOW_UP]: "bg-orange-50 text-cnhs-orange",
+  [MONITORING_STATUS.NEEDS_FURTHER_SUPPORT]: "bg-orange-50 text-cnhs-orange",
+  [MONITORING_STATUS.FOR_FURTHER_MONITORING]: "bg-amber-50 text-amber-800",
   [MONITORING_STATUS.COMPLETED]: "bg-green-50 text-cnhs-green-dark",
   "Needs Update": "bg-orange-50 text-cnhs-orange",
 };

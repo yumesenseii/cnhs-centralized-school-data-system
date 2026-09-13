@@ -229,20 +229,39 @@ export default function FirstLoginForm() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="first-login-terms-title"
-            className="relative z-10 w-full max-w-[480px] overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.18)]"
+            className="relative z-10 flex w-full max-w-[680px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.18)]"
           >
-            <div className="border-b border-slate-100 px-5 py-3.5">
+            <div className="px-6 pt-5 pb-3">
+              <p className="text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-[#174D37]">
+                {form.firstLoginTermsSchool}
+              </p>
+              <p className="mt-1 text-center text-[12px] font-medium text-slate-500">
+                {form.firstLoginTermsSystem}
+              </p>
               <h2
                 id="first-login-terms-title"
-                className="text-base font-semibold tracking-[-0.02em] text-slate-900"
+                className="mt-2 text-center text-[17px] font-semibold tracking-[-0.02em] text-slate-900"
               >
                 {form.firstLoginTermsTitle}
               </h2>
+              <p className="mt-1 text-center text-[12px] italic text-slate-500">
+                {form.firstLoginTermsEffective}
+              </p>
+              <div className="mt-3 h-px bg-[#174D37]" />
             </div>
-            <div className="max-h-[50vh] overflow-y-auto px-5 py-4 text-[13px] leading-6 text-slate-600">
-              {form.firstLoginTerms}
+            <div className="max-h-[60vh] overflow-y-auto px-6 py-2">
+              {(form.firstLoginTermsArticles ?? []).map((article) => (
+                <section key={article.number} className="mb-4 last:mb-3">
+                  <h3 className="text-[13px] font-bold text-slate-900">
+                    {article.number}. {article.title}
+                  </h3>
+                  <p className="mt-1 text-[13px] leading-7 text-slate-600">
+                    {article.body}
+                  </p>
+                </section>
+              ))}
             </div>
-            <div className="border-t border-slate-100 px-5 py-3">
+            <div className="border-t border-slate-100 px-6 py-3">
               <button
                 type="button"
                 onClick={() => setTermsOpen(false)}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
@@ -15,6 +15,11 @@ import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import ClassReportFilesTable from "@/components/teacher/monitoring/ClassReportFilesTable";
 import ClassReportFileModal from "@/components/teacher/monitoring/ClassReportFileModal";
+import InterventionDetailPanel from "@/components/teacher/monitoring/InterventionDetailPanel";
+import TeacherInterventionCaseload from "@/components/teacher/monitoring/TeacherInterventionCaseload";
+import { isInterventionCandidate, buildRecordedProgress } from "@/lib/monitoring/interventionLifecycle";
+import { listAralAssessmentScoresForStudents } from "@/lib/supabase/queries/aralProgram";
+import { cn } from "@/lib/utils";
 import { useTeacherMonitoring } from "@/hooks/teacher/useMonitoring";
 import {
   buildClassReportFiles,
@@ -49,6 +54,9 @@ export default function MonitoringDashboard() {
     refresh,
   } = useTeacherMonitoring();
 
+  const [workspace, setWorkspace] = useState("caseload");
+  const [selectedLearner, setSelectedLearner] = useState(null);
+  const [progressByStudent, setProgressByStudent] = useState({});
   const [search, setSearch] = useState("");
   const [grade, setGrade] = useState("All grades");
   const [section, setSection] = useState("All sections");
@@ -83,6 +91,34 @@ export default function MonitoringDashboard() {
   }
 
   useEffect(() => () => clearToastTimer(), []);
+
+  const loadProgress = useCallback(async () => {
+    const ids = students
+      .filter(isInterventionCandidate)
+      .map((s) => s.studentId)
+      .filter(Boolean);
+    if (!ids.length) {
+      setProgressByStudent({});
+      return;
+    }
+    const result = await listAralAssessmentScoresForStudents(ids);
+    if (result.error) return;
+    const byStudent = new Map();
+    for (const row of result.data ?? []) {
+      const list = byStudent.get(row.studentId) ?? [];
+      list.push(row);
+      byStudent.set(row.studentId, list);
+    }
+    const next = {};
+    for (const [studentId, list] of byStudent) {
+      next[studentId] = buildRecordedProgress(list);
+    }
+    setProgressByStudent(next);
+  }, [students]);
+
+  useEffect(() => {
+    loadProgress();
+  }, [loadProgress]);
 
   const teacherDisplayName = useMemo(() => {
     const named = formatPersonName(teacher);
@@ -273,8 +309,6 @@ export default function MonitoringDashboard() {
                   Academic Monitoring
                 </h1>
                 <p className="mt-1 text-[13px] text-slate-500">
-                  {filtered.length} {filtered.length === 1 ? "file" : "files"}
-                  {" · "}
                   {controls.schoolYear} · {controls.quarter}
                   {" · "}
                   {teacherDisplayName}
@@ -335,11 +369,44 @@ export default function MonitoringDashboard() {
         </div>
       ) : null}
 
+      <div
+        role="tablist"
+        className="mb-3 flex flex-wrap gap-1 rounded-xl border border-slate-100 bg-slate-50/70 p-1"
+      >
+        {[
+          { id: "caseload", label: "Intervention caseload" },
+          { id: "files", label: "Class reports" },
+        ].map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={workspace === item.id}
+            onClick={() => setWorkspace(item.id)}
+            className={cn(
+              "inline-flex h-8 cursor-pointer items-center rounded-lg px-3 text-[11px] font-semibold",
+              workspace === item.id
+                ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200"
+                : "text-slate-500 hover:bg-white/70"
+            )}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
       {loading && files.length === 0 && classSummaries.length === 0 ? (
         <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-100 bg-white py-16 text-sm text-slate-500">
           <Loader2 size={16} className="animate-spin" />
-          Loading class report files…
+          Loading academic monitoring…
         </div>
+      ) : workspace === "caseload" ? (
+        <TeacherInterventionCaseload
+          students={students}
+          progressByStudent={progressByStudent}
+          onOpen={setSelectedLearner}
+          teacherName={teacherDisplayName}
+        />
       ) : (
         <>
           <div className="mb-3 flex flex-col gap-2 rounded-2xl border border-slate-100 bg-white p-2.5 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:flex-row sm:items-center">
@@ -413,6 +480,19 @@ export default function MonitoringDashboard() {
           />
         </>
       )}
+
+      {selectedLearner ? (
+        <InterventionDetailPanel
+          learner={selectedLearner}
+          canWrite={Boolean(teacherId)}
+          teacherId={teacherId}
+          onClose={() => setSelectedLearner(null)}
+          onSaved={async () => {
+            await refresh();
+            await loadProgress();
+          }}
+        />
+      ) : null}
 
       {modalFile ? (
         <ClassReportFileModal

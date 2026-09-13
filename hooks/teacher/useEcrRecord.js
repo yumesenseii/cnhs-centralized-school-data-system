@@ -1,8 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { computeLearnerRow, computeFinalFromTerms } from "@/lib/ecr/computeGrades";
-import { getLearnerRowStatus } from "@/lib/ecr/gridLayout";
+import {
+  computeLearnerRow,
+  computeFinalFromTerms,
+  termGradeDescription,
+} from "@/lib/ecr/computeGrades";
+import {
+  compareLearnersBySurname,
+  getLearnerRowStatus,
+} from "@/lib/ecr/gridLayout";
 import { scoreKey } from "@/lib/ecr/constants";
 import {
   getOrCreateEcrWorkbook,
@@ -21,6 +28,7 @@ import {
   formatStudentName,
   mapEnrollmentToStudent,
 } from "@/lib/teacher/myClassesMappers";
+import { formatSf2LearnerName } from "@/lib/attendance/sf2Daily";
 import { parseTermNumber } from "@/lib/academic/termLabels";
 import { useSoftLoadState } from "@/hooks/useSoftLoadState";
 
@@ -106,7 +114,7 @@ export function useEcrRecord(classId) {
           ...(live ?? {}),
           ...imported,
           term_grade: imported.term_grade,
-          description: imported.description || "Imported",
+          description: termGradeDescription(imported.term_grade),
         };
       } else {
         map[student.id] = live;
@@ -154,7 +162,7 @@ export function useEcrRecord(classId) {
             row.term_grade === null || row.term_grade === undefined
               ? null
               : Number(row.term_grade),
-          description: row.description || "Imported",
+          description: termGradeDescription(row.term_grade),
           initial_grade: row.initial_grade ?? null,
           ww_total: row.ww_total ?? null,
           ww_ps: row.ww_ps ?? null,
@@ -202,7 +210,7 @@ export function useEcrRecord(classId) {
       const finalGrade = computeFinalFromTerms([terms[1], terms[2], terms[3]]);
       return {
         studentId: student.id,
-        name: student.name,
+        name: formatSf2LearnerName(student),
         sex: student.sex ?? student.gender,
         terms,
         finalGrade,
@@ -254,7 +262,7 @@ export function useEcrRecord(classId) {
 
       const roster = (enrollResult.data ?? [])
         .map(mapEnrollmentToStudent)
-        .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+        .sort(compareLearnersBySurname);
 
       const siblingMap = buildSiblingClassMap(
         mappedClass,
@@ -300,7 +308,7 @@ export function useEcrRecord(classId) {
                 row.term_grade === null || row.term_grade === undefined
                   ? null
                   : Number(row.term_grade),
-              description: row.description || "Imported",
+              description: termGradeDescription(row.term_grade),
               initial_grade: row.initial_grade ?? null,
               ww_total: row.ww_total ?? null,
               ww_ps: row.ww_ps ?? null,

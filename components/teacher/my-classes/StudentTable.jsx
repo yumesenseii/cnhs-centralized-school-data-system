@@ -24,6 +24,44 @@ const avatarTones = {
   blue: "bg-sky-100 text-sky-700",
 };
 
+const GRADE_COLUMNS = [
+  { key: "1", label: "T1", term: 1 },
+  { key: "2", label: "T2", term: 2 },
+  { key: "3", label: "T3", term: 3 },
+  { key: "final", label: "Final", term: 4 },
+];
+
+function gradeValue(student, key) {
+  if (key === "final") return student.termGrades?.final ?? student.averageGrade;
+  return student.termGrades?.[key] ?? null;
+}
+
+function GradeCell({ value, active = false }) {
+  const hasGrade = value !== null && value !== undefined && value !== "";
+  const numeric = Number(value);
+  const failing = hasGrade && Number.isFinite(numeric) && numeric < 75;
+  const passing = hasGrade && Number.isFinite(numeric) && numeric >= 75;
+
+  return (
+    <td
+      className={cn(
+        "px-3 py-2.5 text-center text-xs font-semibold tabular-nums",
+        active ? "bg-green-50/80" : "",
+        failing ? "text-red-600" : passing ? "text-cnhs-green-dark" : "text-slate-400"
+      )}
+    >
+      <span
+        className={cn(
+          "inline-flex min-w-[2.25rem] justify-center rounded-md px-1.5 py-0.5",
+          failing ? "bg-red-50" : passing ? "bg-green-50" : "bg-slate-50"
+        )}
+      >
+        {hasGrade && Number.isFinite(numeric) ? numeric : "—"}
+      </span>
+    </td>
+  );
+}
+
 export default function StudentTable({ classId }) {
   const router = useRouter();
   const {
@@ -189,32 +227,42 @@ export default function StudentTable({ classId }) {
               </label>
             </div>
             <p className="mt-2 text-[11px] text-slate-400">
-              {filtered.length} of {students.length} students · showing{" "}
-              {termLabel(viewQuarter)} grades
+              {filtered.length} of {students.length} students · KPIs use{" "}
+              {termLabel(viewQuarter)}. Final is the overall of available Terms
+              1–3.
             </p>
           </section>
 
           <section className="mt-4 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
             <div className="overflow-x-auto">
-              <table className="min-w-[760px] w-full border-collapse text-left">
+              <table className="min-w-[880px] w-full border-collapse text-left">
                 <thead>
                   <tr className="bg-slate-50/80">
-                    {[
-                      "Student Number",
-                      "Learner Name",
-                      "Gender",
-                      "Current General Average",
-                      "Action",
-                    ].map((column) => (
+                    <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                      Student Number
+                    </th>
+                    <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                      Learner Name
+                    </th>
+                    <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                      Sex
+                    </th>
+                    {GRADE_COLUMNS.map((column) => (
                       <th
-                        key={column}
-                        className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400"
+                        key={column.key}
+                        className={cn(
+                          "px-3 py-2 text-center text-[10px] font-semibold uppercase tracking-[0.08em]",
+                          Number(viewQuarter) === column.term
+                            ? "bg-green-50 text-cnhs-green-dark"
+                            : "text-slate-400"
+                        )}
                       >
-                        {column === "Current General Average"
-                          ? `${termLabel(viewQuarter)} Grade`
-                          : column}
+                        {column.label}
                       </th>
                     ))}
+                    <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                      Action
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -241,17 +289,16 @@ export default function StudentTable({ classId }) {
                           </span>
                         </div>
                       </td>
-                      <td className="px-3 py-2.5 text-xs text-slate-600">{student.gender}</td>
-                      <td
-                        className={cn(
-                          "px-3 py-2.5 text-xs font-semibold",
-                          student.averageGrade !== null && student.averageGrade < 75
-                            ? "text-red-600"
-                            : "text-slate-700"
-                        )}
-                      >
-                        {student.averageGrade ?? "—"}
+                      <td className="px-3 py-2.5 text-xs text-slate-600">
+                        {student.gender}
                       </td>
+                      {GRADE_COLUMNS.map((column) => (
+                        <GradeCell
+                          key={column.key}
+                          value={gradeValue(student, column.key)}
+                          active={Number(viewQuarter) === column.term}
+                        />
+                      ))}
                       <td className="px-3 py-2.5">
                         <Link
                           href={`/teacher/my-classes/${classItem.id}/students/${student.id}`}
