@@ -37,11 +37,11 @@ export default function TeacherAttendancePage() {
             </Link>
             <div className="min-w-0">
               <h1 className="text-xl font-semibold tracking-[-0.03em] text-slate-800">
-                My section attendance
+                Attendance monitoring
               </h1>
               <p className="mt-0.5 text-[12px] text-slate-500">
-                Upload your class monthly summary, then review ADA, PA, and
-                absences for your section.
+                Record Morning and Afternoon attendance. Totals and reports come
+                from saved daily records — not from an uploaded Excel file.
               </p>
             </div>
           </div>

@@ -1,8 +1,9 @@
 import TeacherAttendancePage from "@/components/teacher/attendance/TeacherAttendancePage";
 
 export const metadata = {
-  title: "My Section Attendance | CNHS Learn",
-  description: "Upload and review SF2 monthly class attendance summaries.",
+  title: "Attendance Monitoring | CNHS Learn",
+  description:
+    "Record Morning and Afternoon attendance. Totals come from daily records.",
 };
 
 export default function Page() {
