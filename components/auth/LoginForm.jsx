@@ -89,6 +89,15 @@ export default function LoginForm() {
         return;
       }
 
+      if (
+        (result.data.needsFirstLogin || result.data.mustChangePassword) &&
+        (result.data.role === "admin" || result.data.role === "teacher")
+      ) {
+        router.replace("/login/first-login");
+        router.refresh();
+        return;
+      }
+
       const destination = resolveRedirect(result.data.role);
       if (!destination) {
         setServerError("Unauthorized account.");
