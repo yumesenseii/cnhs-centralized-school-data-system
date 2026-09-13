@@ -13,16 +13,22 @@ import {
 import AralAssessmentReadonlyGrid from "@/components/teacher/aral-program/AralAssessmentReadonlyGrid";
 import AralSectionReportPanel from "@/components/teacher/aral-program/AralSectionReportPanel";
 import {
+  ARAL_FOCUS_OPTIONS,
   ARAL_PROGRESS_OPTIONS,
+  ARAL_REMARKS_MAX,
+  ARAL_REMARKS_PLACEHOLDER,
+  ARAL_SESSION_LABELS,
+  ARAL_SESSION_OPTIONS,
   ARAL_WEEKLY_INTERVENTION,
-  formatAralWeeklyRemarks,
+  clipAralRemarks,
+  parseAralProgress,
 } from "@/lib/monitoring/aralProgress";
 import { MONITORING_STATUS } from "@/lib/monitoring/recommendations";
 import {
   buildWeekFileRows,
   groupMonitoringRecordsByLearner,
 } from "@/lib/monitoring/aralSectionFiles";
-import { exportAralWeeklyProgressBySectionExcel } from "@/lib/reports/aralWeeklyProgressExport";
+import { downloadAralWeeklyTemplateExcel } from "@/lib/reports/aralWeeklyProgressExport";
 import { downloadAralAssessmentTemplateExcel } from "@/lib/reports/aralAssessmentExcel";
 import {
   createMonitoringRecord,
@@ -43,10 +49,6 @@ const th =
   "sticky top-0 z-10 border border-slate-200 bg-[#f3f3f3] px-2 py-1.5 text-left text-[11px] font-semibold text-slate-600 whitespace-nowrap";
 const td =
   "border border-slate-200 bg-white px-2 py-1 text-[12px] leading-snug text-slate-800 whitespace-nowrap";
-
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function stripWeekPrefix(remarks = "") {
   return String(remarks || "").replace(/^\[Week \d+\]\s*/i, "").trim();
@@ -85,7 +87,7 @@ export default function AralSectionFileModal({
   const [draft, setDraft] = useState({});
 
   const kind = file?.kind;
-  const editing = false;
+  const editing = kind === "weekly" && mode === "edit";
 
   const refreshWeekly = useCallback(async () => {
     const studentIds = learners.map((l) => l.studentId).filter(Boolean);
@@ -140,13 +142,15 @@ export default function AralSectionFileModal({
       const rec = row.record;
       next[row.learner.id] = {
         recordId: rec?.id || null,
-        observationDate: rec?.observationDate || todayIso(),
-        interventionGiven:
-          rec?.interventionGiven || ARAL_WEEKLY_INTERVENTION,
-        studentProgress: rec?.studentProgress || ARAL_PROGRESS_OPTIONS[2],
-        monitoringStatus:
-          rec?.monitoringStatus || MONITORING_STATUS.ONGOING,
-        teacherRemarks: stripWeekPrefix(rec?.teacherRemarks),
+        observationDate: rec?.observationDate || "",
+        sessionStatus: rec?.sessionStatus || "",
+        skillFocus: rec?.skillFocus || "",
+        studentProgress: rec?.studentProgress || "",
+        monitoringStatus: rec?.monitoringStatus || "",
+        teacherRemarks: stripWeekPrefix(rec?.teacherRemarks).slice(
+          0,
+          ARAL_REMARKS_MAX
+        ),
         followUpNeeded: Boolean(rec?.followUpNeeded),
       };
     }
@@ -159,10 +163,11 @@ export default function AralSectionFileModal({
     setDraft((prev) => ({
       ...prev,
       [learnerId]: {
-        observationDate: todayIso(),
-        interventionGiven: ARAL_WEEKLY_INTERVENTION,
-        studentProgress: ARAL_PROGRESS_OPTIONS[2],
-        monitoringStatus: MONITORING_STATUS.ONGOING,
+        observationDate: "",
+        sessionStatus: "",
+        skillFocus: "",
+        studentProgress: "",
+        monitoringStatus: "",
         teacherRemarks: "",
         followUpNeeded: false,
         recordId: null,
@@ -187,18 +192,31 @@ export default function AralSectionFileModal({
       const learner = row.learner;
       if (!learner.sourceClassId) continue;
       const cells = draft[learner.id];
-      if (!cells?.observationDate) continue;
+      const date = String(cells?.observationDate ?? "").trim();
+      const progress = parseAralProgress(cells?.studentProgress);
+      const remarks = clipAralRemarks(cells?.teacherRemarks);
+      if (!date && !progress && !remarks) continue;
+      if (!date || !progress) {
+        setFormError(
+          `Session Date and Weekly Progress are required for ${learner.studentName}. Leave the row empty to skip.`
+        );
+        return;
+      }
+      if (remarks.length > ARAL_REMARKS_MAX) {
+        setFormError(`Remarks for ${learner.studentName} must be ${ARAL_REMARKS_MAX} characters or fewer.`);
+        return;
+      }
 
       toSave.push({
         learner,
-        cells,
+        cells: { ...cells, teacherRemarks: remarks, studentProgress: progress },
         weekNumber,
       });
     }
 
     if (!toSave.length) {
       setFormError(
-        "Enter an Observation Date for at least one learner before saving."
+        "Fill Session Date and Weekly Progress for at least one learner. Empty rows are not saved."
       );
       return;
     }
@@ -208,17 +226,15 @@ export default function AralSectionFileModal({
       for (const item of toSave) {
         const payload = {
           observation_date: item.cells.observationDate,
-          intervention_given:
-            item.cells.interventionGiven?.trim() || ARAL_WEEKLY_INTERVENTION,
-          teacher_remarks: formatAralWeeklyRemarks(
-            item.weekNumber,
-            item.cells.teacherRemarks
-          ),
-          student_progress:
-            item.cells.studentProgress || ARAL_PROGRESS_OPTIONS[2],
+          intervention_given: ARAL_WEEKLY_INTERVENTION,
+          teacher_remarks: clipAralRemarks(item.cells.teacherRemarks),
+          student_progress: item.cells.studentProgress,
           follow_up_needed: Boolean(item.cells.followUpNeeded),
           monitoring_status:
             item.cells.monitoringStatus || MONITORING_STATUS.ONGOING,
+          week_number: item.weekNumber,
+          session_status: item.cells.sessionStatus || null,
+          skill_focus: item.cells.skillFocus || null,
         };
 
         if (item.cells.recordId) {
@@ -270,13 +286,13 @@ export default function AralSectionFileModal({
     setToast("");
     try {
       if (kind === "weekly") {
-        const result = await exportAralWeeklyProgressBySectionExcel({
+        const result = await downloadAralWeeklyTemplateExcel({
           learners,
+          records,
           gradeSection,
           schoolYear,
-          generatedBy: teacherName,
-          facilitatorName: teacherName,
           weekNumber: file.weekNumber,
+          generatedBy: teacherName,
         });
         setToast(`Downloaded ${result.filename}.`);
       } else if (kind === "assessment") {
@@ -361,7 +377,7 @@ export default function AralSectionFileModal({
                 ? "Read-only scores from the uploaded file. Re-upload from the file list to replace."
                 : kind === "report"
                   ? "Section summary from saved Pre / Mid / Post scores and weekly progress."
-                  : `Read-only Week ${file.weekNumber} from the uploaded file. Re-upload from the file list to replace.`}
+                  : `Week ${file.weekNumber} structured progress. Session is ARAL period only (not SF2). Download the template or Edit File.`}
             </p>
           </div>
 
@@ -414,14 +430,15 @@ export default function AralSectionFileModal({
                       <th className={cn(th, "w-10 text-center")}>#</th>
                       <th className={cn(th, "min-w-[180px]")}>Learner name</th>
                       <th className={cn(th, "min-w-[110px] text-center")}>
-                        Student no.
+                        LRN
                       </th>
                       <th className={cn(th, "w-[72px] text-center")}>Week</th>
                       <th className={cn(th, "min-w-[120px] text-center")}>
-                        Observation Date
+                        Session Date
                       </th>
-                      <th className={cn(th, "min-w-[160px]")}>Intervention</th>
-                      <th className={cn(th, "min-w-[140px]")}>
+                      <th className={cn(th, "min-w-[110px]")}>Session</th>
+                      <th className={cn(th, "min-w-[130px]")}>Focus</th>
+                      <th className={cn(th, "min-w-[150px]")}>
                         Weekly Progress
                       </th>
                       <th className={cn(th, "min-w-[120px]")}>Status</th>
@@ -479,44 +496,62 @@ export default function AralSectionFileModal({
                           <td className={cn(td, "p-0")}>
                             {editing ? (
                               <select
-                                value={
-                                  cells.interventionGiven ||
-                                  ARAL_WEEKLY_INTERVENTION
-                                }
+                                value={cells.sessionStatus || ""}
                                 onChange={(e) =>
                                   setCell(
                                     learner.id,
-                                    "interventionGiven",
+                                    "sessionStatus",
                                     e.target.value
                                   )
                                 }
                                 disabled={!learner.sourceClassId}
                                 className="h-[28px] w-full border-0 bg-transparent px-1 text-[12px] outline-none focus:bg-[#fff8dc] disabled:opacity-40"
                               >
-                                <option value={ARAL_WEEKLY_INTERVENTION}>
-                                  {ARAL_WEEKLY_INTERVENTION}
-                                </option>
-                                <option value="One-on-one Support">
-                                  One-on-one Support
-                                </option>
-                                <option value="Peer Tutoring">
-                                  Peer Tutoring
-                                </option>
-                                <option value="Other">Other</option>
+                                <option value="">—</option>
+                                {ARAL_SESSION_OPTIONS.map((opt) => (
+                                  <option key={opt} value={opt}>
+                                    {ARAL_SESSION_LABELS[opt]}
+                                  </option>
+                                ))}
                               </select>
                             ) : (
                               <span className="inline-block w-full px-2 py-1">
-                                {displayText(rec?.interventionGiven)}
+                                {displayText(
+                                  rec?.sessionStatus
+                                    ? ARAL_SESSION_LABELS[rec.sessionStatus] ||
+                                        rec.sessionStatus
+                                    : ""
+                                )}
                               </span>
                             )}
                           </td>
                           <td className={cn(td, "p-0")}>
                             {editing ? (
                               <select
-                                value={
-                                  cells.studentProgress ||
-                                  ARAL_PROGRESS_OPTIONS[2]
+                                value={cells.skillFocus || ""}
+                                onChange={(e) =>
+                                  setCell(learner.id, "skillFocus", e.target.value)
                                 }
+                                disabled={!learner.sourceClassId}
+                                className="h-[28px] w-full border-0 bg-transparent px-1 text-[12px] outline-none focus:bg-[#fff8dc] disabled:opacity-40"
+                              >
+                                <option value="">—</option>
+                                {ARAL_FOCUS_OPTIONS.map((opt) => (
+                                  <option key={opt} value={opt}>
+                                    {opt}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className="inline-block w-full px-2 py-1">
+                                {displayText(rec?.skillFocus)}
+                              </span>
+                            )}
+                          </td>
+                          <td className={cn(td, "p-0")}>
+                            {editing ? (
+                              <select
+                                value={cells.studentProgress || ""}
                                 onChange={(e) =>
                                   setCell(
                                     learner.id,
@@ -527,6 +562,7 @@ export default function AralSectionFileModal({
                                 disabled={!learner.sourceClassId}
                                 className="h-[28px] w-full border-0 bg-transparent px-1 text-[12px] outline-none focus:bg-[#fff8dc] disabled:opacity-40"
                               >
+                                <option value="">—</option>
                                 {ARAL_PROGRESS_OPTIONS.map((opt) => (
                                   <option key={opt} value={opt}>
                                     {opt}
@@ -542,10 +578,7 @@ export default function AralSectionFileModal({
                           <td className={cn(td, "p-0")}>
                             {editing ? (
                               <select
-                                value={
-                                  cells.monitoringStatus ||
-                                  MONITORING_STATUS.ONGOING
-                                }
+                                value={cells.monitoringStatus || ""}
                                 onChange={(e) =>
                                   setCell(
                                     learner.id,
@@ -556,6 +589,7 @@ export default function AralSectionFileModal({
                                 disabled={!learner.sourceClassId}
                                 className="h-[28px] w-full border-0 bg-transparent px-1 text-[12px] outline-none focus:bg-[#fff8dc] disabled:opacity-40"
                               >
+                                <option value="">—</option>
                                 {STATUS_OPTIONS.map((opt) => (
                                   <option key={opt} value={opt}>
                                     {opt}
@@ -577,11 +611,12 @@ export default function AralSectionFileModal({
                                   setCell(
                                     learner.id,
                                     "teacherRemarks",
-                                    e.target.value
+                                    e.target.value.slice(0, ARAL_REMARKS_MAX)
                                   )
                                 }
                                 disabled={!learner.sourceClassId}
-                                placeholder="Remarks…"
+                                maxLength={ARAL_REMARKS_MAX}
+                                placeholder={ARAL_REMARKS_PLACEHOLDER}
                                 className="h-[28px] w-full border-0 bg-transparent px-2 text-[12px] outline-none placeholder:text-slate-300 focus:bg-[#fff8dc] disabled:opacity-40"
                               />
                             ) : (

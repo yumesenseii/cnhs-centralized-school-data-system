@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * Facilitator scoring grid for Pre / Mid / Post (one section).
- * Edit in portal; Download Excel is a scores snapshot (no upload).
+ * Edit in portal; Download Excel is a scores overview (no upload).
  */
 export default function AralAssessmentPanel({
   group,
@@ -227,7 +227,7 @@ export default function AralAssessmentPanel({
     await refresh();
   }
 
-  async function handleDownloadSnapshot() {
+  async function handleDownloadOverview() {
     if (!learners.length) return;
     setDownloading(true);
     setError("");
@@ -244,10 +244,10 @@ export default function AralAssessmentPanel({
         generatedBy: "ARAL Facilitator",
       });
       setToast(
-        `Downloaded ${phaseLabel} scores snapshot (${result.count} learner(s)).`
+        `Downloaded ${phaseLabel} scores overview (${result.count} learner(s)).`
       );
     } catch (err) {
-      setError(err?.message ?? "Unable to download Excel snapshot.");
+      setError(err?.message ?? "Unable to download Excel overview.");
     } finally {
       setDownloading(false);
     }
@@ -333,7 +333,7 @@ export default function AralAssessmentPanel({
           <button
             type="button"
             disabled={downloading || !learners.length}
-            onClick={handleDownloadSnapshot}
+            onClick={handleDownloadOverview}
             className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {downloading ? (

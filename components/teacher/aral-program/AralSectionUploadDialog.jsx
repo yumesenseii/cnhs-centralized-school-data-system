@@ -71,8 +71,9 @@ export default function AralSectionUploadDialog({
               Upload file
             </h2>
             <p className="mt-1 text-[12px] text-slate-500">
-              Upload the Excel prepared by the subject teacher. The system
-              reads scores or weekly progress into this section.
+              Upload the downloaded weekly template or an assessment Scores
+              sheet. Weekly files must use the locked columns (LRN, date,
+              session, focus, progress). Extra columns are rejected.
             </p>
           </div>
           <button

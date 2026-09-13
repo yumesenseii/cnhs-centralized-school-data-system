@@ -101,7 +101,8 @@ export default function TeacherAralProgramPage() {
             Summer ARAL Program
           </h1>
           <p className="mt-0.5 text-[12px] text-slate-500">
-            Open a section folder for weekly, assessment, and report files.
+            Open a section to record weekly sessions, Pre / Mid / Post scores,
+            and the section report.
           </p>
         </div>
         <MobileNavSheet ariaLabel="Open teacher menu" title="Teacher navigation">
@@ -174,10 +175,7 @@ export default function TeacherAralProgramPage() {
 
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-100">
-                      File cabinet
-                    </span>
-                    <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-100">
-                      Weekly · Pre/Mid/Post · Report
+                      Weekly · Pre · Mid · Post · Report
                     </span>
                   </div>
 
