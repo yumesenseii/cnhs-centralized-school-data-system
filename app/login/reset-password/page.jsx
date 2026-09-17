@@ -135,6 +135,8 @@ export default function ResetPasswordPage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="portal-body relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-8 sm:px-6"
+      data-force-light="true"
+      data-keep-white="true"
     >
       <div className="portal-page__bg absolute inset-0" aria-hidden="true">
         <Image

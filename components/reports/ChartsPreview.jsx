@@ -24,7 +24,7 @@ export default function ChartsPreview({ academicPerformance, riskDistribution })
         <div className="h-[160px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={academicPerformance} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-              <CartesianGrid stroke="#eef2f7" strokeDasharray="3 3" vertical={false} />
+              <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
               <XAxis
                 dataKey="grade"
                 tickLine={false}
@@ -32,6 +32,7 @@ export default function ChartsPreview({ academicPerformance, riskDistribution })
                 tick={{ fontSize: 10, fill: "#94a3b8" }}
               />
               <Tooltip
+                cursor={{ fill: "rgba(255, 255, 255, 0.04)" }}
                 contentStyle={{ border: "1px solid #e5e7eb", borderRadius: 12, fontSize: 12 }}
               />
               <Bar dataKey="average" fill="#40916c" radius={[6, 6, 0, 0]} maxBarSize={42} />
@@ -57,7 +58,7 @@ export default function ChartsPreview({ academicPerformance, riskDistribution })
                   innerRadius={36}
                   outerRadius={58}
                   paddingAngle={2}
-                  stroke="#ffffff"
+                  stroke="var(--card)"
                   strokeWidth={2}
                 >
                   {riskDistribution.map((item) => (

@@ -66,8 +66,13 @@ python -m venv .venv
 
 pip install -r requirements.txt
 python scripts/train_model.py
-uvicorn app.main:app --reload --port 8000
+# From repo root (cross-platform):
+# npm run ml:serve
+uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
+
+**Production host (Vercel + separate ML):** see [`docs/ML_DEPLOY.md`](../docs/ML_DEPLOY.md)  
+(`Dockerfile`, Railway/Render, `RF_INFERENCE_URL`).
 
 ## Endpoints
 
@@ -148,10 +153,29 @@ Rule-based engines remain **fallback only** (`source: "rule-based-fallback"`).
 
 ## Evaluation artifacts
 
+This matrix evaluates **RISK** (High / Moderate / Low vs official grade bands). It does **not** evaluate ARAL or Classroom Remedial. It is **not** a teacher screen.
+
+```bash
+# From repo root (holdout split matching train_model.py)
+npm run ml:eval
+
+# Extra flags pass through, e.g. all labeled rows:
+# npm run ml:eval -- --full
+
+# From ml-service
+python scripts/eval_confusion_matrix.py
+python scripts/eval_confusion_matrix.py --full   # all labeled rows
+```
+
+Writes `artifacts/confusion_matrix.json` (3×3 counts, accuracy, per-class precision / recall / F1). Ungraded rows are excluded.
+
 After training:
 
 - `artifacts/random_forest_academic_risk.joblib` (Model B)
 - `artifacts/metrics.json`
+- `artifacts/confusion_matrix.json` (from `npm run ml:eval`)
 - `docs/MODEL_A_VS_B.md` (leakage methodology)
+
+See also [`docs/RF_RISK_EVAL.md`](../docs/RF_RISK_EVAL.md).
 
 Model B excludes `general_average` from RF inputs so evaluation reflects subject-level learning, not label reconstruction.

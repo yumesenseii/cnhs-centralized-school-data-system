@@ -17,8 +17,8 @@ import {
 
 function ChartCard({ title, subtitle, children }) {
   return (
-    <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-      <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
+    <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] dark:border-white/5 dark:bg-[var(--card)] dark:shadow-none">
+      <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</h2>
       {subtitle ? (
         <p className="mt-1 text-[10px] text-slate-400">{subtitle}</p>
       ) : null}
@@ -26,6 +26,14 @@ function ChartCard({ title, subtitle, children }) {
     </section>
   );
 }
+
+const tooltipStyle = {
+  backgroundColor: "var(--card)",
+  border: "1px solid var(--border)",
+  borderRadius: 12,
+  fontSize: 12,
+  color: "var(--foreground)",
+};
 
 function EmptyChart() {
   return (
@@ -38,6 +46,7 @@ function EmptyChart() {
 export default function AdminReportCharts({
   charts,
   hideAttendance = false,
+  hideEmpty = false,
 }) {
   const risk = charts?.riskDistribution ?? [];
   const performance = charts?.performanceBySubject ?? [];
@@ -54,9 +63,10 @@ export default function AdminReportCharts({
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+        {hasRisk || !hideEmpty ? (
         <ChartCard
           title="Risk Distribution"
-          subtitle="Academic Prediction · ECR grades only"
+          subtitle="From ECR grades"
         >
           {!hasRisk ? (
             <EmptyChart />
@@ -74,7 +84,7 @@ export default function AdminReportCharts({
                       innerRadius={48}
                       outerRadius={74}
                       paddingAngle={2}
-                      stroke="#ffffff"
+                      stroke="var(--card)"
                       strokeWidth={3}
                     >
                       {risk.map((item) => (
@@ -82,11 +92,7 @@ export default function AdminReportCharts({
                       ))}
                     </Pie>
                     <Tooltip
-                      contentStyle={{
-                        border: "1px solid #e5e7eb",
-                        borderRadius: 12,
-                        fontSize: 12,
-                      }}
+                      contentStyle={tooltipStyle}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -115,7 +121,9 @@ export default function AdminReportCharts({
             </div>
           )}
         </ChartCard>
+        ) : null}
 
+        {hasPerformance || !hideEmpty ? (
         <ChartCard
           title="Average Grade by Subject"
           subtitle="Class subject averages for the selected period"
@@ -130,7 +138,7 @@ export default function AdminReportCharts({
                   margin={{ top: 16, right: 8, left: -20, bottom: 0 }}
                 >
                   <CartesianGrid
-                    stroke="#eef2f7"
+                    stroke="var(--border)"
                     strokeDasharray="3 3"
                     vertical={false}
                   />
@@ -149,11 +157,7 @@ export default function AdminReportCharts({
                   />
                   <Tooltip
                     cursor={{ fill: "rgba(82, 183, 136, 0.06)" }}
-                    contentStyle={{
-                      border: "1px solid #e5e7eb",
-                      borderRadius: 12,
-                      fontSize: 12,
-                    }}
+                    contentStyle={tooltipStyle}
                     formatter={(value) => [`${value}`, "Average"]}
                   />
                   <Bar
@@ -167,10 +171,12 @@ export default function AdminReportCharts({
             </div>
           )}
         </ChartCard>
+        ) : null}
 
+        {hasIntervention || !hideEmpty ? (
         <ChartCard
           title="Intervention Mix"
-          subtitle="ARAL Learners vs Classroom Remedial (grades-based)"
+          subtitle="ARAL Learners vs Classroom remedial (grades-based)"
         >
           {!hasIntervention ? (
             <EmptyChart />
@@ -182,7 +188,7 @@ export default function AdminReportCharts({
                   margin={{ top: 16, right: 8, left: -20, bottom: 0 }}
                 >
                   <CartesianGrid
-                    stroke="#eef2f7"
+                    stroke="var(--border)"
                     strokeDasharray="3 3"
                     vertical={false}
                   />
@@ -201,11 +207,7 @@ export default function AdminReportCharts({
                   />
                   <Tooltip
                     cursor={{ fill: "rgba(82, 183, 136, 0.06)" }}
-                    contentStyle={{
-                      border: "1px solid #e5e7eb",
-                      borderRadius: 12,
-                      fontSize: 12,
-                    }}
+                    contentStyle={tooltipStyle}
                   />
                   <Bar dataKey="value" radius={[8, 8, 0, 0]} maxBarSize={56}>
                     {intervention.map((item) => (
@@ -217,10 +219,12 @@ export default function AdminReportCharts({
             </div>
           )}
         </ChartCard>
+        ) : null}
 
+        {hasLessonPlans || !hideEmpty ? (
         <ChartCard
           title="Lesson Plan Status"
-          subtitle="Submitted plans for the selected school year / quarter"
+          subtitle="Submitted plans for the selected school year / term"
         >
           {!hasLessonPlans ? (
             <EmptyChart />
@@ -232,7 +236,7 @@ export default function AdminReportCharts({
                   margin={{ top: 16, right: 8, left: -20, bottom: 0 }}
                 >
                   <CartesianGrid
-                    stroke="#eef2f7"
+                    stroke="var(--border)"
                     strokeDasharray="3 3"
                     vertical={false}
                   />
@@ -251,11 +255,7 @@ export default function AdminReportCharts({
                   />
                   <Tooltip
                     cursor={{ fill: "rgba(82, 183, 136, 0.06)" }}
-                    contentStyle={{
-                      border: "1px solid #e5e7eb",
-                      borderRadius: 12,
-                      fontSize: 12,
-                    }}
+                    contentStyle={tooltipStyle}
                   />
                   <Bar dataKey="value" radius={[8, 8, 0, 0]} maxBarSize={48}>
                     {lessonPlans.map((item) => (
@@ -267,12 +267,13 @@ export default function AdminReportCharts({
             </div>
           )}
         </ChartCard>
+        ) : null}
       </div>
 
       {!hideAttendance ? (
         <ChartCard
-          title="Attendance Rate by Month"
-          subtitle="SF2 monthly trend"
+          title="Attendance by month"
+          subtitle="Uploaded SF2 percentage of attendance"
         >
           {!hasAttendance ? (
             <EmptyChart />
@@ -284,7 +285,7 @@ export default function AdminReportCharts({
                   margin={{ top: 12, right: 12, left: -12, bottom: 0 }}
                 >
                   <CartesianGrid
-                    stroke="#eef2f7"
+                    stroke="var(--border)"
                     strokeDasharray="3 3"
                     vertical={false}
                   />
@@ -302,19 +303,15 @@ export default function AdminReportCharts({
                     width={32}
                   />
                   <Tooltip
-                    contentStyle={{
-                      border: "1px solid #e5e7eb",
-                      borderRadius: 12,
-                      fontSize: 12,
-                    }}
+                    contentStyle={tooltipStyle}
                     formatter={(value) => [`${value}%`, "Attendance rate"]}
                   />
                   <Line
                     type="monotone"
                     dataKey="rate"
-                    stroke="#2563eb"
+                    stroke="#246f54"
                     strokeWidth={2.5}
-                    dot={{ r: 3, fill: "#2563eb" }}
+                    dot={{ r: 3, fill: "#246f54" }}
                     activeDot={{ r: 5 }}
                   />
                 </LineChart>

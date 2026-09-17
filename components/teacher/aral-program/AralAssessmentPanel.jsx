@@ -19,6 +19,7 @@ import {
   startAralAssessmentForSection,
 } from "@/lib/supabase/queries/aralProgram";
 import { cn } from "@/lib/utils";
+import { useAppToast } from "@/components/shared/AppToast";
 
 /**
  * Facilitator scoring grid for Pre / Mid / Post (one section).
@@ -36,7 +37,7 @@ export default function AralAssessmentPanel({
   const [saving, setSaving] = useState(false);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
-  const [toast, setToast] = useState("");
+  const { showToast } = useAppToast();
   const [maxScore, setMaxScore] = useState(DEFAULT_ARAL_MAX_SCORE);
   const [passPercent, setPassPercent] = useState(DEFAULT_ARAL_PASS_PERCENT);
   const [drafts, setDrafts] = useState({});
@@ -140,7 +141,6 @@ export default function AralAssessmentPanel({
       next.result = computeAralAssessmentResult(score, maxScore, passPercent);
       return { ...prev, [studentId]: next };
     });
-    setToast("");
   }
 
   function recomputeAllResults(nextMax, nextPass) {
@@ -164,7 +164,6 @@ export default function AralAssessmentPanel({
     }
     setStarting(true);
     setError("");
-    setToast("");
     const result = await startAralAssessmentForSection({
       learners,
       gradeSection,
@@ -178,7 +177,7 @@ export default function AralAssessmentPanel({
       setError(result.error.message);
       return;
     }
-    setToast(
+    showToast(
       `${phaseLabel} started for ${result.data?.length || learners.length} learner(s).`
     );
     await refresh();
@@ -191,7 +190,6 @@ export default function AralAssessmentPanel({
     }
     setSaving(true);
     setError("");
-    setToast("");
 
     const rows = learners.map((learner) => {
       const draft = drafts[learner.studentId] || {};
@@ -221,7 +219,7 @@ export default function AralAssessmentPanel({
       setError(result.error.message);
       return;
     }
-    setToast(
+    showToast(
       `Saved ${phaseLabel} scores for ${result.data?.length || rows.length} learner(s).`
     );
     await refresh();
@@ -231,7 +229,6 @@ export default function AralAssessmentPanel({
     if (!learners.length) return;
     setDownloading(true);
     setError("");
-    setToast("");
     try {
       const result = await downloadAralAssessmentTemplateExcel({
         learners,
@@ -243,7 +240,7 @@ export default function AralAssessmentPanel({
         schoolYear: group?.schoolYear || learners[0]?.schoolYear || "",
         generatedBy: "ARAL Facilitator",
       });
-      setToast(
+      showToast(
         `Downloaded ${phaseLabel} scores overview (${result.count} learner(s)).`
       );
     } catch (err) {
@@ -269,13 +266,8 @@ export default function AralAssessmentPanel({
           {error}
         </p>
       ) : null}
-      {toast ? (
-        <p className="rounded-lg border border-green-100 bg-green-50 px-3 py-2 text-[12px] font-medium text-cnhs-green-dark">
-          {toast}
-        </p>
-      ) : null}
 
-      <div className="flex flex-col gap-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
         <div className="flex flex-wrap items-end gap-2">
           <label className="text-[11px] font-medium text-slate-500">
             Max score
@@ -321,7 +313,7 @@ export default function AralAssessmentPanel({
             type="button"
             disabled={starting || !teacherId || !learners.length}
             onClick={handleStart}
-            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 text-[11px] font-semibold text-sky-800 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-cnhs-green/30 bg-cnhs-green-soft px-3 text-[11px] font-semibold text-cnhs-green-dark hover:bg-cnhs-green-soft/80 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {starting ? (
               <Loader2 size={12} className="animate-spin" />

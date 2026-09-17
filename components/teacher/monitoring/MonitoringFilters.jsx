@@ -1,6 +1,7 @@
 "use client";
 
 import { Search, X } from "lucide-react";
+import AppSelect from "@/components/shared/AppSelect";
 
 export default function MonitoringFilters({
   filters,
@@ -37,28 +38,46 @@ export default function MonitoringFilters({
 
         <div className="flex flex-wrap items-center gap-1.5">
           {[
-            { value: grade, set: onGradeChange, options: filters.grades },
-            { value: section, set: onSectionChange, options: filters.sections },
-            { value: subject, set: onSubjectChange, options: filters.subjects },
             {
+              label: "Grade",
+              value: grade,
+              set: onGradeChange,
+              options: filters.grades,
+            },
+            {
+              label: "Section",
+              value: section,
+              set: onSectionChange,
+              options: filters.sections,
+            },
+            {
+              label: "Subject",
+              value: subject,
+              set: onSubjectChange,
+              options: filters.subjects,
+            },
+            {
+              label: "Intervention",
               value: intervention,
               set: onInterventionChange,
               options: filters.interventions,
             },
-            { value: status, set: onStatusChange, options: filters.statuses },
-          ].map((filter, index) => (
-            <select
-              key={index}
+            {
+              label: "Status",
+              value: status,
+              set: onStatusChange,
+              options: filters.statuses,
+            },
+          ].map((filter) => (
+            <AppSelect
+              key={filter.label}
+              label={filter.label}
               value={filter.value}
-              onChange={(e) => filter.set(e.target.value)}
-              className="h-8 cursor-pointer rounded-lg border border-slate-200 bg-white px-2.5 pr-7 text-[11px] font-medium text-slate-600 outline-none focus:border-cnhs-green"
-            >
-              {filter.options.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+              onChange={filter.set}
+              options={filter.options}
+              size="field"
+              triggerClassName="h-8 rounded-lg px-2.5 text-[11px]"
+            />
           ))}
 
           <button

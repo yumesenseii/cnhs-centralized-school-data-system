@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { motion } from "framer-motion";
 import { CalendarDays, Layers3, Search, X } from "lucide-react";
+import AppSelect from "@/components/shared/AppSelect";
 import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import ClassCard from "@/components/teacher/my-classes/ClassCard";
@@ -22,6 +22,7 @@ import {
 import { formatPersonName } from "@/lib/teacher/monitoringMappers";
 import { createDeleteRequest } from "@/lib/supabase/queries/deleteRequests";
 import DeleteConfirmModal from "@/components/shared/DeleteConfirmModal";
+import { useAppToast } from "@/components/shared/AppToast";
 
 export default function MyClasses() {
   const {
@@ -43,8 +44,7 @@ export default function MyClasses() {
   const [quarter, setQuarter] = useState(TERM_ALL_LABEL);
   const [uploadClass, setUploadClass] = useState(null);
   const [generateClass, setGenerateClass] = useState(null);
-  const [toast, setToast] = useState("");
-  const [toastClassId, setToastClassId] = useState("");
+  const { showToast } = useAppToast();
   const [generatingId, setGeneratingId] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [requesting, setRequesting] = useState(false);
@@ -70,28 +70,31 @@ export default function MyClasses() {
       });
 
       if (!files.length) {
-        setToast("Unable to generate class report file.");
-        setToastClassId("");
+        showToast("Unable to generate class report file.");
         return;
       }
 
       const primary = files[0];
-      setToastClassId(primary.classId);
+      const monitoringAction = {
+        href: `/teacher/monitoring?classId=${primary.classId}`,
+        label: "Open in Academic Monitoring",
+      };
       if (termSelection === REPORT_TERM_ALL || terms.length > 1) {
         const labels = terms.map((t) => termLabel(t)).join(", ");
-        setToast(
-          `Generated ${files.length} report file(s) (${labels}). Open Academic Monitoring — each term has its own Failing / Moderate / Passing tabs.`
+        showToast(
+          `Generated ${files.length} report file(s) (${labels}). Open Academic Monitoring — each term has its own Failing / Moderate / Passing tabs.`,
+          { action: monitoringAction }
         );
       } else {
-        setToast(
-          `Report ready: ${primary.fileName}. Classification uses ${termLabel(terms[0])} grades only.`
+        showToast(
+          `Report ready: ${primary.fileName}. Classification uses ${termLabel(terms[0])} grades only.`,
+          { action: monitoringAction }
         );
       }
       setGenerateClass(null);
     } catch (err) {
       console.error(err);
-      setToast("Unable to generate class report file.");
-      setToastClassId("");
+      showToast("Unable to generate class report file.");
     } finally {
       setGeneratingId("");
     }
@@ -211,71 +214,27 @@ export default function MyClasses() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-          <label className="relative">
-            <span className="sr-only">School Year</span>
-            <CalendarDays
-              size={12}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <select
-              value={schoolYear}
-              onChange={(e) => setSchoolYear(e.target.value)}
-              className="h-8 cursor-pointer rounded-full border border-slate-200 bg-white pl-8 pr-7 text-[11px] font-medium text-slate-600 shadow-sm outline-none hover:bg-slate-50 focus:border-cnhs-green"
-            >
-              {filterOptions.schoolYears.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </label>
+          <AppSelect
+            label="School Year"
+            value={schoolYear}
+            onChange={setSchoolYear}
+            options={filterOptions.schoolYears}
+            icon={CalendarDays}
+            size="pill"
+            align="end"
+          />
 
-          <label className="relative">
-            <span className="sr-only">Term</span>
-            <Layers3
-              size={12}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <select
-              value={quarter}
-              onChange={(e) => setQuarter(e.target.value)}
-              className="h-8 cursor-pointer rounded-full border border-slate-200 bg-white pl-8 pr-7 text-[11px] font-medium text-slate-600 shadow-sm outline-none hover:bg-slate-50 focus:border-cnhs-green"
-            >
-              {filterOptions.quarters.map((q) => (
-                <option key={q} value={q}>
-                  {q}
-                </option>
-              ))}
-            </select>
-          </label>
+          <AppSelect
+            label="Term"
+            value={quarter}
+            onChange={setQuarter}
+            options={filterOptions.quarters}
+            icon={Layers3}
+            size="pill"
+            align="end"
+          />
         </div>
       </header>
-
-      {toast ? (
-        <div className="mb-4 flex flex-col gap-2 rounded-xl border border-green-100 bg-green-50 px-3 py-2.5 text-[12px] font-medium text-cnhs-green-dark sm:flex-row sm:items-center sm:justify-between">
-          <p>{toast}</p>
-          <div className="flex flex-wrap gap-2">
-            {toastClassId ? (
-              <Link
-                href={`/teacher/monitoring?classId=${toastClassId}`}
-                className="inline-flex h-8 items-center rounded-lg bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white hover:bg-[#246f54]"
-              >
-                Open in Academic Monitoring
-              </Link>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => {
-                setToast("");
-                setToastClassId("");
-              }}
-              className="inline-flex h-8 cursor-pointer items-center rounded-lg border border-green-200 bg-white px-3 text-[11px] font-semibold text-cnhs-green-dark"
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      ) : null}
 
       {error ? (
         <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-[12px] font-medium text-red-600">
@@ -345,29 +304,33 @@ export default function MyClasses() {
               <div className="flex flex-wrap items-center gap-2">
                 {[
                   {
+                    label: "Subject",
                     value: subject,
                     set: setSubject,
                     options: filterOptions.subjects,
                   },
-                  { value: grade, set: setGrade, options: filterOptions.grades },
                   {
+                    label: "Grade",
+                    value: grade,
+                    set: setGrade,
+                    options: filterOptions.grades,
+                  },
+                  {
+                    label: "Section",
                     value: section,
                     set: setSection,
                     options: filterOptions.sections,
                   },
                 ].map((filter) => (
-                  <select
-                    key={filter.options[0]}
+                  <AppSelect
+                    key={filter.label}
+                    label={filter.label}
                     value={filter.value}
-                    onChange={(e) => filter.set(e.target.value)}
-                    className="h-9 cursor-pointer rounded-lg border border-slate-200 bg-white px-3 pr-7 text-[11px] font-medium text-slate-600 outline-none focus:border-cnhs-green"
-                  >
-                    {filter.options.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={filter.set}
+                    options={filter.options}
+                    size="field"
+                    triggerClassName="h-9 rounded-lg text-[11px]"
+                  />
                 ))}
                 <button
                   type="button"
@@ -436,13 +399,12 @@ export default function MyClasses() {
         onSuccess={async (result) => {
           const learners = result?.imported ?? 0;
           const grades = result?.gradesUpserted ?? 0;
-          setToast(
+          showToast(
             `Imported ${learners} learner${learners === 1 ? "" : "s"}${
               grades ? ` and ${grades} grade record${grades === 1 ? "" : "s"}` : ""
             }.`
           );
           await refresh();
-          window.setTimeout(() => setToast(""), 3200);
         }}
       />
 
@@ -477,12 +439,11 @@ export default function MyClasses() {
           });
           setRequesting(false);
           setDeleteConfirm(null);
-          setToast(
+          showToast(
             result.error
               ? result.error.message
               : "Request sent to the head teacher."
           );
-          window.setTimeout(() => setToast(""), 3200);
         }}
       />
     </motion.div>

@@ -61,7 +61,7 @@ export default function EClassUploadDialog({
     setPreviewMeta(null);
     setWorkbookBuffer(null);
     setPreviewing(true);
-    setStatusLabel("Opening workbook...");
+    setStatusLabel("Opening file…");
 
     try {
       const buffer = await selected.arrayBuffer();
@@ -72,13 +72,13 @@ export default function EClassUploadDialog({
         includeGrades: false,
         arrayBuffer: buffer,
         onProgress: ({ label }) => {
-          setStatusLabel(label || "Reading INPUT DATA...");
+          setStatusLabel(label || "Reading class details…");
         },
       });
 
       if (!parsed.ok) {
         setPreviewMeta(parsed.metadata);
-        setError(parsed.error || "E-Class Record validation failed.");
+        setError(parsed.error || "This file doesn’t match the class you selected.");
         return;
       }
 
@@ -86,7 +86,7 @@ export default function EClassUploadDialog({
       setError("");
       setStatusLabel("");
     } catch (err) {
-      setError(err?.message ?? "Unable to read the E-Class Record metadata.");
+      setError(err?.message ?? "We couldn’t read this E-Class Record.");
       setPreviewMeta(null);
     } finally {
       setPreviewing(false);
@@ -98,7 +98,7 @@ export default function EClassUploadDialog({
     setUploading(true);
     setError("");
     setProgress(10);
-    setStatusLabel("Preparing assigned classes...");
+    setStatusLabel("Preparing your class…");
 
     try {
       const result = await importEClassRecord({
@@ -131,7 +131,7 @@ export default function EClassUploadDialog({
       resetState();
       onClose?.();
     } catch (err) {
-      setError(err?.message ?? "Failed to import E-Class Record.");
+      setError(err?.message ?? "We couldn’t import this E-Class Record.");
       setUploading(false);
     }
   }
@@ -162,8 +162,8 @@ export default function EClassUploadDialog({
               Upload E-Class Record
             </h2>
             <p className="mt-1 text-[11px] text-slate-400">
-              Official DepEd Excel (.xlsx) · Students &amp; grades from AVE ·
-              Class info from INPUT DATA · Dummy student numbers for display
+              Official DepEd Excel (.xlsx). Learners and grades come from the
+              file.
             </p>
           </div>
           <button
@@ -250,7 +250,7 @@ export default function EClassUploadDialog({
               <p className="mt-1 text-slate-500">
                 {(file.size / (1024 * 1024)).toFixed(2)} MB
                 {previewing
-                  ? ` · ${statusLabel || "Reading INPUT DATA..."}`
+                  ? ` · ${statusLabel || "Reading class details…"}`
                   : ""}
               </p>
             </div>
@@ -259,7 +259,7 @@ export default function EClassUploadDialog({
           {previewMeta ? (
             <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
               <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
-                Detected from INPUT DATA
+                From this file
               </p>
               <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
                 <MetaItem label="Teacher" value={previewMeta.teacher_name} />

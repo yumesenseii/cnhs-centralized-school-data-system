@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { ShieldCheck } from "lucide-react";
 import LoginButton from "@/components/auth/LoginButton";
 import PasswordInput from "@/components/auth/PasswordInput";
+import { queueWelcomeToast } from "@/lib/auth/welcomeToast";
 import { loginContent } from "@/lib/constants/loginContent";
 import { PASSWORD_HINT, validateNewPassword } from "@/lib/auth/passwordPolicy";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,6 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 function resolveHome(role) {
   if (role === "admin") return "/dashboard";
   if (role === "teacher") return "/teacher/dashboard";
+  if (role === "student") return "/student/dashboard";
   return "/login";
 }
 
@@ -68,6 +70,7 @@ export default function FirstLoginForm() {
         return;
       }
 
+      queueWelcomeToast(result.data?.full_name);
       router.replace(resolveHome(result.data?.role));
       router.refresh();
     } catch {
@@ -82,6 +85,8 @@ export default function FirstLoginForm() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="portal-body relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-8 sm:px-6"
+      data-force-light="true"
+      data-keep-white="true"
     >
       <div className="portal-page__bg absolute inset-0" aria-hidden="true">
         <Image
@@ -230,6 +235,8 @@ export default function FirstLoginForm() {
             aria-modal="true"
             aria-labelledby="first-login-terms-title"
             className="relative z-10 flex w-full max-w-[680px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.18)]"
+            data-force-light="true"
+            data-keep-white="true"
           >
             <div className="px-6 pt-5 pb-3">
               <p className="text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-[#174D37]">

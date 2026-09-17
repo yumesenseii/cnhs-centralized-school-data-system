@@ -8,6 +8,7 @@ import AssignmentFormModal from "@/components/class-assignments/AssignmentFormMo
 import AssignmentSummaryCards from "@/components/class-assignments/AssignmentSummaryCards";
 import AssignmentsTable from "@/components/class-assignments/AssignmentsTable";
 import DeleteConfirmModal from "@/components/shared/DeleteConfirmModal";
+import { useAppToast } from "@/components/shared/AppToast";
 import DeleteRequestsPanel from "@/components/admin/DeleteRequestsPanel";
 import { useClassAssignments } from "@/hooks/admin/useClassAssignments";
 import { suggestCurrentSchoolYear } from "@/lib/admin/sectionMappers";
@@ -41,7 +42,7 @@ export default function ClassAssignmentManagement({ embedded = false }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("create");
   const [selected, setSelected] = useState(null);
-  const [toast, setToast] = useState("");
+  const { showToast } = useAppToast();
   const [confirm, setConfirm] = useState(null);
   const [confirming, setConfirming] = useState(false);
   const [pendingRequests, setPendingRequests] = useState([]);
@@ -63,11 +64,6 @@ export default function ClassAssignmentManagement({ embedded = false }) {
   }, []);
 
   const defaultSchoolYear = schoolYears[0] || suggestCurrentSchoolYear();
-
-  function showToast(message) {
-    setToast(message);
-    window.setTimeout(() => setToast(""), 2800);
-  }
 
   function openCreate() {
     setSelected(null);
@@ -321,12 +317,6 @@ export default function ClassAssignmentManagement({ embedded = false }) {
         onCancel={() => !confirming && setConfirm(null)}
         onConfirm={runConfirm}
       />
-
-      {toast ? (
-        <div className="fixed bottom-5 right-5 z-[70] rounded-xl bg-slate-900 px-4 py-2.5 text-[11px] font-medium text-white shadow-lg">
-          {toast}
-        </div>
-      ) : null}
     </motion.div>
   );
 }

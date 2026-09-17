@@ -1,6 +1,7 @@
 "use client";
 
 import AssignmentRow from "@/components/class-assignments/AssignmentRow";
+import AppSelect from "@/components/shared/AppSelect";
 import { formatPersonName } from "@/lib/admin/classAssignmentMappers";
 import { TERM_ALL_LABEL, TERM_OPTIONS } from "@/lib/academic/termLabels";
 
@@ -137,19 +138,17 @@ function SelectFilter({ label, value, options, onChange }) {
   );
 
   return (
-    <label className="inline-flex h-8 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 text-[11px] text-slate-600 shadow-sm">
+    <div className="inline-flex h-8 items-center gap-1 rounded-full border border-slate-200 bg-white pl-3 pr-1 text-[11px] text-slate-600 shadow-sm">
       <span className="font-medium text-slate-400">{label}</span>
-      <select
+      <AppSelect
+        label={label}
         value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="max-w-[150px] cursor-pointer bg-transparent font-semibold text-slate-700 outline-none"
-      >
-        {normalized.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
+        onChange={onChange}
+        options={normalized}
+        size="pill"
+        className="max-w-[150px]"
+        triggerClassName="h-8 border-0 bg-transparent px-1 shadow-none font-semibold text-slate-700 hover:bg-transparent"
+      />
+    </div>
   );
 }

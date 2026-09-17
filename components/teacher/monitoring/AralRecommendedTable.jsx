@@ -4,6 +4,7 @@ import { Eye, Loader2, Pencil, Send } from "lucide-react";
 import {
   Pill,
   RiskPill,
+  PriorityCue,
   avatarTones,
 } from "@/components/teacher/monitoring/shared";
 import MonitoringTablePagination from "@/components/teacher/monitoring/MonitoringTablePagination";
@@ -58,6 +59,7 @@ export default function AralRecommendedTable({
                 "Section",
                 "Subject / Term grade",
                 "Risk",
+                "Priority",
                 "HT status",
                 "Actions",
               ].map((column) => (
@@ -131,6 +133,9 @@ export default function AralRecommendedTable({
                   </td>
                   <td className="px-4 py-2.5">
                     <RiskPill value={learner.riskLevel} />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <PriorityCue learner={learner} />
                   </td>
                   <td className="px-4 py-2.5">
                     {showAralApproval && aral ? (

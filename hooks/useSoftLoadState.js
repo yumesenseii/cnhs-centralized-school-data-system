@@ -28,6 +28,13 @@ export function useSoftLoadState(
     setRefreshing(false);
   }, []);
 
+  /** First roster/session is on screen; keep a quiet refresh until RF fills in. */
+  const endFirstPaint = useCallback(() => {
+    hasLoadedRef.current = true;
+    setLoading(false);
+    setRefreshing(true);
+  }, []);
+
   const resetLoaded = useCallback(() => {
     hasLoadedRef.current = false;
   }, []);
@@ -37,6 +44,7 @@ export function useSoftLoadState(
     refreshing,
     beginLoad,
     endLoad,
+    endFirstPaint,
     resetLoaded,
     hasLoaded: () => hasLoadedRef.current,
   };

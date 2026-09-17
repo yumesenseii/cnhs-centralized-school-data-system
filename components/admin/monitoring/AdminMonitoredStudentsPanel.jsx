@@ -13,7 +13,7 @@ const PAGE_SIZE = 50;
 
 const SUBVIEWS = [
   { id: "aral", label: "ARAL Learners" },
-  { id: "nonAral", label: "At-Risk · Non-ARAL" },
+  { id: "nonAral", label: "Classroom remedial" },
 ];
 
 export default function AdminMonitoredStudentsPanel({
@@ -145,20 +145,18 @@ export default function AdminMonitoredStudentsPanel({
         quarter={quarter}
         onViewMonitoring={onViewMonitoring}
         title={
-          subview === "aral"
-            ? "ARAL Learners"
-            : "At-Risk Students (Non-ARAL)"
+          subview === "aral" ? "ARAL Learners" : "Classroom remedial"
         }
         layout={subview === "aral" ? "htAral" : "htNonAral"}
         showAralApproval={subview === "aral"}
         emptyMessage={
           subview === "aral"
             ? "No ARAL-recommended learners under the current filters."
-            : "No at-risk non-ARAL learners under the current filters."
+            : "No classroom-remedial learners under the current filters."
         }
         emptyHint={
           subview === "aral" && nonAralLearners.length > 0
-            ? `See At-Risk · Non-ARAL (${nonAralLearners.length}) for other learners who need attention.`
+            ? `See Classroom remedial (${nonAralLearners.length}) for other learners who need support.`
             : subview === "nonAral" && aralLearners.length > 0
               ? `ARAL Learners (${aralLearners.length}) are listed in the other view.`
               : ""

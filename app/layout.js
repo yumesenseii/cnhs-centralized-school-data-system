@@ -1,5 +1,6 @@
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { ToastProvider } from "@/components/shared/AppToast";
 import { SYSTEM_NAME } from "@/lib/constants/brand";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/settings/theme";
 
@@ -22,7 +23,9 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

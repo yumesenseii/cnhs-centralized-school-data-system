@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
+import WelcomeLoginToast from "@/components/shared/WelcomeLoginToast";
 import {
   SIDEBAR_CONTENT_OFFSET_CLASS,
   SIDEBAR_CONTENT_OFFSET_COLLAPSED_CLASS,
@@ -64,6 +65,7 @@ export default function AdminShell({ children }) {
 
   return (
     <div className="min-h-screen bg-cnhs-page">
+      <WelcomeLoginToast />
       <Sidebar
         className="hidden lg:flex"
         collapsed={sidebarCollapsed}

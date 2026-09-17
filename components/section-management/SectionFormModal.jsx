@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import AnimatedModal from "@/components/shared/AnimatedModal";
+import AppSelect from "@/components/shared/AppSelect";
+import { AnimatedBanner } from "@/components/shared/AnimatedFeedback";
 import { formatTeacherName } from "@/lib/admin/sectionMappers";
 
 const GRADE_OPTIONS = [7, 8, 9, 10];
@@ -39,8 +42,6 @@ export default function SectionFormModal({
     setFormError("");
   }, [open, mode, section, defaultSchoolYear, schoolYears]);
 
-  if (!open) return null;
-
   const title = mode === "edit" ? "Edit Section" : "Create Section";
   const description =
     mode === "edit"
@@ -70,19 +71,16 @@ export default function SectionFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <button
-        type="button"
-        aria-label="Close dialog backdrop"
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px]"
-        onClick={saving ? undefined : onClose}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="section-form-title"
-        className="relative z-10 w-full max-w-[520px] overflow-hidden rounded-lg bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]"
-      >
+    <AnimatedModal
+      open={open}
+      onClose={saving ? undefined : onClose}
+      labelledBy="section-form-title"
+      zClassName="z-[60]"
+      closeOnBackdrop={!saving}
+      closeOnEscape={!saving}
+      className="bg-slate-900/40"
+      panelClassName="w-full max-w-[520px] overflow-hidden rounded-lg bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]"
+    >
         <div className="border-b border-slate-100 px-4 py-3.5">
           <h2
             id="section-form-title"
@@ -95,23 +93,21 @@ export default function SectionFormModal({
 
         <form className="space-y-3 px-4 py-3.5" onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="block">
+            <div className="block">
               <span className="mb-1.5 block text-[11px] font-semibold text-slate-600">
                 Grade Level
               </span>
-              <select
+              <AppSelect
+                label="Grade Level"
                 value={gradeLevel}
-                onChange={(event) => setGradeLevel(event.target.value)}
-                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-cnhs-green-dark/40"
+                onChange={setGradeLevel}
                 required
-              >
-                {GRADE_OPTIONS.map((grade) => (
-                  <option key={grade} value={grade}>
-                    Grade {grade}
-                  </option>
-                ))}
-              </select>
-            </label>
+                options={GRADE_OPTIONS.map((grade) => ({
+                  value: String(grade),
+                  label: `Grade ${grade}`,
+                }))}
+              />
+            </div>
 
             <label className="block">
               <span className="mb-1.5 block text-[11px] font-semibold text-slate-600">
@@ -146,32 +142,34 @@ export default function SectionFormModal({
             />
           </label>
 
-          <label className="block">
+          <div className="block">
             <span className="mb-1.5 block text-[11px] font-semibold text-slate-600">
               Adviser (optional)
             </span>
-            <select
+            <AppSelect
+              label="Adviser (optional)"
               value={adviserId}
-              onChange={(event) => setAdviserId(event.target.value)}
-              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-cnhs-green-dark/40"
-            >
-              <option value="">No adviser assigned</option>
-              {teachers.map((teacher) => (
-                <option key={teacher.id} value={teacher.id}>
-                  {formatTeacherName(teacher)}
-                  {teacher.employee_number
-                    ? ` (${teacher.employee_number})`
-                    : ""}
-                </option>
-              ))}
-            </select>
-          </label>
+              onChange={setAdviserId}
+              placeholder="No adviser assigned"
+              options={[
+                { value: "", label: "No adviser assigned" },
+                ...teachers.map((teacher) => ({
+                  value: teacher.id,
+                  label: `${formatTeacherName(teacher)}${
+                    teacher.employee_number
+                      ? ` (${teacher.employee_number})`
+                      : ""
+                  }`,
+                })),
+              ]}
+            />
+          </div>
 
-          {formError ? (
-            <p className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-[11px] font-medium text-red-600">
-              {formError}
-            </p>
-          ) : null}
+          <AnimatedBanner
+            message={formError}
+            tone="error"
+            className="text-[11px]"
+          />
 
           <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
             <button
@@ -195,7 +193,6 @@ export default function SectionFormModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </AnimatedModal>
   );
 }

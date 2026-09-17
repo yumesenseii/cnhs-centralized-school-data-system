@@ -1,0 +1,13 @@
+# Optional Render Blueprint — connect this repo and set Root Directory to ml-service
+# or deploy from the Dockerfile in this folder.
+services:
+  - type: web
+    name: cnhs-learn-rf
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: RF_INFERENCE_API_KEY
+        sync: false

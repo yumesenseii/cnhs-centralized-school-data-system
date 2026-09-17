@@ -6,7 +6,10 @@ import {
   getTeacherReportsBundle,
   resolveTeacherReportsSession,
 } from "@/lib/supabase/queries/reports";
-import { invalidateTeacherRosterCache } from "@/lib/teacher/teacherRosterCache";
+import {
+  invalidateTeacherRosterCache,
+  loadBuiltTeacherRoster,
+} from "@/lib/teacher/teacherRosterCache";
 import { buildTeacherDashboardModel } from "@/lib/teacher/dashboardMappers";
 import { useSoftLoadState } from "@/hooks/useSoftLoadState";
 
@@ -124,7 +127,43 @@ export function useTeacherDashboard() {
       setBuilding(true);
       setError("");
       try {
-        const next = await buildTeacherDashboardModel({
+        const next = await loadBuiltTeacherRoster(
+          {
+            classes: bundle.classes ?? [],
+            enrollments: bundle.enrollments ?? [],
+            grades: bundle.grades ?? [],
+            monitoringRecords: bundle.monitoringRecords ?? [],
+          },
+          { teacherId },
+          {
+            onShell: async (shell) => {
+              if (cancelled) return;
+              const model = await buildTeacherDashboardModel({
+                classes: bundle.classes ?? [],
+                enrollments: bundle.enrollments ?? [],
+                grades: bundle.grades ?? [],
+                monitoringRecords: bundle.monitoringRecords ?? [],
+                lessonPlans: bundle.lessonPlans ?? [],
+                schoolYear,
+                quarter,
+                teacherId,
+                roster: shell,
+              });
+              if (cancelled) return;
+              setData((current) => {
+                if (
+                  current?.roster &&
+                  !current.roster.predictionsPending &&
+                  model?.roster?.predictionsPending
+                ) {
+                  return current;
+                }
+                return model;
+              });
+            },
+          }
+        );
+        let mapped = await buildTeacherDashboardModel({
           classes: bundle.classes ?? [],
           enrollments: bundle.enrollments ?? [],
           grades: bundle.grades ?? [],
@@ -133,19 +172,55 @@ export function useTeacherDashboard() {
           schoolYear,
           quarter,
           teacherId,
+          roster: next,
         });
         if (cancelled) return;
-        setData(next);
-
-        void syncRecommendationNotifications({
-          profileId,
-          students: next.roster?.students ?? [],
-          classSummaries: next.roster?.classSummaries ?? [],
+        if (mapped.roster?.predictionsPending) {
+          const retried = await loadBuiltTeacherRoster(
+            {
+              classes: bundle.classes ?? [],
+              enrollments: bundle.enrollments ?? [],
+              grades: bundle.grades ?? [],
+              monitoringRecords: bundle.monitoringRecords ?? [],
+            },
+            { teacherId }
+          );
+          if (cancelled) return;
+          mapped = await buildTeacherDashboardModel({
+            classes: bundle.classes ?? [],
+            enrollments: bundle.enrollments ?? [],
+            grades: bundle.grades ?? [],
+            monitoringRecords: bundle.monitoringRecords ?? [],
+            lessonPlans: bundle.lessonPlans ?? [],
+            schoolYear,
+            quarter,
+            teacherId,
+            roster: retried,
+          });
+        }
+        if (cancelled) return;
+        setData((current) => {
+          if (
+            current?.roster &&
+            !current.roster.predictionsPending &&
+            mapped?.roster?.predictionsPending
+          ) {
+            return current;
+          }
+          return mapped;
         });
+
+        if (!mapped.roster?.predictionsPending) {
+          void syncRecommendationNotifications({
+            profileId,
+            students: mapped.roster?.students ?? [],
+            classSummaries: mapped.roster?.classSummaries ?? [],
+          });
+        }
       } catch (buildError) {
         if (!cancelled) {
-          setData(null);
           setError(buildError?.message ?? "Unable to build dashboard.");
+          setData((current) => current);
         }
       } finally {
         if (!cancelled) setBuilding(false);

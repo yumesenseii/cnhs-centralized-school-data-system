@@ -6,11 +6,12 @@ import {
   predictViaRemoteBatch,
 } from "@/lib/services/recommendation/inferenceClient";
 import { predictViaLocalEnsemble } from "@/lib/services/recommendation/localEnsemble";
+import { isRecommendationFallback } from "@/lib/monitoring/recommendationSource";
 
 /**
  * POST /api/recommendations/predict-batch
  *
- * Bulk academic risk gateway → FastAPI /predict_batch.
+ * Bulk academic risk gateway → FastAPI /predict_batch (chunked).
  * Body: { students: [{ student: {...} }, ...] }
  */
 export async function POST(request) {
@@ -66,18 +67,23 @@ export async function POST(request) {
     if (isRemoteInferenceConfigured() && featureInputs.length) {
       try {
         const remote = await predictViaRemoteBatch(
-          featureInputs.map(({ studentId, featureVector, featureList, featureNames }) => ({
-            studentId,
-            featureVector,
-            featureList,
-            featureNames,
-          }))
+          featureInputs.map(
+            ({ studentId, featureVector, featureList, featureNames }) => ({
+              studentId,
+              featureVector,
+              featureList,
+              featureNames,
+            })
+          )
         );
         if (remote.length === featureInputs.length) {
+          const allFallback = remote.every((row) =>
+            isRecommendationFallback(row?.source)
+          );
           return NextResponse.json({
             predictions: remote,
             count: remote.length,
-            source: "random-forest",
+            source: allFallback ? "rule-based-fallback" : "random-forest",
           });
         }
       } catch (error) {

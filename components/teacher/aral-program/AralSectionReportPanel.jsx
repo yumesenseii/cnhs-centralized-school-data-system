@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, Loader2, Printer } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -37,6 +37,7 @@ import { printAralSectionReport } from "@/lib/reports/aralSectionReportPrint";
 import { listAralAssessmentScoresForSection } from "@/lib/supabase/queries/aralProgram";
 import { listMonitoringRecordsForStudents } from "@/lib/supabase/queries/monitoring";
 import { cn } from "@/lib/utils";
+import { useAppToast } from "@/components/shared/AppToast";
 
 function ResultChip({ value }) {
   if (!value) return null;
@@ -131,7 +132,7 @@ export default function AralSectionReportPanel({
   const [exporting, setExporting] = useState(false);
   const [printing, setPrinting] = useState(false);
   const [error, setError] = useState("");
-  const [toast, setToast] = useState("");
+  const { showToast } = useAppToast();
   const [scores, setScores] = useState([]);
   const [records, setRecords] = useState([]);
 
@@ -243,10 +244,9 @@ export default function AralSectionReportPanel({
   async function handleDownload() {
     setExporting(true);
     setError("");
-    setToast("");
     try {
       const result = await downloadAralSectionReportExcel(exportPayload);
-      setToast(`Downloaded ${result.filename} (Cover + Detailed).`);
+      showToast(`Downloaded ${result.filename} (Cover + Detailed).`);
     } catch (err) {
       setError(err?.message ?? "Unable to download section report.");
     } finally {
@@ -257,7 +257,6 @@ export default function AralSectionReportPanel({
   function handlePrint() {
     setPrinting(true);
     setError("");
-    setToast("");
     try {
       printAralSectionReport({
         gradeSection,
@@ -273,9 +272,9 @@ export default function AralSectionReportPanel({
         individuals: report.individuals,
         weeklyRows,
       });
-      setToast("Opened print preview (Cover + Detailed).");
+      showToast("Report downloaded (Cover + Detailed).");
     } catch (err) {
-      setError(err?.message ?? "Unable to open print preview.");
+      setError(err?.message ?? "Unable to download report.");
     } finally {
       setPrinting(false);
     }
@@ -297,17 +296,12 @@ export default function AralSectionReportPanel({
           {error}
         </p>
       ) : null}
-      {toast ? (
-        <p className="rounded-lg border border-green-100 bg-green-50 px-3 py-2 text-[12px] font-medium text-cnhs-green-dark">
-          {toast}
-        </p>
-      ) : null}
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div
           role="tablist"
           aria-label="ARAL report view"
-          className="flex flex-wrap gap-1 rounded-xl border border-slate-100 bg-slate-50/70 p-1"
+          className="flex flex-wrap gap-1 border-b border-slate-200 dark:border-white/10"
         >
           {[
             { id: "cover", label: "Summary Cover" },
@@ -320,10 +314,10 @@ export default function AralSectionReportPanel({
               aria-selected={view === item.id}
               onClick={() => setView(item.id)}
               className={cn(
-                "inline-flex h-8 cursor-pointer items-center rounded-lg px-3 text-[11px] font-semibold",
+                "relative -mb-px inline-flex h-9 cursor-pointer items-center px-3 text-[12px] font-semibold",
                 view === item.id
-                  ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200"
-                  : "text-slate-500 hover:bg-white/70 hover:text-slate-700"
+                  ? "border-b-2 border-cnhs-green-dark text-cnhs-green-dark dark:border-cnhs-green dark:text-cnhs-green"
+                  : "border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
               )}
             >
               {item.label}
@@ -340,9 +334,9 @@ export default function AralSectionReportPanel({
             {printing ? (
               <Loader2 size={12} className="animate-spin" />
             ) : (
-              <Printer size={12} />
+              <Download size={12} />
             )}
-            Print / PDF
+            Download report
           </button>
           <button
             type="button"
@@ -360,10 +354,7 @@ export default function AralSectionReportPanel({
         </div>
       </div>
 
-      <p className="text-[11px] text-slate-500">
-        View and download only. From saved Pre / Mid / Post and weekly entries.
-        Not official DepEd ARAL form.
-      </p>
+      <p className="text-[11px] text-slate-500">View and download only.</p>
 
       <ReportHeader
         gradeSection={gradeSection}
@@ -480,7 +471,7 @@ export default function AralSectionReportPanel({
                       margin={{ top: 8, right: 8, left: -12, bottom: 8 }}
                     >
                       <CartesianGrid
-                        stroke="#eef2f7"
+                        stroke="var(--border)"
                         strokeDasharray="3 3"
                         vertical={false}
                       />
@@ -557,7 +548,7 @@ export default function AralSectionReportPanel({
                       margin={{ top: 8, right: 8, left: -12, bottom: 0 }}
                     >
                       <CartesianGrid
-                        stroke="#eef2f7"
+                        stroke="var(--border)"
                         strokeDasharray="3 3"
                         vertical={false}
                       />
@@ -617,11 +608,6 @@ export default function AralSectionReportPanel({
             </div>
           </div>
 
-          <p className="text-[10px] leading-relaxed text-slate-400">
-            From saved Pre/Mid/Post and weekly entries. Not official DepEd ARAL
-            form. ARAL session is not SF2 and is never an Academic Prediction /
-            RF input.
-          </p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -704,8 +690,8 @@ export default function AralSectionReportPanel({
             </p>
             <p className="mb-2 text-[11px] text-slate-500">
               {weeklySummary.hasWeekly
-                ? "Blank week = not saved. Not marked Absent. ARAL session is not official SF2."
-                : "No weekly sessions saved yet. Blank is not Absent. ARAL session is not SF2."}
+                ? "Blank week = not saved. Not marked Absent."
+                : "No weekly sessions saved yet. Leave a week blank if there was no session."}
             </p>
             <div className="overflow-x-auto rounded-xl border border-slate-100">
               <table className="min-w-[1080px] w-full border-collapse text-left">

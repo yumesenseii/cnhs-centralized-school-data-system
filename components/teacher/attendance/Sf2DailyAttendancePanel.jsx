@@ -19,8 +19,13 @@ import {
   saveSectionDailyAttendance,
 } from "@/lib/supabase/queries/attendanceDaily";
 import ConfirmModal from "@/components/shared/ConfirmModal";
-import SaveToast from "@/components/teacher/attendance/SaveToast";
+import { useAppToast } from "@/components/shared/AppToast";
+import MonitoringTablePagination from "@/components/teacher/monitoring/MonitoringTablePagination";
 import { cn } from "@/lib/utils";
+import AppSelect from "@/components/shared/AppSelect";
+import AttendanceDatePicker from "@/components/attendance/AttendanceDatePicker";
+
+const PAGE_SIZE = 20;
 
 const STATUS_OPTIONS = [
   { value: SF2_STATUS.PRESENT, label: "Present", short: "P" },
@@ -32,8 +37,6 @@ const FILTERS = [
   { value: "present", label: "Present" },
   { value: "absent", label: "Absent" },
   { value: "unsaved", label: "Unsaved" },
-  { value: "M", label: "M" },
-  { value: "F", label: "F" },
 ];
 
 const SESSION_OPTIONS = [
@@ -43,12 +46,12 @@ const SESSION_OPTIONS = [
 
 function statusButtonClass(value, selected) {
   if (!selected) {
-    return "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+    return "border-transparent bg-transparent text-slate-400 hover:bg-white/10 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-200";
   }
   if (value === SF2_STATUS.PRESENT) {
-    return "border-cnhs-green-dark/30 bg-green-50 text-cnhs-green-dark";
+    return "border-transparent bg-cnhs-green-dark text-white";
   }
-  return "border-red-200 bg-red-50 text-red-700";
+  return "border-transparent bg-red-700/85 text-white";
 }
 
 function groupRowsBySex(rows = []) {
@@ -74,39 +77,23 @@ export default function Sf2DailyAttendancePanel({
   onAttendanceDateChange,
   onDirtyChange,
   onSaved,
+  sectionIsAdviser = false,
 }) {
   const [sf2Session, setSf2Session] = useState(suggestedSessionFromClock);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [page, setPage] = useState(1);
   const [roster, setRoster] = useState([]);
   const [drafts, setDrafts] = useState({});
   const [isAdviser, setIsAdviser] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [toast, setToast] = useState("");
-  const [toastOpen, setToastOpen] = useState(false);
   const [confirm, setConfirm] = useState(null);
+  const { showToast } = useAppToast();
 
   const dirtyCallbackRef = useRef(onDirtyChange);
   dirtyCallbackRef.current = onDirtyChange;
-  const toastTimerRef = useRef(null);
-
-  useEffect(() => {
-    return () => {
-      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
-    };
-  }, []);
-
-  function showSaveToast(message) {
-    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
-    setToast(message);
-    setToastOpen(true);
-    toastTimerRef.current = window.setTimeout(() => {
-      setToastOpen(false);
-      toastTimerRef.current = null;
-    }, 5000);
-  }
 
   const reload = useCallback(async () => {
     if (!sectionId || !schoolYear || !attendanceDate || !sf2Session) {
@@ -180,6 +167,17 @@ export default function Sf2DailyAttendancePanel({
 
   const isDirty = useMemo(() => rows.some((row) => row.dirty), [rows]);
 
+  const markedDates = useMemo(() => {
+    const dates = new Set();
+    for (const row of roster) {
+      for (const mark of row.monthMarks ?? []) {
+        const date = String(mark.attendance_date || "").slice(0, 10);
+        if (date) dates.add(date);
+      }
+    }
+    return dates;
+  }, [roster]);
+
   useEffect(() => {
     dirtyCallbackRef.current?.(isDirty);
   }, [isDirty]);
@@ -187,9 +185,7 @@ export default function Sf2DailyAttendancePanel({
   const visibleRows = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((row) => {
-      if (filter === "M" || filter === "F") {
-        if (row.sex !== filter) return false;
-      } else if (filter === "unsaved") {
+      if (filter === "unsaved") {
         if (row.saved && !row.dirty) return false;
       } else if (filter !== "all" && row.status !== filter) {
         return false;
@@ -202,21 +198,26 @@ export default function Sf2DailyAttendancePanel({
     });
   }, [rows, search, filter]);
 
-  const visibleGroups = useMemo(
-    () => groupRowsBySex(visibleRows),
-    [visibleRows]
+  useEffect(() => {
+    setPage(1);
+  }, [search, filter, sectionId, attendanceDate, sf2Session]);
+
+  const totalPages = Math.max(1, Math.ceil(visibleRows.length / PAGE_SIZE) || 1);
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+  const pageRows = useMemo(
+    () =>
+      visibleRows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
+    [visibleRows, safePage]
   );
+
+  const pageGroups = useMemo(() => groupRowsBySex(pageRows), [pageRows]);
 
   function applySessionChange(next) {
     setSf2Session(next);
-    setToast("");
-    setToastOpen(false);
   }
 
   function applyDateChange(next) {
     onAttendanceDateChange?.(next);
-    setToast("");
-    setToastOpen(false);
   }
 
   function requestSessionChange(next) {
@@ -282,14 +283,12 @@ export default function Sf2DailyAttendancePanel({
   function setStatus(studentId, status) {
     if (!isAdviser) return;
     setDrafts((prev) => ({ ...prev, [studentId]: status }));
-    setToast("");
-    setToastOpen(false);
   }
 
-  function applyVisiblePresent() {
+  function applyVisiblePresent(targets) {
     setDrafts((prev) => {
       const next = { ...prev };
-      for (const row of visibleRows) {
+      for (const row of targets) {
         next[row.studentId] = SF2_STATUS.PRESENT;
       }
       return next;
@@ -297,28 +296,28 @@ export default function Sf2DailyAttendancePanel({
   }
 
   function markVisiblePresent() {
-    if (!isAdviser || !visibleRows.length) return;
-    const overwriting = visibleRows.filter(
+    if (!isAdviser || !pageRows.length) return;
+    const targets = pageRows;
+    const overwriting = targets.filter(
       (row) => row.status === SF2_STATUS.ABSENT
     );
-    if (overwriting.length) {
-      setConfirm({
-        title: "Mark as Present",
-        message: `${overwriting.length} learner(s) are marked Absent. Mark the visible list as Present?`,
-        confirmLabel: "Mark Present",
-        action: applyVisiblePresent,
-      });
-      return;
-    }
-    applyVisiblePresent();
+    const scope =
+      `This marks ${targets.length} learner(s) on the current page as Present. ` +
+      "Other pages are unchanged until you open them or Save.";
+    setConfirm({
+      title: "Mark this page as Present",
+      message: overwriting.length
+        ? `${overwriting.length} learner(s) on this page are marked Absent. ${scope}`
+        : scope,
+      confirmLabel: "Mark Present",
+      action: () => applyVisiblePresent(targets),
+    });
   }
 
   async function handleSave() {
     if (!isAdviser) return;
     setSaving(true);
     setError("");
-    setToast("");
-    setToastOpen(false);
     const result = await saveSectionDailyAttendance({
       sectionId,
       schoolYear,
@@ -333,7 +332,15 @@ export default function Sf2DailyAttendancePanel({
     if (result.error) {
       setError(result.error.message);
     } else {
-      showSaveToast(`Saved ${result.data?.saved ?? 0} learner mark(s).`);
+      showToast(
+        `Saved ${result.data?.saved ?? 0} ${sessionLabel} mark(s). Save the other session too if needed.`,
+        {
+          action: {
+            href: "/teacher/monitoring",
+            label: "Next: Academic Monitoring →",
+          },
+        }
+      );
       setRoster((prev) =>
         prev.map((row) => {
           const status = drafts[row.studentId] || SF2_STATUS.PRESENT;
@@ -368,66 +375,69 @@ export default function Sf2DailyAttendancePanel({
     sf2Session === SF2_SESSION.AFTERNOON ? "PM" : "AM";
   const otherLabel =
     otherSessionKey(sf2Session) === SF2_SESSION.AFTERNOON ? "PM" : "AM";
+  const adviser = Boolean(isAdviser || sectionIsAdviser);
+
+  const th =
+    "border border-slate-200 bg-slate-100 px-2 py-1 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap dark:border-white/10 dark:bg-[#222] dark:text-slate-300";
+  const td =
+    "border border-slate-200 px-2 py-1 text-center text-[12px] text-slate-800 dark:border-white/10 dark:text-slate-200";
+  const stickyLrn =
+    "sticky left-0 z-10 w-[14.2857%] bg-white dark:bg-[#1c1c1c]";
+  const stickyName =
+    "sticky left-[14.2857%] z-10 w-[14.2857%] bg-white shadow-[4px_0_8px_-4px_rgba(15,23,42,0.18)] dark:bg-[#1c1c1c]";
 
   return (
-    <section className="rounded-2xl border border-cnhs-green-dark/20 bg-white p-4 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-      <SaveToast message={toast} open={toastOpen} />
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <section className="space-y-3">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-cnhs-green-dark">
-            Daily attendance
-          </p>
-          <h2 className="mt-0.5 text-base font-semibold text-slate-900">
-            Morning and Afternoon roll call
-          </h2>
+          <h1 className="text-xl font-semibold tracking-[-0.03em] text-slate-800">
+            Attendance Monitoring
+          </h1>
           <p className="mt-0.5 text-[12px] text-slate-500">
-            Present or Absent until you save.
+            {adviser
+              ? "Class adviser · Save Morning and Afternoon after roll call."
+              : "Daily attendance is marked by the class adviser."}
           </p>
         </div>
         <div className="flex flex-wrap items-end justify-end gap-2">
-          <label className="text-[11px] font-medium text-slate-500">
+          <div className="text-[11px] font-medium text-slate-500">
             School year
-            <select
+            <AppSelect
+              label="School year"
               value={schoolYear}
-              onChange={(e) => requestSchoolYearLeave(e.target.value)}
-              className="mt-1 block h-9 min-w-[8.5rem] rounded-lg border border-slate-200 bg-white px-2.5 text-[12px] font-semibold text-slate-800"
-            >
-              {(schoolYears.length ? schoolYears : ["SY 2026-2027"]).map(
-                (year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                )
-              )}
-            </select>
-          </label>
-          <label className="text-[11px] font-medium text-slate-500">
-            Section
-            <select
-              value={sectionId || ""}
-              onChange={(e) => requestSectionLeave(e.target.value)}
-              className="mt-1 block h-9 min-w-[11rem] rounded-lg border border-slate-200 bg-white px-2.5 text-[12px] font-semibold text-slate-800"
-            >
-              <option value="">Select section</option>
-              {sections.map((section) => (
-                <option key={section.id} value={section.id}>
-                  Grade {section.grade_level} · {section.section_name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-[11px] font-medium text-slate-500">
-            Date
-            <input
-              type="date"
-              value={attendanceDate}
-              onChange={(e) => requestDateChange(e.target.value)}
-              className="mt-1 block h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-[12px] font-semibold text-slate-800"
+              onChange={(next) => requestSchoolYearLeave(next)}
+              options={schoolYears.length ? schoolYears : ["SY 2026-2027"]}
+              className="mt-1 min-w-[8.5rem]"
+              triggerClassName="h-8 rounded-lg px-2.5 text-[12px] font-semibold"
             />
-          </label>
+          </div>
+          <div className="text-[11px] font-medium text-slate-500">
+            Section
+            <AppSelect
+              label="Section"
+              value={sectionId || ""}
+              onChange={(next) => requestSectionLeave(next)}
+              placeholder="Select section"
+              options={[
+                { value: "", label: "Select section" },
+                ...sections.map((section) => ({
+                  value: section.id,
+                  label: `Grade ${section.grade_level} · ${section.section_name}`,
+                })),
+              ]}
+              className="mt-1 min-w-[11rem]"
+              triggerClassName="h-8 rounded-lg px-2.5 text-[12px] font-semibold"
+            />
+          </div>
+          <AttendanceDatePicker
+            value={attendanceDate}
+            onChange={requestDateChange}
+            markedDates={markedDates}
+            className="min-w-[9.5rem]"
+          />
           <div className="text-[11px] font-medium text-slate-500">
             Session
-            <div className="mt-1 flex h-9 overflow-hidden rounded-lg border border-slate-200 bg-white">
+            <div className="mt-1 flex h-8 overflow-hidden rounded-lg border border-slate-200 dark:border-white/10">
               {SESSION_OPTIONS.map((option) => (
                 <button
                   key={option.value}
@@ -437,7 +447,7 @@ export default function Sf2DailyAttendancePanel({
                     "h-full cursor-pointer px-3 text-[12px] font-semibold",
                     sf2Session === option.value
                       ? "bg-cnhs-green-dark text-white"
-                      : "bg-white text-slate-600 hover:bg-slate-50"
+                      : "bg-transparent text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/6"
                   )}
                 >
                   {option.label}
@@ -449,7 +459,7 @@ export default function Sf2DailyAttendancePanel({
             type="button"
             disabled={!isAdviser || saving || !roster.length || !isDirty}
             onClick={handleSave}
-            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-cnhs-green-dark/30 bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white hover:bg-[#246f54] disabled:opacity-50"
+            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white hover:bg-[#246f54] disabled:opacity-50"
           >
             {saving ? (
               <Loader2 size={13} className="animate-spin" />
@@ -462,13 +472,13 @@ export default function Sf2DailyAttendancePanel({
       </div>
 
       {error ? (
-        <div className="mt-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+        <div className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
           {error}
         </div>
       ) : null}
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <label className="relative block min-w-0 flex-1">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <label className="relative block min-w-0 flex-1 sm:max-w-xs">
           <Search
             size={13}
             className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
@@ -478,20 +488,20 @@ export default function Sf2DailyAttendancePanel({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search name or LRN"
-            className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-[12px] text-slate-800"
+            className="h-8 w-full rounded-lg border border-slate-200 bg-transparent pl-8 pr-3 text-[12px] text-slate-800 dark:border-white/10 dark:text-slate-200"
           />
         </label>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap items-center gap-1">
           {FILTERS.map((item) => (
             <button
               key={item.value}
               type="button"
               onClick={() => setFilter(item.value)}
               className={cn(
-                "h-8 cursor-pointer rounded-full border px-2.5 text-[11px] font-semibold",
+                "h-8 cursor-pointer rounded-md px-2.5 text-[11px] font-semibold",
                 filter === item.value
-                  ? "border-cnhs-green-dark/30 bg-green-50 text-cnhs-green-dark"
-                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  ? "bg-cnhs-green-dark text-white"
+                  : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/6"
               )}
             >
               {item.label}
@@ -499,132 +509,169 @@ export default function Sf2DailyAttendancePanel({
           ))}
           <button
             type="button"
-            disabled={!isAdviser || !visibleRows.length}
+            disabled={!isAdviser || !pageRows.length}
             onClick={markVisiblePresent}
-            className="h-8 cursor-pointer rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            title="Applies to this page only (20 learners). Does not mark the rest of the section."
+            className="h-8 cursor-pointer rounded-md px-2.5 text-[11px] font-semibold text-cnhs-green-dark hover:bg-cnhs-green-soft disabled:opacity-50"
           >
-            Mark visible as Present
+            Mark page Present
           </button>
         </div>
       </div>
 
       {loading ? (
-        <div className="mt-6 flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
+        <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
           <Loader2 size={16} className="animate-spin" />
           Loading roster…
         </div>
       ) : !sectionId ? (
-        <p className="mt-6 rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
+        <p className="py-8 text-[13px] text-slate-500">
           Choose a section to load enrolled learners.
         </p>
       ) : !roster.length ? (
-        <p className="mt-6 rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-medium text-slate-700">
+        <p className="py-8 text-[13px] font-medium text-slate-700">
           No learners enrolled in this section yet.
         </p>
       ) : (
-        <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full text-left text-[12px]">
-            <thead>
-              <tr className="border-b border-slate-100 text-[10px] uppercase tracking-wide text-slate-400">
-                <th className="py-2 pr-3 font-semibold">Learner</th>
-                <th className="py-2 pr-3 font-semibold">LRN</th>
-                <th className="py-2 pr-3 font-semibold">Sex</th>
-                <th className="py-2 pr-3 font-semibold">{sessionLabel}</th>
-                <th className="py-2 pr-3 font-semibold">{otherLabel}</th>
-                <th className="py-2 pr-3 font-semibold">Month sessions</th>
-                <th className="py-2 font-semibold">State</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleGroups.map((group) => (
-                <Fragment key={group.key}>
-                  <tr className="bg-slate-50">
-                    <td
-                      colSpan={7}
-                      className="py-1.5 pr-3 text-[10px] font-semibold uppercase tracking-wide text-slate-500"
-                    >
-                      {group.label}
-                    </td>
-                  </tr>
-                  {group.rows.map((row) => {
-                    const legacy =
-                      row.status === SF2_STATUS.LATE ||
-                      row.status === SF2_STATUS.CUTTING;
-                    return (
-                      <tr
-                        key={row.studentId}
-                        className="border-b border-slate-50 last:border-0"
+        <div>
+          <div className="attendance-roll-scroll overflow-x-auto border border-slate-200 dark:border-white/10">
+            <table className="w-full table-fixed border-collapse text-left text-[12px]">
+              <colgroup>
+                <col className="w-[14.2857%]" />
+                <col className="w-[14.2857%]" />
+                <col className="w-[14.2857%]" />
+                <col className="w-[14.2857%]" />
+                <col className="w-[14.2857%]" />
+                <col className="w-[14.2857%]" />
+                <col className="w-[14.2857%]" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th className={cn(th, stickyLrn, "z-20")}>LRN</th>
+                  <th className={cn(th, stickyName, "z-20")}>Learner</th>
+                  <th className={th}>Sex</th>
+                  <th className={th}>{sessionLabel}</th>
+                  <th className={th}>{otherLabel}</th>
+                  <th className={th}>Month sessions</th>
+                  <th className={th}>State</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageGroups.map((group) => (
+                  <Fragment key={group.key}>
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="border border-slate-200 bg-slate-50 px-2 py-1 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:border-white/10 dark:bg-[#222]"
                       >
-                        <td className="py-2 pr-3 font-semibold text-slate-800">
-                          {row.name}
-                        </td>
-                        <td className="py-2 pr-3 text-slate-500">
-                          {row.studentNumber || "—"}
-                        </td>
-                        <td className="py-2 pr-3 text-slate-600">{row.sex}</td>
-                        <td className="py-2 pr-3">
-                          <div className="flex flex-wrap gap-1">
-                            {STATUS_OPTIONS.map((option) => (
-                              <button
-                                key={option.value}
-                                type="button"
-                                disabled={!isAdviser}
-                                onClick={() =>
-                                  setStatus(row.studentId, option.value)
-                                }
-                                className={cn(
-                                  "h-7 cursor-pointer rounded-md border px-2 text-[10px] font-semibold disabled:cursor-not-allowed disabled:opacity-60",
-                                  statusButtonClass(
-                                    option.value,
-                                    row.status === option.value
-                                  )
-                                )}
-                                title={option.label}
-                              >
-                                {option.short}
-                              </button>
-                            ))}
-                            {legacy ? (
-                              <span className="inline-flex h-7 items-center rounded-md bg-slate-100 px-2 text-[10px] font-semibold text-slate-500">
-                                Saved {statusShort(row.status)}
+                        {group.label}
+                      </td>
+                    </tr>
+                    {group.rows.map((row) => {
+                      const legacy =
+                        row.status === SF2_STATUS.LATE ||
+                        row.status === SF2_STATUS.CUTTING;
+                      return (
+                        <tr
+                          key={row.studentId}
+                          className="hover:bg-slate-50/80 dark:hover:bg-white/4"
+                        >
+                          <td
+                            className={cn(
+                              td,
+                              stickyLrn,
+                              "font-mono text-[11px] tabular-nums text-slate-500"
+                            )}
+                          >
+                            {row.studentNumber || "—"}
+                          </td>
+                          <td
+                            className={cn(
+                              td,
+                              stickyName,
+                              "truncate font-medium"
+                            )}
+                          >
+                            {row.name}
+                          </td>
+                          <td className={cn(td, "text-slate-600")}>
+                            {row.sex}
+                          </td>
+                          <td className={cn(td, "p-0")}>
+                            <div className="flex h-7 w-full items-stretch">
+                              {STATUS_OPTIONS.map((option) => (
+                                <button
+                                  key={option.value}
+                                  type="button"
+                                  disabled={!isAdviser}
+                                  onClick={() =>
+                                    setStatus(row.studentId, option.value)
+                                  }
+                                  className={cn(
+                                    "inline-flex h-full min-w-0 flex-1 cursor-pointer items-center justify-center text-[10px] font-semibold disabled:cursor-not-allowed disabled:opacity-60",
+                                    statusButtonClass(
+                                      option.value,
+                                      row.status === option.value
+                                    )
+                                  )}
+                                  title={option.label}
+                                >
+                                  {option.short}
+                                </button>
+                              ))}
+                              {legacy ? (
+                                <span className="inline-flex h-7 items-center px-2 text-[10px] font-semibold text-slate-500">
+                                  {statusShort(row.status)}
+                                </span>
+                              ) : null}
+                            </div>
+                          </td>
+                          <td className={cn(td, "text-slate-500")}>
+                            {row.otherStatus
+                              ? statusShort(row.otherStatus)
+                              : "—"}
+                          </td>
+                          <td className={cn(td, "tabular-nums text-slate-600")}>
+                            {row.sessionTotals.present}P ·{" "}
+                            {row.sessionTotals.absent}A
+                          </td>
+                          <td className={td}>
+                            {row.saved && !row.changed ? (
+                              <span className="text-[11px] font-medium text-cnhs-green-dark">
+                                Saved
                               </span>
-                            ) : null}
-                          </div>
-                        </td>
-                        <td className="py-2 pr-3 text-slate-600">
-                          {row.otherStatus
-                            ? statusShort(row.otherStatus)
-                            : `${otherLabel} not saved`}
-                        </td>
-                        <td className="py-2 pr-3 tabular-nums text-slate-600">
-                          {row.sessionTotals.present}P ·{" "}
-                          {row.sessionTotals.absent}A
-                        </td>
-                        <td className="py-2">
-                          {row.saved && !row.changed ? (
-                            <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-cnhs-green-dark">
-                              Saved
-                            </span>
-                          ) : row.changed ? (
-                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
-                              Unsaved
-                            </span>
-                          ) : (
-                            <span className="text-slate-300">On screen</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
-          {!visibleRows.length ? (
-            <p className="py-6 text-center text-[12px] text-slate-500">
-              No learners match this search or filter.
-            </p>
-          ) : null}
+                            ) : row.changed ? (
+                              <span className="text-[11px] font-medium text-amber-700">
+                                Unsaved
+                              </span>
+                            ) : (
+                              <span
+                                className="text-[11px] font-medium text-slate-500"
+                                title="On screen only — not stored until you Save this session."
+                              >
+                                On screen
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+            {!visibleRows.length ? (
+              <p className="py-6 text-center text-[12px] text-slate-500">
+                No learners match this search or filter.
+              </p>
+            ) : null}
+          </div>
+          <MonitoringTablePagination
+            page={safePage}
+            pageSize={PAGE_SIZE}
+            total={visibleRows.length}
+            onPageChange={setPage}
+          />
         </div>
       )}
 

@@ -19,7 +19,7 @@ export default function RiskDistributionChart({ data }) {
                 innerRadius={42}
                 outerRadius={68}
                 paddingAngle={2}
-                stroke="#ffffff"
+                stroke="var(--card)"
                 strokeWidth={3}
               >
                 {data.map((item) => (

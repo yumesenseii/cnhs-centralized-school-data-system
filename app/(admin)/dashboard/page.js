@@ -6,6 +6,8 @@ import Header from "@/components/dashboard/Header";
 import LoadingSkeleton from "@/components/dashboard/LoadingSkeleton";
 import AttendanceMonitoringPanel from "@/components/attendance/AttendanceMonitoringPanel";
 import DeferredMount from "@/components/shared/DeferredMount";
+import PageHelp from "@/components/shared/PageHelp";
+import GuidedTour from "@/components/shared/GuidedTour";
 import { useAdminDashboard } from "@/hooks/admin/useAdminDashboard";
 
 function DashboardLoading() {
@@ -31,7 +33,7 @@ function DashboardLoading() {
 export default function DashboardPage() {
   const { data, loading, error, refresh } = useAdminDashboard();
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 8 }}
@@ -43,7 +45,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (error) {
+  if (error && !data) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 8 }}
@@ -80,7 +82,23 @@ export default function DashboardPage() {
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="pb-5"
     >
-      <Header description={data?.welcomeDescription} />
+      <Header
+        description={data?.welcomeDescription}
+        controls={
+          <PageHelp
+            summary="School overview of academic risk and attendance (separate modules)."
+            steps={[
+              "Review the four summary cards for learner counts and risk.",
+              "Use Summary / Charts / By Level / Breakdown tabs for details.",
+              "Risk and recommendations use ECR grades only — not attendance.",
+              "Attendance snapshot below is from SF2 archive or daily records; open Attendance Monitoring for full tools.",
+              "Click a risk card or filter to open the learner breakdown.",
+            ]}
+          />
+        }
+      />
+
+      <GuidedTour role="admin" />
 
       <AdminAcademicAnalytics
         schoolYear={data?.schoolYear}
@@ -92,18 +110,23 @@ export default function DashboardPage() {
         priorityLearners={priorityLearners}
       />
 
-      <div className="mt-3 border-t border-slate-100 pt-3">
+      <div className="mt-2 border-t border-slate-100 pt-2">
         <DeferredMount
           delayMs={100}
           fallback={
-            <p className="py-4 text-center text-[12px] text-slate-400">
+            <p className="py-3 text-center text-[12px] text-slate-400">
               Loading attendance analytics…
             </p>
           }
         >
-          <AttendanceMonitoringPanel showUpload={false} compact />
+          <AttendanceMonitoringPanel
+            showUpload={false}
+            compact
+            linkHref="/attendance"
+            linkLabel="Attendance →"
+          />
         </DeferredMount>
-        <p className="mt-2 text-[11px] text-slate-400">
+        <p className="mt-1.5 text-[10px] text-slate-400">
           Upload SF2 files and manage monthly reports on{" "}
           <a
             href="/attendance"

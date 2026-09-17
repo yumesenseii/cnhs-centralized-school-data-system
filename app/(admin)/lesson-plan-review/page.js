@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { CalendarDays, RefreshCw } from "lucide-react";
+import AppSelect from "@/components/shared/AppSelect";
 import FilterDropdown from "@/components/lesson-plan/FilterDropdown";
 import LessonDrawer from "@/components/lesson-plan/LessonDrawer";
 import LessonPlanTable from "@/components/lesson-plan/LessonPlanTable";
@@ -23,40 +24,23 @@ function HeaderControls({
 }) {
   return (
     <>
-      <label className="relative">
-        <span className="sr-only">School Year</span>
-        <CalendarDays
-          size={12}
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-        />
-        <select
-          value={schoolYear}
-          onChange={(e) => onSchoolYearChange(e.target.value)}
-          className="h-8 cursor-pointer rounded-full border border-slate-200 bg-white pl-8 pr-7 text-[11px] font-medium text-slate-600 shadow-sm outline-none transition-colors hover:bg-slate-50 focus:border-cnhs-green"
-        >
-          {(schoolYears?.length ? schoolYears : ["All School Years"]).map(
-            (option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            )
-          )}
-        </select>
-      </label>
-      <label>
-        <span className="sr-only">Quarter</span>
-        <select
-          value={quarter}
-          onChange={(e) => onQuarterChange(e.target.value)}
-          className="h-8 cursor-pointer rounded-full border border-slate-200 bg-white px-4 text-[11px] font-medium text-slate-600 shadow-sm outline-none transition-colors hover:bg-slate-50 focus:border-cnhs-green"
-        >
-          {(quarters?.length ? quarters : ["All Terms"]).map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </label>
+      <AppSelect
+        label="School Year"
+        value={schoolYear}
+        onChange={onSchoolYearChange}
+        options={schoolYears?.length ? schoolYears : ["All School Years"]}
+        icon={CalendarDays}
+        size="pill"
+        align="end"
+      />
+      <AppSelect
+        label="Quarter"
+        value={quarter}
+        onChange={onQuarterChange}
+        options={quarters?.length ? quarters : ["All Terms"]}
+        size="pill"
+        align="end"
+      />
       <button
         type="button"
         onClick={onRefresh}

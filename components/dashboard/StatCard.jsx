@@ -57,15 +57,22 @@ export default function StatCard({ stat }) {
           <Icon size={15} strokeWidth={1.8} className={variant.icon} aria-hidden="true" />
         </span>
       </div>
-      <p className={cn("mt-3 text-[26px] font-semibold leading-none tracking-[-0.04em]", variant.value)}>
-        {stat.value}
+      <p className={cn("mt-2 text-[22px] font-semibold leading-none tracking-[-0.04em]", variant.value)}>
+        {stat.value === null || stat.value === undefined ? (
+          <span
+            className="inline-block h-6 w-10 animate-pulse rounded bg-slate-200/80 align-middle"
+            aria-hidden="true"
+          />
+        ) : (
+          stat.value
+        )}
       </p>
-      <p className={cn("mt-1.5 text-[11px] font-medium", variant.subtext)}>{stat.subtext}</p>
+      <p className={cn("mt-1 text-[10px] font-medium", variant.subtext)}>{stat.subtext}</p>
     </>
   );
 
   const className = cn(
-    "block rounded-2xl border p-4 shadow-[0_6px_16px_rgba(15,23,42,0.04)] transition-shadow duration-200 hover:shadow-[0_10px_24px_rgba(15,23,42,0.07)]",
+    "block rounded-xl border p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] transition-shadow duration-200 hover:shadow-[0_10px_24px_rgba(15,23,42,0.07)]",
     variant.card,
     interactive && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cnhs-green/40"
   );

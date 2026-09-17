@@ -16,10 +16,14 @@ import {
   invalidateAttendanceAnalyticsCache,
   listAttendanceUploads,
 } from "@/lib/supabase/queries/attendance";
-import { getSchoolDailyMonth } from "@/lib/supabase/queries/attendanceDaily";
+import {
+  getSchoolDailyMonth,
+  getSectionDailyMonth,
+} from "@/lib/supabase/queries/attendanceDaily";
 import { createClient } from "@/lib/supabase/client";
-import { MONTH_LABELS } from "@/lib/attendance/constants";
+import { MONTH_LABELS, monthLabel } from "@/lib/attendance/constants";
 import { todayIsoDateManila } from "@/lib/attendance/sf2Daily";
+import { useAppToast } from "@/components/shared/AppToast";
 import {
   formatSessionRate,
   sessionRatePercent,
@@ -34,6 +38,7 @@ import {
   exportSchoolSf2Pdf,
 } from "@/lib/attendance/exportSf2Report";
 import { cn } from "@/lib/utils";
+import AppSelect from "@/components/shared/AppSelect";
 import {
   AttendanceFlags,
   AttendanceKpi,
@@ -42,6 +47,156 @@ import {
   runSf2CompImport,
   sectionStatus,
 } from "@/components/attendance/attendanceUiShared";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+
+const SCHOOL_YEAR_MONTHS = [6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
+
+function hasDailyRecords(row = {}) {
+  const present = Number(row.present || 0);
+  const absent = Number(row.absent || 0);
+  const marked = Number(row.learnersMarked || 0);
+  if (present > 0 || absent > 0 || marked > 0) return true;
+  return row.sessionRate != null && Number.isFinite(Number(row.sessionRate));
+}
+
+function pickFirstRecordedSection(rows = []) {
+  return rows.find((row) => hasDailyRecords(row)) ?? rows[0] ?? null;
+}
+
+function padSchoolYearTrend(trend = []) {
+  const byMonth = new Map(
+    (trend ?? []).map((row) => [Number(row.month), row])
+  );
+  return SCHOOL_YEAR_MONTHS.map((month) => {
+    const existing = byMonth.get(month);
+    const name = monthLabel(month);
+    const hasRecords =
+      existing != null &&
+      existing.sessionRate != null &&
+      Number.isFinite(Number(existing.sessionRate));
+    return {
+      month,
+      monthName: name,
+      shortName: String(name).slice(0, 3),
+      present: existing?.present ?? 0,
+      absent: existing?.absent ?? 0,
+      sessionRate: hasRecords ? Number(existing.sessionRate) : null,
+      rate: hasRecords ? Number(existing.sessionRate) : null,
+      hasRecords,
+    };
+  });
+}
+
+function MonthAttendanceTrend({ trend = [], activeMonth }) {
+  const data = padSchoolYearTrend(trend);
+  const hasAny = data.some((row) => row.hasRecords);
+
+  if (!hasAny) {
+    return (
+      <p className="py-8 text-center text-[12px] text-slate-500">
+        No daily records this school year yet.
+      </p>
+    );
+  }
+
+  return (
+    <div className="h-[180px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart
+          data={data}
+          margin={{ top: 8, right: 12, left: -8, bottom: 0 }}
+        >
+          <CartesianGrid
+            stroke="var(--border)"
+            strokeDasharray="3 3"
+            vertical={false}
+          />
+          <XAxis
+            dataKey="shortName"
+            tickLine={false}
+            axisLine={false}
+            tick={{ fontSize: 11, fill: "#94a3b8" }}
+            dy={4}
+          />
+          <YAxis
+            domain={[0, 100]}
+            tickLine={false}
+            axisLine={false}
+            tick={{ fontSize: 10, fill: "#94a3b8" }}
+            width={36}
+            tickFormatter={(value) => `${value}%`}
+          />
+          <Tooltip
+            cursor={{
+              stroke: "#40916c",
+              strokeWidth: 1,
+              strokeOpacity: 0.45,
+              fill: "transparent",
+            }}
+            content={({ active, payload }) => {
+              if (!active || !payload?.[0]) return null;
+              const row = payload[0].payload;
+              return (
+                <div
+                  className="rounded-lg px-2.5 py-1.5 text-[11px] shadow-sm"
+                  style={{
+                    backgroundColor: "var(--card)",
+                    color: "var(--card-foreground)",
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  {row.hasRecords
+                    ? `${row.monthName} · ${formatSessionRate(row.sessionRate)} · ${fmtAttendance(row.present)} present marks · ${fmtAttendance(row.absent)} absent marks`
+                    : `${row.monthName} · No daily marks`}
+                </div>
+              );
+            }}
+          />
+          <Line
+            type="monotone"
+            dataKey="rate"
+            stroke="#40916c"
+            strokeWidth={2.25}
+            connectNulls={false}
+            dot={(props) => {
+              const { cx, cy, payload, key } = props;
+              if (!payload?.hasRecords || cx == null || cy == null) {
+                return <g key={key} />;
+              }
+              const selected =
+                Number(payload.month) === Number(activeMonth);
+              return (
+                <circle
+                  key={key}
+                  cx={cx}
+                  cy={cy}
+                  r={selected ? 5 : 3.5}
+                  fill={selected ? "#1b4332" : "#40916c"}
+                  stroke="var(--card)"
+                  strokeWidth={1.5}
+                />
+              );
+            }}
+            activeDot={{
+              r: 6,
+              fill: "#40916c",
+              stroke: "#1b4332",
+              strokeWidth: 2,
+            }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
 export default function AdminAttendancePanel({
   refreshToken = 0,
@@ -60,11 +215,12 @@ export default function AdminAttendancePanel({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
-  const [toast, setToast] = useState("");
+  const { showToast } = useAppToast();
   const [selectedId, setSelectedId] = useState(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [previewBusy, setPreviewBusy] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewFormat, setPreviewFormat] = useState("pdf");
   const [preview, setPreview] = useState(null);
@@ -105,8 +261,9 @@ export default function AdminAttendancePanel({
         setDaily(dailyResult.data);
         setSelectedId((current) => {
           const rows = dailyResult.data?.rows ?? [];
-          if (current && rows.some((r) => r.id === current)) return current;
-          return rows[0]?.id ?? null;
+          const currentRow = rows.find((r) => r.id === current);
+          if (currentRow && hasDailyRecords(currentRow)) return current;
+          return pickFirstRecordedSection(rows)?.id ?? null;
         });
       }
 
@@ -170,9 +327,25 @@ export default function AdminAttendancePanel({
     );
   }, [daily, filters.grade]);
 
+  const learnersWithRecords = useMemo(
+    () =>
+      tableRows.reduce(
+        (sum, row) =>
+          sum + (hasDailyRecords(row) ? Number(row.learnersMarked) || 0 : 0),
+        0
+      ),
+    [tableRows]
+  );
+
+  const sectionsWaiting = tableRows.filter((row) => !hasDailyRecords(row)).length;
+  const sectionsTotal = tableRows.length;
+
   const detail = useMemo(() => {
     if (!tableRows.length) return null;
-    return tableRows.find((r) => r.id === selectedId) || tableRows[0];
+    return (
+      tableRows.find((r) => r.id === selectedId) ||
+      pickFirstRecordedSection(tableRows)
+    );
   }, [tableRows, selectedId]);
 
   const grades = useMemo(() => {
@@ -193,7 +366,6 @@ export default function AdminAttendancePanel({
   async function handleImport(e) {
     e?.preventDefault?.();
     setError("");
-    setToast("");
     if (!form.file) {
       setError("Choose an SF2 Excel file first.");
       return;
@@ -209,7 +381,7 @@ export default function AdminAttendancePanel({
       });
       if (result.error) setError(result.error.message);
       else {
-        setToast(
+        showToast(
           `Archived ${result.data.importedMonths} month(s) for ${
             result.data.sectionHint || "section"
           }`
@@ -242,29 +414,84 @@ export default function AdminAttendancePanel({
     setPendingExport(null);
   }
 
-  function openDailyPreview(kind) {
-    if (!daily || !tableRows.length) return;
+  async function openDailyPreview(kind) {
+    if (!daily || !tableRows.length || previewBusy || exporting) return;
     setError("");
-    const present = tableRows.reduce((sum, row) => sum + (row.present || 0), 0);
-    const absent = tableRows.reduce((sum, row) => sum + (row.absent || 0), 0);
-    const enrolled = tableRows.reduce(
-      (sum, row) => sum + (row.learnersMarked || 0),
-      0
-    );
-    setPendingExport({ kind: "daily", format: kind });
-    setPreviewFormat(kind);
-    setPreview({
-      title: "Attendance working report",
-      schoolYear: filters.schoolYear,
-      sectionLabel: filters.grade ? `Grade ${filters.grade}` : "All sections",
-      monthName: daily.monthName,
-      enrolled,
-      present,
-      absent,
-      sessionRate: formatSessionRate(sessionRatePercent({ present, absent })),
-      closed: false,
-    });
-    setPreviewOpen(true);
+    setPreviewBusy(true);
+    try {
+      const present = tableRows.reduce((sum, row) => sum + (row.present || 0), 0);
+      const absent = tableRows.reduce((sum, row) => sum + (row.absent || 0), 0);
+      const scopeLabel = filters.grade
+        ? `Grade ${filters.grade}`
+        : "All sections";
+      const sectionsWithData = tableRows.filter((row) => hasDailyRecords(row));
+      const results = await Promise.all(
+        sectionsWithData.map((row) =>
+          getSectionDailyMonth({
+            sectionId: row.sectionId,
+            schoolYear: filters.schoolYear,
+            month: daily.month || filters.month,
+          })
+        )
+      );
+      const learners = [];
+      const fetchErrors = [];
+      results.forEach((result, index) => {
+        if (result.error) {
+          fetchErrors.push(result.error);
+          return;
+        }
+        const sectionRow = sectionsWithData[index];
+        const sectionLabel = `G${sectionRow.gradeLevel} · ${sectionRow.sectionName}`;
+        for (const row of result.data?.learners ?? []) {
+          const presentSessions = row.presentSessions ?? 0;
+          const absentSessions = row.absentSessions ?? 0;
+          const otherSessions = row.otherSessions ?? 0;
+          if (presentSessions + absentSessions + otherSessions <= 0) continue;
+          learners.push({
+            sectionLabel,
+            name: row.name,
+            studentNumber: row.studentNumber || "—",
+            presentSessions,
+            absentSessions,
+            sessionRate: row.sessionRate,
+          });
+        }
+      });
+      learners.sort((a, b) => {
+        const absCmp = (b.absentSessions || 0) - (a.absentSessions || 0);
+        if (absCmp !== 0) return absCmp;
+        return String(a.name).localeCompare(String(b.name), "en");
+      });
+      if (fetchErrors.length) {
+        setError(
+          fetchErrors[0]?.message ||
+            "Some learner names could not be loaded for this report."
+        );
+      }
+      setPendingExport({ kind: "daily", format: kind });
+      setPreviewFormat(kind);
+      setPreview({
+        kind: "school",
+        title: "Attendance working report",
+        schoolYear: filters.schoolYear,
+        sectionLabel: scopeLabel,
+        monthName: daily.monthName,
+        present,
+        absent,
+        sessionRate: formatSessionRate(sessionRatePercent({ present, absent })),
+        sessionRateValue: sessionRatePercent({ present, absent }),
+        sectionCount: tableRows.length,
+        sectionsWithData: sectionsWithData.length,
+        rows: tableRows,
+        learners,
+      });
+      setPreviewOpen(true);
+    } catch (err) {
+      setError(err?.message || "Unable to load the attendance preview.");
+    } finally {
+      setPreviewBusy(false);
+    }
   }
 
   function openArchivePreview(kind) {
@@ -302,16 +529,38 @@ export default function AdminAttendancePanel({
     try {
       if (pendingExport.kind === "daily") {
         if (!daily) return;
+        const present =
+          preview?.present ??
+          tableRows.reduce((sum, row) => sum + (row.present || 0), 0);
+        const absent =
+          preview?.absent ??
+          tableRows.reduce((sum, row) => sum + (row.absent || 0), 0);
         const payload = {
           schoolYear: filters.schoolYear,
           monthName: daily.monthName,
-          summary: { ...daily, rows: tableRows },
+          summary: {
+            ...daily,
+            rows: preview?.rows ?? tableRows,
+            learners: preview?.learners ?? [],
+            scopeLabel:
+              preview?.sectionLabel ||
+              (filters.grade ? `Grade ${filters.grade}` : "All sections"),
+            sectionCount: preview?.sectionCount ?? tableRows.length,
+            sectionsWithData:
+              preview?.sectionsWithData ??
+              tableRows.filter((row) => hasDailyRecords(row)).length,
+            presentSessions: present,
+            absentSessions: absent,
+            sessionRate:
+              preview?.sessionRateValue ??
+              sessionRatePercent({ present, absent }),
+          },
         };
         if (pendingExport.format === "pdf") exportSchoolDailyPdf(payload);
         else await exportSchoolDailyExcel(payload);
-        setToast(
+        showToast(
           pendingExport.format === "pdf"
-            ? "Print dialog opened — save as PDF."
+            ? "Report downloaded."
             : "Excel downloaded."
         );
       } else {
@@ -339,9 +588,9 @@ export default function AdminAttendancePanel({
             rows: archiveRows,
           });
         }
-        setToast(
+        showToast(
           pendingExport.format === "pdf"
-            ? "Archive print dialog opened."
+            ? "Archive report downloaded."
             : "Archive Excel downloaded."
         );
       }
@@ -362,61 +611,52 @@ export default function AdminAttendancePanel({
           {error}
         </div>
       ) : null}
-      {toast ? (
-        <div className="rounded-xl border border-green-100 bg-green-50 px-3 py-2 text-sm text-cnhs-green-dark">
-          {toast}
-        </div>
-      ) : null}
 
       <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
-            <select
+            <AppSelect
+              label="School year"
               value={filters.schoolYear}
-              onChange={(e) =>
+              onChange={(next) =>
                 setFilters((prev) => ({
                   ...prev,
-                  schoolYear: e.target.value,
+                  schoolYear: next,
                 }))
               }
-              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700"
-              aria-label="School year"
-            >
-              {schoolYears.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-            <select
+              options={schoolYears}
+              className="w-[148px]"
+              triggerClassName="h-9 rounded-lg text-[11px] font-semibold"
+            />
+            <AppSelect
+              label="Month"
               value={filters.month}
-              onChange={(e) =>
-                setFilters((prev) => ({ ...prev, month: e.target.value }))
+              onChange={(next) =>
+                setFilters((prev) => ({ ...prev, month: next }))
               }
-              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700"
-              aria-label="Month"
-            >
-              {MONTH_LABELS.map((label, i) => (
-                <option key={label} value={String(i + 1)}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <select
+              options={MONTH_LABELS.map((label, i) => ({
+                value: String(i + 1),
+                label,
+              }))}
+              className="w-[148px]"
+              triggerClassName="h-9 rounded-lg text-[11px] font-semibold"
+            />
+            <AppSelect
+              label="Grade"
               value={filters.grade}
-              onChange={(e) =>
-                setFilters((prev) => ({ ...prev, grade: e.target.value }))
+              onChange={(next) =>
+                setFilters((prev) => ({ ...prev, grade: next }))
               }
-              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700"
-              aria-label="Grade"
-            >
-              <option value="">All grades</option>
-              {grades.map((g) => (
-                <option key={g} value={String(g)}>
-                  Grade {g}
-                </option>
-              ))}
-            </select>
+              options={[
+                { value: "", label: "All grades" },
+                ...grades.map((g) => ({
+                  value: String(g),
+                  label: `Grade ${g}`,
+                })),
+              ]}
+              className="w-[148px]"
+              triggerClassName="h-9 rounded-lg text-[11px] font-semibold"
+            />
             <button
               type="button"
               onClick={() => reload()}
@@ -439,24 +679,26 @@ export default function AdminAttendancePanel({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-              From daily records
+              Download this month
             </span>
             <button
               type="button"
-              disabled={exporting || !tableRows.length}
+              disabled={exporting || previewBusy || !tableRows.length}
               onClick={() => openDailyPreview("pdf")}
               className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
             >
               <FileText size={13} />
+              {previewBusy ? <Loader2 size={12} className="animate-spin" /> : null}
               PDF
             </button>
             <button
               type="button"
-              disabled={exporting || !tableRows.length}
+              disabled={exporting || previewBusy || !tableRows.length}
               onClick={() => openDailyPreview("excel")}
               className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-cnhs-green-dark/30 bg-white px-3 text-[11px] font-semibold text-cnhs-green-dark hover:bg-green-50 disabled:opacity-50"
             >
               <FileSpreadsheet size={13} />
+              {previewBusy ? <Loader2 size={12} className="animate-spin" /> : null}
               Excel
             </button>
           </div>
@@ -472,30 +714,37 @@ export default function AdminAttendancePanel({
         <>
           <section>
             <p className="mb-2 text-[11px] text-slate-500">
-              Live totals from saved Morning / Afternoon records. Not official
-              ADA, PA, First Friday, or End of month.
+              From teachers’ daily Morning and Afternoon marks. Not the official
+              SF2.
             </p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <AttendanceKpi
-                label="Session rate"
+                label="Attendance"
                 value={formatSessionRate(daily?.sessionRate)}
-                hint="Present ÷ (present + absent)"
+                hint="This month"
                 tone="bg-sky-50"
               />
               <AttendanceKpi
-                label="Present sessions"
-                value={fmtAttendance(daily?.presentSessions)}
-                tone="bg-green-50"
+                label="Pending"
+                value={fmtAttendance(sectionsWaiting)}
+                hint={
+                  sectionsWaiting > 0
+                    ? `${sectionsWaiting} of ${sectionsTotal} sections this month`
+                    : "All sections submitted"
+                }
+                tone="bg-slate-100"
               />
               <AttendanceKpi
-                label="Absent sessions"
+                label="Absent marks"
                 value={fmtAttendance(daily?.absentSessions)}
+                hint="Morning and afternoon, not unique learners"
                 tone="bg-orange-50"
               />
               <AttendanceKpi
-                label="Sections with data"
-                value={`${daily?.sectionsWithData ?? 0} / ${daily?.sectionCount ?? 0}`}
-                tone="bg-slate-100"
+                label="Learners with records"
+                value={fmtAttendance(learnersWithRecords)}
+                hint="Unique learners"
+                tone="bg-green-50"
               />
             </div>
           </section>
@@ -506,7 +755,7 @@ export default function AdminAttendancePanel({
                 Sections · {daily?.monthName || "month"}
               </h3>
               <p className="text-[11px] text-slate-500">
-                Sorted comparison from daily attendance records.
+                Compare sections for this month. Click a row to select it.
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -515,10 +764,10 @@ export default function AdminAttendancePanel({
                   <tr className="bg-slate-50/80">
                     {[
                       "Section",
-                      "Present sessions",
-                      "Absent sessions",
-                      "Session rate",
-                      "Learners marked",
+                      "Present (AM + PM)",
+                      "Absent (AM + PM)",
+                      "Attendance",
+                      "Learners with records",
                     ].map((col) => (
                       <th
                         key={col}
@@ -530,28 +779,41 @@ export default function AdminAttendancePanel({
                   </tr>
                 </thead>
                 <tbody>
-                  {tableRows.map((row) => (
+                  {tableRows.map((row) => {
+                    const recorded = hasDailyRecords(row);
+                    return (
                     <tr
                       key={row.id}
                       onClick={() => setSelectedId(row.id)}
                       className={cn(
-                        "cursor-pointer border-t border-slate-100 text-[12px] hover:bg-slate-50/80",
-                        selectedId === row.id && "bg-green-50/50"
+                        "cursor-pointer border-t border-slate-100 text-[12px] text-slate-800",
+                        selectedId === row.id
+                          ? "bg-green-50/50 dark:bg-cnhs-green-dark/25 dark:text-slate-100"
+                          : "hover:bg-slate-50/80 dark:hover:bg-white/5 dark:text-slate-200"
                       )}
                     >
-                      <td className="px-2 py-1.5 font-semibold text-slate-800">
+                      <td className="px-2 py-1.5 font-semibold">
                         G{row.gradeLevel} · {row.sectionName}
                       </td>
-                      <td className="px-2 py-1.5">{fmtAttendance(row.present)}</td>
-                      <td className="px-2 py-1.5">{fmtAttendance(row.absent)}</td>
-                      <td className="px-2 py-1.5 font-semibold">
-                        {formatSessionRate(row.sessionRate)}
+                      <td className="px-2 py-1.5">
+                        {recorded ? fmtAttendance(row.present) : "—"}
                       </td>
                       <td className="px-2 py-1.5">
-                        {fmtAttendance(row.learnersMarked)}
+                        {recorded ? fmtAttendance(row.absent) : "—"}
+                      </td>
+                      <td className="px-2 py-1.5 font-semibold">
+                        {recorded
+                          ? formatSessionRate(row.sessionRate)
+                          : "Not submitted"}
+                      </td>
+                      <td className="px-2 py-1.5">
+                        {recorded
+                          ? fmtAttendance(row.learnersMarked)
+                          : "Not submitted"}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
               {!tableRows.length ? (
@@ -564,67 +826,30 @@ export default function AdminAttendancePanel({
 
           {detail ? (
             <section className="rounded-xl border border-slate-100 bg-white p-4 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
-                Section detail · daily records
-              </p>
-              <h3 className="mt-0.5 text-base font-semibold text-slate-900">
+              <h3 className="text-base font-semibold text-slate-900">
                 Grade {detail.gradeLevel} · {detail.sectionName} ·{" "}
                 {detail.monthName}
               </h3>
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <AttendanceKpi
-                  label="Present sessions"
-                  value={fmtAttendance(detail.present)}
-                  tone="bg-green-50"
-                />
-                <AttendanceKpi
-                  label="Absent sessions"
-                  value={fmtAttendance(detail.absent)}
-                  tone="bg-orange-50"
-                />
-                <AttendanceKpi
-                  label="Session rate"
-                  value={formatSessionRate(detail.sessionRate)}
-                  tone="bg-sky-50"
-                />
-                <AttendanceKpi
-                  label="Learners marked"
-                  value={fmtAttendance(detail.learnersMarked)}
-                  tone="bg-slate-100"
-                />
-              </div>
+              <p className="mt-1 text-[12px] text-slate-600">
+                {hasDailyRecords(detail)
+                  ? `${fmtAttendance(detail.present)} present (AM + PM) · ${fmtAttendance(detail.absent)} absent · ${formatSessionRate(detail.sessionRate)} attendance · ${fmtAttendance(detail.learnersMarked)} learners with records`
+                  : "This section has not been submitted this month."}
+              </p>
             </section>
           ) : null}
 
           <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
             <h3 className="text-[12px] font-semibold text-slate-800">
-              Month trend · school-wide saved sessions
+              Attendance by month
             </h3>
-            <div className="mt-2 max-h-56 space-y-1.5 overflow-y-auto">
-              {(daily?.trend ?? []).length ? (
-                daily.trend.map((row) => (
-                  <div
-                    key={row.month}
-                    className={cn(
-                      "flex items-center justify-between rounded-lg border px-2.5 py-2 text-[11px]",
-                      row.month === daily.month
-                        ? "border-cnhs-green-dark/30 bg-green-50"
-                        : "border-slate-100 bg-slate-50/70"
-                    )}
-                  >
-                    <span className="font-medium">{row.monthName}</span>
-                    <span className="text-slate-500">
-                      {row.present}P · {row.absent}A ·{" "}
-                      {formatSessionRate(row.sessionRate)}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <p className="py-6 text-center text-[12px] text-slate-500">
-                  No saved daily sessions this school year yet.
-                </p>
-              )}
-            </div>
+            <p className="text-[11px] text-slate-500">
+              Attendance % from saved morning and afternoon marks. Months
+              without records are gaps, not 0%.
+            </p>
+            <MonthAttendanceTrend
+              trend={daily?.trend ?? []}
+              activeMonth={daily?.month}
+            />
           </section>
         </>
       )}
@@ -640,11 +865,10 @@ export default function AdminAttendancePanel({
               Archive
             </p>
             <h2 className="text-sm font-semibold text-slate-700">
-              Previous SF2-COMP upload history
+              Uploaded SF2 files
             </h2>
             <p className="mt-0.5 text-[11px] text-slate-500">
-              ADA, PA, First Friday, and End of month below are from uploaded
-              Yakal files. They are not from daily AM/PM records.
+              Official SF2 figures from uploaded files, not daily marks.
             </p>
           </div>
           <ChevronDown
@@ -682,7 +906,7 @@ export default function AdminAttendancePanel({
               <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center">
                 <CalendarDays size={22} className="mx-auto text-slate-300" />
                 <p className="mt-2 text-sm font-semibold text-slate-700">
-                  No archived SF2-COMP yet
+                  No uploaded SF2 files yet
                 </p>
               </div>
             ) : (
@@ -751,50 +975,49 @@ export default function AdminAttendancePanel({
               onSubmit={handleImport}
               className="mt-4 flex flex-wrap items-end gap-2"
             >
-              <label className="text-[11px] font-medium text-slate-500">
+              <div className="text-[11px] font-medium text-slate-500">
                 School year
-                <select
+                <AppSelect
+                  label="School year"
                   value={form.schoolYear}
-                  onChange={(e) =>
+                  onChange={(next) =>
                     setForm((prev) => ({
                       ...prev,
-                      schoolYear: e.target.value,
+                      schoolYear: next,
                     }))
                   }
-                  className="mt-1 block h-9 rounded-lg border border-slate-200 px-2 text-[11px] font-semibold"
-                >
-                  {schoolYears.map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-[11px] font-medium text-slate-500">
+                  options={schoolYears}
+                  className="mt-1"
+                  triggerClassName="h-9 rounded-lg px-2 text-[11px] font-semibold"
+                />
+              </div>
+              <div className="text-[11px] font-medium text-slate-500">
                 Section
-                <select
+                <AppSelect
+                  label="Section"
                   value={form.sectionId}
-                  onChange={(e) =>
+                  onChange={(next) =>
                     setForm((prev) => ({
                       ...prev,
-                      sectionId: e.target.value,
+                      sectionId: next,
                     }))
                   }
-                  className="mt-1 block h-9 min-w-[140px] rounded-lg border border-slate-200 px-2 text-[11px] font-semibold"
-                >
-                  <option value="">Auto from filename</option>
-                  {sections
-                    .filter(
-                      (s) =>
-                        !form.schoolYear || s.school_year === form.schoolYear
-                    )
-                    .map((s) => (
-                      <option key={s.id} value={s.id}>
-                        G{s.grade_level} · {s.section_name}
-                      </option>
-                    ))}
-                </select>
-              </label>
+                  options={[
+                    { value: "", label: "Auto from filename" },
+                    ...sections
+                      .filter(
+                        (s) =>
+                          !form.schoolYear || s.school_year === form.schoolYear
+                      )
+                      .map((s) => ({
+                        value: s.id,
+                        label: `G${s.grade_level} · ${s.section_name}`,
+                      })),
+                  ]}
+                  className="mt-1 min-w-[140px]"
+                  triggerClassName="h-9 rounded-lg px-2 text-[11px] font-semibold"
+                />
+              </div>
               <label className="text-[11px] font-medium text-slate-500">
                 File
                 <input

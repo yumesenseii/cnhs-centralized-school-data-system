@@ -67,6 +67,8 @@ export default function ClassFolderLibrary({
   reports = [],
   onDetails,
   onExport,
+  onGenerateSystemReport,
+  searchPlaceholder = "Search classes by name, subject, or teacher…",
   /** When true (All Terms), group Term 1–3 siblings into one folder. */
   groupMultiTerm = false,
 }) {
@@ -112,13 +114,13 @@ export default function ClassFolderLibrary({
   ];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-[0_4px_12px_rgba(15,23,42,0.03)]">
+        <div className="rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-[0_4px_12px_rgba(15,23,42,0.03)] dark:border-white/5 dark:bg-[var(--card)] dark:shadow-none">
           <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400">
             Classes
           </p>
-          <p className="mt-0.5 text-sm font-semibold tracking-[-0.02em] text-slate-900">
+          <p className="mt-0.5 text-sm font-semibold tracking-[-0.02em] text-slate-900 dark:text-slate-100">
             {counts.all} folder{counts.all === 1 ? "" : "s"}
           </p>
           {groupMultiTerm ? (
@@ -127,17 +129,17 @@ export default function ClassFolderLibrary({
             </p>
           ) : null}
         </div>
-        <div className="rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-[0_4px_12px_rgba(15,23,42,0.03)]">
+        <div className="rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-[0_4px_12px_rgba(15,23,42,0.03)] dark:border-white/5 dark:bg-[var(--card)] dark:shadow-none">
           <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400">
             Showing
           </p>
-          <p className="mt-0.5 text-sm font-semibold tracking-[-0.02em] text-slate-900">
+          <p className="mt-0.5 text-sm font-semibold tracking-[-0.02em] text-slate-900 dark:text-slate-100">
             {filtered.length} of {counts.all}
           </p>
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-100 bg-white p-2.5 shadow-[0_4px_12px_rgba(15,23,42,0.03)] sm:p-3">
+      <div className="rounded-xl border border-slate-100 bg-white p-2 shadow-[0_4px_12px_rgba(15,23,42,0.03)] dark:border-white/5 dark:bg-[var(--card)] dark:shadow-none sm:p-2.5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <label className="relative min-w-0 flex-1">
             <span className="sr-only">Search classes</span>
@@ -149,8 +151,8 @@ export default function ClassFolderLibrary({
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search classes by name, subject, or teacher…"
-              className="h-8 w-full rounded-lg border border-slate-200 bg-slate-50/80 pl-8 pr-2.5 text-[11px] text-slate-700 outline-none transition-colors placeholder:text-slate-400 focus:border-cnhs-green focus:bg-white"
+              placeholder={searchPlaceholder}
+              className="h-8 w-full rounded-lg border border-slate-200 bg-slate-50/80 pl-8 pr-2.5 text-[11px] text-slate-700 outline-none transition-colors placeholder:text-slate-400 focus:border-cnhs-green focus:bg-white dark:border-white/5 dark:bg-transparent dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:bg-white/5"
             />
           </label>
 
@@ -164,7 +166,7 @@ export default function ClassFolderLibrary({
                 "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg transition-colors",
                 view === "grid"
                   ? "bg-cnhs-green-dark text-white"
-                  : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                  : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-white/5 dark:bg-transparent dark:text-slate-400 dark:hover:bg-white/5"
               )}
             >
               <LayoutGrid size={14} />
@@ -178,7 +180,7 @@ export default function ClassFolderLibrary({
                 "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg transition-colors",
                 view === "list"
                   ? "bg-cnhs-green-dark text-white"
-                  : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                  : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-white/5 dark:bg-transparent dark:text-slate-400 dark:hover:bg-white/5"
               )}
             >
               <List size={14} />
@@ -186,7 +188,7 @@ export default function ClassFolderLibrary({
           </div>
         </div>
 
-        <div className="mt-2 flex flex-wrap gap-1">
+        <div className="mt-1.5 flex flex-wrap gap-1">
           {pills.map((pill) => {
             const active = filter === pill.id;
             return (
@@ -198,14 +200,16 @@ export default function ClassFolderLibrary({
                   "inline-flex h-7 cursor-pointer items-center gap-1 rounded-full px-2.5 text-[10px] font-semibold transition-colors",
                   active
                     ? "bg-cnhs-green-dark text-white"
-                    : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                    : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-white/5 dark:bg-transparent dark:text-slate-400 dark:hover:bg-white/5"
                 )}
               >
                 {pill.label}
                 <span
                   className={cn(
                     "rounded-full px-1.5 py-0.5 text-[9px] font-bold",
-                    active ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                    active
+                      ? "bg-white/20 text-white"
+                      : "bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"
                   )}
                 >
                   {pill.count}
@@ -217,7 +221,7 @@ export default function ClassFolderLibrary({
       </div>
 
       {!filtered.length ? (
-        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-xs text-slate-500">
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-xs text-slate-500 dark:border-white/5 dark:bg-transparent">
           No classes match the selected filters.
         </div>
       ) : view === "grid" ? (
@@ -241,18 +245,18 @@ export default function ClassFolderLibrary({
                 whileHover={{ y: -1 }}
                 transition={{ duration: 0.15, ease: "easeOut" }}
                 onClick={() => onDetails?.(actionRow)}
-                className="group flex w-full max-w-sm cursor-pointer flex-col rounded-xl border border-slate-100 bg-white p-3 text-left shadow-[0_4px_12px_rgba(15,23,42,0.04)] transition-colors hover:border-green-100 hover:bg-cnhs-green-soft/20"
+                className="group flex w-full max-w-sm cursor-pointer flex-col rounded-xl border border-slate-100 bg-white p-3 text-left shadow-[0_4px_12px_rgba(15,23,42,0.04)] transition-colors hover:border-cnhs-green-dark/30 hover:bg-cnhs-green-soft/20 dark:border-white/5 dark:bg-[var(--card)] dark:shadow-none dark:hover:bg-white/5"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-cnhs-green-soft text-cnhs-green-dark ring-1 ring-green-100">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-cnhs-green-soft text-cnhs-green-dark ring-1 ring-cnhs-green-dark/20 dark:bg-cnhs-green-dark/20 dark:text-cnhs-green dark:ring-cnhs-green/30">
                     <Folder size={15} strokeWidth={1.75} />
                   </span>
                   <span
                     className={cn(
                       "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold",
                       attention
-                        ? "bg-orange-50 text-cnhs-orange ring-1 ring-orange-100"
-                        : "bg-green-50 text-cnhs-green-dark ring-1 ring-green-100"
+                        ? "bg-orange-50 text-cnhs-orange ring-1 ring-orange-200/80 dark:bg-transparent dark:ring-cnhs-orange/40"
+                        : "bg-green-50 text-cnhs-green-dark ring-1 ring-green-200/80 dark:bg-transparent dark:ring-cnhs-green/40 dark:text-cnhs-green"
                     )}
                   >
                     <span
@@ -265,7 +269,7 @@ export default function ClassFolderLibrary({
                   </span>
                 </div>
 
-                <p className="mt-2 truncate text-[12px] font-semibold tracking-[-0.01em] text-slate-900">
+                <p className="mt-2 truncate text-[12px] font-semibold tracking-[-0.01em] text-slate-900 dark:text-slate-100">
                   {row.className || "Class"}
                 </p>
                 <p className="mt-0.5 truncate text-[10px] text-slate-500">
@@ -282,7 +286,7 @@ export default function ClassFolderLibrary({
                     {row.termLabels.map((label) => (
                       <span
                         key={label}
-                        className="rounded bg-slate-50 px-1 py-px text-[8px] font-semibold uppercase tracking-wide text-slate-500 ring-1 ring-slate-100"
+                        className="rounded bg-slate-50 px-1 py-px text-[8px] font-semibold uppercase tracking-wide text-slate-500 ring-1 ring-slate-100 dark:bg-transparent dark:text-slate-400 dark:ring-white/5"
                       >
                         {label}
                       </span>
@@ -291,37 +295,59 @@ export default function ClassFolderLibrary({
                 ) : null}
 
                 <div className="mt-2 flex flex-wrap gap-1">
-                  <span className="rounded-full bg-slate-50 px-1.5 py-0.5 text-[9px] font-medium text-slate-600 ring-1 ring-slate-100">
+                  <span className="rounded-full bg-slate-50 px-1.5 py-0.5 text-[9px] font-medium text-slate-600 ring-1 ring-slate-100 dark:bg-transparent dark:text-slate-400 dark:ring-white/5">
                     {row.students ?? 0} learners
                   </span>
                   {!row.isTermGroup &&
                   row.averageGrade != null &&
                   row.averageGrade !== "" ? (
-                    <span className="rounded-full bg-slate-50 px-1.5 py-0.5 text-[9px] font-medium text-slate-600 ring-1 ring-slate-100">
+                    <span className="rounded-full bg-slate-50 px-1.5 py-0.5 text-[9px] font-medium text-slate-600 ring-1 ring-slate-100 dark:bg-transparent dark:text-slate-400 dark:ring-white/5">
                       Avg {row.averageGrade}
                     </span>
                   ) : null}
                   {atRisk > 0 ? (
-                    <span className="rounded-full bg-orange-50 px-1.5 py-0.5 text-[9px] font-medium text-cnhs-orange ring-1 ring-orange-100">
+                    <span className="rounded-full bg-orange-50 px-1.5 py-0.5 text-[9px] font-medium text-cnhs-orange ring-1 ring-orange-100 dark:bg-transparent dark:ring-cnhs-orange/40">
                       {atRisk} high risk
                     </span>
                   ) : null}
                   {aral > 0 ? (
-                    <span className="rounded-full bg-sky-50 px-1.5 py-0.5 text-[9px] font-medium text-sky-700 ring-1 ring-sky-100">
+                    <span className="rounded-full bg-sky-50 px-1.5 py-0.5 text-[9px] font-medium text-sky-700 dark:bg-transparent dark:text-sky-400 dark:ring-1 dark:ring-sky-500/30">
                       {aral} ARAL
                     </span>
                   ) : null}
                 </div>
 
-                <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-50 pt-2">
+                <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-50 pt-2 dark:border-white/5">
                   <span className="inline-flex min-w-0 items-center gap-1 text-[10px] text-slate-500">
                     <UserRound size={11} className="shrink-0 text-slate-400" />
                     <span className="truncate">
                       {row.teacherName || row.teacher || "—"}
                     </span>
                   </span>
-                  <span className="shrink-0 text-[10px] font-semibold text-cnhs-green-dark opacity-0 transition-opacity group-hover:opacity-100">
-                    Open →
+                  <span className="flex shrink-0 items-center gap-2">
+                    {onGenerateSystemReport ? (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onGenerateSystemReport(actionRow);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onGenerateSystemReport(actionRow);
+                          }
+                        }}
+                        className="text-[10px] font-semibold text-slate-500 opacity-0 transition-opacity hover:text-cnhs-green-dark group-hover:opacity-100 dark:text-slate-400 dark:hover:text-cnhs-green"
+                      >
+                        Generate
+                      </span>
+                    ) : null}
+                    <span className="text-[10px] font-semibold text-cnhs-green-dark opacity-0 transition-opacity group-hover:opacity-100 dark:text-cnhs-green">
+                      Preview →
+                    </span>
                   </span>
                 </div>
               </motion.button>
@@ -329,11 +355,11 @@ export default function ClassFolderLibrary({
           })}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_4px_12px_rgba(15,23,42,0.03)]">
+        <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_4px_12px_rgba(15,23,42,0.03)] dark:border-white/5 dark:bg-[var(--card)] dark:shadow-none">
           <div className="overflow-x-auto">
             <table className="min-w-[720px] w-full border-collapse text-left">
               <thead>
-                <tr className="bg-slate-50/80">
+                <tr className="bg-slate-50/80 dark:bg-transparent">
                   {[
                     "Class",
                     "Subject",
@@ -362,14 +388,14 @@ export default function ClassFolderLibrary({
                           ? `group-${row.relatedClassIds?.join("-") || row.id}`
                           : row.id
                       }
-                      className="border-t border-slate-100 transition-colors hover:bg-slate-50/70"
+                      className="border-t border-slate-100 transition-colors hover:bg-slate-50/70 dark:border-white/5 dark:hover:bg-white/5"
                     >
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-2">
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cnhs-green-soft text-cnhs-green-dark">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cnhs-green-soft text-cnhs-green-dark dark:bg-cnhs-green-dark/20 dark:text-cnhs-green">
                             <Folder size={14} />
                           </span>
-                          <span className="text-[12px] font-semibold text-slate-800">
+                          <span className="text-[12px] font-semibold text-slate-800 dark:text-slate-100">
                             {row.className}
                           </span>
                         </div>
@@ -401,6 +427,17 @@ export default function ClassFolderLibrary({
                           >
                             Preview
                           </button>
+                          {onGenerateSystemReport ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onGenerateSystemReport(actionRow)
+                              }
+                              className="cursor-pointer text-[11px] font-semibold text-cnhs-green-dark hover:underline"
+                            >
+                              Generate
+                            </button>
+                          ) : null}
                           {onExport ? (
                             <button
                               type="button"

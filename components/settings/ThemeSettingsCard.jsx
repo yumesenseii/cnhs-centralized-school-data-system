@@ -20,17 +20,17 @@ export default function ThemeSettingsCard({
 
   if (!hydrated) {
     return (
-      <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-5">
-        <p className="text-xs text-slate-500">Loading appearance…</p>
+      <section className="rounded-2xl border border-border bg-card p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-3.5">
+        <p className="text-xs text-muted-foreground">Loading appearance…</p>
       </section>
     );
   }
 
   return (
-    <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-5">
-      <div className="mb-3 border-b border-slate-100 pb-3">
-        <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
-        <p className="mt-0.5 text-[11px] leading-4 text-slate-500">
+    <section className="rounded-2xl border border-border bg-card p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-3.5">
+      <div className="mb-2.5 border-b border-border pb-2.5">
+        <h2 className="text-[13px] font-semibold text-card-foreground">{title}</h2>
+        <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
           {description}
         </p>
       </div>
@@ -43,15 +43,15 @@ export default function ThemeSettingsCard({
         onChange={setTheme}
       />
 
-      <div className="mt-3 flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2">
+      <div className="mt-3 flex items-center gap-2 rounded-xl bg-muted/50 px-3 py-2">
         <ThemeIcon
           size={14}
           className="text-cnhs-green-dark"
           aria-hidden="true"
         />
-        <p className="text-[10px] text-slate-500">
+        <p className="text-[10px] text-muted-foreground">
           Current display:{" "}
-          <span className="font-semibold capitalize text-slate-700">
+          <span className="font-semibold capitalize text-card-foreground">
             {resolvedTheme}
           </span>
           . Saved on this device.

@@ -1,7 +1,7 @@
 "use client";
 
 const th =
-  "border border-slate-200 bg-[#f3f3f3] px-3 py-2 text-left text-[11px] font-semibold text-slate-600";
+  "border border-slate-200 bg-slate-100 px-3 py-2 text-left text-[11px] font-semibold text-slate-600";
 const td = "border border-slate-200 px-3 py-2 text-[12px] text-slate-800";
 
 export default function EcrSummary({ rows = [] }) {

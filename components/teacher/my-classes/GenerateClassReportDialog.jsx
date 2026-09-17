@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { FileSpreadsheet, X } from "lucide-react";
+import AnimatedModal from "@/components/shared/AnimatedModal";
 import {
   REPORT_TERM_ALL,
   REPORT_TERM_OPTIONS,
 } from "@/lib/monitoring/classReportFiles";
-import { VIEW_MODAL_BACKDROP } from "@/lib/ui/viewModal";
 import { cn } from "@/lib/utils";
 
 /**
@@ -31,24 +31,22 @@ export default function GenerateClassReportDialog({
     if (open) setSelected(defaultTerm);
   }, [open, defaultTerm]);
 
-  if (!open || !classItem) return null;
-
   const options = [
     ...REPORT_TERM_OPTIONS,
     { value: REPORT_TERM_ALL, label: "All Terms (one file per term)" },
   ];
 
   return (
-    <div
-      className={VIEW_MODAL_BACKDROP}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="generate-report-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !confirming) onClose?.();
-      }}
+    <AnimatedModal
+      open={open && Boolean(classItem)}
+      onClose={onClose}
+      labelledBy="generate-report-title"
+      closeOnBackdrop={!confirming}
+      closeOnEscape={!confirming}
+      panelClassName="w-[min(440px,94vw)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl"
     >
-      <div className="relative z-10 w-[min(440px,94vw)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl">
+      {classItem ? (
+        <>
         <header className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
@@ -93,7 +91,7 @@ export default function GenerateClassReportDialog({
                   className={cn(
                     "flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors",
                     active
-                      ? "border-cnhs-green-dark/40 bg-green-50/80"
+                      ? "border-cnhs-green-dark/40 bg-green-50"
                       : "border-slate-200 bg-white hover:bg-slate-50"
                   )}
                 >
@@ -133,7 +131,8 @@ export default function GenerateClassReportDialog({
             {confirming ? "Generating…" : "Generate"}
           </button>
         </footer>
-      </div>
-    </div>
+        </>
+      ) : null}
+    </AnimatedModal>
   );
 }

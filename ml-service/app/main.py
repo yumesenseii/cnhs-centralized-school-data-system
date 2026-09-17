@@ -8,9 +8,11 @@ Intervention recommendations are applied separately in CNHS LEARN.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from .feature_contract import FEATURE_NAMES, to_feature_list
@@ -25,6 +27,29 @@ app = FastAPI(
     ),
     version="1.1.0-model-b",
 )
+
+
+def _expected_api_key() -> str:
+    return (os.environ.get("RF_INFERENCE_API_KEY") or "").strip()
+
+
+@app.middleware("http")
+async def optional_api_key_guard(request: Request, call_next):
+    """If RF_INFERENCE_API_KEY is set, require Bearer token (except /health)."""
+    expected = _expected_api_key()
+    if not expected or request.url.path in ("/health", "/docs", "/openapi.json", "/redoc"):
+        return await call_next(request)
+
+    auth = request.headers.get("authorization") or ""
+    token = ""
+    if auth.lower().startswith("bearer "):
+        token = auth[7:].strip()
+    if token != expected:
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "Invalid or missing RF_INFERENCE_API_KEY."},
+        )
+    return await call_next(request)
 
 
 class PredictRequest(BaseModel):

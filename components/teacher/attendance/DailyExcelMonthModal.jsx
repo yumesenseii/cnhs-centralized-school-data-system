@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
-import { createPortal } from "react-dom";
 import { FileSpreadsheet, Loader2 } from "lucide-react";
+import AnimatedModal from "@/components/shared/AnimatedModal";
 import { MONTH_LABELS } from "@/lib/attendance/constants";
 import { monthsWithSavedSessions } from "@/lib/attendance/dailyAnalytics";
-import { VIEW_MODAL_BACKDROP } from "@/lib/ui/viewModal";
 import { cn } from "@/lib/utils";
+import AppSelect from "@/components/shared/AppSelect";
 
 export default function DailyExcelMonthModal({
   open,
@@ -24,34 +23,22 @@ export default function DailyExcelMonthModal({
   const dataMonthSet = new Set(monthsWithData.map((row) => Number(row.month)));
   const thisMonthName = summary?.monthName || "This month";
 
-  useEffect(() => {
-    if (!open) return undefined;
-    function onKeyDown(e) {
-      if (e.key === "Escape" && !exporting) onCancel?.();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, exporting, onCancel]);
-
-  if (!open || typeof document === "undefined") return null;
-
   const canDownload =
     !exporting &&
     (scope === "this_month" ||
       (scope === "one_month" && dataMonthSet.has(Number(selectedMonth))) ||
       (scope === "all_months" && monthsWithData.length > 0));
 
-  return createPortal(
-    <div
-      className={cn(VIEW_MODAL_BACKDROP, "z-[100]")}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="daily-excel-month-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !exporting) onCancel?.();
-      }}
+  return (
+    <AnimatedModal
+      open={open}
+      onClose={onCancel}
+      labelledBy="daily-excel-month-title"
+      zClassName="z-[100]"
+      closeOnBackdrop={!exporting}
+      closeOnEscape={!exporting}
+      panelClassName="w-[min(26rem,94vw)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl"
     >
-      <div className="relative z-10 w-[min(26rem,94vw)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl">
         <div className="px-5 pt-5 pb-3">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-50 text-cnhs-green-dark">
@@ -98,25 +85,29 @@ export default function DailyExcelMonthModal({
               />
               <span className="min-w-0 flex-1">
                 One month
-                <select
+                <AppSelect
+                  label="One month"
                   value={selectedMonth || ""}
                   disabled={scope !== "one_month"}
-                  onChange={(e) => onSelectedMonthChange(Number(e.target.value))}
-                  onClick={() => onScopeChange("one_month")}
-                  className="mt-1.5 block h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-[12px] font-semibold text-slate-800 disabled:bg-slate-50 disabled:text-slate-400"
-                >
-                  <option value="">Choose a month</option>
-                  {MONTH_LABELS.map((label, i) => {
-                    const month = i + 1;
-                    const hasData = dataMonthSet.has(month);
-                    return (
-                      <option key={month} value={month} disabled={!hasData}>
-                        {label}
-                        {hasData ? "" : " (no saved sessions)"}
-                      </option>
-                    );
-                  })}
-                </select>
+                  onChange={(next) => onSelectedMonthChange(Number(next))}
+                  placeholder="Choose a month"
+                  options={[
+                    { value: "", label: "Choose a month" },
+                    ...MONTH_LABELS.map((label, i) => {
+                      const month = i + 1;
+                      const hasData = dataMonthSet.has(month);
+                      return {
+                        value: String(month),
+                        label: hasData
+                          ? label
+                          : `${label} (no saved sessions)`,
+                        disabled: !hasData,
+                      };
+                    }),
+                  ]}
+                  className="mt-1.5"
+                  triggerClassName="h-8 rounded-md px-2 text-[12px] font-semibold disabled:bg-slate-50 disabled:text-slate-400"
+                />
               </span>
             </label>
 
@@ -165,8 +156,6 @@ export default function DailyExcelMonthModal({
             {confirmLabel}
           </button>
         </div>
-      </div>
-    </div>,
-    document.body
+    </AnimatedModal>
   );
 }

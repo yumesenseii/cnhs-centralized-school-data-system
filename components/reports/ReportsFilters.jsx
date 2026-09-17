@@ -1,4 +1,5 @@
 import { Search } from "lucide-react";
+import AppSelect from "@/components/shared/AppSelect";
 
 export default function ReportsFilters({ filters }) {
   return (
@@ -24,19 +25,15 @@ export default function ReportsFilters({ filters }) {
           { label: "Quarter", options: filters.quarters },
           { label: "Status", options: filters.statuses },
         ].map((filter) => (
-          <label key={filter.label} className="min-w-[126px] flex-1 sm:flex-none">
-            <span className="sr-only">{filter.label}</span>
-            <select
-              defaultValue={filter.options[0]}
-              className="h-9 w-full cursor-pointer rounded-xl border border-slate-100 bg-slate-50 px-3 text-[11px] font-medium text-slate-500 outline-none transition-colors focus:border-cnhs-green focus:bg-white"
-            >
-              {filter.options.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </label>
+          <AppSelect
+            key={filter.label}
+            label={filter.label}
+            defaultValue={filter.options[0]}
+            options={filter.options}
+            size="field"
+            className="min-w-[126px] flex-1 sm:flex-none"
+            triggerClassName="h-9 border-slate-100 bg-slate-50 text-[11px] text-slate-500 focus:bg-white"
+          />
         ))}
       </div>
     </section>

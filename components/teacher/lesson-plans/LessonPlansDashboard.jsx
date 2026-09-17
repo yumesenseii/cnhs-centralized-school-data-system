@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { CalendarDays, Layers3, RefreshCw, Upload } from "lucide-react";
+import AppSelect from "@/components/shared/AppSelect";
 import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import LessonPlanFilters from "@/components/teacher/lesson-plans/LessonPlanFilters";
@@ -242,43 +243,25 @@ export default function LessonPlansDashboard() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-          <label className="relative">
-            <span className="sr-only">School Year</span>
-            <CalendarDays
-              size={12}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <select
-              value={schoolYear}
-              onChange={(e) => setSchoolYear(e.target.value)}
-              className="h-8 cursor-pointer rounded-full border border-slate-200 bg-white pl-8 pr-7 text-[11px] font-medium text-slate-600 shadow-sm outline-none hover:bg-slate-50 focus:border-cnhs-green"
-            >
-              {schoolYearOptions.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </label>
+          <AppSelect
+            label="School Year"
+            value={schoolYear}
+            onChange={setSchoolYear}
+            options={schoolYearOptions}
+            icon={CalendarDays}
+            size="pill"
+            align="end"
+          />
 
-          <label className="relative">
-            <span className="sr-only">Term</span>
-            <Layers3
-              size={12}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <select
-              value={quarter}
-              onChange={(e) => setQuarter(e.target.value)}
-              className="h-8 cursor-pointer rounded-full border border-slate-200 bg-white pl-8 pr-7 text-[11px] font-medium text-slate-600 shadow-sm outline-none hover:bg-slate-50 focus:border-cnhs-green"
-            >
-              {TERM_FILTER_OPTIONS.map((q) => (
-                <option key={q} value={q}>
-                  {q}
-                </option>
-              ))}
-            </select>
-          </label>
+          <AppSelect
+            label="Term"
+            value={quarter}
+            onChange={setQuarter}
+            options={TERM_FILTER_OPTIONS}
+            icon={Layers3}
+            size="pill"
+            align="end"
+          />
 
           <button
             type="button"

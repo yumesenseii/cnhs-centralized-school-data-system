@@ -8,6 +8,7 @@ import SectionFormModal from "@/components/section-management/SectionFormModal";
 import SectionSummaryCards from "@/components/section-management/SectionSummaryCards";
 import SectionsTable from "@/components/section-management/SectionsTable";
 import DeleteConfirmModal from "@/components/shared/DeleteConfirmModal";
+import { useAppToast } from "@/components/shared/AppToast";
 import { useSectionManagement } from "@/hooks/admin/useSections";
 import { suggestCurrentSchoolYear } from "@/lib/admin/sectionMappers";
 
@@ -37,16 +38,11 @@ export default function SectionManagement({ embedded = false }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("create");
   const [selected, setSelected] = useState(null);
-  const [toast, setToast] = useState("");
+  const { showToast } = useAppToast();
   const [confirmAction, setConfirmAction] = useState(null);
 
   const defaultSchoolYear =
     schoolYears[0] || suggestCurrentSchoolYear();
-
-  function showToast(message) {
-    setToast(message);
-    window.setTimeout(() => setToast(""), 2800);
-  }
 
   function openCreate() {
     setSelected(null);
@@ -208,12 +204,6 @@ export default function SectionManagement({ embedded = false }) {
         }}
         onConfirm={confirmPendingAction}
       />
-
-      {toast ? (
-        <div className="fixed bottom-5 right-5 z-[70] rounded-xl bg-slate-900 px-4 py-2.5 text-[11px] font-medium text-white shadow-lg">
-          {toast}
-        </div>
-      ) : null}
     </motion.div>
   );
 }

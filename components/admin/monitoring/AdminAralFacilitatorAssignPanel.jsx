@@ -19,7 +19,10 @@ import {
 import { isAralRecommended } from "@/lib/monitoring/aralProgress";
 import { getAdminSession } from "@/lib/supabase/queries/adminAuth";
 import { confirmDelete } from "@/lib/ui/confirmAction";
+import { AnimatedBanner } from "@/components/shared/AnimatedFeedback";
+import { useAppToast } from "@/components/shared/AppToast";
 import { cn } from "@/lib/utils";
+import AppSelect from "@/components/shared/AppSelect";
 
 const SECTIONS_PAGE_SIZE = 10;
 
@@ -207,7 +210,7 @@ export default function AdminAralFacilitatorAssignPanel({
   const [page, setPage] = useState(1);
   const [busyId, setBusyId] = useState("");
   const [error, setError] = useState("");
-  const [toast, setToast] = useState("");
+  const { showToast } = useAppToast();
 
   const activeFolder = useMemo(
     () => gradeFolders.find((f) => f.grade === selectedGrade) ?? null,
@@ -300,7 +303,6 @@ export default function AdminAralFacilitatorAssignPanel({
     }
     setBusyId(learner.studentId);
     setError("");
-    setToast("");
 
     const session = await getAdminSession();
     const result = await upsertLearner(
@@ -314,7 +316,7 @@ export default function AdminAralFacilitatorAssignPanel({
       setError(result.error.message);
       return;
     }
-    setToast(`Facilitator assigned for ${learner.name}.`);
+    showToast(`Facilitator assigned for ${learner.name}.`);
     onChanged?.();
   }
 
@@ -333,7 +335,7 @@ export default function AdminAralFacilitatorAssignPanel({
       : group.learners.filter((l) => !l.aralFacilitatorTeacherId);
 
     if (!learnersToAssign.length) {
-      setToast(
+      showToast(
         `All learners in ${group.sectionName} are already assigned.`
       );
       return;
@@ -341,7 +343,6 @@ export default function AdminAralFacilitatorAssignPanel({
 
     setBusyId(`section:${group.gradeSection}`);
     setError("");
-    setToast("");
 
     const session = await getAdminSession();
     const profileId = session.data?.id ?? null;
@@ -365,7 +366,7 @@ export default function AdminAralFacilitatorAssignPanel({
       onChanged?.();
       return;
     }
-    setToast(
+    showToast(
       `Facilitator assigned to ${learnersToAssign.length} learner${
         learnersToAssign.length === 1 ? "" : "s"
       } in ${group.sectionName}.`
@@ -392,7 +393,7 @@ export default function AdminAralFacilitatorAssignPanel({
       setError(result.error.message);
       return;
     }
-    setToast(`Facilitator removed for ${learner.name}.`);
+    showToast(`Facilitator removed for ${learner.name}.`);
     onChanged?.();
   }
 
@@ -412,16 +413,11 @@ export default function AdminAralFacilitatorAssignPanel({
         </span>
       </div>
 
-      {toast ? (
-        <div className="border-b border-green-100 bg-green-50 px-3 py-2 text-[11px] font-medium text-cnhs-green-dark">
-          {toast}
-        </div>
-      ) : null}
-      {error ? (
-        <div className="border-b border-red-100 bg-red-50 px-3 py-2 text-[11px] font-medium text-red-600">
-          {error}
-        </div>
-      ) : null}
+      <AnimatedBanner
+        message={error}
+        tone="error"
+        className="border-b px-3 py-2 text-[11px]"
+      />
 
       {!sectionGroups.length ? (
         <p className="px-3 py-8 text-center text-[12px] text-slate-400">
@@ -574,33 +570,36 @@ export default function AdminAralFacilitatorAssignPanel({
                     </div>
 
                     <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-                      <label className="min-w-0 flex-1">
-                        <span className="sr-only">
-                          Facilitator for {group.sectionName}
-                        </span>
-                        <select
-                          value={sectionDrafts[group.gradeSection] || ""}
-                          disabled={loadingTeachers || sectionBusy}
-                          onChange={(e) =>
-                            setSectionDrafts((prev) => ({
-                              ...prev,
-                              [group.gradeSection]: e.target.value,
-                            }))
-                          }
-                          className="h-8 w-full cursor-pointer rounded-full border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-700 outline-none focus:border-cnhs-green"
-                        >
-                          <option value="">
-                            {loadingTeachers
+                      <AppSelect
+                        label={`Facilitator for ${group.sectionName}`}
+                        value={sectionDrafts[group.gradeSection] || ""}
+                        disabled={loadingTeachers || sectionBusy}
+                        onChange={(next) =>
+                          setSectionDrafts((prev) => ({
+                            ...prev,
+                            [group.gradeSection]: next,
+                          }))
+                        }
+                        placeholder={
+                          loadingTeachers
+                            ? "Loading teachers..."
+                            : "Select facilitator for section"
+                        }
+                        options={[
+                          {
+                            value: "",
+                            label: loadingTeachers
                               ? "Loading teachers..."
-                              : "Select facilitator for section"}
-                          </option>
-                          {teachers.map((teacher) => (
-                            <option key={teacher.id} value={teacher.id}>
-                              {teacher.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                              : "Select facilitator for section",
+                          },
+                          ...teachers.map((teacher) => ({
+                            value: teacher.id,
+                            label: teacher.name,
+                          })),
+                        ]}
+                        size="pill"
+                        className="min-w-0 flex-1"
+                      />
                       <button
                         type="button"
                         disabled={
@@ -703,7 +702,7 @@ export default function AdminAralFacilitatorAssignPanel({
                                       {learner.subjects.map((subject) => (
                                         <span
                                           key={subject}
-                                          className="inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 ring-1 ring-sky-100"
+                                          className="inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700"
                                         >
                                           {subject}
                                         </span>
@@ -715,34 +714,38 @@ export default function AdminAralFacilitatorAssignPanel({
                                   </td>
                                   <td className="px-2.5 py-2">
                                     {showFacilitatorSelect ? (
-                                      <select
+                                      <AppSelect
+                                        label={`Facilitator for ${learner.name}`}
                                         value={drafts[learner.studentId] || ""}
                                         disabled={loadingTeachers || busy}
-                                        onChange={(e) =>
+                                        onChange={(next) =>
                                           setDrafts((prev) => ({
                                             ...prev,
-                                            [learner.studentId]: e.target.value,
+                                            [learner.studentId]: next,
                                           }))
                                         }
-                                        className={cn(
-                                          "h-7 w-full min-w-[160px] rounded-full border border-slate-200 bg-white px-2 text-[11px] text-slate-700 outline-none focus:border-cnhs-green",
+                                        placeholder={
+                                          loadingTeachers
+                                            ? "Loading..."
+                                            : "Select facilitator"
+                                        }
+                                        options={[
+                                          {
+                                            value: "",
+                                            label: loadingTeachers
+                                              ? "Loading..."
+                                              : "Select facilitator",
+                                          },
+                                          ...teachers.map((teacher) => ({
+                                            value: teacher.id,
+                                            label: teacher.name,
+                                          })),
+                                        ]}
+                                        triggerClassName={cn(
+                                          "h-7 min-w-[160px] rounded-full px-2 text-[11px]",
                                           loadingTeachers && "bg-slate-50"
                                         )}
-                                      >
-                                        <option value="">
-                                          {loadingTeachers
-                                            ? "Loading..."
-                                            : "Select facilitator"}
-                                        </option>
-                                        {teachers.map((teacher) => (
-                                          <option
-                                            key={teacher.id}
-                                            value={teacher.id}
-                                          >
-                                            {teacher.name}
-                                          </option>
-                                        ))}
-                                      </select>
+                                      />
                                     ) : null}
 
                                     {learner.aralFacilitatorName ? (

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   getCachedAdminSchoolYears,
   invalidateAdminRosterCache,
+  loadBuiltMonitoringRoster,
 } from "@/lib/admin/adminRosterCache";
 import { getAdminReportsBundle } from "@/lib/supabase/queries/reports";
 import { buildAdminReportsModel } from "@/lib/admin/reportsMappers";
@@ -17,7 +18,8 @@ export function useAdminReports() {
   const [schoolYears, setSchoolYears] = useState([]);
   const [model, setModel] = useState(null);
   const [filtersReady, setFiltersReady] = useState(false);
-  const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(true);
+  const { loading, refreshing, beginLoad, endLoad, endFirstPaint } =
+    useSoftLoadState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,24 +83,51 @@ export function useAdminReports() {
           );
         }
 
-        const built = await buildAdminReportsModel({
+        const payload = {
+          classes: result.data.classes ?? [],
+          enrollments: result.data.enrollments ?? [],
+          grades: result.data.grades ?? [],
+          monitoringRecords: result.data.monitoringRecords ?? [],
+        };
+        const modelInput = {
           ...result.data,
           schoolYears: yearsForModel,
           filters: {
             schoolYear: schoolYear || undefined,
             quarter: quarter || undefined,
           },
+        };
+        const roster = await loadBuiltMonitoringRoster(
+          payload,
+          {
+            schoolYear: schoolYear || null,
+            quarter: quarter || null,
+          },
+          {
+            onShell: async (shell) => {
+              const built = await buildAdminReportsModel({
+                ...modelInput,
+                roster: shell,
+              });
+              setModel(built);
+              endFirstPaint();
+            },
+          }
+        );
+        const built = await buildAdminReportsModel({
+          ...modelInput,
+          roster,
         });
         setModel(built);
         endLoad(true);
       } catch (err) {
         setError(err?.message || "Unable to load admin reports.");
-        setModel(null);
+        setModel((current) => current);
         endLoad(false);
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- schoolYears is display-only after boot
-    [filtersReady, schoolYear, quarter, beginLoad, endLoad]
+    [filtersReady, schoolYear, quarter, beginLoad, endLoad, endFirstPaint]
   );
 
   useEffect(() => {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, MessageSquare, Send } from "lucide-react";
+import AppSelect from "@/components/shared/AppSelect";
 import {
   aralAssessmentPhaseLabel,
 } from "@/lib/monitoring/aralAssessments";
@@ -9,6 +10,7 @@ import {
   createAralAssessmentComment,
   listAralAssessmentComments,
 } from "@/lib/supabase/queries/aralProgram";
+import { useAppToast } from "@/components/shared/AppToast";
 
 function formatWhen(iso) {
   if (!iso) return "—";
@@ -35,11 +37,12 @@ export default function AralAssessmentComments({
   canPost = false,
   profileId = null,
   title = "HT comments",
+  hideWhenEmpty = false,
 }) {
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState("");
-  const [toast, setToast] = useState("");
+  const { showToast } = useAppToast();
   const [comments, setComments] = useState([]);
   const [draft, setDraft] = useState("");
   const [scopePhase, setScopePhase] = useState(
@@ -85,7 +88,6 @@ export default function AralAssessmentComments({
     if (!canPost || !draft.trim()) return;
     setPosting(true);
     setError("");
-    setToast("");
     const result = await createAralAssessmentComment({
       batchId,
       gradeSection,
@@ -99,41 +101,44 @@ export default function AralAssessmentComments({
       return;
     }
     setDraft("");
-    setToast("Comment posted for the facilitator.");
+    showToast("Comment posted for the facilitator.");
     await refresh();
   }
 
+  if (hideWhenEmpty && !canPost) {
+    if (loading) return null;
+    if (!error && comments.length === 0) return null;
+  }
+
   return (
-    <div className="rounded-xl border border-slate-100 bg-slate-50/40 p-3">
+    <div className="rounded-xl border border-slate-100 bg-slate-50/40 p-3 dark:border-white/10 dark:bg-white/4">
       <div className="mb-2 flex items-center gap-2">
-        <MessageSquare size={14} className="text-sky-700" />
-        <p className="text-[12px] font-semibold text-slate-800">{title}</p>
+        <MessageSquare size={14} className="text-cnhs-green-dark dark:text-cnhs-green" />
+        <p className="text-[12px] font-semibold text-slate-800 dark:text-slate-100">{title}</p>
       </div>
 
       {error ? (
         <p className="mb-2 text-[12px] font-medium text-red-600">{error}</p>
       ) : null}
-      {toast ? (
-        <p className="mb-2 text-[12px] font-medium text-cnhs-green-dark">
-          {toast}
-        </p>
-      ) : null}
 
       {canPost ? (
         <div className="mb-3 space-y-2">
-          <label className="block text-[11px] font-medium text-slate-500">
+          <div className="block text-[11px] font-medium text-slate-500">
             Scope
-            <select
+            <AppSelect
+              label="Scope"
               value={scopePhase}
-              onChange={(e) => setScopePhase(e.target.value)}
-              className="mt-1 h-8 w-full max-w-xs rounded-lg border border-slate-200 bg-white px-2 text-[12px] outline-none focus:border-cnhs-green"
-            >
-              <option value="">Whole section</option>
-              <option value="pre">Pre-Test</option>
-              <option value="mid">Mid-Test</option>
-              <option value="post">Post-Test</option>
-            </select>
-          </label>
+              onChange={setScopePhase}
+              options={[
+                { value: "", label: "Whole section" },
+                { value: "pre", label: "Pre-Test" },
+                { value: "mid", label: "Mid-Test" },
+                { value: "post", label: "Post-Test" },
+              ]}
+              className="mt-1 w-full max-w-xs"
+              triggerClassName="h-8 rounded-lg px-2 text-[12px]"
+            />
+          </div>
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}

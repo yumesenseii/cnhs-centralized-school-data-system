@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowLeft, Eye, Search } from "lucide-react";
+import AppSelect from "@/components/shared/AppSelect";
 import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import EClassUploadDialog from "@/components/teacher/my-classes/EClassUploadDialog";
@@ -17,6 +18,7 @@ import { getCurrentTeacherSession } from "@/lib/supabase/queries/myClasses";
 import { termLabel } from "@/lib/academic/termLabels";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { useAppToast } from "@/components/shared/AppToast";
 
 const avatarTones = {
   red: "bg-red-100 text-red-700",
@@ -78,7 +80,7 @@ export default function StudentTable({ classId }) {
   const [search, setSearch] = useState("");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [teacherId, setTeacherId] = useState(null);
-  const [toast, setToast] = useState("");
+  const { showToast } = useAppToast();
 
   const displayKpis = useMemo(() => {
     if (!kpis?.length) return kpis;
@@ -170,12 +172,6 @@ export default function StudentTable({ classId }) {
         </Link>
       </header>
 
-      {toast ? (
-        <div className="mb-4 rounded-xl border border-green-100 bg-green-50 px-3 py-2.5 text-[12px] font-medium text-cnhs-green-dark">
-          {toast}
-        </div>
-      ) : null}
-
       <SummaryKpiCards kpis={displayKpis} />
 
       {!students.length ? (
@@ -203,28 +199,28 @@ export default function StudentTable({ classId }) {
                   className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-[12px] text-slate-700 outline-none focus:border-cnhs-green"
                 />
               </label>
-              <label className="block sm:w-52">
+              <div className="block sm:w-52">
                 <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
                   Term
                 </span>
-                <select
+                <AppSelect
+                  label="Term"
                   value={String(viewQuarter)}
-                  onChange={(e) => handleTermChange(e.target.value)}
-                  className="h-9 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 text-[12px] font-medium text-slate-700 outline-none focus:border-cnhs-green"
-                >
-                  {(termOptions?.length
+                  onChange={handleTermChange}
+                  options={(termOptions?.length
                     ? termOptions
                     : [1, 2, 3, 4].map((q) => ({
                         value: q,
                         label: termLabel(q),
                       }))
-                  ).map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  ).map((opt) => ({
+                    value: String(opt.value),
+                    label: opt.label,
+                  }))}
+                  size="field"
+                  triggerClassName="h-9 rounded-lg text-[12px]"
+                />
+              </div>
             </div>
             <p className="mt-2 text-[11px] text-slate-400">
               {filtered.length} of {students.length} students · KPIs use{" "}
@@ -325,13 +321,12 @@ export default function StudentTable({ classId }) {
         onSuccess={async (result) => {
           const learners = result?.imported ?? 0;
           const grades = result?.gradesUpserted ?? 0;
-          setToast(
+          showToast(
             `Imported ${learners} learner${learners === 1 ? "" : "s"}${
               grades ? ` and ${grades} grade record${grades === 1 ? "" : "s"}` : ""
             }.`
           );
           await refresh();
-          window.setTimeout(() => setToast(""), 3200);
         }}
       />
     </motion.div>

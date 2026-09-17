@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { BarChart3, CalendarDays, Loader2 } from "lucide-react";
 import StudentPageHeader from "@/components/student/layout/StudentPageHeader";
@@ -15,18 +16,21 @@ import {
 } from "@/components/student/shared";
 import { useStudentPortal } from "@/hooks/student/useStudentPortal";
 import { termLabel } from "@/lib/academic/termLabels";
+import { createClient } from "@/lib/supabase/client";
 
-function StatCard({ label, value, hint }) {
+function Kpi({ label, value, hint }) {
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
+    <div className="rounded-xl border border-border bg-card p-3 shadow-[0_4px_12px_rgba(15,23,42,0.03)]">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {label}
       </p>
-      <p className="mt-3 text-[26px] font-semibold leading-none tracking-[-0.04em] text-slate-950">
+      <p className="mt-1.5 text-[22px] font-semibold leading-none tracking-[-0.04em] text-card-foreground">
         {value}
       </p>
       {hint ? (
-        <p className="mt-1.5 text-[11px] font-medium text-slate-400">{hint}</p>
+        <p className="mt-1 text-[10px] font-medium leading-4 text-muted-foreground">
+          {hint}
+        </p>
       ) : null}
     </div>
   );
@@ -34,13 +38,39 @@ function StatCard({ label, value, hint }) {
 
 export default function StudentDashboard() {
   const { data, loading, error } = useStudentPortal();
+  const [mustChangePassword, setMustChangePassword] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    async function loadFlags() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user?.id || !active) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("must_change_password, temp_password")
+        .eq("auth_user_id", user.id)
+        .maybeSingle();
+      if (!active || !profile) return;
+      const temp = String(profile.temp_password ?? "").trim();
+      setMustChangePassword(
+        Boolean(profile.must_change_password) && Boolean(temp)
+      );
+    }
+    loadFlags();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      className="pb-5"
+      transition={{ duration: 0.22, ease: "easeOut" }}
+      className="pb-3"
     >
       <StudentPageHeader
         breadcrumb="Home / Dashboard"
@@ -48,30 +78,43 @@ export default function StudentDashboard() {
         subtitle={
           data
             ? `${data.profile.displayName} · ${data.profile.gradeSection}`
-            : "Your academic standing and PLP interventions"
+            : "Your academic standing and interventions"
         }
       />
 
       {error ? (
-        <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+        <div className="mb-2 rounded-xl border border-red-200/60 bg-red-50 px-3 py-2 text-[12px] text-red-600 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
           {error}
         </div>
       ) : null}
 
+      {mustChangePassword ? (
+        <div className="mb-2 rounded-xl border border-amber-200/70 bg-amber-50 px-3 py-2 text-[12px] text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-200">
+          Update your temporary password in{" "}
+          <Link
+            href="/student/profile"
+            className="font-semibold text-cnhs-green-dark underline underline-offset-2"
+          >
+            Profile → Security
+          </Link>
+          .
+        </div>
+      ) : null}
+
       {loading || !data ? (
-        <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-100 bg-white py-12 text-sm text-slate-500">
-          <Loader2 size={16} className="animate-spin" />
-          Loading student dashboard…
+        <div className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-card py-10 text-[13px] text-muted-foreground">
+          <Loader2 size={15} className="animate-spin" />
+          Loading dashboard…
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <StudentSectionCard
             icon={BarChart3}
             title="Academic Analytics"
-            subtitle="Risk predictions are based on academic performance (ECR grades) only."
+            subtitle="Risk from ECR grades only — not attendance."
           >
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard
+            <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
+              <Kpi
                 label="Average"
                 value={data.summary.average ?? "—"}
                 hint={
@@ -80,20 +123,20 @@ export default function StudentDashboard() {
                     : "No grades yet"
                 }
               />
-              <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
+              <div className="rounded-xl border border-border bg-card p-3 shadow-[0_4px_12px_rgba(15,23,42,0.03)]">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                   Risk Level
                 </p>
-                <div className="mt-3">
+                <div className="mt-2">
                   <RiskPill value={data.summary.riskLevel} />
                 </div>
               </div>
-              <StatCard
-                label="Active Interventions"
+              <Kpi
+                label="Interventions"
                 value={data.summary.activeInterventionCount}
-                hint="ARAL Learners and Classroom Remedial"
+                hint="ARAL / Classroom Remedial"
               />
-              <StatCard
+              <Kpi
                 label="Weak Subjects"
                 value={data.summary.weakSubjects.length || "0"}
                 hint={
@@ -104,41 +147,41 @@ export default function StudentDashboard() {
               />
             </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[1.1fr_0.9fr]">
+            <div className="mt-2.5 grid grid-cols-1 gap-2 xl:grid-cols-2">
               <StudentPanelCard
                 title="Recent Grades"
                 actions={
                   <Link
                     href="/student/grades"
-                    className="text-[11px] font-semibold text-cnhs-green-dark hover:underline"
+                    className="text-[11px] font-semibold text-cnhs-green-dark transition-colors duration-200 hover:underline"
                   >
                     View all
                   </Link>
                 }
               >
-                <div className="overflow-x-auto px-4 pb-3">
-                  <table className="w-full min-w-[420px] text-left">
+                <div className="overflow-x-auto px-3 pb-2">
+                  <table className="w-full min-w-[360px] text-left">
                     <thead>
-                      <tr className="text-[10px] uppercase tracking-[0.08em] text-slate-400">
-                        <th className="py-3 font-semibold">Subject</th>
-                        <th className="py-3 font-semibold">Grade</th>
-                        <th className="py-3 font-semibold">Status</th>
+                      <tr className="text-[10px] uppercase tracking-[0.06em] text-muted-foreground">
+                        <th className="py-1.5 font-semibold">Subject</th>
+                        <th className="py-1.5 font-semibold">Grade</th>
+                        <th className="py-1.5 font-semibold">Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {data.grades.length ? (
-                        data.grades.slice(0, 6).map((row) => (
+                        data.grades.slice(0, 5).map((row) => (
                           <tr
                             key={row.id}
-                            className="border-t border-slate-100 text-[12px]"
+                            className="border-t border-border text-[12px]"
                           >
-                            <td className="py-2.5 font-medium text-slate-700">
+                            <td className="py-1.5 font-medium text-card-foreground">
                               {row.subject}
                             </td>
-                            <td className="py-2.5 text-slate-600">
+                            <td className="py-1.5 text-muted-foreground">
                               {row.finalGrade ?? "—"}
                             </td>
-                            <td className="py-2.5">
+                            <td className="py-1.5">
                               <Pill
                                 value={row.status}
                                 styles={gradeStatusStyles}
@@ -150,9 +193,9 @@ export default function StudentDashboard() {
                         <tr>
                           <td
                             colSpan={3}
-                            className="py-8 text-center text-xs text-slate-400"
+                            className="py-4 text-center text-[11px] text-muted-foreground"
                           >
-                            No grades recorded for this period yet.
+                            No grades for this period yet.
                           </td>
                         </tr>
                       )}
@@ -162,59 +205,40 @@ export default function StudentDashboard() {
               </StudentPanelCard>
 
               <StudentPanelCard
-                title="Interventions / PLP"
+                title="Interventions"
                 actions={
                   <Link
                     href="/student/interventions"
-                    className="text-[11px] font-semibold text-cnhs-green-dark hover:underline"
+                    className="text-[11px] font-semibold text-cnhs-green-dark transition-colors duration-200 hover:underline"
                   >
                     Details
                   </Link>
                 }
               >
-                <div className="space-y-3 px-4 pb-4">
+                <div className="space-y-1.5 px-3 pb-2">
                   {data.interventions.length ? (
                     data.interventions.slice(0, 3).map((item) => (
                       <div
                         key={item.id}
-                        className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2"
+                        className="rounded-lg border border-border bg-muted/40 px-2.5 py-1.5"
                       >
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           <Pill
                             value={item.type}
                             styles={interventionTypeStyles}
                           />
                           <RiskPill value={item.riskLevel} />
                         </div>
-                        <p className="mt-2 text-[12px] font-semibold text-slate-800">
+                        <p className="mt-1 text-[12px] font-semibold text-card-foreground">
                           {item.subject}
-                        </p>
-                        <p className="mt-1 text-[11px] leading-5 text-slate-500">
-                          {item.explanation}
                         </p>
                       </div>
                     ))
                   ) : (
-                    <p className="py-6 text-center text-xs text-slate-400">
-                      No PLP interventions recommended right now.
+                    <p className="py-4 text-center text-[11px] text-muted-foreground">
+                      No interventions right now.
                     </p>
                   )}
-
-                  {data.monitoring ? (
-                    <div className="rounded-xl border border-cnhs-green/20 bg-cnhs-green-soft/40 px-3 py-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-cnhs-green-dark">
-                        Teacher follow-up
-                      </p>
-                      <p className="mt-1 text-[12px] font-medium text-slate-800">
-                        Status: {data.monitoring.status}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">
-                        {data.monitoring.interventionGiven
-                          ? `Intervention: ${data.monitoring.interventionGiven}`
-                          : "Your teacher is tracking support progress."}
-                      </p>
-                    </div>
-                  ) : null}
                 </div>
               </StudentPanelCard>
             </div>
@@ -223,26 +247,26 @@ export default function StudentDashboard() {
           <StudentSectionCard
             icon={CalendarDays}
             title="Attendance"
-            subtitle="Attendance is tracked separately from academic risk."
+            subtitle="SF2 only — separate from academic risk."
             actions={
               <Link
                 href="/student/profile"
-                className="text-[11px] font-semibold text-cnhs-green-dark hover:underline"
+                className="text-[11px] font-semibold text-cnhs-green-dark transition-colors duration-200 hover:underline"
               >
-                View history
+                History
               </Link>
             }
           >
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <StatCard
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <Kpi
                 label="Present"
                 value={String(data.attendance?.summary?.present ?? 0)}
               />
-              <StatCard
+              <Kpi
                 label="Absent"
                 value={String(data.attendance?.summary?.absent ?? 0)}
               />
-              <StatCard
+              <Kpi
                 label="Attendance %"
                 value={
                   data.attendance?.summary?.attendanceRate != null
@@ -250,10 +274,9 @@ export default function StudentDashboard() {
                     : "—"
                 }
               />
-              <StatCard
+              <Kpi
                 label="Status"
                 value={data.attendance?.summary?.status ?? "No data"}
-                hint="Normal / Warning / Critical"
               />
             </div>
           </StudentSectionCard>

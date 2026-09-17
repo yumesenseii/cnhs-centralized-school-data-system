@@ -26,9 +26,31 @@ export function useStudentPortal() {
       }
 
       try {
-        const view = await buildStudentPortalView(result.data);
+        const view = await buildStudentPortalView(result.data, {
+          skipRecommendations: true,
+        });
         if (cancelled) return;
         setData(view);
+        setLoading(false);
+
+        try {
+          let full = await buildStudentPortalView(result.data);
+          if (
+            full?.summary?.riskLevel === "—" &&
+            (result.data.grades?.length || result.data.enrollments?.length)
+          ) {
+            full = await buildStudentPortalView(result.data);
+          }
+          if (cancelled) return;
+          setData(full);
+        } catch (enrichErr) {
+          if (!cancelled) {
+            console.warn(
+              "[student portal] recommendation enrich failed",
+              enrichErr
+            );
+          }
+        }
       } catch (err) {
         if (cancelled) return;
         setData(null);

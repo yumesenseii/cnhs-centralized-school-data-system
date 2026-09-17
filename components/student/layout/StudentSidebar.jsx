@@ -10,8 +10,10 @@ import {
   ClipboardList,
   LayoutGrid,
   LogOut,
+  Moon,
   PanelLeftClose,
   PanelLeftOpen,
+  Sun,
   UserRound,
 } from "lucide-react";
 import { SIDEBAR_WIDTH_CLASS } from "@/lib/constants/layout";
@@ -19,6 +21,7 @@ import { SCHOOL_NAME } from "@/lib/constants/brand";
 import { createClient } from "@/lib/supabase/client";
 import { getCurrentStudentSession } from "@/lib/supabase/queries/studentPortal";
 import LogoutConfirmModal from "@/components/shared/LogoutConfirmModal";
+import { useTheme } from "@/components/theme/ThemeProvider";
 import { cn } from "@/lib/utils";
 
 const menuNavigation = [
@@ -28,7 +31,7 @@ const menuNavigation = [
 
 const analyticsNavigation = [
   {
-    label: "Interventions / PLP",
+    label: "Interventions",
     href: "/student/interventions",
     icon: ClipboardList,
   },
@@ -42,16 +45,32 @@ function NavLink({ href, label, icon: Icon, isActive, onNavigate, collapsed = fa
   return (
     <Link
       href={href}
-      onClick={onNavigate}
+      scroll={!isActive}
+      onClick={(event) => {
+        if (isActive) {
+          event.preventDefault();
+          onNavigate?.(event);
+          return;
+        }
+        onNavigate?.(event);
+      }}
       title={label}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "group flex min-h-8 items-center gap-2.5 rounded-lg px-3 text-[13px] font-medium transition-all duration-200",
+        "group relative flex min-h-8 items-center gap-2.5 rounded-lg px-3 text-[13px] font-medium transition-all duration-200",
         "hover:bg-white/8 hover:text-white",
         collapsed && "justify-center px-2",
-        isActive ? "bg-cnhs-green/20 text-[#7dd8a9]" : "text-white/70"
+        isActive
+          ? "bg-transparent text-[#7dd8a9] ring-1 ring-inset ring-white/18"
+          : "text-white/70"
       )}
     >
+      {isActive && !collapsed ? (
+        <span
+          className="absolute inset-y-1 left-0 w-[3px] rounded-full bg-cnhs-green"
+          aria-hidden="true"
+        />
+      ) : null}
       <Icon
         size={16}
         strokeWidth={1.9}
@@ -93,6 +112,7 @@ export default function StudentSidebar({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { resolvedTheme, hydrated, setTheme } = useTheme();
   const [profile, setProfile] = useState({
     initials: "S",
     name: "Student",
@@ -101,6 +121,11 @@ export default function StudentSidebar({
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const showCollapseToggle = !mobile && typeof onToggleCollapse === "function";
+  const isDark = resolvedTheme === "dark";
+
+  function toggleTheme() {
+    setTheme(isDark ? "light" : "dark");
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -153,7 +178,7 @@ export default function StudentSidebar({
   return (
     <aside
       className={cn(
-        "z-30 h-screen flex-col bg-cnhs-sidebar text-white transition-[width] duration-200",
+        "z-30 h-screen flex-col border-r border-white/10 bg-cnhs-sidebar text-white transition-[width] duration-200",
         widthClass,
         mobile ? "flex h-full w-full" : "fixed inset-y-0 left-0",
         className
@@ -201,7 +226,7 @@ export default function StudentSidebar({
             onClick={onToggleCollapse}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/8 hover:text-white"
+            className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-white/70 transition-colors duration-200 hover:bg-white/8 hover:text-white"
           >
             {collapsed ? (
               <PanelLeftOpen size={16} strokeWidth={1.9} />
@@ -254,50 +279,49 @@ export default function StudentSidebar({
         </NavSection>
       </nav>
 
-      <div
-        className={cn(
-          "mt-auto space-y-2 border-t border-white/10 px-3 py-3",
-          collapsed && "px-2"
-        )}
-      >
+      <div className={cn("mt-auto space-y-2 px-3 pb-3 pt-2", collapsed && "px-2")}>
+        {hydrated ? (
+          <div className={cn("flex px-0.5", collapsed ? "justify-center" : "justify-end")}>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              title={isDark ? "Light mode" : "Dark mode"}
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-white/70 transition-colors duration-200 hover:bg-white/8 hover:text-white"
+            >
+              {isDark ? <Sun size={15} strokeWidth={1.9} /> : <Moon size={15} strokeWidth={1.9} />}
+            </button>
+          </div>
+        ) : null}
         <div
           className={cn(
-            "flex items-center gap-2.5 rounded-lg bg-white/5 px-2.5 py-2",
+            "flex items-center gap-2.5 rounded-lg bg-white/8 px-2.5 py-2",
             collapsed && "justify-center px-2"
           )}
           title={profile.name}
         >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cnhs-green/25 text-[11px] font-semibold text-[#7dd8a9]">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cnhs-green text-[11px] font-semibold text-white">
             {profile.initials}
-          </div>
+          </span>
           {!collapsed ? (
-            <>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[12px] font-semibold text-white">{profile.name}</p>
-                <p className="truncate text-[10px] text-white/50">{profile.role}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setLogoutOpen(true)}
-                aria-label="Log out"
-                className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-white/55 transition-colors hover:bg-white/10 hover:text-white"
-              >
-                <LogOut size={15} />
-              </button>
-            </>
+            <div className="min-w-0">
+              <p className="truncate text-[12px] font-semibold text-white">{profile.name}</p>
+              <p className="truncate text-[10px] text-white/55">{profile.role}</p>
+            </div>
           ) : null}
         </div>
-        {collapsed ? (
-          <button
-            type="button"
-            onClick={() => setLogoutOpen(true)}
-            title="Log out"
-            aria-label="Log out"
-            className="flex h-9 w-full cursor-pointer items-center justify-center rounded-lg text-white/65 transition-colors hover:bg-white/8 hover:text-white"
-          >
-            <LogOut size={16} />
-          </button>
-        ) : null}
+        <button
+          type="button"
+          onClick={() => setLogoutOpen(true)}
+          title="Logout"
+          className={cn(
+            "inline-flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-white/65 transition-colors duration-200 hover:bg-white/8 hover:text-white",
+            collapsed && "justify-center px-2"
+          )}
+        >
+          <LogOut size={16} />
+          {!collapsed ? "Logout" : null}
+        </button>
       </div>
 
       <LogoutConfirmModal

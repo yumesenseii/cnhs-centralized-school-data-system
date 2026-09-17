@@ -1,6 +1,7 @@
 "use client";
 
 import { Search, X } from "lucide-react";
+import AppSelect from "@/components/shared/AppSelect";
 
 export default function LessonPlanFilters({
   filters,
@@ -34,41 +35,32 @@ export default function LessonPlanFilters({
         </label>
 
         <div className="flex flex-wrap items-center gap-2">
-          <select
+          <AppSelect
+            label="Status"
             value={status}
-            onChange={(e) => onStatusChange(e.target.value)}
-            className="h-9 cursor-pointer rounded-lg border border-slate-200 bg-white px-3 pr-7 text-[11px] font-medium text-slate-600 outline-none focus:border-cnhs-green"
-          >
-            {filters.statuses.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+            onChange={onStatusChange}
+            options={filters.statuses}
+            size="field"
+            triggerClassName="h-9 rounded-lg text-[11px]"
+          />
 
-          <select
+          <AppSelect
+            label="Subject"
             value={subject}
-            onChange={(e) => onSubjectChange(e.target.value)}
-            className="h-9 cursor-pointer rounded-lg border border-slate-200 bg-white px-3 pr-7 text-[11px] font-medium text-slate-600 outline-none focus:border-cnhs-green"
-          >
-            {filters.subjects.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+            onChange={onSubjectChange}
+            options={filters.subjects}
+            size="field"
+            triggerClassName="h-9 rounded-lg text-[11px]"
+          />
 
-          <select
+          <AppSelect
+            label="Quarter"
             value={quarter}
-            onChange={(e) => onQuarterChange(e.target.value)}
-            className="h-9 cursor-pointer rounded-lg border border-slate-200 bg-white px-3 pr-7 text-[11px] font-medium text-slate-600 outline-none focus:border-cnhs-green"
-          >
-            {filters.quarters.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+            onChange={onQuarterChange}
+            options={filters.quarters}
+            size="field"
+            triggerClassName="h-9 rounded-lg text-[11px]"
+          />
 
           <button
             type="button"

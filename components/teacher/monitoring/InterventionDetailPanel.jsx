@@ -34,6 +34,8 @@ import {
   updateMonitoringRecord,
 } from "@/lib/supabase/queries/monitoring";
 import { cn } from "@/lib/utils";
+import AppSelect from "@/components/shared/AppSelect";
+import { useAppToast } from "@/components/shared/AppToast";
 
 function Section({ title, children }) {
   return (
@@ -60,7 +62,7 @@ export default function InterventionDetailPanel({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [toast, setToast] = useState("");
+  const { showToast } = useAppToast();
   const [records, setRecords] = useState([]);
   const [scores, setScores] = useState([]);
   const [evalForm, setEvalForm] = useState({
@@ -132,7 +134,6 @@ export default function InterventionDetailPanel({
     }
     setSaving(true);
     setError("");
-    setToast("");
     const statusFields = {
       progress_evaluation: evalForm.progressEvaluation || null,
       next_action: evalForm.nextAction || null,
@@ -182,7 +183,7 @@ export default function InterventionDetailPanel({
       setError(result.error.message);
       return;
     }
-    setToast("Saved teacher evaluation and status.");
+    showToast("Saved teacher evaluation and status.");
     await refresh();
     onSaved?.();
   }
@@ -237,11 +238,6 @@ export default function InterventionDetailPanel({
               {error}
             </p>
           ) : null}
-          {toast ? (
-            <p className="rounded-lg border border-green-100 bg-green-50 px-3 py-2 text-[12px] font-medium text-cnhs-green-dark">
-              {toast}
-            </p>
-          ) : null}
 
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500">
@@ -275,7 +271,7 @@ export default function InterventionDetailPanel({
                 </p>
                 <p className="mt-1 text-[11px] text-slate-500">
                   {learner.recommendationReason ||
-                    "Recommendation from ECR grades and Random Forest risk. Attendance is not a prediction input."}
+                    "Recommendation from ECR grades."}
                 </p>
               </Section>
 
@@ -376,59 +372,66 @@ export default function InterventionDetailPanel({
                 {canWrite ? (
                   <div className="space-y-2">
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                      <label className="text-[11px] text-slate-500">
+                      <div className="text-[11px] text-slate-500">
                         Progress evaluation
-                        <select
+                        <AppSelect
+                          label="Progress evaluation"
                           value={evalForm.progressEvaluation}
-                          onChange={(e) =>
+                          onChange={(next) =>
                             setEvalForm((prev) => ({
                               ...prev,
-                              progressEvaluation: e.target.value,
+                              progressEvaluation: next,
                             }))
                           }
-                          className="mt-1 h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-[12px]"
-                        >
-                          <option value="">—</option>
-                          {PROGRESS_EVALUATION_OPTIONS.map((opt) => (
-                            <option key={opt} value={opt}>{opt}</option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="text-[11px] text-slate-500">
+                          options={[
+                            { value: "", label: "—" },
+                            ...PROGRESS_EVALUATION_OPTIONS.map((opt) => ({
+                              value: opt,
+                              label: opt,
+                            })),
+                          ]}
+                          className="mt-1"
+                          triggerClassName="h-8 rounded-lg px-2 text-[12px]"
+                        />
+                      </div>
+                      <div className="text-[11px] text-slate-500">
                         Next action
-                        <select
+                        <AppSelect
+                          label="Next action"
                           value={evalForm.nextAction}
-                          onChange={(e) =>
+                          onChange={(next) =>
                             setEvalForm((prev) => ({
                               ...prev,
-                              nextAction: e.target.value,
+                              nextAction: next,
                             }))
                           }
-                          className="mt-1 h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-[12px]"
-                        >
-                          <option value="">—</option>
-                          {NEXT_ACTION_OPTIONS.map((opt) => (
-                            <option key={opt} value={opt}>{opt}</option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="text-[11px] text-slate-500">
+                          options={[
+                            { value: "", label: "—" },
+                            ...NEXT_ACTION_OPTIONS.map((opt) => ({
+                              value: opt,
+                              label: opt,
+                            })),
+                          ]}
+                          className="mt-1"
+                          triggerClassName="h-8 rounded-lg px-2 text-[12px]"
+                        />
+                      </div>
+                      <div className="text-[11px] text-slate-500">
                         Status
-                        <select
+                        <AppSelect
+                          label="Status"
                           value={evalForm.status}
-                          onChange={(e) =>
+                          onChange={(next) =>
                             setEvalForm((prev) => ({
                               ...prev,
-                              status: e.target.value,
+                              status: next,
                             }))
                           }
-                          className="mt-1 h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-[12px]"
-                        >
-                          {INTERVENTION_STATUS_OPTIONS.map((opt) => (
-                            <option key={opt} value={opt}>{opt}</option>
-                          ))}
-                        </select>
-                      </label>
+                          options={INTERVENTION_STATUS_OPTIONS}
+                          className="mt-1"
+                          triggerClassName="h-8 rounded-lg px-2 text-[12px]"
+                        />
+                      </div>
                     </div>
                     <textarea
                       value={evalForm.remarks}

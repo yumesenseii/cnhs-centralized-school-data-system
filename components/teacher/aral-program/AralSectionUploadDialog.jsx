@@ -7,6 +7,7 @@ import {
   aralAssessmentPhaseLabel,
 } from "@/lib/monitoring/aralAssessments";
 import { cn } from "@/lib/utils";
+import AppSelect from "@/components/shared/AppSelect";
 
 const TYPES = [
   { id: "weekly", label: "Weekly" },
@@ -111,24 +112,25 @@ export default function AralSectionUploadDialog({
           </div>
 
           {isWeekly ? (
-            <label className="block">
+            <div className="block">
               <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
                 Week
               </span>
-              <select
+              <AppSelect
+                label="Week"
                 value={weekNumber}
                 disabled={uploading}
-                onChange={(e) => setWeekNumber(e.target.value)}
-                className="mt-1 h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-[13px] text-slate-800"
-              >
-                {weekOptions.map((n) => (
-                  <option key={n} value={n}>
-                    Week {n}
-                    {existingWeeks.includes(n) ? " (replace)" : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
+                onChange={setWeekNumber}
+                options={weekOptions.map((n) => ({
+                  value: String(n),
+                  label: `Week ${n}${
+                    existingWeeks.includes(n) ? " (replace)" : ""
+                  }`,
+                }))}
+                className="mt-1"
+                triggerClassName="h-9 rounded-lg text-[13px]"
+              />
+            </div>
           ) : null}
 
           {weekExists || phaseExists ? (

@@ -135,22 +135,14 @@ export default function ClassReportsTable({
   onGenerateSystemReport,
 }) {
   return (
-    <section className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-      <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-slate-900">
-            My Class Reports
-          </h2>
-          <span className="text-[11px] font-medium text-slate-400">
-            {reports.length} {reports.length === 1 ? "class" : "classes"}
-          </span>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto">
+    <section>
+      <p className="mb-2 text-[11px] text-slate-400">
+        {reports.length} {reports.length === 1 ? "class" : "classes"}
+      </p>
+      <div className="overflow-x-auto border-y border-slate-200 dark:border-white/10">
         <table className="min-w-[760px] w-full border-collapse text-left">
           <thead>
-            <tr className="bg-slate-50/80">
+            <tr className="border-b border-slate-200 dark:border-white/10">
               <th className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
                 Section
               </th>

@@ -162,6 +162,11 @@ These were delivered in recent iterations and should stay regression-tested:
 |-----|--------|
 | `docs/USER_MANUAL.md` | Synced for Classes & Sections; LP review; teacher settings; live User Management |
 | `docs/ROADMAP.md` | This file — keep status updated after each sprint |
+| `docs/SMOKE_CHECKLIST.md` | Manual smoke evidence (ISO Phase B) |
+| `docs/AUDIT_TRAIL.md` | What is logged vs gaps (ISO Phase C) |
+| `docs/BACKUP_RESTORE.md` | Supabase + Vercel backup/restore one-pager (ISO Phase C) |
+| `docs/RLS_ROLE_REVIEW.md` | Roles + RLS migration pointers + role-test checklist (ISO Phase C) |
+| `docs/ML_DEPLOY.md` | Host ml-service + set Vercel `RF_INFERENCE_URL` (avoid rule-based fallback) |
 | Test Summary / Test Cases | Checklist ready (§3.4); **in progress** — fill Pass/Fail after formal QA; attach screenshots for defense |
 
 ---

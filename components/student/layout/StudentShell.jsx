@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import WelcomeLoginToast from "@/components/shared/WelcomeLoginToast";
 import StudentSidebar from "@/components/student/layout/StudentSidebar";
 import {
   SIDEBAR_CONTENT_OFFSET_CLASS,
@@ -50,6 +51,7 @@ export default function StudentShell({ children }) {
 
   return (
     <div className="min-h-screen bg-cnhs-page">
+      <WelcomeLoginToast />
       <StudentSidebar
         className="hidden lg:flex"
         collapsed={sidebarCollapsed}

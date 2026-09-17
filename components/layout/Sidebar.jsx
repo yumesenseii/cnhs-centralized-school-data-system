@@ -34,13 +34,33 @@ const menuNavigation = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Academic Records", href: "/academic-records", icon: BookOpen },
   { label: "Classes & Sections", href: "/class-organization", icon: Layers3 },
-  { label: "Lesson Plan Review", href: "/lesson-plan-review", icon: FileText },
-  { label: "User Management", href: "/user-management", icon: Users },
+  {
+    label: "Lesson Plan Review",
+    href: "/lesson-plan-review",
+    icon: FileText,
+    tourId: "lesson-plan-review",
+  },
+  {
+    label: "User Management",
+    href: "/user-management",
+    icon: Users,
+    tourId: "user-management",
+  },
 ];
 
 const analyticsNavigation = [
-  { label: "Academic Monitoring", href: "/monitoring", icon: Activity },
-  { label: "Attendance Monitoring", href: "/attendance", icon: CalendarDays },
+  {
+    label: "Academic Monitoring",
+    href: "/monitoring",
+    icon: Activity,
+    tourId: "monitoring",
+  },
+  {
+    label: "Attendance Monitoring",
+    href: "/attendance",
+    icon: CalendarDays,
+    tourId: "attendance",
+  },
   { label: "Reports", href: "/reports", icon: BarChart3 },
 ];
 
@@ -61,11 +81,20 @@ function initialsFromName(name = "") {
   );
 }
 
-function NavLink({ href, label, icon: Icon, isActive, onNavigate, collapsed }) {
+function NavLink({
+  href,
+  label,
+  icon: Icon,
+  isActive,
+  onNavigate,
+  collapsed,
+  tourId,
+}) {
   return (
     <Link
       href={href}
       scroll={!isActive}
+      data-tour-id={tourId || undefined}
       onClick={(event) => {
         // Already on this route — skip navigation so the page does not remount/refetch.
         if (isActive) {
@@ -78,12 +107,20 @@ function NavLink({ href, label, icon: Icon, isActive, onNavigate, collapsed }) {
       title={label}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "group flex min-h-8 items-center gap-2.5 rounded-lg px-3 text-[13px] font-medium transition-all duration-200",
+        "group relative flex min-h-8 items-center gap-2.5 rounded-lg px-3 text-[13px] font-medium transition-all duration-200",
         "hover:bg-white/8 hover:text-white",
         collapsed && "justify-center px-2",
-        isActive ? "bg-cnhs-green/20 text-[#7dd8a9]" : "text-white/70"
+        isActive
+          ? "bg-transparent text-[#7dd8a9] ring-1 ring-inset ring-white/18"
+          : "text-white/70"
       )}
     >
+      {isActive && !collapsed ? (
+        <span
+          className="absolute inset-y-1 left-0 w-[3px] rounded-full bg-cnhs-green"
+          aria-hidden="true"
+        />
+      ) : null}
       <Icon
         size={16}
         strokeWidth={1.9}
@@ -192,7 +229,7 @@ export default function Sidebar({
   return (
     <aside
       className={cn(
-        "z-30 h-screen flex-col bg-cnhs-sidebar text-white transition-[width] duration-200",
+        "z-30 h-screen flex-col border-r border-white/10 bg-cnhs-sidebar text-white transition-[width] duration-200",
         widthClass,
         mobile ? "flex h-full w-full" : "fixed inset-y-0 left-0",
         className

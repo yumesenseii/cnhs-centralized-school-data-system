@@ -70,7 +70,11 @@ export default function GradeFolderCards({
             <p className="mt-0.5 text-[11px] text-slate-500">
               {empty
                 ? "No class lists yet"
-                : `${row.classCount} class${row.classCount === 1 ? "" : "es"} · ${row.students} in lists`}
+                : `${row.sectionCount ?? 0} section${
+                    Number(row.sectionCount) === 1 ? "" : "s"
+                  } · ${row.classCount} class list${
+                    Number(row.classCount) === 1 ? "" : "s"
+                  }`}
             </p>
 
             <div className="mt-4 flex items-center justify-between border-t border-slate-50 pt-3">

@@ -30,6 +30,8 @@ import {
   MONITORING_STATUS,
 } from "@/lib/monitoring/recommendations";
 import { cn } from "@/lib/utils";
+import AppSelect from "@/components/shared/AppSelect";
+import { useAppToast } from "@/components/shared/AppToast";
 
 const PROGRESS_OPTIONS = ARAL_PROGRESS_OPTIONS;
 
@@ -80,7 +82,7 @@ export default function LearnerMonitoringModal({
     useStudentMonitoringDetail(learner?.classId, learner?.studentId);
 
   const [formError, setFormError] = useState("");
-  const [toast, setToast] = useState("");
+  const { showToast } = useAppToast();
   const editing = mode === "edit";
 
   const isAral = detail ? canSubmitAralWeeklyProgress(detail) : false;
@@ -130,7 +132,6 @@ export default function LearnerMonitoringModal({
   async function handleSave(e) {
     e?.preventDefault?.();
     setFormError("");
-    setToast("");
 
     if (!form.observationDate) {
       setFormError("Observation date is required.");
@@ -151,7 +152,7 @@ export default function LearnerMonitoringModal({
       return;
     }
 
-    setToast("Changes saved.");
+    showToast("Changes saved.");
     onSaved?.();
     onModeChange?.("view");
   }
@@ -335,65 +336,53 @@ export default function LearnerMonitoringModal({
                       />
                     </label>
 
-                    <label className="block space-y-1">
+                    <div className="block space-y-1">
                       <FieldLabel>Monitoring status</FieldLabel>
-                      <select
+                      <AppSelect
+                        label="Monitoring status"
                         value={form.monitoringStatus}
-                        onChange={(e) =>
+                        onChange={(next) =>
                           setForm((p) => ({
                             ...p,
-                            monitoringStatus: e.target.value,
+                            monitoringStatus: next,
                           }))
                         }
-                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-                      >
-                        {STATUS_OPTIONS.map((opt) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                        options={STATUS_OPTIONS}
+                        triggerClassName="h-9 rounded-lg px-2.5 text-sm"
+                      />
+                    </div>
 
-                    <label className="block space-y-1">
+                    <div className="block space-y-1">
                       <FieldLabel>Intervention given</FieldLabel>
-                      <select
+                      <AppSelect
+                        label="Intervention given"
                         value={form.interventionGiven}
-                        onChange={(e) =>
+                        onChange={(next) =>
                           setForm((p) => ({
                             ...p,
-                            interventionGiven: e.target.value,
+                            interventionGiven: next,
                           }))
                         }
-                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-                      >
-                        {INTERVENTION_OPTIONS.map((opt) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                        options={INTERVENTION_OPTIONS}
+                        triggerClassName="h-9 rounded-lg px-2.5 text-sm"
+                      />
+                    </div>
 
-                    <label className="block space-y-1">
+                    <div className="block space-y-1">
                       <FieldLabel>Student progress</FieldLabel>
-                      <select
+                      <AppSelect
+                        label="Student progress"
                         value={form.studentProgress}
-                        onChange={(e) =>
+                        onChange={(next) =>
                           setForm((p) => ({
                             ...p,
-                            studentProgress: e.target.value,
+                            studentProgress: next,
                           }))
                         }
-                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-                      >
-                        {PROGRESS_OPTIONS.map((opt) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                        options={PROGRESS_OPTIONS}
+                        triggerClassName="h-9 rounded-lg px-2.5 text-sm"
+                      />
+                    </div>
                   </div>
 
                   <label className="block space-y-1">
@@ -455,12 +444,6 @@ export default function LearnerMonitoringModal({
                   ) : null}
                 </section>
               )}
-
-              {toast ? (
-                <p className="text-[12px] font-medium text-emerald-700">
-                  {toast}
-                </p>
-              ) : null}
             </div>
           )}
         </div>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { lessonPlansData } from "@/data/teacher/lessonPlans";
 import { cn } from "@/lib/utils";
+import AppSelect from "@/components/shared/AppSelect";
 
 function Field({ label, required, error, children }) {
   return (
@@ -66,37 +67,48 @@ export default function LessonInformationForm({
 
       <div className="mb-4">
         <Field label="Assigned Class" required error={errors.classId || classError}>
-          <select
+          <AppSelect
+            label="Assigned Class"
             value={selectedClass?.id || ""}
-            onChange={(e) => {
+            onChange={(next) => {
               setErrors((prev) => {
-                const next = { ...prev };
-                delete next.classId;
-                return next;
+                const nextErrors = { ...prev };
+                delete nextErrors.classId;
+                return nextErrors;
               });
-              onClassChange?.(e.target.value);
+              onClassChange?.(next);
             }}
             disabled={loadingClasses || classes.length === 0}
-            className={cn(
-              inputClass,
-              classes.length > 0 ? "cursor-pointer" : "cursor-not-allowed bg-slate-50",
-              (errors.classId || classError) && "border-red-300"
-            )}
-          >
-            <option value="">
-              {loadingClasses
+            placeholder={
+              loadingClasses
                 ? "Loading classes..."
                 : classes.length === 0
                   ? "No assigned classes available"
-                  : "Select assigned class"}
-            </option>
-            {classes.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.subject} · {item.gradeSection} ·{" "}
-                {item.quarterLabel || item.currentQuarter}
-              </option>
-            ))}
-          </select>
+                  : "Select assigned class"
+            }
+            options={[
+              {
+                value: "",
+                label: loadingClasses
+                  ? "Loading classes..."
+                  : classes.length === 0
+                    ? "No assigned classes available"
+                    : "Select assigned class",
+              },
+              ...classes.map((item) => ({
+                value: item.id,
+                label: `${item.subject} · ${item.gradeSection} · ${
+                  item.quarterLabel || item.currentQuarter
+                }`,
+              })),
+            ]}
+            className="mt-1.5"
+            triggerClassName={cn(
+              "h-9 rounded-lg",
+              classes.length === 0 && "bg-slate-50",
+              (errors.classId || classError) && "border-red-300"
+            )}
+          />
         </Field>
         {!loadingClasses && classes.length === 0 && !classError ? (
           <p className="mt-1 text-[11px] font-medium text-amber-600">
@@ -152,18 +164,24 @@ export default function LessonInformationForm({
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Week Covered" required error={errors.weekCovered}>
-          <select
+          <AppSelect
+            label="Week Covered"
             value={information.weekCovered}
-            onChange={(e) => onChange({ weekCovered: e.target.value })}
-            className={cn(inputClass, "cursor-pointer", errors.weekCovered && "border-red-300")}
-          >
-            <option value="">Select week</option>
-            {lessonPlansData.weeks.map((week) => (
-              <option key={week} value={week}>
-                {week}
-              </option>
-            ))}
-          </select>
+            onChange={(next) => onChange({ weekCovered: next })}
+            placeholder="Select week"
+            options={[
+              { value: "", label: "Select week" },
+              ...lessonPlansData.weeks.map((week) => ({
+                value: week,
+                label: week,
+              })),
+            ]}
+            className="mt-1.5"
+            triggerClassName={cn(
+              "h-9 rounded-lg",
+              errors.weekCovered && "border-red-300"
+            )}
+          />
         </Field>
 
         <div className="sm:col-span-2 sm:col-start-1">

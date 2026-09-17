@@ -4,18 +4,18 @@ import { COMPONENT_LABELS, getComponentWeightPercents } from "@/lib/ecr/constant
 import { ECR_NAME_COLS, getComponentGroupSpan } from "@/lib/ecr/gridLayout";
 
 const th =
-  "border border-slate-200 bg-[#f3f3f3] px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 whitespace-nowrap";
+  "border border-slate-200 bg-slate-100 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 whitespace-nowrap";
 const td =
   "border border-slate-200 bg-white px-1 py-1 text-[11px] text-slate-700";
 
 const stickyHpsLabel =
-  "sticky left-0 z-[25] border border-slate-200 bg-amber-50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700 whitespace-nowrap box-border w-[332px] min-w-[332px] max-w-[332px] shadow-[4px_0_10px_-2px_rgba(15,23,42,0.14)]";
+  "sticky left-0 z-[25] border border-slate-200 bg-slate-100 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 whitespace-nowrap box-border w-[332px] min-w-[332px] max-w-[332px] shadow-[4px_0_10px_-2px_rgba(15,23,42,0.14)]";
 
 export default function EcrHpsRow({ config = [], onUpdate }) {
   const groups = ["WW", "PT", "QA"];
 
   return (
-    <tr className="bg-amber-50">
+    <tr className="bg-slate-100">
       <td colSpan={ECR_NAME_COLS} className={stickyHpsLabel}>
         HPS / Weight
       </td>
@@ -76,7 +76,7 @@ export function EcrHeaderGroups({ config }) {
   const groups = ["WW", "PT", "QA"];
   const percents = getComponentWeightPercents(config);
   const thGroup =
-    "sticky top-0 z-10 border border-slate-200 bg-[#f3f3f3] px-2 py-1.5 text-left text-[10px] font-semibold text-slate-600 whitespace-nowrap";
+    "sticky top-0 z-10 border border-slate-200 bg-slate-100 px-2 py-1.5 text-left text-[10px] font-semibold text-slate-600 whitespace-nowrap";
 
   return (
     <>
@@ -100,7 +100,7 @@ export function EcrHeaderGroups({ config }) {
 export function EcrSubHeaders({ config }) {
   const groups = ["WW", "PT", "QA"];
   const thSub =
-    "sticky top-0 z-10 border border-slate-200 bg-[#f3f3f3] px-2 py-1.5 text-left text-[10px] font-semibold text-slate-600 whitespace-nowrap";
+    "sticky top-0 z-10 border border-slate-200 bg-slate-100 px-2 py-1.5 text-left text-[10px] font-semibold text-slate-600 whitespace-nowrap";
 
   return (
     <>

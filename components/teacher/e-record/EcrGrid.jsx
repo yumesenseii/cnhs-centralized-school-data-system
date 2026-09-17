@@ -27,10 +27,10 @@ const stickyLrnW = "w-[112px] min-w-[112px] max-w-[112px]";
 const stickyNameW = "w-[180px] min-w-[180px] max-w-[180px]";
 const stickyFrozenW = "w-[332px] min-w-[332px] max-w-[332px]";
 
-const stickyCorner = `sticky top-0 left-0 z-[30] border border-slate-200 bg-[#f3f3f3] px-2 py-1.5 text-left text-[10px] font-semibold text-slate-600 box-border ${stickyFrozenW} ${stickyEdgeShadow}`;
-const stickyHeadNum = `sticky top-0 left-0 z-[30] border border-slate-200 bg-[#f3f3f3] px-2 py-1.5 text-[10px] font-semibold text-slate-600 box-border ${stickyNumW}`;
-const stickyHeadLrn = `sticky top-0 left-[40px] z-[30] border border-slate-200 bg-[#f3f3f3] px-2 py-1.5 text-[10px] font-semibold tabular-nums text-slate-600 box-border ${stickyLrnW}`;
-const stickyHeadName = `sticky top-0 left-[152px] z-[30] border border-slate-200 bg-[#f3f3f3] px-2 py-1.5 text-[10px] font-semibold text-slate-600 box-border ${stickyNameW} ${stickyEdgeShadow}`;
+const stickyCorner = `sticky top-0 left-0 z-[30] border border-slate-200 bg-slate-100 px-2 py-1.5 text-left text-[10px] font-semibold text-slate-600 box-border ${stickyFrozenW} ${stickyEdgeShadow}`;
+const stickyHeadNum = `sticky top-0 left-0 z-[30] border border-slate-200 bg-slate-100 px-2 py-1.5 text-[10px] font-semibold text-slate-600 box-border ${stickyNumW}`;
+const stickyHeadLrn = `sticky top-0 left-[40px] z-[30] border border-slate-200 bg-slate-100 px-2 py-1.5 text-[10px] font-semibold tabular-nums text-slate-600 box-border ${stickyLrnW}`;
+const stickyHeadName = `sticky top-0 left-[152px] z-[30] border border-slate-200 bg-slate-100 px-2 py-1.5 text-[10px] font-semibold text-slate-600 box-border ${stickyNameW} ${stickyEdgeShadow}`;
 
 const stickySectionLabel = `sticky left-0 z-20 border border-slate-200 bg-slate-100 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-600 box-border ${stickyFrozenW} ${stickyEdgeShadow}`;
 
@@ -113,7 +113,7 @@ function ScoreCells({
       <td className={`${tdBase} relative z-0 bg-slate-50 text-center font-medium`}>
         {computed?.initial_grade ?? "—"}
       </td>
-      <td className={`${tdBase} relative z-0 bg-[#f0faf4] text-center font-semibold`}>
+      <td className={`${tdBase} relative z-0 bg-green-50 text-center font-semibold`}>
         <span
           className={
             hasTermGrade
@@ -370,7 +370,7 @@ export default function EcrGrid({
       <div className="rounded-xl border border-dashed border-slate-200 bg-white px-6 py-14 text-center">
         <p className="text-sm font-medium text-slate-700">No learners enrolled</p>
         <p className="mt-1 text-[12px] text-slate-500">
-          Import an ECR Excel file to load the class roster, or contact your Head
+          Import an ECR Excel file to load learners, or contact your Head
           Teacher to enroll learners.
         </p>
         {onImportClick ? (

@@ -1,6 +1,7 @@
 "use client";
 
 import { Search, X } from "lucide-react";
+import AppSelect from "@/components/shared/AppSelect";
 
 export default function TeacherNotificationFilters({
   filters,
@@ -48,20 +49,15 @@ export default function TeacherNotificationFilters({
               options: filters.statuses,
             },
           ].map((filter) => (
-            <label key={filter.label}>
-              <span className="sr-only">{filter.label}</span>
-              <select
-                value={filter.value}
-                onChange={(event) => filter.set(event.target.value)}
-                className="h-9 cursor-pointer rounded-lg border border-slate-200 bg-white px-3 pr-7 text-[11px] font-medium text-slate-600 outline-none focus:border-cnhs-green"
-              >
-                {filter.options.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <AppSelect
+              key={filter.label}
+              label={filter.label}
+              value={filter.value}
+              onChange={filter.set}
+              options={filter.options}
+              size="field"
+              triggerClassName="h-9 rounded-lg text-[11px]"
+            />
           ))}
 
           <button

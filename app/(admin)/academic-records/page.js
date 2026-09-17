@@ -21,11 +21,10 @@ import TablePagination, {
   ACADEMIC_RECORDS_PAGE_SIZE,
 } from "@/components/academic-records/TablePagination";
 import Header from "@/components/layout/Header";
+import AppSelect from "@/components/shared/AppSelect";
+import { useAppToast } from "@/components/shared/AppToast";
 import { useAcademicRecords } from "@/hooks/admin/useAcademicRecords";
 import { exportAcademicRecordsExcel } from "@/lib/admin/academicRecordsExport";
-
-const selectClass =
-  "h-8 cursor-pointer rounded-full border border-slate-200 bg-white pl-8 pr-7 text-[11px] font-medium text-slate-600 shadow-sm outline-none transition-colors hover:bg-slate-50 focus:border-cnhs-green";
 
 export default function AcademicRecordsPage() {
   const {
@@ -70,7 +69,7 @@ export default function AcademicRecordsPage() {
     clearClass,
   } = useAcademicRecords();
 
-  const [toast, setToast] = useState("");
+  const { showToast } = useAppToast();
   const [exporting, setExporting] = useState(false);
   const [page, setPage] = useState(1);
 
@@ -119,12 +118,6 @@ export default function AcademicRecordsPage() {
     return students.slice(start, start + ACADEMIC_RECORDS_PAGE_SIZE);
   }, [students, safePage]);
 
-  useEffect(() => {
-    if (!toast) return undefined;
-    const timer = window.setTimeout(() => setToast(""), 2800);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
-
   async function handleExportRecords() {
     try {
       setExporting(true);
@@ -139,9 +132,9 @@ export default function AcademicRecordsPage() {
           ? `${selectedClass.subject} · ${selectedClass.gradeSection} · ${selectedClass.termLabel}`
           : "",
       });
-      setToast("Academic records Excel downloaded.");
+      showToast("Academic records Excel downloaded.");
     } catch (err) {
-      setToast(err?.message ?? "Unable to export academic records.");
+      showToast(err?.message ?? "Unable to export academic records.");
     } finally {
       setExporting(false);
     }
@@ -159,45 +152,29 @@ export default function AcademicRecordsPage() {
         title="Academic Records"
         controls={
           <>
-            <label className="relative">
-              <span className="sr-only">School Year</span>
-              <CalendarDays
-                size={12}
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                aria-hidden="true"
-              />
-              <select
-                value={schoolYear}
-                onChange={(e) => setSchoolYear(e.target.value)}
-                className={selectClass}
-                disabled={loading && !schoolYears.length}
-              >
-                {!schoolYears.length ? (
-                  <option value="">Loading…</option>
-                ) : (
-                  schoolYears.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
-            <label>
-              <span className="sr-only">Term</span>
-              <select
-                value={quarter}
-                onChange={(e) => setQuarter(e.target.value)}
-                className="h-8 cursor-pointer rounded-full border border-slate-200 bg-white px-4 text-[11px] font-medium text-slate-600 shadow-sm outline-none transition-colors hover:bg-slate-50 focus:border-cnhs-green"
-                disabled={loading}
-              >
-                {quarters.map((item) => (
-                  <option key={item.value || "all"} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <AppSelect
+              label="School Year"
+              value={schoolYear}
+              onChange={setSchoolYear}
+              options={
+                !schoolYears.length
+                  ? [{ value: "", label: "Loading…" }]
+                  : schoolYears
+              }
+              icon={CalendarDays}
+              size="pill"
+              align="end"
+              disabled={loading && !schoolYears.length}
+            />
+            <AppSelect
+              label="Term"
+              value={quarter}
+              onChange={setQuarter}
+              options={quarters}
+              size="pill"
+              align="end"
+              disabled={loading}
+            />
             <button
               type="button"
               onClick={() => refresh()}
@@ -398,11 +375,6 @@ export default function AcademicRecordsPage() {
         </>
       )}
 
-      {toast ? (
-        <div className="fixed bottom-5 right-5 z-50 rounded-lg bg-slate-900 px-4 py-2 text-sm text-white shadow-lg">
-          {toast}
-        </div>
-      ) : null}
     </motion.div>
   );
 }

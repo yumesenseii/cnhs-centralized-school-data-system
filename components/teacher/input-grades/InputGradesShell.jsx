@@ -9,7 +9,7 @@ export default function InputGradesShell({
   selectedClass,
   children,
   controls,
-  subtitle = "Upload Official DepEd E-Class Records for your assigned classes.",
+  subtitle = "Upload official DepEd E-Class Records for your classes.",
 }) {
   return (
     <div className="pb-5">

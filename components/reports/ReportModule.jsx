@@ -1,29 +1,16 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
+import TabSwitchPanel from "@/components/shared/TabSwitchPanel";
 import { cn } from "@/lib/utils";
 
 /**
- * Collapsible report section with optional pill tabs (OneData-style / CNHS theme).
- *
- * @param {{
- *   title: string,
- *   subtitle?: string,
- *   icon?: import('react').ReactNode,
- *   open?: boolean,
- *   onOpenChange?: (next: boolean) => void,
- *   tabs?: Array<{ id: string, label: string }>,
- *   activeTab?: string,
- *   onTabChange?: (id: string) => void,
- *   children?: import('react').ReactNode,
- *   footer?: import('react').ReactNode,
- *   accent?: 'green' | 'orange' | 'sky' | 'slate',
- * }} props
+ * Reports section card. Optional collapse + Dashboard-style pill tabs.
+ * `icon` / `accent` kept so callers do not break; they are not rendered.
  */
 export default function ReportModule({
   title,
   subtitle,
-  icon,
   open = true,
   onOpenChange,
   tabs = [],
@@ -31,74 +18,106 @@ export default function ReportModule({
   onTabChange,
   children,
   footer,
-  accent = "green",
+  className,
 } = {}) {
-  const accents = {
-    green: "bg-cnhs-green-soft/50",
-    orange: "bg-cnhs-orange-soft/60",
-    sky: "bg-sky-50/80",
-    slate: "bg-slate-50",
-  };
+  const hasTabs = Array.isArray(tabs) && tabs.length > 0;
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-      <button
-        type="button"
-        onClick={() => onOpenChange?.(!open)}
-        className={cn(
-          "flex w-full cursor-pointer items-start gap-3 px-4 py-3.5 text-left transition-colors sm:px-5",
-          accents[accent] ?? accents.green,
-          open ? "border-b border-slate-100/80" : ""
-        )}
-      >
-        {icon ? (
-          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-cnhs-green-dark shadow-sm ring-1 ring-slate-100">
-            {icon}
-          </span>
-        ) : null}
-        <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
-          {subtitle ? (
-            <p className="mt-0.5 text-[11px] text-slate-500">{subtitle}</p>
-          ) : null}
-        </div>
-        <ChevronDown
-          size={18}
-          className={cn(
-            "mt-1 shrink-0 text-slate-400 transition-transform",
-            open ? "rotate-180" : ""
+    <section
+      className={cn(
+        "overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)] dark:border-white/5 dark:bg-[var(--card)] dark:shadow-none",
+        className
+      )}
+    >
+      <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 dark:border-white/5 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          {onOpenChange ? (
+            <button
+              type="button"
+              onClick={() => onOpenChange(!open)}
+              className="flex w-full cursor-pointer items-start gap-2 text-left"
+            >
+              <span className="min-w-0 flex-1">
+                <h2 className="text-sm font-semibold tracking-[-0.01em] text-slate-900 dark:text-slate-100">
+                  {title}
+                </h2>
+                {subtitle ? (
+                  <p className="mt-0.5 text-[11px] text-slate-500">{subtitle}</p>
+                ) : null}
+              </span>
+              <ChevronDown
+                size={16}
+                className={cn(
+                  "mt-0.5 shrink-0 text-slate-400 transition-transform",
+                  open ? "rotate-180" : ""
+                )}
+              />
+            </button>
+          ) : (
+            <>
+              <h2 className="text-sm font-semibold tracking-[-0.01em] text-slate-900 dark:text-slate-100">
+                {title}
+              </h2>
+              {subtitle ? (
+                <p className="mt-0.5 text-[11px] text-slate-500">{subtitle}</p>
+              ) : null}
+            </>
           )}
-        />
-      </button>
+        </div>
+
+        {open && hasTabs ? (
+          <div
+            role="tablist"
+            aria-label={`${title} views`}
+            className="inline-flex max-w-full shrink-0 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1 shadow-sm dark:border-white/5 dark:bg-[var(--card)]"
+          >
+            {tabs.map((tab) => {
+              const active = tab.id === activeTab;
+              return (
+                <button
+                  key={tab.id}
+                  id={`report-module-tab-${tab.id}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  aria-controls={`report-module-panel-${tab.id}`}
+                  onClick={() => onTabChange?.(tab.id)}
+                  className={cn(
+                    "min-w-max cursor-pointer rounded-lg px-3 py-1.5 text-[10px] font-semibold transition-[color,background-color,box-shadow,opacity,transform] duration-160 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cnhs-green/35",
+                    active
+                      ? "bg-cnhs-green-soft text-cnhs-green-dark dark:bg-cnhs-green/20 dark:text-cnhs-green"
+                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-200"
+                  )}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
 
       {open ? (
-        <div className="px-4 py-4 sm:px-5">
-          {tabs.length > 0 ? (
-            <div className="mb-4 flex flex-wrap gap-1.5">
-              {tabs.map((tab) => {
-                const active = tab.id === activeTab;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => onTabChange?.(tab.id)}
-                    className={cn(
-                      "inline-flex h-8 cursor-pointer items-center rounded-full px-3 text-[11px] font-semibold transition-colors",
-                      active
-                        ? "bg-cnhs-green-soft text-cnhs-green-dark ring-1 ring-green-100"
-                        : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
-                    )}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
-
-          {children}
-
-          {footer ? <div className="mt-3">{footer}</div> : null}
+        <div
+          id={
+            hasTabs && activeTab
+              ? `report-module-panel-${activeTab}`
+              : undefined
+          }
+          role={hasTabs ? "tabpanel" : undefined}
+          aria-labelledby={
+            hasTabs && activeTab
+              ? `report-module-tab-${activeTab}`
+              : undefined
+          }
+          className="p-4 sm:p-5"
+        >
+          {hasTabs ? (
+            <TabSwitchPanel activeKey={activeTab}>{children}</TabSwitchPanel>
+          ) : (
+            children
+          )}
+          {footer ? <div className="pt-3">{footer}</div> : null}
         </div>
       ) : null}
     </section>

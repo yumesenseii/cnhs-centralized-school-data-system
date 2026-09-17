@@ -42,11 +42,15 @@ See `scripts/safe-reset-demo-data.sql`.
 3. **ECR upload** — import Class Record Excel; confirm grades appear.
 4. **Random Forest prediction** — start `ml-service`, set `RF_INFERENCE_URL`, open Monitoring; confirm `source` is random-forest (not rule-based-fallback).
 5. **Risk classification** — verify High / Moderate / Low align with academic performance patterns learned by RF (labels trained on official GWA bands).
-6. **Confidence / probabilities** — inspect recommendation confidence and optional probability map from API.
-7. **Intervention recommendation** — Eng/Fil failing → ARAL candidate; other fails → remediation policy; Low risk → none. Confirm RF did not emit intervention type directly.
+6. **Priority (teacher UI)** — Academic Monitoring lists High Risk first, then higher check-first score. Compact percent only. Fallback / ungraded show "—". No sklearn copy, no per-class probability dump, no confusion matrix on teacher screens.
+7. **Intervention recommendation** — Eng/Fil failing → ARAL candidate; other fails → remediation policy; Low risk → none. Confirm RF did not emit intervention type directly. Priority does **not** trigger interventions.
 8. **Batch prediction** — load full monitoring roster; confirm `/predict_batch` is used and UI remains responsive.
 9. **Attendance isolation** — upload SF2; confirm attendance module works and academic risk features never include attendance fields.
 10. **Reports and monitoring** — grade bands show &lt;75 / 75–84 / 85–100; risk cards use RF risk from roster.
+
+## Thesis eval (not a teacher screen)
+
+3×3 confusion matrix of RF predicted risk vs official grade-band labels: `npm run ml:eval`. See [`docs/RF_RISK_EVAL.md`](RF_RISK_EVAL.md).
 
 ## Capstone note
 

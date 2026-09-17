@@ -47,8 +47,8 @@ function roleHome(role) {
 }
 
 /**
- * Students can use JWT role only. Teacher / Head Teacher always read
- * profiles so a stale JWT cannot skip first-login (password + Terms).
+ * Resolve portal role + first-login gate from profiles (all roles).
+ * Students no longer skip the password/Terms gate via JWT alone.
  */
 async function resolvePortalAccess(supabase, user) {
   const meta = user.user_metadata ?? {};
@@ -59,14 +59,6 @@ async function resolvePortalAccess(supabase, user) {
     return {
       role: metaRole ?? null,
       isActive: false,
-      needsFirstLogin: false,
-    };
-  }
-
-  if (metaRole === "student" && metaActive !== false && metaActive !== "false") {
-    return {
-      role: "student",
-      isActive: true,
       needsFirstLogin: false,
     };
   }
@@ -87,11 +79,17 @@ async function resolvePortalAccess(supabase, user) {
 
   const role = profile.role;
   const isStaff = STAFF_ROLES.has(role);
+  const isStudent = role === "student";
   const mustChange = Boolean(profile.must_change_password);
   const hasTempPassword = Boolean(String(profile.temp_password ?? "").trim());
   const acceptedTerms = Boolean(profile.accepted_terms_at);
-  const needsFirstLogin =
-    isStaff && (mustChange || hasTempPassword || (mustChange && !acceptedTerms));
+  const needsPasswordSetup = mustChange || hasTempPassword;
+
+  // Staff: password/temp gate (existing).
+  // Student: password/temp OR missing Terms acceptance (parity with staff onboarding).
+  const needsFirstLogin = isStudent
+    ? needsPasswordSetup || !acceptedTerms
+    : isStaff && needsPasswordSetup;
 
   return {
     role,

@@ -11,7 +11,9 @@ import {
   X,
 } from "lucide-react";
 import StatusBadge from "@/components/teacher/lesson-plans/StatusBadge";
-import { VIEW_MODAL_BACKDROP, VIEW_MODAL_PANEL } from "@/lib/ui/viewModal";
+import AnimatedModal from "@/components/shared/AnimatedModal";
+import { AnimatedBanner } from "@/components/shared/AnimatedFeedback";
+import { VIEW_MODAL_PANEL } from "@/lib/ui/viewModal";
 import { cn } from "@/lib/utils";
 
 function isPdf(plan) {
@@ -36,10 +38,8 @@ export default function TeacherLessonPlanDrawer({
   const [resubmitError, setResubmitError] = useState("");
   const [deleteError, setDeleteError] = useState("");
 
-  if (!open || !plan) return null;
-
-  const canResubmit = plan.canResubmit || plan.status === "Needs Revision";
-  const isApproved = plan.isApproved || plan.status === "Approved";
+  const canResubmit = plan?.canResubmit || plan?.status === "Needs Revision";
+  const isApproved = plan?.isApproved || plan?.status === "Approved";
 
   async function handleFileChange(event) {
     const file = event.target.files?.[0];
@@ -54,16 +54,14 @@ export default function TeacherLessonPlanDrawer({
   }
 
   return (
-    <div
-      className={VIEW_MODAL_BACKDROP}
-      role="dialog"
-      aria-modal="true"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose?.();
-      }}
+    <AnimatedModal
+      open={open && Boolean(plan)}
+      onClose={onClose}
+      panelClassName={VIEW_MODAL_PANEL}
     >
-      <div className={VIEW_MODAL_PANEL}>
-        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
+      {plan ? (
+      <>
+      <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
               Submission Details
@@ -229,16 +227,16 @@ export default function TeacherLessonPlanDrawer({
             </p>
           ) : null}
 
-          {resubmitError ? (
-            <div className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-[12px] text-red-600">
-              {resubmitError}
-            </div>
-          ) : null}
-          {deleteError ? (
-            <div className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-[12px] text-red-600">
-              {deleteError}
-            </div>
-          ) : null}
+          <AnimatedBanner
+            message={resubmitError}
+            tone="error"
+            className="text-[12px] font-normal"
+          />
+          <AnimatedBanner
+            message={deleteError}
+            tone="error"
+            className="text-[12px] font-normal"
+          />
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-4 py-3 sm:px-5">
@@ -301,7 +299,8 @@ export default function TeacherLessonPlanDrawer({
             </button>
           ) : null}
         </div>
-      </div>
-    </div>
+      </>
+      ) : null}
+    </AnimatedModal>
   );
 }

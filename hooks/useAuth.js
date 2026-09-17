@@ -40,9 +40,13 @@ export function useAuth() {
     // on subsequent navigations. RLS still enforces real authorization.
     const mustChangePassword = Boolean(profile.must_change_password);
     const hasTempPassword = Boolean(String(profile.temp_password ?? "").trim());
+    const acceptedTerms = Boolean(profile.accepted_terms_at);
+    const needsPasswordSetup = mustChangePassword || hasTempPassword;
     const needsFirstLogin =
-      (profile.role === "admin" || profile.role === "teacher") &&
-      (mustChangePassword || hasTempPassword);
+      profile.role === "student"
+        ? needsPasswordSetup || !acceptedTerms
+        : (profile.role === "admin" || profile.role === "teacher") &&
+          needsPasswordSetup;
 
     await supabase.auth.updateUser({
       data: {
@@ -151,7 +155,7 @@ export function useAuth() {
   }
 
   /**
-   * First login for Teacher / Head Teacher: new password + Terms acceptance.
+   * First login for Teacher / Head Teacher / Student: new password + Terms.
    */
   async function completeFirstLogin({
     currentPassword,
@@ -190,7 +194,7 @@ export function useAuth() {
         temp_password: null,
       })
       .eq("auth_user_id", user.id)
-      .select("role")
+      .select("role, full_name")
       .maybeSingle();
 
     if (termsError) {
@@ -206,13 +210,45 @@ export function useAuth() {
       data: {
         must_change_password: false,
         portal_role: profile?.role || user.user_metadata?.portal_role,
+        portal_active: true,
       },
     });
 
     return {
-      data: { ...changed.data, role: profile?.role || null },
+      data: {
+        ...changed.data,
+        role: profile?.role || null,
+        full_name: profile?.full_name || null,
+      },
       error: null,
     };
+  }
+
+  /** Accept Terms/Privacy without changing password (Profile). */
+  async function acceptTermsOfUse() {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError || !user?.id) {
+      return {
+        data: null,
+        error: userError ?? new Error("Not authenticated."),
+      };
+    }
+
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .update({ accepted_terms_at: new Date().toISOString() })
+      .eq("auth_user_id", user.id)
+      .select("role, full_name, accepted_terms_at")
+      .maybeSingle();
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data: profile, error: null };
   }
 
   return {
@@ -220,5 +256,6 @@ export function useAuth() {
     signOut,
     changePassword,
     completeFirstLogin,
+    acceptTermsOfUse,
   };
 }

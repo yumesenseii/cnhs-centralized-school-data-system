@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   computeLearnerRow,
   computeFinalFromTerms,
+  parseRecordedGrade,
   termGradeDescription,
 } from "@/lib/ecr/computeGrades";
 import {
@@ -158,10 +159,7 @@ export function useEcrRecord(classId) {
       for (const row of result.data.computed ?? []) {
         if (!row?.student_id) continue;
         computedMap[row.student_id] = {
-          term_grade:
-            row.term_grade === null || row.term_grade === undefined
-              ? null
-              : Number(row.term_grade),
+          term_grade: parseRecordedGrade(row.term_grade),
           description: termGradeDescription(row.term_grade),
           initial_grade: row.initial_grade ?? null,
           ww_total: row.ww_total ?? null,
@@ -277,7 +275,7 @@ export function useEcrRecord(classId) {
       });
 
       if (wb.error || !wb.data) {
-        setError(wb.error?.message ?? "Unable to load E-Record workbook.");
+        setError(wb.error?.message ?? "Unable to load this E-Record.");
         endLoad(false);
         return;
       }
@@ -304,10 +302,7 @@ export function useEcrRecord(classId) {
           for (const row of sheetResult.data.computed ?? []) {
             if (!row?.student_id) continue;
             computedMap[row.student_id] = {
-              term_grade:
-                row.term_grade === null || row.term_grade === undefined
-                  ? null
-                  : Number(row.term_grade),
+              term_grade: parseRecordedGrade(row.term_grade),
               description: termGradeDescription(row.term_grade),
               initial_grade: row.initial_grade ?? null,
               ww_total: row.ww_total ?? null,

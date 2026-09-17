@@ -13,6 +13,7 @@ import {
   buildClassReportPreview,
   buildTeacherReportsModel,
 } from "@/lib/teacher/reportsMappers";
+import { loadBuiltTeacherRoster } from "@/lib/teacher/teacherRosterCache";
 import {
   averageOf,
   buildAralDistribution,
@@ -25,6 +26,14 @@ import {
   passingRateFromGrades,
 } from "@/lib/teacher/reportsCalculations";
 import { useSoftLoadState } from "@/hooks/useSoftLoadState";
+
+const EMPTY_LIST = [];
+const EMPTY_CHARTS = {
+  performanceDistribution: [],
+  aralDistribution: [],
+  averageGradePerSubject: [],
+  monitoringProgress: [],
+};
 
 function defaultSchoolYear(years = []) {
   return years[0] ?? "SY 2026-2027";
@@ -51,6 +60,7 @@ function applySubjectSectionFilter(base, subject, section) {
 
   const allSubjectGrades = classReports.flatMap((row) => row.subjectGrades ?? []);
   const aralCount = countAralScreening(students);
+  const predictionsPending = students.some((s) => s.predictionsPending);
   const classroomRemedialCount = classReports.filter(
     (row) => row.classroomRemedialRecommended
   ).length;
@@ -129,7 +139,7 @@ function applySubjectSectionFilter(base, subject, section) {
       metrics: [
         {
           label: "ARAL Learners Count",
-          value: String(summary.aralScreeningCount),
+          value: predictionsPending ? "—" : String(summary.aralScreeningCount),
         },
         {
           label: "Classroom Remedial Count",
@@ -185,7 +195,7 @@ function applySubjectSectionFilter(base, subject, section) {
         },
         {
           label: "ARAL Learners",
-          value: String(summary.aralScreeningCount),
+          value: predictionsPending ? "—" : String(summary.aralScreeningCount),
         },
         {
           label: "Classroom Remedial",
@@ -328,12 +338,17 @@ export function useTeacherReports() {
       try {
         const year = schoolYear || null;
         const quarterNumber = quarter ? Number(quarter) : null;
-
-        const next = await buildTeacherReportsModel({
+        const payload = {
           classes: bundle.classes ?? [],
           enrollments: bundle.enrollments ?? [],
           grades: bundle.grades ?? [],
           monitoringRecords: bundle.monitoringRecords ?? [],
+        };
+        const modelInput = {
+          classes: payload.classes,
+          enrollments: payload.enrollments,
+          grades: payload.grades,
+          monitoringRecords: payload.monitoringRecords,
           lessonPlans: bundle.lessonPlans ?? [],
           teacher,
           profile,
@@ -344,28 +359,50 @@ export function useTeacherReports() {
             subject: REPORT_FILTER_ALL,
             section: REPORT_FILTER_ALL,
           },
+        };
+
+        const wrap = (next) => ({
+          ...next,
+          filterOptions: {
+            schoolYears: [
+              ...new Set(
+                (bundle.allClasses ?? [])
+                  .map((row) => row.school_year)
+                  .filter(Boolean)
+              ),
+            ].sort(),
+            subjects: next.filterOptions.subjects,
+            sections: next.filterOptions.sections,
+          },
+        });
+
+        const roster = await loadBuiltTeacherRoster(
+          payload,
+          { teacherId: teacher?.id ?? null },
+          {
+            onShell: async (shell) => {
+              if (cancelled) return;
+              const next = await buildTeacherReportsModel({
+                ...modelInput,
+                roster: shell,
+              });
+              if (!cancelled) setBaseModel(wrap(next));
+            },
+          }
+        );
+
+        const next = await buildTeacherReportsModel({
+          ...modelInput,
+          roster,
         });
 
         if (!cancelled) {
-          setBaseModel({
-            ...next,
-            filterOptions: {
-              schoolYears: [
-                ...new Set(
-                  (bundle.allClasses ?? [])
-                    .map((row) => row.school_year)
-                    .filter(Boolean)
-                ),
-              ].sort(),
-              subjects: next.filterOptions.subjects,
-              sections: next.filterOptions.sections,
-            },
-          });
+          setBaseModel(wrap(next));
         }
       } catch (err) {
         if (!cancelled) {
           setError(err?.message ?? "Unable to build report data.");
-          setBaseModel(null);
+          setBaseModel((current) => current);
         }
       } finally {
         if (!cancelled) setBuilding(false);
@@ -384,9 +421,16 @@ export function useTeacherReports() {
   );
 
   const schoolYears = useMemo(() => {
-    const years = built?.filterOptions?.schoolYears ?? [];
-    return years.length ? years : [defaultSchoolYear([])];
+    const years = built?.filterOptions?.schoolYears ?? EMPTY_LIST;
+    return years.length ? years : [defaultSchoolYear(EMPTY_LIST)];
   }, [built]);
+
+  const classReports = built?.classReports ?? EMPTY_LIST;
+  const summaryCards = built?.summaryCards ?? EMPTY_LIST;
+  const reportCards = built?.reportCards ?? EMPTY_LIST;
+  const subjects = built?.filterOptions?.subjects ?? EMPTY_LIST;
+  const sections = built?.filterOptions?.sections ?? EMPTY_LIST;
+  const charts = built?.charts ?? EMPTY_CHARTS;
 
   const quarterLabel =
     QUARTER_OPTIONS.find((q) => q.value === String(quarter))?.label ??
@@ -409,23 +453,18 @@ export function useTeacherReports() {
     teacherName: built?.teacherName ?? profile?.full_name ?? "Teacher",
     summary: built?.summary ?? null,
     lessonSummary: built?.lessonSummary ?? null,
-    summaryCards: built?.summaryCards ?? [],
-    reportCards: built?.reportCards ?? [],
-    classReports: built?.classReports ?? [],
-    charts: built?.charts ?? {
-      performanceDistribution: [],
-      aralDistribution: [],
-      averageGradePerSubject: [],
-      monitoringProgress: [],
-    },
+    summaryCards,
+    reportCards,
+    classReports,
+    charts,
     schoolYear: schoolYear || defaultSchoolYear(schoolYears),
     quarter,
     quarterLabel,
     subject,
     section,
     schoolYears,
-    subjects: built?.filterOptions?.subjects ?? [],
-    sections: built?.filterOptions?.sections ?? [],
+    subjects,
+    sections,
     setSchoolYear,
     setQuarter,
     setSubject,

@@ -2,24 +2,16 @@
 
 import { cn } from "@/lib/utils";
 
-function MetricCard({ label, value, tone, emphasize = false }) {
+function CompactStat({ label, value, tone }) {
   return (
-    <div
-      className={cn(
-        "rounded-xl border px-3 py-2.5",
-        emphasize
-          ? "border-orange-200 bg-orange-50/60"
-          : "border-slate-100 bg-slate-50/70"
-      )}
-    >
-      <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
+    <div className="min-w-0">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-slate-400">
         {label}
       </p>
       <p
         className={cn(
-          "mt-1 font-semibold tracking-[-0.02em]",
-          emphasize ? "text-[20px]" : "text-[18px]",
-          tone || "text-slate-800"
+          "mt-0.5 text-[15px] font-semibold tabular-nums tracking-[-0.02em] text-slate-900",
+          tone
         )}
       >
         {value}
@@ -38,7 +30,7 @@ function LessonPlanStatusBar({ approved, pending, needsRevision, total }) {
 
   return (
     <div className="space-y-1.5">
-      <div className="flex h-2 w-full overflow-hidden rounded-full bg-slate-100">
+      <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
         {segments.map((seg) => (
           <div
             key={seg.key}
@@ -90,34 +82,32 @@ export default function ReportSubmissionsPanel({
           Lesson plans
         </p>
         {!hasLessonPlans ? (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
+          <div className="border-y border-slate-200 py-3 dark:border-white/10">
             <p className="text-[13px] font-semibold text-slate-700">
               No lesson plans for this term yet
             </p>
-            <p className="mt-1 text-[11px] text-slate-500">
+            <p className="mt-0.5 text-[11px] text-slate-500">
               Submit a lesson plan to track approval and revisions here.
             </p>
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <MetricCard label="Submitted" value={total} />
-              <MetricCard
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-y border-slate-200 py-2 dark:border-white/10 sm:grid-cols-4">
+              <CompactStat label="Submitted" value={total} />
+              <CompactStat
                 label="Approved"
                 value={approved}
                 tone="text-cnhs-green-dark"
               />
-              <MetricCard
+              <CompactStat
                 label="Pending review"
                 value={pending}
-                tone="text-cnhs-orange"
-                emphasize={pending > 0}
+                tone={pending > 0 ? "text-cnhs-orange" : undefined}
               />
-              <MetricCard
+              <CompactStat
                 label="Needs revision"
                 value={needsRevision}
-                tone="text-cnhs-red"
-                emphasize={needsRevision > 0}
+                tone={needsRevision > 0 ? "text-cnhs-red" : undefined}
               />
             </div>
             <LessonPlanStatusBar
@@ -134,9 +124,9 @@ export default function ReportSubmissionsPanel({
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
           Monitoring
         </p>
-        <div className="grid grid-cols-2 gap-2">
-          <MetricCard label="Under monitoring" value={underMonitoring} />
-          <MetricCard
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-y border-slate-200 py-2 dark:border-white/10">
+          <CompactStat label="Under monitoring" value={underMonitoring} />
+          <CompactStat
             label="Monitoring completed"
             value={monitoringCompleted}
             tone="text-cnhs-green-dark"
@@ -161,7 +151,7 @@ export default function ReportSubmissionsPanel({
         <button
           type="button"
           onClick={onLessonPlanAction}
-          className="inline-flex h-8 cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+          className="inline-flex h-8 cursor-pointer items-center rounded-lg border border-slate-200 bg-transparent px-3 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/6"
         >
           {actionLabel}
         </button>

@@ -6,6 +6,7 @@ import {
   RECOMMENDATION,
 } from "@/lib/monitoring/recommendations";
 import { CLASSROOM_REMEDIAL } from "@/lib/teacher/reportsConstants";
+import { getPriorityCue } from "@/lib/monitoring/riskPriority";
 
 export const riskStyles = {
   "High Risk": "bg-red-50 text-red-600",
@@ -17,12 +18,12 @@ export const riskStyles = {
 };
 
 export const interventionStyles = {
-  [RECOMMENDATION.ARAL]: "bg-sky-50 text-sky-700 ring-1 ring-sky-100",
-  "ARAL Screening": "bg-sky-50 text-sky-700 ring-1 ring-sky-100",
-  "Recommended for ARAL Learners": "bg-sky-50 text-sky-700 ring-1 ring-sky-100",
-  "Recommended for ARAL Screening": "bg-sky-50 text-sky-700 ring-1 ring-sky-100",
-  "Potential ARAL Learners": "bg-sky-50 text-sky-700 ring-1 ring-sky-100",
-  "Potential ARAL Screening": "bg-sky-50 text-sky-700 ring-1 ring-sky-100",
+  [RECOMMENDATION.ARAL]: "bg-sky-50 text-sky-700",
+  "ARAL Screening": "bg-sky-50 text-sky-700",
+  "Recommended for ARAL Learners": "bg-sky-50 text-sky-700",
+  "Recommended for ARAL Screening": "bg-sky-50 text-sky-700",
+  "Potential ARAL Learners": "bg-sky-50 text-sky-700",
+  "Potential ARAL Screening": "bg-sky-50 text-sky-700",
   [RECOMMENDATION.REMEDIATION]:
     "bg-green-50 text-cnhs-green-dark ring-1 ring-green-100",
   [RECOMMENDATION.NONE]: "bg-slate-100 text-slate-500 ring-1 ring-slate-200",
@@ -87,6 +88,22 @@ export function RiskPill({ value }) {
     >
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
       {value}
+    </span>
+  );
+}
+
+/** Compact Check-first cue. Never sklearn / per-class dumps. */
+export function PriorityCue({ learner }) {
+  const cue = getPriorityCue(learner);
+  if (!cue.show) {
+    return <span className="text-[11px] text-slate-400">—</span>;
+  }
+  return (
+    <span
+      title={cue.hint}
+      className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-cnhs-green-dark"
+    >
+      {cue.label}
     </span>
   );
 }

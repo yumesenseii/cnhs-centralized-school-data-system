@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Folder, Loader2, Users } from "lucide-react";
+import { ChevronLeft, Folder, Loader2 } from "lucide-react";
 import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import AralSectionWorkspace from "@/components/teacher/aral-program/AralSectionWorkspace";
+import PageHelp from "@/components/shared/PageHelp";
 import { resolveTeacherSessionForMonitoring } from "@/lib/supabase/queries/monitoring";
 import { listMyAralFacilitatorAssignments } from "@/lib/supabase/queries/aralProgram";
 import { groupAralAssignmentsBySection } from "@/lib/reports/aralWeeklyProgressExport";
@@ -88,26 +89,75 @@ export default function TeacherAralProgramPage() {
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="pb-5"
     >
-      <header className="mb-3 flex items-start justify-between gap-3">
-        <div>
+      <header className="mb-4">
+        <div className="flex items-start justify-between gap-3">
           <p className="text-[10px] font-medium text-slate-400">
             <Link href="/teacher/dashboard" className="hover:text-slate-600">
               Home
             </Link>
             <span className="text-slate-300"> &gt; </span>
-            <span className="font-semibold text-slate-600">ARAL Program</span>
+            {activeGroup ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setActiveSectionKey(null)}
+                  className="cursor-pointer font-medium text-slate-400 hover:text-slate-600"
+                >
+                  ARAL Program
+                </button>
+                <span className="text-slate-300"> &gt; </span>
+                <span className="font-semibold text-slate-600">
+                  {activeGroup.gradeSection}
+                </span>
+              </>
+            ) : (
+              <span className="font-semibold text-slate-600">ARAL Program</span>
+            )}
           </p>
-          <h1 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-slate-800">
-            Summer ARAL Program
-          </h1>
-          <p className="mt-0.5 text-[12px] text-slate-500">
-            Open a section to record weekly sessions, Pre / Mid / Post scores,
-            and the section report.
-          </p>
+          <div className="flex shrink-0 items-center gap-2">
+            <PageHelp
+              summary="Facilitator workspace for assigned ARAL Learners sections."
+              steps={[
+                "Open a section folder assigned to you by the Head Teacher.",
+                "Weekly: mark Mon–Fri session, then topic, skill, progress, and remarks — Save.",
+                "Pre / Mid / Post: enter scores in the portal (no file upload required).",
+                "Report: review summary cover and detailed results from saved scores only.",
+                "Blank session marks are not treated as Absent. Do not invent learner rows.",
+              ]}
+            />
+            <MobileNavSheet
+              ariaLabel="Open teacher menu"
+              title="Teacher navigation"
+            >
+              {(close) => <TeacherSidebar mobile onNavigate={close} />}
+            </MobileNavSheet>
+          </div>
         </div>
-        <MobileNavSheet ariaLabel="Open teacher menu" title="Teacher navigation">
-          {(close) => <TeacherSidebar mobile onNavigate={close} />}
-        </MobileNavSheet>
+
+        <div className="mt-1 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-xl font-semibold tracking-[-0.03em] text-slate-800">
+              {activeGroup ? activeGroup.gradeSection : "ARAL Program"}
+            </h1>
+            <p className="mt-0.5 text-[12px] text-slate-500">
+              {activeGroup
+                ? `${activeGroup.count} learner${activeGroup.count === 1 ? "" : "s"}${
+                    activeGroup.schoolYear ? ` · ${activeGroup.schoolYear}` : ""
+                  } · Facilitator: ${teacherName}`
+                : "Open a section to record weekly sessions, Pre / Mid / Post scores, and the section report."}
+            </p>
+          </div>
+          {activeGroup ? (
+            <button
+              type="button"
+              onClick={() => setActiveSectionKey(null)}
+              className="mt-0.5 inline-flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-transparent px-2.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/6"
+            >
+              <ChevronLeft size={12} />
+              All sections
+            </button>
+          ) : null}
+        </div>
       </header>
 
       {error ? (
@@ -117,7 +167,7 @@ export default function TeacherAralProgramPage() {
       ) : null}
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-100 bg-white py-16 text-sm text-slate-500">
+        <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-500">
           <Loader2 size={16} className="animate-spin" />
           Loading assignments…
         </div>
@@ -126,18 +176,12 @@ export default function TeacherAralProgramPage() {
           group={activeGroup}
           teacherName={teacherName}
           teacherId={teacherId}
-          onBack={() => setActiveSectionKey(null)}
         />
       ) : (
-        <section className="overflow-hidden rounded-xl border border-sky-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-sky-50 bg-sky-50/40 px-3 py-2.5 sm:px-4">
-            <div className="flex items-center gap-2">
-              <Users size={14} className="text-sky-700" />
-              <h2 className="text-sm font-semibold text-slate-900">
-                My sections
-              </h2>
-            </div>
-            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
+        <section>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-slate-800">My sections</h2>
+            <span className="text-[11px] font-medium text-slate-500">
               {assignments.length} learner
               {assignments.length === 1 ? "" : "s"} · {sectionGroups.length}{" "}
               section{sectionGroups.length === 1 ? "" : "s"}
@@ -145,22 +189,22 @@ export default function TeacherAralProgramPage() {
           </div>
 
           {sectionGroups.length ? (
-            <div className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:p-4 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {sectionGroups.map((group) => (
                 <button
                   key={group.gradeSection}
                   type="button"
                   onClick={() => setActiveSectionKey(group.gradeSection)}
                   className={cn(
-                    "group flex cursor-pointer flex-col rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-[0_6px_16px_rgba(15,23,42,0.04)] transition-colors hover:border-sky-200 hover:bg-sky-50/30"
+                    "group flex cursor-pointer flex-col rounded-2xl border border-slate-200 bg-white p-4 text-left transition-colors hover:border-cnhs-green/40 hover:bg-cnhs-green-soft/50 dark:border-white/10 dark:bg-[#1c1c1c] dark:hover:border-cnhs-green/35 dark:hover:bg-white/4"
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50 text-sky-700 ring-1 ring-sky-100">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cnhs-green-soft text-cnhs-green-dark ring-1 ring-cnhs-green/20">
                       <Folder size={18} strokeWidth={1.75} />
                     </span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    <span className="inline-flex items-center gap-1 rounded-full bg-cnhs-green-soft px-2 py-0.5 text-[10px] font-semibold text-cnhs-green-dark ring-1 ring-cnhs-green/20">
+                      <span className="h-1.5 w-1.5 rounded-full bg-cnhs-green-dark" />
                       Assigned
                     </span>
                   </div>
@@ -174,16 +218,16 @@ export default function TeacherAralProgramPage() {
                   </p>
 
                   <div className="mt-3 flex flex-wrap gap-1.5">
-                    <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-100">
+                    <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-100 dark:bg-white/4 dark:ring-white/10">
                       Weekly · Pre · Mid · Post · Report
                     </span>
                   </div>
 
-                  <div className="mt-4 flex items-center justify-between border-t border-slate-50 pt-3">
+                  <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-white/10">
                     <span className="text-[11px] text-slate-400">
                       Open workspace
                     </span>
-                    <span className="text-[11px] font-semibold text-sky-700 opacity-0 transition-opacity group-hover:opacity-100">
+                    <span className="text-[11px] font-semibold text-cnhs-green-dark opacity-0 transition-opacity group-hover:opacity-100">
                       Open →
                     </span>
                   </div>
@@ -191,9 +235,24 @@ export default function TeacherAralProgramPage() {
               ))}
             </div>
           ) : (
-            <div className="px-4 py-10 text-center text-[12px] text-slate-400 dark:text-slate-200">
-              You have no Summer ARAL facilitator assignments yet. The Head
-              Teacher assigns facilitators on Academic Monitoring.
+            <div className="py-10 text-left sm:text-center">
+              <p className="text-sm font-semibold text-slate-700">
+                No ARAL sections assigned yet
+              </p>
+              <p className="mt-1.5 max-w-md text-[12px] leading-5 text-slate-500 sm:mx-auto">
+                Folders appear after the Head Teacher assigns you as facilitator
+                for ARAL Learners on Academic Monitoring.
+              </p>
+              <p className="mt-2 text-[11px] font-medium text-slate-500">
+                Next: ask HT to assign you, or open{" "}
+                <Link
+                  href="/teacher/monitoring"
+                  className="font-semibold text-cnhs-green-dark hover:underline"
+                >
+                  Academic Monitoring
+                </Link>{" "}
+                for your class recommendations.
+              </p>
             </div>
           )}
         </section>

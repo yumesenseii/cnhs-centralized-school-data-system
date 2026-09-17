@@ -47,7 +47,11 @@ export default function SectionFolderCards({ rows = [], onSelect }) {
             <p className="mt-0.5 text-[11px] text-slate-500">
               {empty
                 ? "No class lists yet"
-                : `${row.classCount} class${row.classCount === 1 ? "" : "es"} · ${row.students} in lists`}
+                : `${row.classCount} subject${
+                    Number(row.classCount) === 1 ? "" : "s"
+                  } · ${row.learners ?? row.students ?? 0} learner${
+                    Number(row.learners ?? row.students ?? 0) === 1 ? "" : "s"
+                  }`}
             </p>
             <div className="mt-4 flex items-center justify-between border-t border-slate-50 pt-3">
               <span className="text-[11px] text-slate-400">

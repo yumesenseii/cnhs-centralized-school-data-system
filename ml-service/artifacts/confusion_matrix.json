@@ -1,0 +1,66 @@
+{
+  "evaluates": "academic RISK (High / Moderate / Low)",
+  "does_not_evaluate": [
+    "ARAL",
+    "Classroom Remedial"
+  ],
+  "official_bands": {
+    "<75": "High Risk",
+    "75-84": "Moderate Risk",
+    ">=85": "Low Risk"
+  },
+  "ungraded_excluded": true,
+  "split": "holdout test_size=0.2 seed=42",
+  "n": 480,
+  "accuracy": 0.96875,
+  "labels": [
+    "High Risk",
+    "Moderate Risk",
+    "Low Risk"
+  ],
+  "confusion_matrix": [
+    [
+      167,
+      5,
+      0
+    ],
+    [
+      2,
+      134,
+      2
+    ],
+    [
+      0,
+      6,
+      164
+    ]
+  ],
+  "per_class": {
+    "High Risk": {
+      "precision": 0.9881656804733728,
+      "recall": 0.9709302325581395,
+      "f1": 0.9794721407624634,
+      "support": 172,
+      "predicted": 169
+    },
+    "Moderate Risk": {
+      "precision": 0.9241379310344827,
+      "recall": 0.9710144927536232,
+      "f1": 0.9469964664310954,
+      "support": 138,
+      "predicted": 145
+    },
+    "Low Risk": {
+      "precision": 0.9879518072289156,
+      "recall": 0.9647058823529412,
+      "f1": 0.9761904761904762,
+      "support": 170,
+      "predicted": 166
+    }
+  },
+  "macro": {
+    "precision": 0.9667518062455903,
+    "recall": 0.9688835358882346,
+    "f1": 0.9675530277946783
+  }
+}

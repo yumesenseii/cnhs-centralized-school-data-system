@@ -128,10 +128,10 @@ export default function TeacherInputGradesPage() {
           selectedClass={selectedClass}
           subtitle={
             state.step === 1
-              ? "Upload the Official DepEd E-Class Record first. Grade and section are read from the file."
+              ? "Upload your official DepEd E-Class Record. We’ll read the class from the file."
               : state.step === 2
-                ? "Confirm the assigned class using the dropdown."
-                : "Review details, then import learners and grades."
+                ? "Confirm this is the right class."
+                : "Review, then import learners and grades."
           }
         >
           {state.step === 1 ? (

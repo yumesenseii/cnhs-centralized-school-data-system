@@ -3,10 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import TeacherAttendancePanel from "@/components/teacher/attendance/TeacherAttendancePanel";
+import PageHelp from "@/components/shared/PageHelp";
 
 export default function TeacherAttendancePage() {
   const [refreshToken, setRefreshToken] = useState(0);
@@ -19,40 +20,32 @@ export default function TeacherAttendancePage() {
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="pb-5"
     >
-      <header className="mb-3 flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-medium text-slate-400">
-            <Link href="/teacher/dashboard" className="hover:text-slate-600">
-              Home
-            </Link>
-            <span className="text-slate-300"> &gt; </span>
-            <span className="font-semibold text-slate-600">Attendance</span>
-          </p>
-          <div className="mt-2 flex items-start gap-2">
-            <Link
-              href="/teacher/dashboard"
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-            >
-              <ArrowLeft size={14} />
-            </Link>
-            <div className="min-w-0">
-              <h1 className="text-xl font-semibold tracking-[-0.03em] text-slate-800">
-                Attendance monitoring
-              </h1>
-              <p className="mt-0.5 text-[12px] text-slate-500">
-                Record Morning and Afternoon attendance. Totals and reports come
-                from saved daily records — not from an uploaded Excel file.
-              </p>
-            </div>
-          </div>
-        </div>
-
+      <header className="mb-3 flex items-start justify-between gap-3">
+        <p className="text-[10px] font-medium text-slate-400">
+          <Link href="/teacher/dashboard" className="hover:text-slate-600">
+            Home
+          </Link>
+          <span className="text-slate-300"> &gt; </span>
+          <span className="font-semibold text-slate-600">
+            Attendance Monitoring
+          </span>
+        </p>
         <div className="flex shrink-0 items-center gap-2">
+          <PageHelp
+            summary="Daily Morning and Afternoon attendance from saved records."
+            steps={[
+              "Select school year, section, and date. Advisers mark Present or Absent for Morning and Afternoon.",
+              "Save each session after roll call. Unsaved Present defaults are on-screen only until you Save.",
+              "Review section totals below. Month close (adviser) unlocks ADA / % for that month.",
+              "PDF or Excel opens a preview first — Cancel creates no file.",
+              "From saved Morning and Afternoon marks. Check this copy before signing the official SF2.",
+            ]}
+          />
           <button
             type="button"
             onClick={() => setRefreshToken((value) => value + 1)}
             disabled={refreshing}
-            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-transparent px-3 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/6"
           >
             <RefreshCw
               size={13}

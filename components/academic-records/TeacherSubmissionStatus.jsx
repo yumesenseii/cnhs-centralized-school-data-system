@@ -25,9 +25,13 @@ export default function TeacherSubmissionStatus({
             </tr>
           </thead>
           <tbody>
-            {submissions.map((submission) => (
+            {submissions.map((submission, index) => (
               <tr
-                key={`${submission.initials}-${submission.teacher}`}
+                key={
+                  submission.teacherId ||
+                  submission.id ||
+                  `teacher-${index}`
+                }
                 className="border-t border-slate-100"
               >
                 <td className="py-1.5 pr-1.5">

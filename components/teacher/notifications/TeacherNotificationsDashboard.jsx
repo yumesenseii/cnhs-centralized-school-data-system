@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { BellOff, CheckCheck, RefreshCw, TriangleAlert } from "lucide-react";
 import MobileNavSheet from "@/components/layout/MobileNavSheet";
+import PageHelp from "@/components/shared/PageHelp";
 import NotificationList from "@/components/notifications/NotificationList";
 import NotificationStats from "@/components/notifications/NotificationStats";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
@@ -73,6 +74,16 @@ export default function TeacherNotificationsDashboard() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <PageHelp
+            summary="Personal action items from lesson plans, classes, recommendations, and imports."
+            steps={[
+              "Scan unread items first, then open one to go to the related page.",
+              "Filter by type, priority, or status when the list grows.",
+              "Mark All as Read clears badges; Refresh reloads from the server.",
+              "Recommendations and monitoring alerts appear after ECR grades create risk flags.",
+              "Empty inbox means nothing is waiting — check again after a submit or import.",
+            ]}
+          />
           <button
             type="button"
             onClick={() => markAllRead()}
@@ -149,18 +160,27 @@ export default function TeacherNotificationsDashboard() {
 
 function EmptyState({ hasNotifications }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-slate-100 bg-white px-6 py-10 text-center shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
+    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-100 bg-white px-6 py-10 text-center shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
       <span className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-400">
         <BellOff size={18} strokeWidth={1.8} />
       </span>
       <p className="text-sm font-semibold text-slate-700">
         {hasNotifications ? "No matching notifications" : "You're all caught up"}
       </p>
-      <p className="max-w-sm text-[12px] text-slate-500">
+      <p className="max-w-sm text-[12px] leading-5 text-slate-500">
         {hasNotifications
-          ? "Try clearing the search or filters to see the rest of your notifications."
-          : "New lesson plan reviews, class assignments, learner recommendations, and import results will appear here."}
+          ? "Clear search or filters to see the rest of your inbox."
+          : "Alerts appear after lesson plan reviews, class assignments, recommendations from ECR grades, monitoring updates, or E-Class Record imports."}
       </p>
+      {hasNotifications ? (
+        <p className="text-[11px] font-medium text-slate-500">
+          Next: clear filters above, then Refresh.
+        </p>
+      ) : (
+        <p className="text-[11px] font-medium text-slate-500">
+          Next: continue in My Classes or Lesson Plans, then Refresh later.
+        </p>
+      )}
     </div>
   );
 }

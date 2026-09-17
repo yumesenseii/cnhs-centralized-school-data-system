@@ -28,9 +28,19 @@ export default function RecentActivity({ title, items = [], loading = false }) {
           ))}
         </ol>
       ) : (
-        <p className="px-1 py-6 text-center text-[12px] text-slate-400">
-          No recent lesson plan activity yet.
-        </p>
+        <div className="px-1 py-5 text-center">
+          <p className="text-[12px] font-semibold text-slate-600">
+            No lesson plan activity yet
+          </p>
+          <p className="mt-1.5 text-[11px] leading-5 text-slate-500">
+            Submit, approve, and revision events appear here after teachers
+            submit lesson plans and Head Teachers review them.
+          </p>
+          <p className="mt-2 text-[11px] font-medium text-slate-500">
+            Next: open Lesson Plans to review submissions, then Refresh this
+            page.
+          </p>
+        </div>
       )}
     </section>
   );

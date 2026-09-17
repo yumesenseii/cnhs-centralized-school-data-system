@@ -4,41 +4,37 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  BarChart3,
   CalendarDays,
-  ClipboardList,
   Download,
   FileSpreadsheet,
   Layers3,
   Loader2,
 } from "lucide-react";
+import AppSelect from "@/components/shared/AppSelect";
 import Header from "@/components/layout/Header";
+import PageHelp from "@/components/shared/PageHelp";
+import TabSwitchPanel from "@/components/shared/TabSwitchPanel";
 import AdminReportCharts from "@/components/admin/reports/AdminReportCharts";
-import ClassReportsTable from "@/components/admin/reports/ClassReportsTable";
 import ReportPreviewModal from "@/components/admin/reports/ReportPreviewModal";
 import ReportAttendancePanel from "@/components/reports/ReportAttendancePanel";
 import ClassFolderLibrary from "@/components/reports/ClassFolderLibrary";
-import ReportInsightCallout from "@/components/reports/ReportInsightCallout";
 import ReportKpiStrip from "@/components/reports/ReportKpiStrip";
-import ReportModule from "@/components/reports/ReportModule";
-import ReportSubmissionsPanel from "@/components/reports/ReportSubmissionsPanel";
 import ReportSummaryMetrics from "@/components/reports/ReportSummaryMetrics";
+import { useAppToast } from "@/components/shared/AppToast";
 import { useAdminReports } from "@/hooks/admin/useAdminReports";
-import { buildReportInsight } from "@/lib/reports/buildReportInsight";
 import {
   exportAdminClassReportPdf,
   exportAdminReportsExcel,
   exportAdminReportsPdf,
 } from "@/lib/admin/reportsExport";
+import { getSchoolDailyMonth } from "@/lib/supabase/queries/attendanceDaily";
+import { todayIsoDateManila } from "@/lib/attendance/sf2Daily";
+import { cn } from "@/lib/utils";
 
-const selectClass =
-  "h-8 cursor-pointer rounded-lg border border-slate-200 bg-white pl-8 pr-7 text-[11px] font-medium text-slate-600 outline-none hover:bg-slate-50 focus:border-cnhs-green";
-
-const PERF_TABS = [
-  { id: "summary", label: "Summary" },
-  { id: "charts", label: "Charts" },
-  { id: "by-class", label: "By Class" },
-  { id: "breakdown", label: "Breakdown" },
+const PAGE_TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "classes", label: "Classes" },
+  { id: "attendance", label: "Attendance" },
 ];
 
 export default function AdminReportsPage() {
@@ -62,15 +58,33 @@ export default function AdminReportsPage() {
     refresh,
     getPreview,
   } = useAdminReports();
+  const { showToast } = useAppToast();
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [preview, setPreview] = useState(null);
   const [previewClassId, setPreviewClassId] = useState(null);
-  const [toast, setToast] = useState("");
-  const [perfOpen, setPerfOpen] = useState(true);
-  const [perfTab, setPerfTab] = useState("summary");
-  const [subsOpen, setSubsOpen] = useState(false);
-  const [attendanceOpen, setAttendanceOpen] = useState(false);
+  const [pageTab, setPageTab] = useState("overview");
+  const [daily, setDaily] = useState(null);
+
+  const currentMonth = String(Number(todayIsoDateManila().slice(5, 7)));
+
+  useEffect(() => {
+    if (!schoolYear) {
+      setDaily(null);
+      return;
+    }
+    let cancelled = false;
+    getSchoolDailyMonth({
+      schoolYear,
+      month: currentMonth,
+    }).then((result) => {
+      if (cancelled) return;
+      setDaily(result.error ? null : result.data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [schoolYear, currentMonth]);
 
   const quarterLabel = useMemo(() => {
     if (!quarter) return "All Terms";
@@ -78,101 +92,70 @@ export default function AdminReportsPage() {
     return match?.label || `Term ${quarter}`;
   }, [quarter, quarters]);
 
-  useEffect(() => {
-    if (!toast) return undefined;
-    const timer = window.setTimeout(() => setToast(""), 2500);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
-
   const kpiItems = useMemo(() => {
     const byId = Object.fromEntries(
       (quickStats ?? []).map((stat) => [stat.id, stat])
     );
+    const learners =
+      byId.learners?.value ?? schoolSummary?.totalLearners ?? 0;
+    const atRisk = byId["at-risk"]?.value ?? schoolSummary?.atRisk ?? 0;
+    const aral =
+      byId.intervention?.value ?? schoolSummary?.aralScreening ?? 0;
+    const remedial =
+      byId.remedial?.value ??
+      schoolSummary?.classroomRemedial ??
+      schoolSummary?.classroomRemediation ??
+      0;
 
     return [
       {
-        id: "classes",
-        label: "Classes",
-        value: byId.classes?.value ?? schoolSummary?.totalLearners ?? 0,
-        hint: `${schoolSummary?.totalLearners ?? summary?.totalStudents ?? 0} learners`,
+        id: "learners",
+        label: "Learners",
+        value: learners,
+        hint: "Unique learners · ECR class lists",
         tone: "green",
       },
       {
         id: "at-risk",
         label: "At-risk learners",
-        value: byId["at-risk"]?.value ?? schoolSummary?.atRisk ?? 0,
-        hint: "High + moderate risk · ECR grades",
-        badge:
-          (byId["at-risk"]?.value ?? schoolSummary?.atRisk ?? 0) > 0
-            ? "Attention"
-            : undefined,
-        tone:
-          (byId["at-risk"]?.value ?? schoolSummary?.atRisk ?? 0) > 0
-            ? "orange"
-            : "green",
+        value: atRisk,
+        hint: "ARAL Learners + Classroom remedial",
+        tone: Number(atRisk) > 0 ? "orange" : "green",
       },
       {
         id: "aral",
-        label: "ARAL learners",
-        value: byId.intervention?.value ?? schoolSummary?.aralScreening ?? 0,
-        hint: "Screening recommended",
-        tone: "blue",
+        label: "ARAL Learners",
+        value: aral,
+        hint: "English / Filipino below 75",
+        tone: Number(aral) > 0 ? "blue" : "green",
       },
       {
-        id: "pending",
-        label: "LP pending",
-        value: byId.pending?.value ?? lessonSummary?.pending ?? 0,
-        hint: "Awaiting HT / admin review",
-        badge:
-          (byId.pending?.value ?? lessonSummary?.pending ?? 0) > 0
-            ? "Review"
-            : undefined,
-        tone:
-          (byId.pending?.value ?? lessonSummary?.pending ?? 0) > 0
-            ? "red"
-            : "green",
+        id: "remedial",
+        label: "Classroom remedial",
+        value: remedial,
+        hint: "Other subjects needing support",
+        tone: Number(remedial) > 0 ? "orange" : "green",
       },
     ];
-  }, [quickStats, schoolSummary, summary, lessonSummary]);
+  }, [quickStats, schoolSummary]);
 
-  const insight = useMemo(
-    () =>
-      buildReportInsight({
-        termLabel: quarterLabel,
-        summary,
-        schoolSummary,
-        lessonSummary,
-        scope: "admin",
-      }),
-    [quarterLabel, summary, schoolSummary, lessonSummary]
-  );
-
-  const summaryRows = useMemo(
+  const extraRows = useMemo(
     () => [
-      ["Overall school average", schoolSummary?.overallAverage],
-      ["Total learners", schoolSummary?.totalLearners],
-      ["Total at-risk learners", schoolSummary?.atRisk],
-      ["ARAL learners", schoolSummary?.aralScreening],
-      ["Classroom remediation", schoolSummary?.classroomRemediation],
-      ["Monitoring completion rate", schoolSummary?.monitoringCompletionRate],
-      ["Lesson plans approved", schoolSummary?.lessonPlansApproved],
-      [
-        "Academic records validated",
-        schoolSummary?.academicRecordsValidated,
-      ],
       [
         "Passing rate",
         summary?.passingRate == null ? "—" : `${summary.passingRate}%`,
       ],
-      ["Lowest performing subject", summary?.lowestSubject],
+      ["Lowest performing subject", summary?.lowestSubject ?? "—"],
+      ["Lesson plans approved", schoolSummary?.lessonPlansApproved ?? 0],
+      ["Lesson plans pending", lessonSummary?.pending ?? 0],
     ],
-    [schoolSummary, summary]
+    [summary, schoolSummary, lessonSummary]
   );
 
   function openPreview(classReport) {
     const live = getPreview(classReport?.id);
     if (!live) {
-      setToast("No live preview available for this class yet.");
+      showToast("No live preview available for this class yet.");
       return;
     }
     setPreview(live);
@@ -191,9 +174,9 @@ export default function AdminReportsPage() {
         charts,
         attendance,
       });
-      setToast("PDF export opened. Use Print → Save as PDF.");
+      showToast("Report downloaded.");
     } catch (err) {
-      setToast(err?.message ?? "Unable to export PDF.");
+      showToast(err?.message ?? "Unable to export PDF.");
     }
   }
 
@@ -208,9 +191,9 @@ export default function AdminReportsPage() {
         schoolYear,
         quarter: quarterLabel,
       });
-      setToast("Excel export downloaded.");
+      showToast("Excel export downloaded.");
     } catch (err) {
-      setToast(err?.message ?? "Unable to export Excel.");
+      showToast(err?.message ?? "Unable to export Excel.");
     }
   }
 
@@ -221,46 +204,16 @@ export default function AdminReportsPage() {
         schoolYear,
         quarter: quarterLabel,
       });
-      setToast(`PDF opened for ${row.className}. Use Print → Save as PDF.`);
+      showToast(`Report downloaded for ${row.className}.`);
     } catch (err) {
-      setToast(err?.message ?? "Unable to export class PDF.");
-    }
-  }
-
-  async function handleExportAllExcel() {
-    try {
-      await exportAdminReportsExcel({
-        classReports,
-        summary,
-        schoolSummary,
-        charts,
-        attendance,
-        schoolYear,
-        quarter: quarterLabel,
-      });
-      setToast("Excel export downloaded for all classes.");
-    } catch (err) {
-      setToast(err?.message ?? "Unable to export Excel.");
+      showToast(err?.message ?? "Unable to export class PDF.");
     }
   }
 
   function handlePreviewExport() {
     const row = classReports.find((item) => item.id === previewClassId);
     if (!row) {
-      try {
-        exportAdminReportsPdf({
-          schoolYear,
-          quarter: quarterLabel,
-          summary,
-          schoolSummary,
-          classReports,
-          charts,
-          attendance,
-        });
-        setToast("PDF export opened. Use Print → Save as PDF.");
-      } catch (err) {
-        setToast(err?.message ?? "Unable to export PDF.");
-      }
+      handleExportPdf();
       return;
     }
     handleRowExportPdf(row);
@@ -276,122 +229,155 @@ export default function AdminReportsPage() {
       <Header
         breadcrumb="Home / Reports"
         title="Reports"
-        description="Live academic analytics, intervention mix, lesson plan status, and separate SF2 attendance trends."
+        description="School snapshot of grades, who needs support, lesson plans, and attendance."
         controls={
-          <div className="flex flex-nowrap items-center gap-2">
-            <label className="relative shrink-0">
-              <span className="sr-only">School Year</span>
-              <CalendarDays
-                size={12}
-                className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+          <div className="flex w-full min-w-0 flex-nowrap items-center gap-2 sm:w-auto">
+            <div className="flex flex-nowrap items-center gap-2">
+              <PageHelp
+                summary="School snapshot from ECR grades. Daily attendance lives on Attendance Monitoring. Uploaded SF2 is archive only."
+                steps={[
+                  "Filter by school year and term, then review the four learner counts.",
+                  "Overview shows unique learners, ARAL Learners, and Classroom remedial from ECR grades.",
+                  "Classes opens grade and section folders. Use List if you prefer a table.",
+                  "Attendance uses Morning and Afternoon marks. Open Attendance Monitoring for the full month.",
+                  "Uploaded SF2 figures stay separate and are not mixed into academic risk.",
+                ]}
               />
-              <select
+              <AppSelect
+                label="School Year"
                 value={schoolYear}
-                onChange={(e) => setSchoolYear(e.target.value)}
-                className={selectClass}
-              >
-                {!schoolYears.length ? (
-                  <option value="">No school years</option>
-                ) : null}
-                {schoolYears.map((year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="relative shrink-0">
-              <span className="sr-only">Term</span>
-              <Layers3
-                size={12}
-                className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                onChange={setSchoolYear}
+                options={
+                  schoolYears.length
+                    ? schoolYears
+                    : [{ value: "", label: "No school years" }]
+                }
+                icon={CalendarDays}
+                size="pill"
+                align="end"
+                className="shrink-0"
+                triggerClassName="rounded-lg"
               />
-              <select
+              <AppSelect
+                label="Term"
                 value={quarter}
-                onChange={(e) => setQuarter(e.target.value)}
-                className={selectClass}
+                onChange={setQuarter}
+                options={quarters}
+                icon={Layers3}
+                size="pill"
+                align="end"
+                className="shrink-0"
+                triggerClassName="rounded-lg"
+              />
+            </div>
+            <div className="ml-auto flex flex-nowrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => refresh()}
+                className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-[var(--card)] dark:text-slate-300 dark:hover:bg-white/5"
               >
-                {quarters.map((item) => (
-                  <option key={item.value || "all"} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <button
-              type="button"
-              onClick={() => refresh()}
-              className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
-            >
-              Refresh
-            </button>
-            <button
-              type="button"
-              onClick={handleExportPdf}
-              disabled={loading}
-              className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
-            >
-              <Download size={12} />
-              Export PDF
-            </button>
-            <button
-              type="button"
-              onClick={handleExportExcel}
-              disabled={loading}
-              className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white transition-colors hover:bg-[#246f54] disabled:opacity-60"
-            >
-              <FileSpreadsheet size={12} />
-              Export Excel
-            </button>
+                Refresh
+              </button>
+              <button
+                type="button"
+                onClick={handleExportPdf}
+                disabled={loading}
+                className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60 dark:border-white/10 dark:bg-[var(--card)] dark:text-slate-300 dark:hover:bg-white/5"
+              >
+                <Download size={12} />
+                Export PDF
+              </button>
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                disabled={loading}
+                className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white transition-colors hover:bg-[#246f54] disabled:opacity-60"
+              >
+                <FileSpreadsheet size={12} />
+                Export Excel
+              </button>
+            </div>
           </div>
         }
       />
 
-      {toast ? (
-        <div className="mb-3 rounded-xl border border-green-100 bg-green-50 px-3 py-2 text-[12px] font-medium text-cnhs-green-dark">
-          {toast}
-        </div>
-      ) : null}
-
       {error ? (
-        <div className="mb-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-[12px] text-red-600">
+        <div className="mb-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-[12px] text-red-600 dark:border-red-500/30 dark:bg-red-950/40">
           {error}
         </div>
       ) : null}
 
       {loading ? (
-        <div className="flex items-center gap-2 rounded-2xl border border-slate-100 bg-white px-4 py-10 text-sm text-slate-400">
+        <div className="flex items-center gap-2 rounded-2xl border border-slate-100 bg-white px-4 py-10 text-sm text-slate-400 dark:border-white/10 dark:bg-[var(--card)]">
           <Loader2 size={16} className="animate-spin" />
-          Loading live reports…
+          Loading school snapshot…
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <ReportKpiStrip items={kpiItems} />
 
-          <ReportModule
-            title="School Performance"
-            subtitle="Risk · performance · interventions · class drill-down"
-            icon={<BarChart3 size={16} strokeWidth={1.8} />}
-            open={perfOpen}
-            onOpenChange={setPerfOpen}
-            tabs={PERF_TABS}
-            activeTab={perfTab}
-            onTabChange={setPerfTab}
-            accent="green"
-            footer={<ReportInsightCallout text={insight} />}
+          <div className="flex justify-end">
+            <div
+              role="tablist"
+              aria-label="Reports views"
+              className="inline-flex max-w-full overflow-x-auto rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm dark:border-white/5 dark:bg-[var(--card)]"
+            >
+              {PAGE_TABS.map((tab) => {
+                const active = tab.id === pageTab;
+                return (
+                  <button
+                    key={tab.id}
+                    id={`reports-tab-${tab.id}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    aria-controls={`reports-panel-${tab.id}`}
+                    onClick={() => setPageTab(tab.id)}
+                    className={cn(
+                      "min-w-max cursor-pointer rounded-md px-3 py-1.5 text-[11px] font-semibold transition-[color,background-color,box-shadow,opacity,transform] duration-160 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cnhs-green/35",
+                      active
+                        ? "bg-cnhs-green-soft text-cnhs-green-dark dark:bg-cnhs-green/20 dark:text-cnhs-green"
+                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-200"
+                    )}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <TabSwitchPanel
+            activeKey={pageTab}
+            id={`reports-panel-${pageTab}`}
+            role="tabpanel"
+            aria-labelledby={`reports-tab-${pageTab}`}
           >
-            {perfTab === "summary" ? (
-              <ReportSummaryMetrics
-                title="School summary · read-only"
-                rows={summaryRows}
-              />
+            {pageTab === "overview" ? (
+              <div className="space-y-3">
+                {schoolSummary?.predictionsPending ? (
+                  <p className="text-[12px] text-slate-500">
+                    Academic prediction is not ready yet. ARAL Learners and
+                    Classroom remedial still use ECR grades.
+                  </p>
+                ) : null}
+                <ReportSummaryMetrics rows={extraRows} />
+                <p className="text-[12px] text-slate-500">
+                  <button
+                    type="button"
+                    onClick={() => router.push("/lesson-plan-review")}
+                    className="cursor-pointer font-semibold text-cnhs-green-dark underline-offset-2 hover:underline"
+                  >
+                    Lesson plans pending
+                  </button>
+                  {": "}
+                  {lessonSummary?.pending ?? 0} awaiting review.
+                </p>
+                <AdminReportCharts charts={charts} hideAttendance hideEmpty />
+              </div>
             ) : null}
-            {perfTab === "charts" ? (
-              <AdminReportCharts charts={charts} hideAttendance />
-            ) : null}
-            {perfTab === "by-class" ? (
+
+            {pageTab === "classes" ? (
               <ClassFolderLibrary
                 reports={classReports}
                 onDetails={openPreview}
@@ -399,47 +385,11 @@ export default function AdminReportsPage() {
                 groupMultiTerm={!quarter}
               />
             ) : null}
-            {perfTab === "breakdown" ? (
-              <ClassReportsTable
-                reports={classReports}
-                onPreview={openPreview}
-                onExport={handleRowExportPdf}
-                onExportAll={handleExportAllExcel}
-              />
+
+            {pageTab === "attendance" ? (
+              <ReportAttendancePanel daily={daily} />
             ) : null}
-          </ReportModule>
-
-          <ReportModule
-            title="Submissions & review"
-            subtitle="Lesson plan queue · monitoring follow-up"
-            icon={<ClipboardList size={16} strokeWidth={1.8} />}
-            open={subsOpen}
-            onOpenChange={setSubsOpen}
-            accent="orange"
-          >
-            <ReportSubmissionsPanel
-              lessonSummary={lessonSummary}
-              summary={summary}
-              actionLabel="Open Lesson Plan Review"
-              onLessonPlanAction={() =>
-                router.push("/lesson-plan-review")
-              }
-            />
-          </ReportModule>
-
-          <ReportModule
-            title="Attendance (SF2)"
-            subtitle="Monthly attendance"
-            icon={<CalendarDays size={16} strokeWidth={1.8} />}
-            open={attendanceOpen}
-            onOpenChange={setAttendanceOpen}
-            accent="sky"
-          >
-            <ReportAttendancePanel
-              attendance={attendance}
-              chartData={charts?.attendanceByMonth ?? []}
-            />
-          </ReportModule>
+          </TabSwitchPanel>
         </div>
       )}
 

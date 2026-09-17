@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import { ClipboardCheck, Loader2 } from "lucide-react";
+import AnimatedModal from "@/components/shared/AnimatedModal";
+import { AnimatedBanner } from "@/components/shared/AnimatedFeedback";
 import {
   computeMonthCloseMetrics,
   rosterSexCounts,
 } from "@/lib/attendance/dailyAnalytics";
 import { upsertSectionMonthClose } from "@/lib/supabase/queries/attendanceMonthClose";
-import { VIEW_MODAL_BACKDROP } from "@/lib/ui/viewModal";
-import { cn } from "@/lib/utils";
 
 function DateList({ title, dates, empty, hint }) {
   return (
@@ -63,16 +62,8 @@ export default function DailyMonthCloseModal({
       setNotes("");
     }
     setError("");
+    setSaving(false);
   }, [open, summary?.month, summary?.section?.id, existing?.id]);
-
-  useEffect(() => {
-    if (!open) return undefined;
-    function onKeyDown(e) {
-      if (e.key === "Escape" && !saving) onCancel?.();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, saving, onCancel]);
 
   const days = Number(schoolDays);
   const validDays = Number.isInteger(days) && days > 0;
@@ -87,9 +78,8 @@ export default function DailyMonthCloseModal({
     [summary?.presentDays?.total, days, validDays, eomM, eomF]
   );
 
-  if (!open || !summary || typeof document === "undefined") return null;
-
   async function handleSave() {
+    if (!summary) return;
     if (!validDays) {
       setError("Enter days of classes (whole number greater than 0).");
       return;
@@ -116,18 +106,19 @@ export default function DailyMonthCloseModal({
     onSaved?.(result.data);
   }
 
-  return createPortal(
-    <div
-      className={cn(VIEW_MODAL_BACKDROP, "z-[100]")}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="month-close-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !saving) onCancel?.();
-      }}
+  return (
+    <AnimatedModal
+      open={open && Boolean(summary)}
+      onClose={onCancel}
+      labelledBy="month-close-title"
+      zClassName="z-[100]"
+      closeOnBackdrop={!saving}
+      closeOnEscape={!saving}
+      panelClassName="flex max-h-[86vh] w-[min(36rem,94vw)] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl"
     >
-      <div className="relative z-10 flex max-h-[86vh] w-[min(36rem,94vw)] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl">
-        <div className="overflow-y-auto px-5 pt-5 pb-3">
+      {summary ? (
+        <>
+      <div className="overflow-y-auto px-5 pt-5 pb-3">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-50 text-cnhs-green-dark">
               <ClipboardCheck size={18} />
@@ -286,9 +277,7 @@ export default function DailyMonthCloseModal({
             )}
           </div>
 
-          {error ? (
-            <p className="mt-2 text-[12px] text-red-600">{error}</p>
-          ) : null}
+          <AnimatedBanner message={error} tone="error" className="mt-2 text-[12px]" />
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-slate-100 bg-slate-50/80 px-4 py-3">
@@ -310,8 +299,8 @@ export default function DailyMonthCloseModal({
             {existing ? "Update close" : "Save close"}
           </button>
         </div>
-      </div>
-    </div>,
-    document.body
+        </>
+      ) : null}
+    </AnimatedModal>
   );
 }

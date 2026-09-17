@@ -1,6 +1,7 @@
 "use client";
 
 import SectionRow from "@/components/section-management/SectionRow";
+import AppSelect from "@/components/shared/AppSelect";
 
 const columns = [
   "Grade Level",
@@ -111,19 +112,17 @@ export default function SectionsTable({
 
 function SelectFilter({ label, value, options, onChange }) {
   return (
-    <label className="inline-flex h-8 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 text-[11px] text-slate-600 shadow-sm">
+    <div className="inline-flex h-8 items-center gap-1 rounded-full border border-slate-200 bg-white pl-3 pr-1 text-[11px] text-slate-600 shadow-sm">
       <span className="font-medium text-slate-400">{label}</span>
-      <select
+      <AppSelect
+        label={label}
         value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="max-w-[140px] cursor-pointer bg-transparent font-semibold text-slate-700 outline-none"
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-    </label>
+        onChange={onChange}
+        options={options}
+        size="pill"
+        className="max-w-[140px]"
+        triggerClassName="h-8 border-0 bg-transparent px-1 shadow-none font-semibold text-slate-700 hover:bg-transparent"
+      />
+    </div>
   );
 }

@@ -25,7 +25,7 @@ export default function OperationsAccordion({
 
   const pendingCount = useMemo(() => {
     const pending = validationSummary.find((item) =>
-      /pending/i.test(String(item.label ?? ""))
+      /pending|no grade/i.test(String(item.label ?? ""))
     );
     return Number(pending?.value ?? 0);
   }, [validationSummary]);

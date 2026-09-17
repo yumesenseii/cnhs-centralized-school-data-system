@@ -11,6 +11,7 @@ import LoginInput from "@/components/auth/LoginInput";
 import PasswordInput from "@/components/auth/PasswordInput";
 import RememberMe from "@/components/auth/RememberMe";
 import { useAuth } from "@/hooks/useAuth";
+import { queueWelcomeToast } from "@/lib/auth/welcomeToast";
 import { loginContent } from "@/lib/constants/loginContent";
 
 function resolveRedirect(role) {
@@ -104,6 +105,7 @@ export default function LoginForm() {
         return;
       }
 
+      queueWelcomeToast(result.data.full_name);
       router.replace(destination);
       router.refresh();
     } catch {

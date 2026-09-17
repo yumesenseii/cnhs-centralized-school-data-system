@@ -37,6 +37,8 @@ import {
 } from "@/lib/supabase/queries/monitoring";
 import { listAralAssessmentScores } from "@/lib/supabase/queries/aralProgram";
 import { cn } from "@/lib/utils";
+import AppSelect from "@/components/shared/AppSelect";
+import { useAppToast } from "@/components/shared/AppToast";
 
 const STATUS_OPTIONS = [
   MONITORING_STATUS.ONGOING,
@@ -46,9 +48,11 @@ const STATUS_OPTIONS = [
 ];
 
 const th =
-  "sticky top-0 z-10 border border-slate-200 bg-[#f3f3f3] px-2 py-1.5 text-left text-[11px] font-semibold text-slate-600 whitespace-nowrap";
+  "sticky top-0 z-10 border border-slate-200 bg-slate-100 px-2 py-1.5 text-left text-[11px] font-semibold text-slate-600 whitespace-nowrap";
 const td =
   "border border-slate-200 bg-white px-2 py-1 text-[12px] leading-snug text-slate-800 whitespace-nowrap";
+const tableSelectTrigger =
+  "h-[28px] rounded-none border-0 bg-transparent px-1 text-[12px] shadow-none hover:bg-transparent focus-visible:border-0 focus-visible:ring-0 focus-visible:bg-[#fff8dc] disabled:opacity-40";
 
 function stripWeekPrefix(remarks = "") {
   return String(remarks || "").replace(/^\[Week \d+\]\s*/i, "").trim();
@@ -81,7 +85,7 @@ export default function AralSectionFileModal({
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [formError, setFormError] = useState("");
-  const [toast, setToast] = useState("");
+  const { showToast } = useAppToast();
   const [loadingWeekly, setLoadingWeekly] = useState(false);
   const [records, setRecords] = useState([]);
   const [draft, setDraft] = useState({});
@@ -156,7 +160,6 @@ export default function AralSectionFileModal({
     }
     setDraft(next);
     setFormError("");
-    setToast("");
   }, [kind, file?.id, file?.weekNumber, records, learners, mode]);
 
   function setCell(learnerId, field, value) {
@@ -180,7 +183,6 @@ export default function AralSectionFileModal({
   async function handleSaveWeekly(e) {
     e?.preventDefault?.();
     setFormError("");
-    setToast("");
     if (!teacherId) {
       setFormError("Teacher session is required.");
       return;
@@ -269,7 +271,7 @@ export default function AralSectionFileModal({
           }
         }
       }
-      setToast(`Saved Week ${weekNumber} for ${toSave.length} learner(s).`);
+      showToast(`Saved Week ${weekNumber} for ${toSave.length} learner(s).`);
       await refreshWeekly();
       onSaved?.();
       onModeChange?.("view");
@@ -283,7 +285,6 @@ export default function AralSectionFileModal({
   async function handleDownload() {
     setExporting(true);
     setFormError("");
-    setToast("");
     try {
       if (kind === "weekly") {
         const result = await downloadAralWeeklyTemplateExcel({
@@ -294,7 +295,7 @@ export default function AralSectionFileModal({
           weekNumber: file.weekNumber,
           generatedBy: teacherName,
         });
-        setToast(`Downloaded ${result.filename}.`);
+        showToast(`Downloaded ${result.filename}.`);
       } else if (kind === "assessment") {
         const scoresResult = await listAralAssessmentScores({
           batchId,
@@ -326,7 +327,7 @@ export default function AralSectionFileModal({
           schoolYear,
           generatedBy: teacherName,
         });
-        setToast(`Downloaded ${result.filename}.`);
+        showToast(`Downloaded ${result.filename}.`);
       }
       // report has its own download inside panel
     } catch (err) {
@@ -458,7 +459,7 @@ export default function AralSectionFileModal({
                           <td
                             className={cn(
                               td,
-                              "bg-[#fafafa] text-center text-slate-500"
+                              "bg-slate-50 text-center text-slate-500"
                             )}
                           >
                             {idx + 1}
@@ -495,25 +496,22 @@ export default function AralSectionFileModal({
                           </td>
                           <td className={cn(td, "p-0")}>
                             {editing ? (
-                              <select
+                              <AppSelect
+                                label="Session"
                                 value={cells.sessionStatus || ""}
-                                onChange={(e) =>
-                                  setCell(
-                                    learner.id,
-                                    "sessionStatus",
-                                    e.target.value
-                                  )
+                                onChange={(next) =>
+                                  setCell(learner.id, "sessionStatus", next)
                                 }
                                 disabled={!learner.sourceClassId}
-                                className="h-[28px] w-full border-0 bg-transparent px-1 text-[12px] outline-none focus:bg-[#fff8dc] disabled:opacity-40"
-                              >
-                                <option value="">—</option>
-                                {ARAL_SESSION_OPTIONS.map((opt) => (
-                                  <option key={opt} value={opt}>
-                                    {ARAL_SESSION_LABELS[opt]}
-                                  </option>
-                                ))}
-                              </select>
+                                options={[
+                                  { value: "", label: "—" },
+                                  ...ARAL_SESSION_OPTIONS.map((opt) => ({
+                                    value: opt,
+                                    label: ARAL_SESSION_LABELS[opt],
+                                  })),
+                                ]}
+                                triggerClassName={tableSelectTrigger}
+                              />
                             ) : (
                               <span className="inline-block w-full px-2 py-1">
                                 {displayText(
@@ -527,21 +525,22 @@ export default function AralSectionFileModal({
                           </td>
                           <td className={cn(td, "p-0")}>
                             {editing ? (
-                              <select
+                              <AppSelect
+                                label="Skill focus"
                                 value={cells.skillFocus || ""}
-                                onChange={(e) =>
-                                  setCell(learner.id, "skillFocus", e.target.value)
+                                onChange={(next) =>
+                                  setCell(learner.id, "skillFocus", next)
                                 }
                                 disabled={!learner.sourceClassId}
-                                className="h-[28px] w-full border-0 bg-transparent px-1 text-[12px] outline-none focus:bg-[#fff8dc] disabled:opacity-40"
-                              >
-                                <option value="">—</option>
-                                {ARAL_FOCUS_OPTIONS.map((opt) => (
-                                  <option key={opt} value={opt}>
-                                    {opt}
-                                  </option>
-                                ))}
-                              </select>
+                                options={[
+                                  { value: "", label: "—" },
+                                  ...ARAL_FOCUS_OPTIONS.map((opt) => ({
+                                    value: opt,
+                                    label: opt,
+                                  })),
+                                ]}
+                                triggerClassName={tableSelectTrigger}
+                              />
                             ) : (
                               <span className="inline-block w-full px-2 py-1">
                                 {displayText(rec?.skillFocus)}
@@ -550,25 +549,22 @@ export default function AralSectionFileModal({
                           </td>
                           <td className={cn(td, "p-0")}>
                             {editing ? (
-                              <select
+                              <AppSelect
+                                label="Student progress"
                                 value={cells.studentProgress || ""}
-                                onChange={(e) =>
-                                  setCell(
-                                    learner.id,
-                                    "studentProgress",
-                                    e.target.value
-                                  )
+                                onChange={(next) =>
+                                  setCell(learner.id, "studentProgress", next)
                                 }
                                 disabled={!learner.sourceClassId}
-                                className="h-[28px] w-full border-0 bg-transparent px-1 text-[12px] outline-none focus:bg-[#fff8dc] disabled:opacity-40"
-                              >
-                                <option value="">—</option>
-                                {ARAL_PROGRESS_OPTIONS.map((opt) => (
-                                  <option key={opt} value={opt}>
-                                    {opt}
-                                  </option>
-                                ))}
-                              </select>
+                                options={[
+                                  { value: "", label: "—" },
+                                  ...ARAL_PROGRESS_OPTIONS.map((opt) => ({
+                                    value: opt,
+                                    label: opt,
+                                  })),
+                                ]}
+                                triggerClassName={tableSelectTrigger}
+                              />
                             ) : (
                               <span className="inline-block w-full px-2 py-1">
                                 {displayText(rec?.studentProgress)}
@@ -577,25 +573,22 @@ export default function AralSectionFileModal({
                           </td>
                           <td className={cn(td, "p-0")}>
                             {editing ? (
-                              <select
+                              <AppSelect
+                                label="Monitoring status"
                                 value={cells.monitoringStatus || ""}
-                                onChange={(e) =>
-                                  setCell(
-                                    learner.id,
-                                    "monitoringStatus",
-                                    e.target.value
-                                  )
+                                onChange={(next) =>
+                                  setCell(learner.id, "monitoringStatus", next)
                                 }
                                 disabled={!learner.sourceClassId}
-                                className="h-[28px] w-full border-0 bg-transparent px-1 text-[12px] outline-none focus:bg-[#fff8dc] disabled:opacity-40"
-                              >
-                                <option value="">—</option>
-                                {STATUS_OPTIONS.map((opt) => (
-                                  <option key={opt} value={opt}>
-                                    {opt}
-                                  </option>
-                                ))}
-                              </select>
+                                options={[
+                                  { value: "", label: "—" },
+                                  ...STATUS_OPTIONS.map((opt) => ({
+                                    value: opt,
+                                    label: opt,
+                                  })),
+                                ]}
+                                triggerClassName={tableSelectTrigger}
+                              />
                             ) : (
                               <span className="inline-block w-full px-2 py-1">
                                 {displayText(rec?.monitoringStatus)}
@@ -683,11 +676,6 @@ export default function AralSectionFileModal({
         {formError ? (
           <p className="shrink-0 border-t border-red-100 bg-red-50 px-5 py-1.5 text-[12px] font-medium text-red-600">
             {formError}
-          </p>
-        ) : null}
-        {toast ? (
-          <p className="shrink-0 border-t border-green-100 bg-green-50 px-5 py-1.5 text-[12px] font-medium text-cnhs-green-dark">
-            {toast}
           </p>
         ) : null}
 

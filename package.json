@@ -4,11 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:all": "concurrently -k -n next,ml -c green,cyan \"npm run dev\" \"npm run ml:serve\"",
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
     "ml:train": "cd ml-service && .venv/Scripts/python scripts/train_model.py",
-    "ml:serve": "cd ml-service && .venv/Scripts/uvicorn app.main:app --reload --port 8000"
+    "ml:eval": "node scripts/ml-eval.js",
+    "ml:serve": "node scripts/ml-serve.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -35,6 +37,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "concurrently": "^9.2.4",
     "eslint": "^9",
     "eslint-config-next": "15.5.20",
     "tailwindcss": "^4"

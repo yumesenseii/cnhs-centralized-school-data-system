@@ -15,12 +15,12 @@ import {
 
 function ChartCard({ title, subtitle, children }) {
   return (
-    <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
+    <section className="min-w-0">
       <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
       {subtitle ? (
-        <p className="mt-1 text-[10px] text-slate-400">{subtitle}</p>
+        <p className="mt-0.5 text-[10px] text-slate-400">{subtitle}</p>
       ) : null}
-      <div className="mt-4">{children}</div>
+      <div className="mt-3">{children}</div>
     </section>
   );
 }
@@ -45,7 +45,7 @@ export default function ReportCharts({ charts }) {
   const hasMonitoring = monitoring.some((row) => row.value > 0);
 
   return (
-    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+    <div className="grid grid-cols-1 gap-x-6 gap-y-5 border-y border-slate-200 py-3 dark:border-white/10 xl:grid-cols-2">
       <ChartCard
         title="Student Performance Distribution"
         subtitle="Grade buckets from recorded subject scores"
@@ -56,7 +56,7 @@ export default function ReportCharts({ charts }) {
           <div className="h-[220px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={performance} margin={{ top: 18, right: 8, left: -20, bottom: 0 }}>
-                <CartesianGrid stroke="#eef2f7" strokeDasharray="3 3" vertical={false} />
+                <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
                 <XAxis
                   dataKey="name"
                   tickLine={false}
@@ -109,7 +109,7 @@ export default function ReportCharts({ charts }) {
                     innerRadius={50}
                     outerRadius={78}
                     paddingAngle={2}
-                    stroke="#ffffff"
+                    stroke="var(--card)"
                     strokeWidth={3}
                   >
                     {aral.map((item) => (
@@ -157,7 +157,7 @@ export default function ReportCharts({ charts }) {
           <div className="h-[220px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={bySubject} margin={{ top: 18, right: 8, left: -20, bottom: 0 }}>
-                <CartesianGrid stroke="#eef2f7" strokeDasharray="3 3" vertical={false} />
+                <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
                 <XAxis
                   dataKey="subject"
                   tickLine={false}
@@ -203,7 +203,7 @@ export default function ReportCharts({ charts }) {
           <div className="h-[220px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monitoring} margin={{ top: 18, right: 8, left: -20, bottom: 0 }}>
-                <CartesianGrid stroke="#eef2f7" strokeDasharray="3 3" vertical={false} />
+                <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
                 <XAxis
                   dataKey="name"
                   tickLine={false}

@@ -7,6 +7,7 @@ import DashboardHeader from "@/components/teacher/dashboard/DashboardHeader";
 import TeacherAcademicAnalytics from "@/components/teacher/dashboard/TeacherAcademicAnalytics";
 import AttendanceMonitoringPanel from "@/components/attendance/AttendanceMonitoringPanel";
 import DeferredMount from "@/components/shared/DeferredMount";
+import GuidedTour from "@/components/shared/GuidedTour";
 import { useTeacherDashboard } from "@/hooks/teacher/useTeacherDashboard";
 
 function formatCurrentDate() {
@@ -67,7 +68,9 @@ export default function Dashboard() {
         </div>
       ) : null}
 
-      {loading ? (
+      <GuidedTour role="teacher" />
+
+      {loading && !data ? (
         <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-100 bg-white py-12 text-sm text-slate-500">
           <Loader2 size={16} className="animate-spin" />
           Loading dashboard…
@@ -76,6 +79,7 @@ export default function Dashboard() {
         <>
           <TeacherAcademicAnalytics
             schoolYear={schoolYear}
+            quarter={quarter}
             stats={data.stats ?? []}
             classes={data.classes}
             recentActivities={data.recentActivities}

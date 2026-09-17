@@ -1,3 +1,7 @@
+"use client";
+
+import AppSelect from "@/components/shared/AppSelect";
+
 export default function FilterDropdown({
   label,
   options = [],
@@ -7,19 +11,14 @@ export default function FilterDropdown({
   const selected = value ?? options[0] ?? "";
 
   return (
-    <label className="min-w-[118px] flex-1 sm:flex-none">
-      <span className="sr-only">{label}</span>
-      <select
-        value={selected}
-        onChange={(e) => onChange?.(e.target.value)}
-        className="h-10 w-full min-w-[120px] cursor-pointer rounded-xl border border-slate-200 bg-slate-50/80 px-3 text-[11px] font-medium text-slate-600 outline-none transition-colors focus:border-cnhs-green focus:bg-white"
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-    </label>
+    <AppSelect
+      label={label}
+      value={selected}
+      onChange={onChange}
+      options={options}
+      size="field"
+      className="min-w-[118px] flex-1 sm:flex-none"
+      triggerClassName="h-10 min-w-[120px] bg-slate-50/80 text-[11px] focus:bg-white"
+    />
   );
 }

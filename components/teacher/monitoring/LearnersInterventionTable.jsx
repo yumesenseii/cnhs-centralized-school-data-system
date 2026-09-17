@@ -4,6 +4,7 @@ import { Eye, Loader2, Send } from "lucide-react";
 import {
   Pill,
   RiskPill,
+  PriorityCue,
   avatarTones,
   interventionStyles,
   monitoringStatusStyles,
@@ -94,6 +95,7 @@ export default function LearnersInterventionTable({
           "Student",
           "Section / Subject",
           "Risk",
+          "Priority",
           "Recommendation",
           "Next action",
           "Action",
@@ -102,6 +104,7 @@ export default function LearnersInterventionTable({
           "Student",
           "Section / Subject",
           "Risk",
+          "Priority",
           "Recommendation",
           "HT approval",
           "Next action",
@@ -112,6 +115,7 @@ export default function LearnersInterventionTable({
         "Student Number",
         "Subject Grade",
         "Risk Level",
+        "Priority",
         "Recommendation",
         ...(showAralApproval ? ["HT Approval"] : []),
         "Latest Progress",
@@ -127,9 +131,11 @@ export default function LearnersInterventionTable({
           <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
             {displayTotal} total
           </span>
-          <span className="inline-flex rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-600">
-            {displayAtRisk} at risk
-          </span>
+          {!isHtLite ? (
+            <span className="inline-flex rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-600">
+              {displayAtRisk} at risk
+            </span>
+          ) : null}
         </div>
         <p className="text-[11px] font-medium text-slate-400">
           {schoolYear} · {quarter}
@@ -220,18 +226,13 @@ export default function LearnersInterventionTable({
                         <RiskPill value={learner.riskLevel} />
                       </td>
                       <td className="px-3 py-1.5">
+                        <PriorityCue learner={learner} />
+                      </td>
+                      <td className="px-3 py-1.5">
                         {layout === "htNonAral" ? (
-                          <div className="space-y-1">
-                            <Pill
-                              value={RECOMMENDATION.NONE}
-                              styles={interventionStyles}
-                            />
-                            {learner.classroomRemedialRecommended ? (
-                              <p className="text-[10px] font-medium text-cnhs-orange">
-                                Classroom remedial
-                              </p>
-                            ) : null}
-                          </div>
+                          <p className="text-[11px] font-medium text-cnhs-orange">
+                            Classroom remedial
+                          </p>
                         ) : learner.recommendationDisplay ? (
                           <Pill
                             value={learner.recommendationDisplay}
@@ -325,6 +326,9 @@ export default function LearnersInterventionTable({
                       </td>
                       <td className="px-3 py-1.5">
                         <RiskPill value={learner.riskLevel} />
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <PriorityCue learner={learner} />
                       </td>
                       <td className="px-3 py-1.5">
                         {learner.recommendationDisplay ? (

@@ -21,6 +21,7 @@ import EcrDepedHeader from "@/components/teacher/e-record/EcrDepedHeader";
 import EcrGrid from "@/components/teacher/e-record/EcrGrid";
 import EcrSummary from "@/components/teacher/e-record/EcrSummary";
 import EcrTermTabs from "@/components/teacher/e-record/EcrTermTabs";
+import { useAppToast } from "@/components/shared/AppToast";
 import { useEcrRecord } from "@/hooks/teacher/useEcrRecord";
 import { exportEcrTermExcel } from "@/lib/ecr/exportTermSheet";
 import { getCurrentTeacherSession } from "@/lib/supabase/queries/myClasses";
@@ -66,7 +67,7 @@ export default function EcrRecordPage({ classId }) {
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [toast, setToast] = useState("");
+  const { showToast } = useAppToast();
   const [uploadOpen, setUploadOpen] = useState(false);
   const [teacherId, setTeacherId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -82,7 +83,7 @@ export default function EcrRecordPage({ classId }) {
     setSaving(true);
     const result = await saveDraft();
     setSaving(false);
-    setToast(result.ok ? "Draft saved." : "Unable to save draft.");
+    showToast(result.ok ? "Draft saved." : "Unable to save draft.");
   }
 
   async function handlePublish() {
@@ -90,30 +91,36 @@ export default function EcrRecordPage({ classId }) {
     if (activeTerm === "summary") {
       const result = await publishAve();
       setPublishing(false);
-      setToast(
+      showToast(
         result.ok
-          ? "Final grades published to class records."
-          : "Unable to publish final grades."
+          ? "Final grades published to class records. Next: open Academic Monitoring to review recommendations."
+          : "Unable to publish final grades.",
+        result.ok
+          ? { action: { href: "/teacher/monitoring", label: "Go to Academic Monitoring →" } }
+          : undefined
       );
       return;
     }
     const result = await publishGrades();
     setPublishing(false);
-    setToast(
+    showToast(
       result.ok
-        ? `${termLabel(activeTerm)} grades published.`
-        : "Unable to publish grades."
+        ? `${termLabel(activeTerm)} grades published. Next: open Academic Monitoring for risk and recommendations.`
+        : "Unable to publish grades.",
+      result.ok
+        ? { action: { href: "/teacher/monitoring", label: "Go to Academic Monitoring →" } }
+        : undefined
     );
   }
 
   async function handleExport() {
     setExporting(true);
-    setToast("Preparing official E-Class Record…");
+    showToast("Preparing official E-Class Record…");
     try {
       if (dirty && activeTerm !== "summary") {
         const saved = await saveDraft();
         if (!saved.ok) {
-          setToast("Unable to save draft before export.");
+          showToast("Unable to save draft before export.");
           return;
         }
       }
@@ -136,9 +143,9 @@ export default function EcrRecordPage({ classId }) {
         computedByStudent,
         termDataByTerm,
       });
-      setToast("Official E-Class Record downloaded.");
+      showToast("Official E-Class Record downloaded.");
     } catch (err) {
-      setToast(err?.message ?? "Unable to export Excel.");
+      showToast(err?.message ?? "Unable to export Excel.");
     } finally {
       setExporting(false);
     }
@@ -151,7 +158,7 @@ export default function EcrRecordPage({ classId }) {
   const savedLabel = formatSavedAt(lastSavedAt);
   const rosterLabel = students.length
     ? `${students.length} learner${students.length === 1 ? "" : "s"}`
-    : "No roster";
+    : "No learners";
 
   const gridSection = (
     <>
@@ -295,9 +302,23 @@ export default function EcrRecordPage({ classId }) {
         </div>
       ) : null}
 
-      {toast ? (
-        <div className="mb-3 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-[12px] text-emerald-700">
-          {toast}
+      {!loading && !students.length ? (
+        <div className="mb-3 rounded-xl border border-slate-100 bg-white px-4 py-8 text-center shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
+          <p className="text-sm font-semibold text-slate-700">
+            No learners in this E-Record yet
+          </p>
+          <p className="mx-auto mt-1.5 max-w-md text-[12px] leading-5 text-slate-500">
+            Import an official DepEd E-Class Record to load learners and scores
+            for this class. Recommendations appear after you publish grades.
+          </p>
+          <button
+            type="button"
+            onClick={openImport}
+            className="mt-3 inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 text-[11px] font-semibold text-violet-700 hover:bg-violet-100"
+          >
+            <Upload size={13} />
+            Import ECR
+          </button>
         </div>
       ) : null}
 
@@ -328,7 +349,7 @@ export default function EcrRecordPage({ classId }) {
         teacherId={teacherId}
         onClose={() => setUploadOpen(false)}
         onSuccess={async (result) => {
-          setToast(
+          showToast(
             `Imported ${result?.imported ?? 0} learner(s). E-Record synced.`
           );
           setUploadOpen(false);

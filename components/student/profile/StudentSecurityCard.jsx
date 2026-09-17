@@ -91,12 +91,11 @@ export default function StudentSecurityCard() {
   }
 
   return (
-    <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-5">
-      <div className="mb-3 border-b border-slate-100 pb-3">
-        <h2 className="text-sm font-semibold text-slate-900">Security</h2>
-        <p className="mt-1 text-[11px] text-slate-500">
-          Change your password anytime. At least 8 characters; confirm your
-          current password first.
+    <section className="rounded-2xl border border-border bg-card p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-3.5">
+      <div className="mb-2.5 border-b border-border pb-2.5">
+        <h2 className="text-[13px] font-semibold text-card-foreground">Security</h2>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">
+          At least 8 characters. Confirm your current password first.
         </p>
       </div>
 
@@ -111,14 +110,14 @@ export default function StudentSecurityCard() {
                 {tempPassword}
               </p>
               <p className="mt-1 text-[10px] text-amber-800/80">
-                Change this before continuing. It disappears after you update
+                Change this before continuing. It will disappear after you update
                 your password.
               </p>
             </div>
             <button
               type="button"
               onClick={handleCopyTemp}
-              className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md border border-amber-200 bg-white px-2 text-[10px] font-semibold text-slate-700 hover:bg-amber-50"
+              className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md border border-amber-200 bg-card px-2 text-[10px] font-semibold text-card-foreground transition-colors duration-200 hover:bg-amber-50 dark:border-amber-800/50 dark:hover:bg-amber-950/40"
             >
               {copied ? <Check size={12} /> : <Copy size={12} />}
               {copied ? "Copied" : "Copy"}
@@ -169,7 +168,7 @@ export default function StudentSecurityCard() {
         <button
           type="submit"
           disabled={saving}
-          className="inline-flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-cnhs-green-dark text-[11px] font-semibold text-white transition-colors hover:bg-[#246f54] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-4"
+          className="inline-flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-cnhs-green-dark text-[11px] font-semibold text-white transition-colors duration-200 hover:bg-[#246f54] active:bg-[#1f5f48] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-4"
         >
           {saving ? (
             <Loader2 size={13} className="animate-spin" />
@@ -211,7 +210,7 @@ function PasswordField({
           type="button"
           onClick={onToggleShow}
           className={cn(
-            "absolute right-1.5 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-slate-400 hover:bg-white hover:text-slate-600"
+            "absolute right-1.5 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-slate-400 transition-colors duration-200 hover:bg-muted hover:text-card-foreground"
           )}
           aria-label={show ? "Hide password" : "Show password"}
         >

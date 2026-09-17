@@ -17,6 +17,7 @@ import {
   Download,
 } from "lucide-react";
 import Header from "@/components/layout/Header";
+import PageHelp from "@/components/shared/PageHelp";
 import AdminAralFacilitatorAssignPanel from "@/components/admin/monitoring/AdminAralFacilitatorAssignPanel";
 import AdminAralApprovalPanel from "@/components/admin/monitoring/AdminAralApprovalPanel";
 import AdminAralProgressPanel from "@/components/admin/monitoring/AdminAralProgressPanel";
@@ -34,7 +35,10 @@ import {
   monitoringStatusStyles,
 } from "@/components/teacher/monitoring/shared";
 import { useAdminMonitoring } from "@/hooks/teacher/useMonitoring";
-import { groupMonitoredStudentsForAdmin } from "@/lib/teacher/monitoringMappers";
+import {
+  buildAdminMonitoringStats,
+  groupMonitoredStudentsForAdmin,
+} from "@/lib/teacher/monitoringMappers";
 import {
   RISK_LEVEL,
   normalizeRecommendationType,
@@ -48,6 +52,7 @@ import { ARAL_APPROVAL_STATUS } from "@/lib/monitoring/aralApproval";
 import { isAralRecommended } from "@/lib/monitoring/aralProgress";
 import { buildHtReceivedClassReportFiles } from "@/lib/monitoring/classReportFiles";
 import { cn } from "@/lib/utils";
+import AppSelect from "@/components/shared/AppSelect";
 
 const MONITORING_TABS = [
   { id: "received", label: "Received files" },
@@ -291,7 +296,6 @@ export default function AdminMonitoringPage() {
   const {
     students,
     classSummaries,
-    stats,
     profile,
     filterOptions,
     loading,
@@ -352,7 +356,12 @@ export default function AdminMonitoringPage() {
         recommendation === "All Recommendations" ||
         normalizeRecommendationType(learner.recommendation) ===
           normalizeRecommendationType(recommendation);
-      const learnerRisk = normalizeRiskLevel(learner.riskLevel);
+      const ungraded =
+        learner.hasClassSubjectGrade === false ||
+        learner.riskLevel === "—" ||
+        learner.riskLevel == null ||
+        learner.riskLevel === "";
+      const learnerRisk = ungraded ? null : normalizeRiskLevel(learner.riskLevel);
       const matchesRisk = risk === "All Risks" || learnerRisk === risk;
       const matchesStatus =
         status === "All Status" || learner.monitoringStatus === status;
@@ -404,9 +413,17 @@ export default function AdminMonitoringPage() {
     [filtered, classSummaries]
   );
 
+  const kpiStats = useMemo(
+    () =>
+      buildAdminMonitoringStats(dedupedMonitored, classSummaries, {
+        alreadyGrouped: true,
+      }),
+    [dedupedMonitored, classSummaries]
+  );
+
   const htIntervention = useMemo(
-    () => buildHtInterventionSummary(students, classSummaries),
-    [students, classSummaries]
+    () => buildHtInterventionSummary(dedupedMonitored, classSummaries),
+    [dedupedMonitored, classSummaries]
   );
 
   const actionCounts = useMemo(() => {
@@ -436,10 +453,10 @@ export default function AdminMonitoringPage() {
       setActiveTab("received");
     } else if (actionCounts.pendingAralApprovals > 0) {
       setActiveTab("approve");
-    } else if (stats.aral > 0) {
+    } else if (kpiStats.aral > 0) {
       setActiveTab("students");
       setMonitoredSubview("aral");
-    } else if (stats.totalAtRisk > 0) {
+    } else if (kpiStats.classroomRemedialLearners > 0 || kpiStats.totalAtRisk > 0) {
       setActiveTab("students");
       setMonitoredSubview("nonAral");
     } else {
@@ -451,8 +468,9 @@ export default function AdminMonitoringPage() {
     classSummaries.length,
     actionCounts.pendingFiles,
     actionCounts.pendingAralApprovals,
-    stats.aral,
-    stats.totalAtRisk,
+    kpiStats.aral,
+    kpiStats.classroomRemedialLearners,
+    kpiStats.totalAtRisk,
   ]);
 
   function goToTab(tabId, subview) {
@@ -591,6 +609,16 @@ export default function AdminMonitoringPage() {
         description="Track at-risk learners, ARAL approvals, and remediation across classes."
         controls={
           <>
+            <PageHelp
+              summary="School-wide recommendations, ARAL approvals, and remediation oversight."
+              steps={[
+                "Filter by school year, quarter, grade, or search a learner.",
+                "Review recommendations (ARAL Learners or Classroom Remedial) from ECR grades.",
+                "Use ARAL Approvals for Head Teacher review of facilitator class reports.",
+                "Intervention Excel exports recorded progress — not a causation claim.",
+                "Attendance does not drive academic risk; use Attendance for AM/PM records.",
+              ]}
+            />
             <button
               type="button"
               onClick={handleExportInterventionCaseload}
@@ -655,67 +683,56 @@ export default function AdminMonitoringPage() {
             className="h-9 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-[12px] text-slate-700 outline-none placeholder:text-slate-400 focus:border-cnhs-green"
           />
           <div className="flex flex-wrap items-center gap-2">
-            <select
+            <AppSelect
+              label="School year"
               value={schoolYear || activeSchoolYear}
-              onChange={(e) =>
-                handleServerFilterChange({ schoolYear: e.target.value })
+              onChange={(next) =>
+                handleServerFilterChange({ schoolYear: next })
               }
-              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 outline-none focus:border-cnhs-green"
-            >
-              {filterOptions.schoolYears.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-            <select
+              options={filterOptions.schoolYears}
+              className="w-[148px]"
+              triggerClassName="h-9 rounded-lg text-[11px] font-medium"
+            />
+            <AppSelect
+              label="Term"
               value={quarter}
-              onChange={(e) =>
-                handleServerFilterChange({ quarter: e.target.value })
+              onChange={(next) =>
+                handleServerFilterChange({ quarter: next })
               }
-              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 outline-none focus:border-cnhs-green"
-            >
-              {(filterOptions.quarters.length > 1
-                ? filterOptions.quarters
-                : [
-                    "All Terms",
-                    "Term 1",
-                    "Term 2",
-                    "Term 3",
-                    "Final Grade / Average",
-                  ]
-              ).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-            <select
+              options={
+                filterOptions.quarters.length > 1
+                  ? filterOptions.quarters
+                  : [
+                      "All Terms",
+                      "Term 1",
+                      "Term 2",
+                      "Term 3",
+                      "Final Grade / Average",
+                    ]
+              }
+              className="w-[168px]"
+              triggerClassName="h-9 rounded-lg text-[11px] font-medium"
+            />
+            <AppSelect
+              label="Grade"
               value={grade}
-              onChange={(e) =>
-                handleServerFilterChange({ grade: e.target.value })
+              onChange={(next) =>
+                handleServerFilterChange({ grade: next })
               }
-              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 outline-none focus:border-cnhs-green"
-            >
-              {filterOptions.grades.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-            <select
+              options={filterOptions.grades}
+              className="w-[132px]"
+              triggerClassName="h-9 rounded-lg text-[11px] font-medium"
+            />
+            <AppSelect
+              label="Section"
               value={section}
-              onChange={(e) =>
-                handleServerFilterChange({ section: e.target.value })
+              onChange={(next) =>
+                handleServerFilterChange({ section: next })
               }
-              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 outline-none focus:border-cnhs-green"
-            >
-              {filterOptions.sections.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+              options={filterOptions.sections}
+              className="w-[148px]"
+              triggerClassName="h-9 rounded-lg text-[11px] font-medium"
+            />
             <button
               type="button"
               onClick={() => setMoreFiltersOpen((open) => !open)}
@@ -751,44 +768,37 @@ export default function AdminMonitoringPage() {
 
         {moreFiltersOpen ? (
           <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
-            <select
+            <AppSelect
+              label="Recommendation"
               value={recommendation}
-              onChange={(e) => setRecommendation(e.target.value)}
-              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 outline-none focus:border-cnhs-green"
-            >
-              {filterOptions.interventions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-            <select
+              onChange={setRecommendation}
+              options={filterOptions.interventions}
+              className="w-[168px]"
+              triggerClassName="h-9 rounded-lg text-[11px] font-medium"
+            />
+            <AppSelect
+              label="Risk"
               value={risk}
-              onChange={(e) => setRisk(e.target.value)}
-              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 outline-none focus:border-cnhs-green"
-            >
-              {(filterOptions.risks ?? [
-                "All Risks",
-                RISK_LEVEL.HIGH,
-                RISK_LEVEL.MODERATE,
-                RISK_LEVEL.LOW,
-              ]).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-            <select
+              onChange={setRisk}
+              options={
+                filterOptions.risks ?? [
+                  "All Risks",
+                  RISK_LEVEL.HIGH,
+                  RISK_LEVEL.MODERATE,
+                  RISK_LEVEL.LOW,
+                ]
+              }
+              className="w-[148px]"
+              triggerClassName="h-9 rounded-lg text-[11px] font-medium"
+            />
+            <AppSelect
+              label="Status"
               value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 outline-none focus:border-cnhs-green"
-            >
-              {filterOptions.statuses.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+              onChange={setStatus}
+              options={filterOptions.statuses}
+              className="w-[148px]"
+              triggerClassName="h-9 rounded-lg text-[11px] font-medium"
+            />
           </div>
         ) : null}
       </section>
@@ -823,20 +833,11 @@ export default function AdminMonitoringPage() {
       <div className="mb-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-2.5 sm:p-3">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
           <StatCard
-            label="At-Risk"
-            value={stats.totalAtRisk}
-            icon={Users}
-            tone="bg-sky-50 text-sky-600"
-            alert={stats.totalAtRisk > 0}
-            hint="Open Monitored · At-Risk Non-ARAL"
-            onClick={() => goToTab("students", "nonAral")}
-          />
-          <StatCard
-            label="ARAL"
-            value={stats.aral}
+            label="ARAL learners"
+            value={kpiStats.aral}
             icon={Clock3}
             tone="bg-orange-50 text-cnhs-orange"
-            alert={stats.aral > 0}
+            alert={kpiStats.aral > 0}
             hint={
               actionCounts.pendingAralApprovals > 0
                 ? "Open Approve ARAL"
@@ -850,58 +851,69 @@ export default function AdminMonitoringPage() {
             }
           />
           <StatCard
-            label="Remedial"
-            value={stats.remediation}
-            icon={BookOpen}
-            tone="bg-green-50 text-cnhs-green-dark"
-            hint="Open Monitored · At-Risk Non-ARAL"
+            label="Classroom remedial"
+            value={kpiStats.classroomRemedialLearners}
+            icon={Users}
+            tone="bg-sky-50 text-sky-600"
+            alert={kpiStats.classroomRemedialLearners > 0}
+            hint="Open Monitored · Classroom remedial"
             onClick={() => goToTab("students", "nonAral")}
           />
-          <StatCard
-            label="Ongoing"
-            value={stats.ongoing}
-            icon={AlertTriangle}
-            tone="bg-red-50 text-red-500"
-            alert={stats.ongoing > 0}
-            hint="Open ARAL assessments"
-            onClick={() => goToTab("progress")}
-          />
-          <StatCard
-            label="Completed"
-            value={stats.completed}
-            icon={CheckCircle2}
-            tone="bg-emerald-50 text-emerald-600"
-            hint="Open Monitored students"
-            onClick={() => goToTab("students", "aral")}
-          />
-        </div>
-        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <StatCard
-            label="Not started"
-            value={htIntervention.notStarted}
-            icon={Clock3}
-            tone="bg-slate-50 text-slate-500"
-            onClick={() => goToTab("students")}
-          />
-          <StatCard
-            label="Further support"
-            value={htIntervention.needsFurtherSupport}
-            icon={AlertTriangle}
-            tone="bg-orange-50 text-cnhs-orange"
-            onClick={() => goToTab("students")}
-          />
-          <StatCard
-            label="Further monitoring"
-            value={htIntervention.forFurtherMonitoring}
-            icon={Clock3}
-            tone="bg-amber-50 text-amber-700"
-            onClick={() => goToTab("students")}
-          />
+          {htIntervention.notStarted > 0 ? (
+            <StatCard
+              label="Not started"
+              value={htIntervention.notStarted}
+              icon={Clock3}
+              tone="bg-slate-50 text-slate-500"
+              hint="Open Monitored students"
+              onClick={() => goToTab("students")}
+            />
+          ) : null}
+          {kpiStats.ongoing > 0 ? (
+            <StatCard
+              label="Needs follow-up"
+              value={kpiStats.ongoing}
+              icon={AlertTriangle}
+              tone="bg-red-50 text-red-500"
+              alert
+              hint="Open ARAL assessments"
+              onClick={() => goToTab("progress")}
+            />
+          ) : null}
+          {htIntervention.needsFurtherSupport > 0 ? (
+            <StatCard
+              label="Further support"
+              value={htIntervention.needsFurtherSupport}
+              icon={AlertTriangle}
+              tone="bg-orange-50 text-cnhs-orange"
+              onClick={() => goToTab("students")}
+            />
+          ) : null}
+          {htIntervention.forFurtherMonitoring > 0 ? (
+            <StatCard
+              label="Further monitoring"
+              value={htIntervention.forFurtherMonitoring}
+              icon={Clock3}
+              tone="bg-amber-50 text-amber-700"
+              onClick={() => goToTab("students")}
+            />
+          ) : null}
+          {kpiStats.completed > 0 ? (
+            <StatCard
+              label="Completed"
+              value={kpiStats.completed}
+              icon={CheckCircle2}
+              tone="bg-emerald-50 text-emerald-600"
+              hint="Open Monitored students"
+              onClick={() => goToTab("students", "aral")}
+            />
+          ) : null}
           <StatCard
             label="Classroom remedial classes"
-            value={htIntervention.classroomRemedial}
+            value={kpiStats.remediation}
             icon={BookOpen}
             tone="bg-green-50 text-cnhs-green-dark"
+            hint="Open Monitored · Classroom remedial"
             onClick={() => goToTab("students", "nonAral")}
           />
         </div>

@@ -10,15 +10,15 @@ import {
 import { cn } from "@/lib/utils";
 
 const statusStyles = {
-  saved: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-  progress: "bg-sky-50 text-sky-700 ring-sky-100",
-  draft: "bg-slate-100 text-slate-500 ring-slate-200",
-  ready: "bg-violet-50 text-violet-700 ring-violet-100",
+  saved: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
+  progress: "bg-cnhs-green-soft text-cnhs-green-dark",
+  draft: "bg-slate-100 text-slate-500 ring-1 ring-slate-200",
+  ready: "bg-violet-50 text-violet-700 ring-1 ring-violet-100",
 };
 
 const typeStyles = {
   weekly: "text-emerald-700",
-  assessment: "text-sky-700",
+  assessment: "text-cnhs-green-dark",
   report: "text-violet-700",
 };
 
@@ -122,7 +122,7 @@ export default function AralSectionFilesTable({
                   <td className="px-4 py-3">
                     <span
                       className={cn(
-                        "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1",
+                        "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold",
                         statusStyles[file.statusTone] || statusStyles.draft
                       )}
                     >

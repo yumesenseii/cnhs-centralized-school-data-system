@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { upsertGrade } from "@/lib/supabase/queries/myClasses";
 import { cn } from "@/lib/utils";
+import { PriorityCue } from "@/components/teacher/monitoring/shared";
 
 function emptyDraftFromLearners(learners = []) {
   const draft = {};
@@ -53,14 +54,14 @@ function riskLabel(value) {
 
 function termColumnClass(quarterNumber, columnQuarter) {
   if (Number(quarterNumber) === Number(columnQuarter)) {
-    return "bg-[#f0faf4]";
+    return "bg-green-50";
   }
   return "";
 }
 
 /** LIS-style spreadsheet cell */
 const th =
-  "sticky top-0 z-10 border border-slate-200 bg-[#f3f3f3] px-2 py-1.5 text-left text-[11px] font-semibold text-slate-600 whitespace-nowrap";
+  "sticky top-0 z-10 border border-slate-200 bg-slate-100 px-2 py-1.5 text-left text-[11px] font-semibold text-slate-600 whitespace-nowrap";
 const td =
   "border border-slate-200 bg-white px-2 py-1 text-[12px] leading-snug text-slate-800 whitespace-nowrap";
 
@@ -148,8 +149,17 @@ export default function ClassReportFileModal({
   useEffect(() => {
     setDraft(emptyDraftFromLearners(allLearners));
     setFormError("");
-    setToast("");
   }, [file?.id, allLearners]);
+
+  useEffect(() => {
+    setToast("");
+  }, [file?.id]);
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = window.setTimeout(() => setToast(""), 3200);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   function setGradeCell(learnerId, quarter, value) {
     setDraft((prev) => ({
@@ -219,8 +229,17 @@ export default function ClassReportFileModal({
           return;
         }
       }
-      setToast(`Saved ${updates.length} grade cell(s).`);
-      onSaved?.();
+      try {
+        await onSaved?.({
+          updates,
+          subject: file.subject,
+          classId: file.classId,
+          schoolYear: file.schoolYear,
+        });
+      } catch {
+        // Grades already persisted; Priority may stay stale until Refresh.
+      }
+      setToast("Saved");
       onModeChange?.("view");
     } catch (err) {
       setFormError(err?.message || "Unable to save grades.");
@@ -332,7 +351,7 @@ export default function ClassReportFileModal({
         {/* Edge-to-edge spreadsheet */}
         <div className="relative min-h-0 flex-1 overflow-auto bg-white">
           <form id="class-report-edit-form" onSubmit={handleSave} className="h-full">
-            <table className="w-full min-w-[860px] border-collapse">
+            <table className="w-full min-w-[920px] border-collapse">
               <thead>
                 <tr>
                   <th className={cn(th, "w-10 text-center")}>#</th>
@@ -352,6 +371,9 @@ export default function ClassReportFileModal({
                       </span>
                     ) : null}
                   </th>
+                  <th className={cn(th, "min-w-[72px] text-center")}>
+                    Priority
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -364,7 +386,7 @@ export default function ClassReportFileModal({
                   };
                   return (
                     <tr key={learner.id} className="hover:bg-slate-50/80">
-                      <td className={cn(td, "bg-[#fafafa] text-center text-slate-500")}>
+                      <td className={cn(td, "bg-slate-50 text-center text-slate-500")}>
                         {idx + 1}
                       </td>
                       <td className={cn(td, "text-left")}>{learner.name}</td>
@@ -400,6 +422,9 @@ export default function ClassReportFileModal({
                       ))}
                       <td className={cn(td, "text-center text-slate-600")}>
                         {riskLabel(learner.riskLevel)}
+                      </td>
+                      <td className={cn(td, "text-center")}>
+                        <PriorityCue learner={learner} />
                       </td>
                     </tr>
                   );
@@ -452,7 +477,7 @@ export default function ClassReportFileModal({
             {formError}
           </p>
         ) : null}
-        {editing && toast ? (
+        {toast ? (
           <p className="shrink-0 border-t border-green-100 bg-green-50 px-5 py-1.5 text-[12px] font-medium text-cnhs-green-dark">
             {toast}
           </p>

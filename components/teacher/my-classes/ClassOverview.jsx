@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
+import AppSelect from "@/components/shared/AppSelect";
 import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import EClassUploadDialog from "@/components/teacher/my-classes/EClassUploadDialog";
@@ -23,14 +24,15 @@ import { useClassDetails } from "@/hooks/teacher/useMyClasses";
 import { useClassReport } from "@/hooks/teacher/useClassReport";
 import { getCurrentTeacherSession } from "@/lib/supabase/queries/myClasses";
 import {
+  exportClassPerformanceSystemReport,
   exportClassReportExcel,
-  exportTeacherReportsPdf,
 } from "@/lib/teacher/reportsExport";
 import { UPLOAD_STORAGE_KEY } from "@/data/teacher/lessonPlans";
 import { buildQuarterlyAverages } from "@/lib/teacher/myClassesMappers";
 import { termLabel } from "@/lib/academic/termLabels";
 import { createDeleteRequest } from "@/lib/supabase/queries/deleteRequests";
 import DeleteConfirmModal from "@/components/shared/DeleteConfirmModal";
+import { useAppToast } from "@/components/shared/AppToast";
 
 export default function ClassOverview({ classId }) {
   const router = useRouter();
@@ -55,7 +57,7 @@ export default function ClassOverview({ classId }) {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [teacherId, setTeacherId] = useState(null);
-  const [toast, setToast] = useState("");
+  const { showToast } = useAppToast();
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [requesting, setRequesting] = useState(false);
 
@@ -69,11 +71,11 @@ export default function ClassOverview({ classId }) {
     if (reportLoading) return;
     const result = await generateReport();
     if (!result) {
-      setToast("Unable to generate class report. Please try again.");
+      showToast("Unable to generate class report. Please try again.");
       return;
     }
     if (!result.hasGrades) {
-      setToast(
+      showToast(
         "No grades uploaded yet. Import an E-Class Record before generating a report."
       );
       return;
@@ -137,26 +139,32 @@ export default function ClassOverview({ classId }) {
   function handleExportReportPdf() {
     if (!report?.classReport) return;
     try {
-      exportTeacherReportsPdf({
+      exportClassPerformanceSystemReport({
+        classReport: report.classReport,
+        preview: report.preview,
         teacherName: report.teacherName,
         schoolYear: report.schoolYear,
         quarter: report.quarter,
-        summary: report.summary,
-        classReports: [report.classReport],
-        charts: report.charts,
+        generatedAt: report.preview?.generatedAt
+          ? new Date(report.preview.generatedAt)
+          : new Date(),
       });
     } catch (err) {
-      setToast(err?.message ?? "Unable to export PDF.");
+      showToast(err?.message ?? "Unable to export PDF.");
     }
   }
 
   async function handleExportReportExcel() {
     if (!report?.classReport) return;
     try {
-      await exportClassReportExcel(report.classReport, report.charts);
-      setToast("Excel export downloaded.");
+      await exportClassReportExcel(
+        report.classReport,
+        report.charts,
+        report.preview
+      );
+      showToast("Excel export downloaded.");
     } catch (err) {
-      setToast(err?.message ?? "Unable to export Excel.");
+      showToast(err?.message ?? "Unable to export Excel.");
     }
   }
 
@@ -303,12 +311,13 @@ export default function ClassOverview({ classId }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-          <label className="inline-flex h-8 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 text-[11px] font-semibold text-slate-600 shadow-sm">
+          <div className="inline-flex h-8 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 text-[11px] font-semibold text-slate-600 shadow-sm">
             <span className="text-slate-400">Term</span>
-            <select
+            <AppSelect
+              label="Term"
               value={String(viewQuarter)}
-              onChange={(e) => {
-                const n = Number(e.target.value);
+              onChange={(next) => {
+                const n = Number(next);
                 const target = termOptions.find((opt) => opt.value === n);
                 if (target?.classId && target.classId !== classId) {
                   router.push(`/teacher/my-classes/${target.classId}`);
@@ -316,15 +325,15 @@ export default function ClassOverview({ classId }) {
                 }
                 setViewQuarter(n);
               }}
-              className="cursor-pointer bg-transparent text-[11px] font-semibold text-slate-700 outline-none"
-            >
-              {termOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </label>
+              options={termOptions.map((opt) => ({
+                value: String(opt.value),
+                label: opt.label,
+              }))}
+              size="pill"
+              className="min-w-0"
+              triggerClassName="h-8 w-auto border-0 bg-transparent px-1 shadow-none font-semibold text-[11px] text-slate-700 hover:bg-transparent"
+            />
+          </div>
           <Link
             href="/teacher/my-classes"
             className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 shadow-sm hover:bg-slate-50"
@@ -334,12 +343,6 @@ export default function ClassOverview({ classId }) {
           </Link>
         </div>
       </header>
-
-      {toast ? (
-        <div className="mb-4 rounded-xl border border-green-100 bg-green-50 px-3 py-2.5 text-[12px] font-medium text-cnhs-green-dark">
-          {toast}
-        </div>
-      ) : null}
 
       <div className="mb-4">
         <QuickActions
@@ -464,13 +467,12 @@ export default function ClassOverview({ classId }) {
         onSuccess={async (result) => {
           const learners = result?.imported ?? 0;
           const grades = result?.gradesUpserted ?? 0;
-          setToast(
+          showToast(
             `Imported ${learners} learner${learners === 1 ? "" : "s"}${
               grades ? ` and ${grades} grade record${grades === 1 ? "" : "s"}` : ""
             }.`
           );
           await refresh();
-          window.setTimeout(() => setToast(""), 3200);
         }}
       />
 
@@ -504,12 +506,11 @@ export default function ClassOverview({ classId }) {
           });
           setRequesting(false);
           setDeleteConfirm(null);
-          setToast(
+          showToast(
             result.error
               ? result.error.message
               : "Request sent to the head teacher."
           );
-          window.setTimeout(() => setToast(""), 3200);
         }}
       />
     </motion.div>

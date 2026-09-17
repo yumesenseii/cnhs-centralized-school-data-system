@@ -1,20 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Menu, Search } from "lucide-react";
+import { ArrowRight, Menu, Search } from "lucide-react";
 import { loginContent, LOGIN_COLORS } from "@/lib/constants/loginContent";
+import { cn } from "@/lib/utils";
 
-function PortalLoginButton({ className = "" }) {
+function PortalLoginButton({ scrolled, className = "" }) {
   return (
     <Link
       href="/login"
-      className={`inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-4 text-[11px] font-bold uppercase tracking-[0.04em] text-[#123D2C] shadow-sm transition-colors duration-200 hover:bg-[#ffda45] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b4027] ${className}`}
-      style={{ backgroundColor: LOGIN_COLORS.gold }}
+      className={cn(
+        "inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-full px-4 text-[11px] font-bold uppercase tracking-[0.04em] shadow-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4c430]",
+        scrolled
+          ? "bg-cnhs-green-dark text-white hover:bg-[#246f54]"
+          : "text-[#123D2C] hover:bg-[#ffda45] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b4027]",
+        className
+      )}
+      style={scrolled ? undefined : { backgroundColor: LOGIN_COLORS.gold }}
     >
-      CNHS Learn
+      Log in
+      <ArrowRight size={12} />
     </Link>
   );
 }
@@ -35,10 +43,6 @@ function DotGrid({ className = "" }) {
   );
 }
 
-/**
- * Abstract CNHS corner motif based on the supplied green / gold artwork.
- * Built as lightweight CSS shapes so it stays crisp and responsive.
- */
 function HeroMotif() {
   return (
     <>
@@ -66,8 +70,35 @@ function HeroMotif() {
   );
 }
 
+function BrandLogo({ scrolled = false, size = "md" }) {
+  const dim = size === "lg" ? "h-12 w-12 sm:h-14 sm:w-14" : "h-11 w-11 sm:h-12 sm:w-12";
+  return (
+    <motion.div
+      whileHover={{ scale: 1.06, rotate: -3 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: "spring", stiffness: 380, damping: 18 }}
+      className={cn(
+        "relative shrink-0 overflow-hidden rounded-full bg-white shadow-[0_6px_18px_rgba(0,0,0,0.12)] ring-2 transition-shadow duration-300",
+        scrolled ? "ring-cnhs-green-dark/15" : "ring-white/40",
+        dim
+      )}
+    >
+      <Image
+        src="/cnhs-logo.png"
+        alt="Cambaog National High School logo"
+        width={56}
+        height={56}
+        data-keep-white="true"
+        className="h-full w-full object-contain p-0.5"
+        priority={size !== "lg"}
+      />
+    </motion.div>
+  );
+}
+
 export default function PortalLanding() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   const navigation = [
     ["Home", "/"],
@@ -76,30 +107,57 @@ export default function PortalLanding() {
     ["Contact", "#contact"],
   ];
 
+  useEffect(() => {
+    function onScroll() {
+      setScrolled(window.scrollY > 24);
+    }
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return undefined;
+    function onKeyDown(e) {
+      if (e.key === "Escape") setMobileNavOpen(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileNavOpen]);
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#f7faf7] text-slate-900">
-      <header className="absolute inset-x-0 top-0 z-30 border-b border-white/10 bg-[#073d25]/95 shadow-[0_4px_18px_rgba(0,0,0,0.12)]">
+      <header
+        className={cn(
+          "fixed inset-x-0 top-0 z-30 transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300",
+          scrolled
+            ? "border-b border-slate-200/80 bg-white/95 shadow-[0_8px_28px_rgba(15,23,42,0.08)] backdrop-blur-md"
+            : "border-b border-transparent bg-transparent shadow-none"
+        )}
+      >
         <div className="mx-auto flex h-[4.5rem] max-w-[1440px] items-center justify-between gap-5 px-5 sm:px-8 lg:px-12">
           <Link
             href="/"
             aria-label="CNHS home"
-            className="flex min-w-0 cursor-pointer items-center gap-3"
+            className="group flex min-w-0 cursor-pointer items-center gap-3"
           >
-            <Image
-              src="/cnhs-logo.png"
-              alt="Cambaog National High School logo"
-              width={56}
-              height={56}
-              data-keep-white="true"
-              className="h-11 w-11 shrink-0 rounded-full bg-white object-contain sm:h-12 sm:w-12"
-              priority
-            />
+            <BrandLogo scrolled={scrolled} />
             <div className="min-w-0">
-              <p className="truncate text-[14px] font-bold uppercase tracking-[-0.01em] text-white sm:text-[17px]">
+              <p
+                className={cn(
+                  "truncate text-[14px] font-bold uppercase tracking-[-0.01em] transition-colors duration-300 sm:text-[17px]",
+                  scrolled ? "text-[#123d2c]" : "text-white"
+                )}
+              >
                 Cambaog National High School
               </p>
-              <p className="hidden text-[10px] text-white/70 sm:block">
-                Cambaog, Bustos, Bulacan
+              <p
+                className={cn(
+                  "hidden text-[10px] transition-colors duration-300 sm:block",
+                  scrolled ? "text-slate-500" : "text-white/70"
+                )}
+              >
+                CNHS Learn · Cambaog, Bustos, Bulacan
               </p>
             </div>
           </Link>
@@ -113,11 +171,16 @@ export default function PortalLanding() {
                 <a
                   key={label}
                   href={href}
-                  className={`cursor-pointer border-b-2 py-2 text-[9px] font-semibold uppercase tracking-[0.05em] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4c430] ${
+                  className={cn(
+                    "cursor-pointer border-b-2 py-2 text-[9px] font-semibold uppercase tracking-[0.05em] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4c430]",
                     index === 0
-                      ? "border-[#f4c430] text-white"
-                      : "border-transparent text-white/75 hover:text-white"
-                  }`}
+                      ? scrolled
+                        ? "border-cnhs-green-dark text-cnhs-green-dark"
+                        : "border-[#f4c430] text-white"
+                      : scrolled
+                        ? "border-transparent text-slate-500 hover:text-[#123d2c]"
+                        : "border-transparent text-white/75 hover:text-white"
+                  )}
                 >
                   {label}
                 </a>
@@ -125,19 +188,29 @@ export default function PortalLanding() {
               <button
                 type="button"
                 aria-label="Search"
-                className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4c430]"
+                className={cn(
+                  "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4c430]",
+                  scrolled
+                    ? "text-slate-500 hover:bg-slate-100 hover:text-[#123d2c]"
+                    : "text-white/80 hover:bg-white/10 hover:text-white"
+                )}
               >
                 <Search size={14} />
               </button>
             </nav>
-            <PortalLoginButton />
+            <PortalLoginButton scrolled={scrolled} />
             <button
               type="button"
               aria-label="Open navigation"
               aria-expanded={mobileNavOpen}
               aria-controls="mobile-navigation"
               onClick={() => setMobileNavOpen((open) => !open)}
-              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-white/15 text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4c430] lg:hidden"
+              className={cn(
+                "inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4c430] lg:hidden",
+                scrolled
+                  ? "border border-slate-200 text-[#123d2c] hover:bg-slate-50"
+                  : "border border-white/15 text-white hover:bg-white/10"
+              )}
             >
               <Menu size={18} />
             </button>
@@ -151,14 +224,14 @@ export default function PortalLanding() {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
-            className="absolute inset-x-4 top-[4.85rem] overflow-hidden rounded-xl border border-white/10 bg-[#073d25] p-2 shadow-[0_16px_40px_rgba(0,0,0,0.3)] lg:hidden"
+            className="absolute inset-x-4 top-[4.85rem] overflow-hidden rounded-xl border border-slate-100 bg-white p-2 shadow-[0_16px_40px_rgba(15,23,42,0.16)] lg:hidden"
           >
             {navigation.map(([label, href]) => (
               <a
                 key={label}
                 href={href}
                 onClick={() => setMobileNavOpen(false)}
-                className="block cursor-pointer rounded-lg px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-white/80 transition-colors duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4c430]"
+                className="block cursor-pointer rounded-lg px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-slate-600 transition-colors duration-200 hover:bg-green-50 hover:text-cnhs-green-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4c430]"
               >
                 {label}
               </a>
@@ -170,7 +243,7 @@ export default function PortalLanding() {
       <main>
         <section
           id="home"
-          className="relative min-h-[640px] overflow-hidden bg-[#0a4c2a] pt-[4.5rem] sm:min-h-[720px]"
+          className="relative min-h-[640px] overflow-hidden bg-[#0a4c2a] sm:min-h-[720px]"
         >
           <Image
             src={loginContent.backgroundSrc}
@@ -196,7 +269,7 @@ export default function PortalLanding() {
           />
           <HeroMotif />
 
-          <div className="relative z-10 mx-auto flex min-h-[560px] max-w-[1440px] items-center px-6 pb-20 pt-20 sm:min-h-[640px] sm:px-10 lg:px-28 xl:px-36">
+          <div className="relative z-10 mx-auto flex min-h-[560px] max-w-[1440px] items-center px-6 pb-20 pt-28 sm:min-h-[640px] sm:px-10 sm:pt-32 lg:px-28 xl:px-36">
             <motion.div
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
@@ -213,7 +286,30 @@ export default function PortalLanding() {
                 education that inspires excellence, character, and lifelong
                 learning.
               </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <PortalLoginButton scrolled={false} />
+                <a
+                  href="#about"
+                  className="inline-flex h-9 cursor-pointer items-center rounded-full border border-white/35 bg-white/10 px-4 text-[11px] font-bold uppercase tracking-[0.04em] text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+                >
+                  Learn more
+                </a>
+              </div>
             </motion.div>
+          </div>
+
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] h-16 sm:h-20">
+            <svg
+              viewBox="0 0 1440 80"
+              preserveAspectRatio="none"
+              className="h-full w-full"
+              aria-hidden="true"
+            >
+              <path
+                d="M0,40 C240,80 480,0 720,36 C960,72 1200,8 1440,44 L1440,80 L0,80 Z"
+                fill="#f7faf7"
+              />
+            </svg>
           </div>
         </section>
 
@@ -292,28 +388,84 @@ export default function PortalLanding() {
         </section>
       </main>
 
-      <footer id="contact" className="border-t border-white/10 bg-[#072c1c]">
-        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-5 py-9 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-          <div className="flex items-start gap-3.5">
-            <Image
-              src="/cnhs-logo.png"
-              alt="Cambaog National High School logo"
-              width={48}
-              height={48}
-              className="h-12 w-12 shrink-0 object-contain"
-            />
-            <div>
-              <p className="text-[15px] font-semibold tracking-tight text-white">
-                {loginContent.schoolName}
-              </p>
-              <p className="mt-1 max-w-md text-[11px] leading-relaxed text-white/60">
-                Cambaog, Bustos, Bulacan · CNHS Learn
-              </p>
+      <footer id="contact" className="relative overflow-hidden text-white">
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(135deg, #052918 0%, #0a4c2a 42%, #0d6b4a 72%, #0e7a78 100%)",
+          }}
+        />
+        <div
+          className="pointer-events-none absolute -right-16 top-0 h-56 w-56 rounded-full opacity-30 blur-2xl"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(244,196,48,0.35) 0%, transparent 70%)",
+          }}
+        />
+        <div
+          className="pointer-events-none absolute -left-10 bottom-0 h-40 w-40 rounded-full opacity-25 blur-2xl"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(56,189,248,0.25) 0%, transparent 70%)",
+          }}
+        />
+
+        <div className="relative z-10 mx-auto max-w-6xl px-5 py-12 sm:px-8">
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex max-w-md items-start gap-3.5">
+              <BrandLogo scrolled size="lg" />
+              <div>
+                <p className="text-[16px] font-semibold tracking-tight text-white">
+                  {loginContent.schoolName}
+                </p>
+                <p className="mt-1.5 text-[12px] leading-relaxed text-white/70">
+                  Centralized school data for grades, attendance, ARAL, and
+                  learner monitoring — built for CNHS.
+                </p>
+                <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-white/85">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+                  Cambaog, Bustos, Bulacan
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">
+                  Explore
+                </p>
+                <ul className="mt-3 space-y-2">
+                  {navigation.map(([label, href]) => (
+                    <li key={label}>
+                      <a
+                        href={href}
+                        className="cursor-pointer text-[12px] text-white/75 transition-colors hover:text-white"
+                      >
+                        {label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">
+                  Portal
+                </p>
+                <p className="mt-3 max-w-[220px] text-[12px] leading-5 text-white/70">
+                  Authorized personnel can sign in to CNHS Learn.
+                </p>
+                <PortalLoginButton scrolled={false} className="mt-4" />
+              </div>
             </div>
           </div>
-          <p className="text-[10px] text-white/50">
-            Authorized school accounts only.
-          </p>
+
+          <div className="mt-10 border-t border-white/10 pt-5">
+            <p className="text-[10px] text-white/45">
+              © {new Date().getFullYear()} CNHS Learn · Cambaog National High
+              School
+            </p>
+          </div>
         </div>
       </footer>
     </div>

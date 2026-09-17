@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Eye } from "lucide-react";
 import RiskBadge from "@/components/academic-records/RiskBadge";
 import TablePagination from "@/components/academic-records/TablePagination";
+import LearnerName from "@/components/shared/LearnerName";
 import { cn } from "@/lib/utils";
 
 const ATTENTION_PAGE_SIZE = 10;
@@ -138,8 +139,13 @@ export default function LearnersAttention({
                       >
                         {learner.initials}
                       </span>
-                      <span className="text-[12px] font-semibold leading-4 text-slate-800">
-                        {learner.name}
+                      <span className="min-w-0">
+                        <LearnerName
+                          firstName={learner.firstName}
+                          middleName={learner.middleName}
+                          lastName={learner.lastName}
+                          name={learner.name}
+                        />
                       </span>
                     </div>
                   </td>

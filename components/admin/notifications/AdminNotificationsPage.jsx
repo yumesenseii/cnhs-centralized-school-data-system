@@ -10,6 +10,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import Header from "@/components/layout/Header";
+import PageHelp from "@/components/shared/PageHelp";
 import NotificationList from "@/components/notifications/NotificationList";
 import NotificationStats from "@/components/notifications/NotificationStats";
 import RecentActivity from "@/components/notifications/RecentActivity";
@@ -149,6 +150,16 @@ export default function AdminNotificationsPage() {
         title="Notifications"
         controls={
           <>
+            <PageHelp
+              summary="Personal alerts and school-wide lesson plan activity for Head Teachers."
+              steps={[
+                "Inbox lists alerts addressed to your account (reviews, delete requests, recommendations).",
+                "Use search and filters, then open an item to go to the related page.",
+                "Mark All as Read clears unread badges; Refresh reloads the list.",
+                "Recent Lesson Plan Activity shows school-wide submit / approve / revision events.",
+                "Approve or reject pending delete requests in the panel above the filters.",
+              ]}
+            />
             <button
               type="button"
               onClick={() => markAllRead()}
@@ -264,7 +275,7 @@ export default function AdminNotificationsPage() {
 
 function EmptyState({ hasNotifications }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-slate-100 bg-white px-6 py-10 text-center shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
+    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-100 bg-white px-6 py-10 text-center shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
       <span className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-400">
         <BellOff size={18} strokeWidth={1.8} />
       </span>
@@ -273,11 +284,20 @@ function EmptyState({ hasNotifications }) {
           ? "No matching notifications"
           : "No notifications in your inbox"}
       </p>
-      <p className="max-w-sm text-[12px] text-slate-500">
+      <p className="max-w-sm text-[12px] leading-5 text-slate-500">
         {hasNotifications
-          ? "Try clearing the search or filters to see the rest of your notifications."
-          : "Alerts addressed to your Head Teacher account appear here. School-wide lesson plan updates are listed in Recent Lesson Plan Activity."}
+          ? "Clear search or filters to see the rest of your inbox."
+          : "Items appear when teachers submit lesson plans, request deletes, or when recommendations need your review. Check Recent Lesson Plan Activity for school-wide updates."}
       </p>
+      {hasNotifications ? (
+        <p className="text-[11px] font-medium text-slate-500">
+          Next: clear filters above, then Refresh.
+        </p>
+      ) : (
+        <p className="text-[11px] font-medium text-slate-500">
+          Next: open Lesson Plans or Academic Monitoring, or tap Refresh later.
+        </p>
+      )}
     </div>
   );
 }

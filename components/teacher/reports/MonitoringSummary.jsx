@@ -1,33 +1,45 @@
 "use client";
 
-export default function MonitoringSummary({ monitoring }) {
+export default function MonitoringSummary({ interventions, monitoring }) {
+  const data = interventions || monitoring || {};
   const tiles = [
     {
       label: "ARAL Learners",
-      value: monitoring.aralScreening,
+      value: data.aral ?? data.aralScreening ?? "—",
       tone: "text-sky-700",
     },
     {
-      label: "Classroom Remedial (class-level)",
-      value: monitoring.classroomRemediation,
+      label: "Classroom Remedial",
+      value: data.classroomRemedial ?? data.classroomRemediation ?? "No",
+      hint: "Class-level",
       tone: "text-cnhs-green-dark",
     },
     {
       label: "Monitoring Completed",
-      value: monitoring.monitoringCompleted,
+      value: data.monitoringCompleted ?? 0,
       tone: "text-cnhs-green-dark",
     },
     {
       label: "Still Under Monitoring",
-      value: monitoring.stillUnderMonitoring,
+      value: data.stillUnderMonitoring ?? 0,
       tone: "text-amber-600",
+    },
+    {
+      label: "Showing Improvement",
+      value: data.showingImprovement ?? 0,
+      tone: "text-cnhs-green-dark",
+    },
+    {
+      label: "Needs Follow-up",
+      value: data.needsFollowUp ?? data.immediateFollowUp ?? 0,
+      tone: "text-red-600",
     },
   ];
 
   return (
     <section>
       <h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-        Monitoring Summary <span className="font-normal">· read-only</span>
+        Interventions & follow-up
       </h3>
       <div className="mt-2 grid grid-cols-2 gap-2">
         {tiles.map((item) => (
@@ -38,6 +50,9 @@ export default function MonitoringSummary({ monitoring }) {
             <p className={`mt-1 text-[12px] font-semibold ${item.tone}`}>
               {item.value}
             </p>
+            {item.hint ? (
+              <p className="mt-0.5 text-[10px] text-slate-400">{item.hint}</p>
+            ) : null}
           </div>
         ))}
       </div>

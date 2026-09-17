@@ -16,57 +16,69 @@ export default function StudentInterventionsPage() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      className="pb-5"
+      transition={{ duration: 0.22, ease: "easeOut" }}
+      className="pb-3"
     >
       <StudentPageHeader
         breadcrumb="Home / Interventions"
         title="Interventions"
-        subtitle="Recommendations and recorded progress from your teachers. You cannot edit these records."
+        subtitle="ARAL Learners and Classroom Remedial from your grades — view only."
       />
 
       {error ? (
-        <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+        <div className="mb-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-[12px] text-red-600">
           {error}
         </div>
       ) : null}
 
       {loading || !data ? (
-        <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-100 bg-white py-12 text-sm text-slate-500">
-          <Loader2 size={16} className="animate-spin" />
+        <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-100 bg-white py-10 text-[13px] text-slate-500">
+          <Loader2 size={15} className="animate-spin" />
           Loading interventions…
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <StudentSectionCard
             icon={ClipboardList}
-            title="Your recommendation summary"
-            subtitle="Based on your grades (ECR). Attendance is shown separately and is not used for academic risk."
+            title="Summary"
+            subtitle="Academic risk from ECR grades only."
           >
             <div className="flex flex-wrap items-center gap-2">
               <RiskPill value={data.summary.riskLevel} />
               <span className="text-[12px] text-slate-600">
                 {data.summary.activeInterventionCount
-                  ? `You have ${data.summary.activeInterventionCount} active recommendation${data.summary.activeInterventionCount === 1 ? "" : "s"}.`
-                  : "No intervention recommended right now."}
+                  ? `${data.summary.activeInterventionCount} active recommendation${data.summary.activeInterventionCount === 1 ? "" : "s"}.`
+                  : "No interventions right now."}
               </span>
             </div>
-            <p className="mt-3 text-[12px] leading-5 text-slate-500">
-              Talk to your subject teacher or adviser for next steps.
-            </p>
+            {data.summary.weakSubjects.length ? (
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-slate-400">
+                  Below 75
+                </span>
+                {data.summary.weakSubjects.map((subject) => (
+                  <span
+                    key={subject}
+                    className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-600"
+                  >
+                    {subject}
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </StudentSectionCard>
 
           <StudentSectionCard title="Active interventions">
-            <div className="space-y-3">
+            <div className="space-y-1.5">
               {data.interventions.length ? (
                 data.interventions.map((item) => (
                   <div
                     key={item.id}
-                    className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2"
+                    className="rounded-lg border border-slate-100 bg-slate-50/60 px-2.5 py-2"
                   >
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <Pill value={item.type} styles={interventionTypeStyles} />
                       <RiskPill value={item.riskLevel} />
                       <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-200">
@@ -84,135 +96,67 @@ export default function StudentInterventionsPage() {
                         </span>
                       ) : null}
                     </div>
-                    <p className="mt-2 text-[13px] font-semibold text-slate-800">
+                    <p className="mt-1.5 text-[12px] font-semibold text-slate-800">
                       {item.subject}
                       {item.sectionLabel ? ` · ${item.sectionLabel}` : ""}
+                      {item.grade != null ? ` · Grade ${item.grade}` : ""}
                     </p>
-                    {item.grade != null ? (
-                      <p className="mt-1 text-[12px] text-slate-600">
-                        Your grade:{" "}
-                        <span className="font-semibold">{item.grade}</span>
-                      </p>
-                    ) : null}
-                    <p className="mt-2 text-[12px] leading-5 text-slate-500">
+                    <p className="mt-0.5 text-[11px] leading-4 text-slate-500">
                       {item.explanation}
                     </p>
-                    {item.reasons?.length ? (
-                      <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] text-slate-500">
-                        {item.reasons.map((reason) => (
-                          <li key={reason}>{reason}</li>
-                        ))}
-                      </ul>
-                    ) : null}
                   </div>
                 ))
               ) : (
-                <p className="py-8 text-center text-xs text-slate-400">
-                  No intervention recommended at this time.
+                <p className="py-4 text-center text-[11px] text-slate-400">
+                  No interventions right now.
                 </p>
               )}
             </div>
           </StudentSectionCard>
 
-          {data.summary.weakSubjects.length ? (
-            <StudentSectionCard
-              title="Weak subjects"
-              subtitle="Subjects with final grade below 75"
-            >
-              <div className="flex flex-wrap gap-2">
-                {data.summary.weakSubjects.map((subject) => (
-                  <span
-                    key={subject}
-                    className="rounded-full bg-red-50 px-3 py-1 text-[11px] font-semibold text-red-600"
-                  >
-                    {subject}
-                  </span>
-                ))}
-              </div>
-            </StudentSectionCard>
-          ) : null}
-
           {data.recordedProgress?.checkCount ? (
             <StudentSectionCard
-              title="Recorded Progress"
-              subtitle="Latest Assessment from saved Pre / Mid / Post. Not a claim that intervention caused the change."
+              title="Recorded progress"
+              subtitle="Saved Pre / Mid / Post assessment — not a cause claim."
             >
-              <p className="text-[13px] font-semibold text-slate-800">
-                Latest Assessment {data.recordedProgress.label}
+              <p className="text-[12px] font-semibold text-slate-800">
+                Latest: {data.recordedProgress.label}
               </p>
-              <p className="mt-1 text-[12px] text-slate-500">
-                Baseline vs Latest:{" "}
+              <p className="mt-0.5 text-[11px] text-slate-500">
+                Baseline → Latest:{" "}
                 {data.recordedProgress.baseline?.percent ?? "—"}% →{" "}
                 {data.recordedProgress.latest?.percent ?? "—"}%
               </p>
             </StudentSectionCard>
           ) : null}
 
-          <StudentSectionCard title="Teacher follow-up status">
+          <StudentSectionCard title="Teacher follow-up">
             {data.monitoring ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
-                    Status
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-slate-800">
-                    {data.monitoring.status}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
-                    Intervention given
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-slate-800">
-                    {data.monitoring.interventionGiven || "—"}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
-                    Progress
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-slate-800">
-                    {data.monitoring.progress || "—"}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
-                    Last observation
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-slate-800">
-                    {data.monitoring.observationDate || "—"}
-                  </p>
-                </div>
-                {data.monitoring.evaluation ? (
-                  <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {[
+                  ["Status", data.monitoring.status],
+                  ["Intervention", data.monitoring.interventionGiven || "—"],
+                  ["Progress", data.monitoring.progress || "—"],
+                  ["Last observation", data.monitoring.observationDate || "—"],
+                ].map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-2"
+                  >
                     <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
-                      Teacher Evaluation
+                      {label}
                     </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-800">
-                      {data.monitoring.evaluation}
+                    <p className="mt-0.5 text-[12px] font-semibold text-slate-800">
+                      {value}
                     </p>
                   </div>
-                ) : null}
-                {data.monitoring.nextAction ? (
-                  <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5">
-                    <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
-                      Next action
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-800">
-                      {data.monitoring.nextAction}
-                    </p>
-                  </div>
-                ) : null}
+                ))}
               </div>
             ) : (
               <p className="text-[12px] text-slate-500">
-                No monitoring follow-up has been recorded by your teacher yet.
+                No teacher monitoring follow-up recorded yet.
               </p>
             )}
-            <p className="mt-3 text-[11px] leading-5 text-slate-400">
-              Follow-up status tracks support progress in school. It is not a
-              lesson or module upload.
-            </p>
           </StudentSectionCard>
         </div>
       )}

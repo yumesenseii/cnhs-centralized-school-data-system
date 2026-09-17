@@ -165,17 +165,6 @@ export default function TeacherAttendancePanel({
         </div>
       ) : null}
 
-      {sectionId && isAdviser ? (
-        <p className="rounded-lg border border-green-100 bg-green-50 px-3 py-1.5 text-[12px] text-cnhs-green-dark">
-          You are the class adviser. Save Morning and Afternoon after roll call.
-        </p>
-      ) : null}
-      {sectionId && !isAdviser ? (
-        <p className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-1.5 text-[12px] text-amber-800">
-          Daily official attendance is marked by the class adviser.
-        </p>
-      ) : null}
-
       <Sf2DailyAttendancePanel
         sectionId={sectionId}
         schoolYear={schoolYear}
@@ -186,6 +175,7 @@ export default function TeacherAttendancePanel({
         onSectionChange={requestSectionChange}
         onAttendanceDateChange={setAttendanceDate}
         onSaved={reloadDaily}
+        sectionIsAdviser={isAdviser}
       />
 
       <DailySectionMonthPanel

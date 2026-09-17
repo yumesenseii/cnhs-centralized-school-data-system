@@ -12,6 +12,8 @@ export default function AuthLayout() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.45, ease: "easeOut" }}
+      data-force-light="true"
+      data-keep-white="true"
       className="portal-body relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-8 sm:px-6"
     >
       <div className="portal-page__bg absolute inset-0" aria-hidden="true">
@@ -38,6 +40,8 @@ export default function AuthLayout() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: "easeOut", delay: 0.05 }}
           className="auth-container flex w-full overflow-hidden rounded-[24px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.28)]"
+          data-keep-white="true"
+          style={{ colorScheme: "light" }}
         >
           <LoginHero />
           <LoginForm />

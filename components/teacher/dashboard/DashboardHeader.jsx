@@ -1,6 +1,7 @@
 "use client";
 
 import { CalendarDays, Layers3 } from "lucide-react";
+import AppSelect from "@/components/shared/AppSelect";
 import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 
@@ -24,53 +25,36 @@ export default function DashboardHeader({ controls }) {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-        <label className="relative">
-          <span className="sr-only">School Year</span>
-          <CalendarDays
-            size={12}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-          />
-          <select
-            value={controls.schoolYear}
-            onChange={(event) =>
-              controls.onSchoolYearChange?.(event.target.value)
-            }
-            className="h-8 cursor-pointer rounded-full border border-slate-200 bg-white pl-8 pr-7 text-[11px] font-medium text-slate-600 shadow-sm outline-none transition-colors hover:bg-slate-50 focus:border-cnhs-green"
-          >
-            {controls.schoolYears?.length ? (
-              controls.schoolYears.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))
-            ) : (
-              <option value="">No school years</option>
-            )}
-          </select>
-        </label>
+        <AppSelect
+          label="School Year"
+          value={controls.schoolYear}
+          onChange={(next) => controls.onSchoolYearChange?.(next)}
+          options={
+            controls.schoolYears?.length
+              ? controls.schoolYears
+              : [{ value: "", label: "No school years" }]
+          }
+          icon={CalendarDays}
+          size="pill"
+          align="end"
+          className="w-[168px]"
+        />
 
-        <label className="relative">
-          <span className="sr-only">Term</span>
-          <Layers3
-            size={12}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-          />
-          <select
-            value={controls.quarterValue}
-            onChange={(event) =>
-              controls.onQuarterChange?.(event.target.value)
-            }
-            className="h-8 cursor-pointer rounded-full border border-slate-200 bg-white pl-8 pr-7 text-[11px] font-medium text-slate-600 shadow-sm outline-none transition-colors hover:bg-slate-50 focus:border-cnhs-green"
-          >
-            {(controls.quarters?.length ? controls.quarters : ["1"]).map(
-              (quarter) => (
-                <option key={quarter} value={quarter}>
-                  Term {quarter}
-                </option>
-              )
-            )}
-          </select>
-        </label>
+        <AppSelect
+          label="Term"
+          value={controls.quarterValue}
+          onChange={(next) => controls.onQuarterChange?.(next)}
+          options={(controls.quarters?.length ? controls.quarters : ["1"]).map(
+            (quarter) => ({
+              value: String(quarter),
+              label: `Term ${quarter}`,
+            })
+          )}
+          icon={Layers3}
+          size="pill"
+          align="end"
+          className="w-[132px]"
+        />
 
         <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 shadow-sm">
           <CalendarDays size={12} className="text-slate-400" />

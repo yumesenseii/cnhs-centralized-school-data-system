@@ -33,8 +33,15 @@ export default function SubmissionSuccess({
         Lesson Plan Successfully Submitted
       </h2>
       <p className="mx-auto mt-2 max-w-lg text-[13px] leading-6 text-slate-500">
-        Your lesson plan has been submitted to the Head Teacher for review. You will receive a
-        notification once the review is completed.
+        Your lesson plan has been submitted to the Head Teacher for review. You
+        will receive a notification once the review is completed.
+      </p>
+      <p className="mx-auto mt-2 max-w-lg text-[12px] font-medium text-cnhs-green-dark">
+        Next:{" "}
+        <Link href="/teacher/notifications" className="underline-offset-2 hover:underline">
+          check Notifications
+        </Link>{" "}
+        for the review result, or continue teaching tasks from the dashboard.
       </p>
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">

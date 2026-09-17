@@ -12,6 +12,8 @@ import RecentActivities from "@/components/teacher/dashboard/RecentActivities";
 import SystemRecommendations from "@/components/teacher/dashboard/SystemRecommendations";
 import TodaysTasks from "@/components/teacher/dashboard/TodaysTasks";
 import UpcomingDeadlines from "@/components/teacher/dashboard/UpcomingDeadlines";
+import TabSwitchPanel from "@/components/shared/TabSwitchPanel";
+import { termLabel } from "@/lib/academic/termLabels";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -44,10 +46,37 @@ function PanelCard({ title, children, className }) {
   );
 }
 
+function formatSchoolYearLabel(schoolYear) {
+  const raw = String(schoolYear ?? "").trim();
+  if (!raw) return "";
+  return /^sy\b/i.test(raw) ? raw : `SY ${raw}`;
+}
+
+function learnerCountFromStats(stats = []) {
+  for (const stat of stats) {
+    const match = String(stat.subtext ?? "").match(/of\s+(\d+)/i);
+    if (match) return Number(match[1]);
+  }
+  return null;
+}
+
+function buildSubtitle({ schoolYear, quarter, stats, classes }) {
+  const parts = [];
+  const sy = formatSchoolYearLabel(schoolYear);
+  if (sy) parts.push(sy);
+  if (quarter) parts.push(termLabel(quarter));
+  const learners = learnerCountFromStats(stats);
+  if (learners != null) parts.push(`${learners} learners`);
+  else if (classes?.length) parts.push(`${classes.length} classes`);
+  return parts.join(" · ");
+}
+
 /**
  * Teacher Academic Analytics shell — Summary answers who / what / next.
  */
 export default function TeacherAcademicAnalytics({
+  schoolYear = null,
+  quarter = null,
   stats = [],
   classes = [],
   recentActivities = [],
@@ -74,6 +103,7 @@ export default function TeacherAcademicAnalytics({
   );
   const hasRecentActivity = summaryActivities.length > 0;
   const hasDeadlines = upcomingDeadlines.length > 0;
+  const subtitle = buildSubtitle({ schoolYear, quarter, stats, classes });
 
   const openClassHref = primaryClassId
     ? `/teacher/my-classes/${primaryClassId}`
@@ -94,6 +124,9 @@ export default function TeacherAcademicAnalytics({
               <h2 className="text-sm font-semibold text-slate-900">
                 Academic Analytics
               </h2>
+              {subtitle ? (
+                <p className="mt-0.5 text-[11px] text-slate-500">{subtitle}</p>
+              ) : null}
             </div>
           </div>
 
@@ -114,7 +147,7 @@ export default function TeacherAcademicAnalytics({
                   aria-controls={`teacher-analytics-panel-${tab.id}`}
                   onClick={() => selectTab(tab.id)}
                   className={cn(
-                    "min-w-max cursor-pointer rounded-lg px-3 py-1.5 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cnhs-green/35",
+                    "min-w-max cursor-pointer rounded-lg px-3 py-1.5 text-[10px] font-semibold transition-[color,background-color,box-shadow,opacity,transform] duration-160 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cnhs-green/35",
                     active
                       ? "bg-cnhs-green-soft text-cnhs-green-dark"
                       : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
@@ -150,6 +183,7 @@ export default function TeacherAcademicAnalytics({
           ))}
         </div>
 
+        <TabSwitchPanel activeKey={activeTab} className="mt-0">
         {activeTab === "summary" ? (
           <>
             <div className="mt-4">
@@ -243,7 +277,7 @@ export default function TeacherAcademicAnalytics({
 
         {activeTab === "tasks" ? (
           <div className="mt-4 space-y-3">
-            <TodaysTasks tasks={todaysTasks} />
+            {todaysTasks?.items ? <TodaysTasks tasks={todaysTasks} /> : null}
             <div
               className={cn(
                 "grid grid-cols-1 gap-3",
@@ -269,6 +303,7 @@ export default function TeacherAcademicAnalytics({
             </div>
           </div>
         ) : null}
+        </TabSwitchPanel>
       </div>
     </section>
   );

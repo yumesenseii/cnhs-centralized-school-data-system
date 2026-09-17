@@ -17,6 +17,7 @@ import {
 } from "@/lib/supabase/queries/aralApprovals";
 import { getAdminSession } from "@/lib/supabase/queries/adminAuth";
 import { cn } from "@/lib/utils";
+import { useAppToast } from "@/components/shared/AppToast";
 
 const FILES_PAGE_SIZE = 10;
 
@@ -50,7 +51,7 @@ export default function AdminClassReportFilesPanel({
 }) {
   const [modalFile, setModalFile] = useState(null);
   const [reviewing, setReviewing] = useState(false);
-  const [toast, setToast] = useState("");
+  const { showToast } = useAppToast();
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [htFilter, setHtFilter] = useState("all");
@@ -138,7 +139,6 @@ export default function AdminClassReportFilesPanel({
   async function runReview(file, status, note) {
     setReviewing(true);
     setError("");
-    setToast("");
     const session = await getAdminSession();
     const result = await reviewClassReportForHt({
       learners: file.learners,
@@ -151,7 +151,7 @@ export default function AdminClassReportFilesPanel({
       setError(result.error.message);
       return;
     }
-    setToast(
+    showToast(
       status === ARAL_APPROVAL_DB.APPROVED
         ? `Approved ARAL recommendations in “${file.fileName}”.`
         : `Returned “${file.fileName}” to the teacher.`
@@ -183,11 +183,6 @@ export default function AdminClassReportFilesPanel({
 
       {error ? (
         <p className="mb-2 text-[12px] font-medium text-red-600">{error}</p>
-      ) : null}
-      {toast ? (
-        <p className="mb-2 text-[12px] font-medium text-cnhs-green-dark">
-          {toast}
-        </p>
       ) : null}
 
       {files.length === 0 ? (

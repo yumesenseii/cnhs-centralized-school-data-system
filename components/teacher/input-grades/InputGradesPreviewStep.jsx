@@ -38,7 +38,7 @@ export default function InputGradesPreviewStep({
     setUploading(true);
     setError("");
     setProgress(10);
-    setStatusLabel("Preparing assigned classes...");
+    setStatusLabel("Preparing your class…");
 
     try {
       const result = await importEClassRecord({
@@ -70,7 +70,7 @@ export default function InputGradesPreviewStep({
       setStatusLabel("Import complete.");
       await onSuccess?.(result);
     } catch (err) {
-      setError(err?.message ?? "Failed to import E-Class Record.");
+      setError(err?.message ?? "We couldn’t import this E-Class Record.");
       setUploading(false);
     }
   }
@@ -89,11 +89,11 @@ export default function InputGradesPreviewStep({
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <SummaryItem label="File" value={fileMeta?.name} />
           <SummaryItem
-            label="Learners detected"
+            label="Learners"
             value={String(learnerCount)}
           />
           <SummaryItem
-            label="Assigned class"
+            label="Class"
             value={selectedClass?.gradeSection}
           />
           <SummaryItem label="Subject" value={selectedClass?.subject} />
@@ -105,10 +105,10 @@ export default function InputGradesPreviewStep({
           />
           <SummaryItem label="School year" value={selectedClass?.schoolYear} />
           <SummaryItem
-            label="ECR grade / section"
+            label="Grade / section in this file"
             value={`${metadata?.grade_level || "—"} · ${metadata?.section || "—"}`}
           />
-          <SummaryItem label="ECR subject" value={metadata?.subject} />
+          <SummaryItem label="Subject in this file" value={metadata?.subject} />
         </div>
       </section>
 

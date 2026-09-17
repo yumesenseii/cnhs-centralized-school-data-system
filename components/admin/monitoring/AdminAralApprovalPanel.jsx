@@ -676,7 +676,7 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
                                       {learner.subjects.map((subject) => (
                                         <span
                                           key={subject}
-                                          className="inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 ring-1 ring-sky-100"
+                                          className="inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700"
                                         >
                                           {subject}
                                         </span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createMonitoringRecord,
   getStudentMonitoringDetail,
@@ -9,8 +9,8 @@ import {
 import { getAdminSession } from "@/lib/supabase/queries/adminAuth";
 import {
   getCachedAdminRoster,
-  getCachedBuiltMonitoringRoster,
   invalidateAdminRosterCache,
+  loadBuiltMonitoringRoster,
 } from "@/lib/admin/adminRosterCache";
 import {
   getEmptyAdminMonitoringStats,
@@ -19,9 +19,10 @@ import {
   saveAdminMonitoringUiSnapshot,
 } from "@/lib/admin/adminMonitoringUiCache";
 import {
-  getCachedBuiltTeacherRoster,
   getCachedTeacherRoster,
   invalidateTeacherRosterCache,
+  loadBuiltTeacherRoster,
+  patchCachedTeacherRosterAfterGradeSave,
 } from "@/lib/teacher/teacherRosterCache";
 import {
   hasTeacherMonitoringUiSnapshot,
@@ -35,6 +36,10 @@ import {
 import { listAralApprovals } from "@/lib/supabase/queries/aralApprovals";
 import { attachAralApprovals } from "@/lib/monitoring/aralApproval";
 import { syncRecommendationNotifications } from "@/lib/notifications/syncRecommendationNotifications";
+import {
+  applyGradeUpdatesToStudents,
+  repredictPatchedStudents,
+} from "@/lib/monitoring/patchClassReportGrades";
 import {
   buildAdminMonitoringStats,
   buildFilterOptions,
@@ -88,16 +93,20 @@ export function useTeacherMonitoring() {
   const [teacher, setTeacher] = useState(() => cached?.teacher ?? null);
   const [profile, setProfile] = useState(() => cached?.profile ?? null);
   const [error, setError] = useState("");
-  const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(
-    !hadSnapshot,
-    hadSnapshot
-  );
+  const { loading, refreshing, beginLoad, endLoad, endFirstPaint } =
+    useSoftLoadState(!hadSnapshot, hadSnapshot);
+  const studentsRef = useRef(students);
+  studentsRef.current = students;
+  const rfReadyRef = useRef(false);
 
   const refresh = useCallback(async ({ bustCache = false } = {}) => {
     beginLoad();
     setError("");
 
-    if (bustCache) invalidateTeacherRosterCache();
+    if (bustCache) {
+      invalidateTeacherRosterCache();
+      rfReadyRef.current = false;
+    }
 
     const session = await resolveTeacherSessionForMonitoring();
     if (session.error || !session.data) {
@@ -119,19 +128,71 @@ export function useTeacherMonitoring() {
       return;
     }
 
-    const roster = await getCachedBuiltTeacherRoster(result.data, {
-      teacherId: session.data.teacherId,
-    });
+    const paintRoster = (roster, extras = {}) => {
+      const approvalMap = extras.approvalMap ?? new Map();
+      const facilitatorMap = extras.facilitatorMap ?? new Map();
+      const studentsWithApprovals = attachAralApprovals(
+        roster.students,
+        approvalMap
+      );
+      const studentsWithFacilitators = studentsWithApprovals.map((student) => {
+        const assignment = facilitatorMap.get(student.studentId);
+        if (!assignment) {
+          return {
+            ...student,
+            aralFacilitatorAssigned: Boolean(student.aralFacilitatorAssigned),
+            aralFacilitatorTeacherId: student.aralFacilitatorTeacherId ?? null,
+            aralFacilitatorName: student.aralFacilitatorName ?? null,
+          };
+        }
+        return {
+          ...student,
+          aralFacilitatorAssigned: true,
+          aralFacilitatorTeacherId: assignment.facilitatorTeacherId,
+          aralFacilitatorName: assignment.facilitatorName,
+          aralAssignmentId: assignment.id,
+        };
+      });
+      const nextKpis = buildMonitoringKpis(
+        studentsWithFacilitators,
+        roster.classSummaries
+      );
+      setStudents(studentsWithFacilitators);
+      setClassSummaries(roster.classSummaries);
+      setKpis(nextKpis);
+      saveTeacherMonitoringUiSnapshot({
+        students: studentsWithFacilitators,
+        classSummaries: roster.classSummaries,
+        kpis: nextKpis,
+        teacher: session.data.teacher,
+        profile: session.data.profile,
+      });
+      return studentsWithFacilitators;
+    };
+
+    try {
+    let roster = await loadBuiltTeacherRoster(
+      result.data,
+      { teacherId: session.data.teacherId },
+      {
+        onShell: (shell) => {
+          if (rfReadyRef.current) return;
+          paintRoster(shell);
+          endFirstPaint();
+        },
+      }
+    );
+    if (roster?.predictionsPending) {
+      roster = await loadBuiltTeacherRoster(result.data, {
+        teacherId: session.data.teacherId,
+      });
+    }
 
     const schoolYear =
       roster.students[0]?.schoolYear ||
       roster.classSummaries[0]?.schoolYear ||
       null;
     const approvals = await listAralApprovals({ schoolYear });
-    const studentsWithApprovals = attachAralApprovals(
-      roster.students,
-      approvals.data ?? new Map()
-    );
 
     let facilitatorMap = new Map();
     try {
@@ -145,51 +206,28 @@ export function useTeacherMonitoring() {
       facilitatorMap = new Map();
     }
 
-    const studentsWithFacilitators = studentsWithApprovals.map((student) => {
-      const assignment = facilitatorMap.get(student.studentId);
-      if (!assignment) {
-        return {
-          ...student,
-          aralFacilitatorAssigned: Boolean(student.aralFacilitatorAssigned),
-          aralFacilitatorTeacherId: student.aralFacilitatorTeacherId ?? null,
-          aralFacilitatorName: student.aralFacilitatorName ?? null,
-        };
-      }
-      return {
-        ...student,
-        aralFacilitatorAssigned: true,
-        aralFacilitatorTeacherId: assignment.facilitatorTeacherId,
-        aralFacilitatorName: assignment.facilitatorName,
-        aralAssignmentId: assignment.id,
-      };
+    const studentsWithFacilitators = paintRoster(roster, {
+      approvalMap: approvals.data ?? new Map(),
+      facilitatorMap,
     });
-
-    const nextKpis = buildMonitoringKpis(
-      studentsWithFacilitators,
-      roster.classSummaries
-    );
-
-    setStudents(studentsWithFacilitators);
-    setClassSummaries(roster.classSummaries);
-    setKpis(nextKpis);
-    saveTeacherMonitoringUiSnapshot({
-      students: studentsWithFacilitators,
-      classSummaries: roster.classSummaries,
-      kpis: nextKpis,
-      teacher: session.data.teacher,
-      profile: session.data.profile,
-    });
+    if (!roster.predictionsPending) rfReadyRef.current = true;
     endLoad(true);
 
-    syncRecommendationNotifications({
-      profileId: session.data.profile?.id ?? null,
-      students: studentsWithFacilitators,
-      classSummaries: roster.classSummaries,
-    });
-  }, [beginLoad, endLoad]);
+    if (!roster.predictionsPending) {
+      syncRecommendationNotifications({
+        profileId: session.data.profile?.id ?? null,
+        students: studentsWithFacilitators,
+        classSummaries: roster.classSummaries,
+      });
+    }
+    } catch (err) {
+      setError(err?.message ?? "Unable to load monitoring data.");
+      endFirstPaint();
+    }
+  }, [beginLoad, endLoad, endFirstPaint]);
 
   useEffect(() => {
-    refresh();
+    refresh({ bustCache: false });
   }, [refresh]);
 
   const filterOptions = useMemo(
@@ -207,6 +245,41 @@ export function useTeacherMonitoring() {
     return { schoolYear, quarter };
   }, [classSummaries, students]);
 
+  const applyLocalStudentPatches = useCallback(
+    async ({ updates = [], subject, classId, schoolYear } = {}) => {
+      if (!updates.length) return;
+
+      const { students: patched, dirtyKeys } = applyGradeUpdatesToStudents(
+        studentsRef.current,
+        { subject, classId, schoolYear, updates }
+      );
+      studentsRef.current = patched;
+      setStudents(patched);
+
+      const predicted = await repredictPatchedStudents(patched, dirtyKeys, {
+        classId,
+        subject,
+      });
+      studentsRef.current = predicted;
+      setStudents(predicted);
+
+      const nextKpis = buildMonitoringKpis(predicted, classSummaries);
+      setKpis(nextKpis);
+      saveTeacherMonitoringUiSnapshot({
+        students: predicted,
+        classSummaries,
+        kpis: nextKpis,
+        teacher,
+        profile,
+      });
+      patchCachedTeacherRosterAfterGradeSave(teacher?.id ?? null, {
+        students: predicted,
+        updates,
+      });
+    },
+    [classSummaries, teacher, profile]
+  );
+
   return {
     students,
     classSummaries,
@@ -220,6 +293,7 @@ export function useTeacherMonitoring() {
     refreshing,
     error,
     refresh: () => refresh({ bustCache: true }),
+    applyLocalStudentPatches,
   };
 }
 
@@ -337,17 +411,19 @@ export function useAdminMonitoring() {
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [selectedLearner, setSelectedLearner] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(
-    !hadSnapshot,
-    hadSnapshot
-  );
+  const rfReadyRef = useRef(false);
+  const { loading, refreshing, beginLoad, endLoad, endFirstPaint } =
+    useSoftLoadState(!hadSnapshot, hadSnapshot);
 
   const refresh = useCallback(async (filters = {}) => {
     beginLoad();
     setError("");
 
     try {
-      if (filters.bustCache) invalidateAdminRosterCache();
+      if (filters.bustCache) {
+        invalidateAdminRosterCache();
+        rfReadyRef.current = false;
+      }
 
       const session = await getAdminSession();
       if (session.error) {
@@ -378,11 +454,65 @@ export function useAdminMonitoring() {
           ? `g${filters.gradeLevel || "all"}-s${filters.sectionName || "all"}`
           : "default";
 
-      const roster = await getCachedBuiltMonitoringRoster(scoped, {
-        schoolYear,
-        quarter,
-        scope,
-      });
+      const paintAdminRoster = (roster, extras = {}) => {
+        const facilitatorMap = extras.facilitatorMap ?? new Map();
+        const approvalMap = extras.approvalMap ?? new Map();
+        const studentsWithFacilitators = roster.students.map((student) => {
+          const assignment = facilitatorMap.get(student.studentId);
+          if (!assignment) {
+            return {
+              ...student,
+              aralFacilitatorAssigned: false,
+              aralFacilitatorTeacherId: null,
+              aralFacilitatorName: null,
+              aralAssignmentId: null,
+            };
+          }
+          return {
+            ...student,
+            aralFacilitatorAssigned: true,
+            aralFacilitatorTeacherId: assignment.facilitatorTeacherId,
+            aralFacilitatorName: assignment.facilitatorName,
+            aralAssignmentId: assignment.id,
+          };
+        });
+        const studentsWithApprovals = attachAralApprovals(
+          studentsWithFacilitators,
+          approvalMap
+        );
+        const nextStats = buildAdminMonitoringStats(
+          studentsWithApprovals,
+          roster.classSummaries
+        );
+        setStudents(studentsWithApprovals);
+        setClassSummaries(roster.classSummaries);
+        setStats(nextStats);
+        saveAdminMonitoringUiSnapshot({
+          students: studentsWithApprovals,
+          classSummaries: roster.classSummaries,
+          stats: nextStats,
+          profile: session.data ?? null,
+        });
+      };
+
+      let roster = await loadBuiltMonitoringRoster(
+        scoped,
+        { schoolYear, quarter, scope },
+        {
+          onShell: (shell) => {
+            if (rfReadyRef.current) return;
+            paintAdminRoster(shell);
+            endFirstPaint();
+          },
+        }
+      );
+      if (roster?.predictionsPending) {
+        roster = await loadBuiltMonitoringRoster(scoped, {
+          schoolYear,
+          quarter,
+          scope,
+        });
+      }
 
       const resolvedSchoolYear =
         schoolYear || roster.students[0]?.schoolYear || "SY 2026-2027";
@@ -407,26 +537,6 @@ export function useAdminMonitoring() {
         );
       }
 
-      const studentsWithFacilitators = roster.students.map((student) => {
-        const assignment = facilitatorMap.get(student.studentId);
-        if (!assignment) {
-          return {
-            ...student,
-            aralFacilitatorAssigned: false,
-            aralFacilitatorTeacherId: null,
-            aralFacilitatorName: null,
-            aralAssignmentId: null,
-          };
-        }
-        return {
-          ...student,
-          aralFacilitatorAssigned: true,
-          aralFacilitatorTeacherId: assignment.facilitatorTeacherId,
-          aralFacilitatorName: assignment.facilitatorName,
-          aralAssignmentId: assignment.id,
-        };
-      });
-
       let approvalMap = new Map();
       try {
         const approvals = await listAralApprovals({
@@ -440,25 +550,8 @@ export function useAdminMonitoring() {
         console.warn("[admin monitoring] approval fetch failed", approvalErr);
       }
 
-      const studentsWithApprovals = attachAralApprovals(
-        studentsWithFacilitators,
-        approvalMap
-      );
-
-      const nextStats = buildAdminMonitoringStats(
-        studentsWithApprovals,
-        roster.classSummaries
-      );
-
-      setStudents(studentsWithApprovals);
-      setClassSummaries(roster.classSummaries);
-      setStats(nextStats);
-      saveAdminMonitoringUiSnapshot({
-        students: studentsWithApprovals,
-        classSummaries: roster.classSummaries,
-        stats: nextStats,
-        profile: session.data ?? null,
-      });
+      paintAdminRoster(roster, { facilitatorMap, approvalMap });
+      if (!roster.predictionsPending) rfReadyRef.current = true;
     } catch (err) {
       console.error("[admin monitoring] refresh failed", err);
       setError(
@@ -467,7 +560,7 @@ export function useAdminMonitoring() {
     } finally {
       endLoad(true);
     }
-  }, [beginLoad, endLoad]);
+  }, [beginLoad, endLoad, endFirstPaint]);
 
   useEffect(() => {
     // Soft revisit: paint cached UI immediately; quiet background refresh.

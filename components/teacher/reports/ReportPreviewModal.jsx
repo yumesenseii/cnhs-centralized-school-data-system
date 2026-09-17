@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
 import { BookOpen, Download, X } from "lucide-react";
 import AcademicPerformanceSummary from "@/components/teacher/reports/AcademicPerformanceSummary";
 import MonitoringSummary from "@/components/teacher/reports/MonitoringSummary";
-import RecommendationSummary from "@/components/teacher/reports/RecommendationSummary";
+import { useAppToast } from "@/components/shared/AppToast";
+import { cn } from "@/lib/utils";
 
 function InfoCard({ label, value }) {
   return (
@@ -17,6 +18,95 @@ function InfoCard({ label, value }) {
   );
 }
 
+const BUCKET_BAR = {
+  red: "bg-red-500",
+  amber: "bg-amber-400",
+  green: "bg-cnhs-green-dark",
+  slate: "bg-slate-400",
+};
+
+function LearnerActionTable({ title, emptyText, rows }) {
+  return (
+    <section>
+      <h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+        {title}
+      </h3>
+      {rows.length === 0 ? (
+        <p className="mt-2 rounded-xl bg-slate-50 px-3 py-2 text-[12px] text-slate-500">
+          {emptyText}
+        </p>
+      ) : (
+        <div className="mt-2 overflow-hidden rounded-xl border border-slate-100">
+          <table className="min-w-full border-collapse text-left">
+            <thead>
+              <tr className="bg-slate-50/80">
+                <th className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                  Learner
+                </th>
+                <th className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                  Grade
+                </th>
+                <th className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                  Risk
+                </th>
+                <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                  Open
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr
+                  key={`${row.classId}:${row.studentId}`}
+                  className="border-t border-slate-100"
+                >
+                  <td className="px-3 py-1.5 text-[12px] font-medium text-slate-800">
+                    {row.name}
+                  </td>
+                  <td className="px-3 py-1.5 text-[12px] font-semibold text-slate-700">
+                    {row.gradeLabel}
+                  </td>
+                  <td className="px-3 py-1.5 text-[12px] text-slate-600">
+                    {row.risk}
+                  </td>
+                  <td className="px-3 py-1.5 text-right text-[11px]">
+                    <span className="inline-flex flex-wrap justify-end gap-2">
+                      {row.hrefClass ? (
+                        <Link
+                          href={row.hrefClass}
+                          className="font-semibold text-cnhs-green-dark hover:underline"
+                        >
+                          Class
+                        </Link>
+                      ) : null}
+                      {row.hrefERecord ? (
+                        <Link
+                          href={row.hrefERecord}
+                          className="font-semibold text-cnhs-green-dark hover:underline"
+                        >
+                          E-Record
+                        </Link>
+                      ) : null}
+                      {row.hrefMonitoring ? (
+                        <Link
+                          href={row.hrefMonitoring}
+                          className="font-semibold text-cnhs-green-dark hover:underline"
+                        >
+                          Monitoring
+                        </Link>
+                      ) : null}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function ReportPreviewModal({
   open,
   preview,
@@ -25,22 +115,13 @@ export default function ReportPreviewModal({
   onExportExcel,
   closeLabel = "Return to Reports",
 }) {
-  const [toast, setToast] = useState("");
-
-  useEffect(() => {
-    if (!open) setToast("");
-  }, [open]);
-
-  useEffect(() => {
-    if (!toast) return undefined;
-    const timer = window.setTimeout(() => setToast(""), 2500);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
+  const { showToast } = useAppToast();
 
   if (!open || !preview) return null;
 
-  const info = preview.classInformation;
+  const info = preview.classInformation || {};
   const attendance = preview.attendance;
+  const buckets = preview.performanceBuckets ?? [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5">
@@ -59,7 +140,7 @@ export default function ReportPreviewModal({
       >
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-4 py-2.5 sm:px-5">
           <div className="flex items-start gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-50 text-cnhs-green-dark">
               <BookOpen size={16} />
             </span>
             <div>
@@ -71,6 +152,9 @@ export default function ReportPreviewModal({
               </h2>
               <p className="mt-0.5 text-[11px] text-slate-400">
                 {preview.subtitle}
+                {preview.generatedAtLabel
+                  ? ` · ${preview.generatedAtLabel}`
+                  : ""}
               </p>
             </div>
           </div>
@@ -84,19 +168,11 @@ export default function ReportPreviewModal({
         </div>
 
         <div className="overflow-y-auto px-4 py-3 sm:px-5">
-          {toast ? (
-            <div className="mb-3 rounded-xl border border-green-100 bg-green-50 px-3 py-2 text-[12px] font-medium text-cnhs-green-dark">
-              {toast}
-            </div>
-          ) : null}
-
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
-            {/* Left column */}
             <div className="space-y-3">
               <section>
                 <h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                  Class Information{" "}
-                  <span className="font-normal">· read-only</span>
+                  Class Information
                 </h3>
                 <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                   <InfoCard label="Subject" value={info.subject} />
@@ -104,70 +180,76 @@ export default function ReportPreviewModal({
                     label="Grade & Section"
                     value={info.gradeSection}
                   />
-                  <InfoCard label="Quarter" value={info.quarter} />
+                  <InfoCard label="Term" value={info.term ?? info.quarter} />
                   <InfoCard label="Teacher" value={info.teacher} />
                   <InfoCard label="School Year" value={info.schoolYear} />
                 </div>
               </section>
 
               <AcademicPerformanceSummary academic={preview.academic} />
+
+              <LearnerActionTable
+                title={`FAILING (${preview.failingLearners?.length ?? 0})`}
+                emptyText="No failing learners this term."
+                rows={preview.failingLearners ?? []}
+              />
+              <LearnerActionTable
+                title={`UNGRADED (${preview.ungradedLearners?.length ?? 0})`}
+                emptyText="No ungraded learners this term."
+                rows={preview.ungradedLearners ?? []}
+              />
             </div>
 
-            {/* Right column */}
             <div className="space-y-3">
-              <section>
-                <h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                  Attendance Summary{" "}
-                  <span className="font-normal">
-                    · monitoring only · not a prediction input
-                  </span>
-                </h3>
-                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                  {[
-                    {
-                      label: "Average Attendance",
-                      value: attendance.average,
-                      tone: "text-amber-600",
-                    },
-                    {
-                      label: "Perfect Attendance",
-                      value: attendance.perfect,
-                      tone: "text-cnhs-green-dark",
-                    },
-                    {
-                      label: "Below 90%",
-                      value: attendance.below90,
-                      tone: "text-red-600",
-                    },
-                  ].map((item) => (
-                    <div
-                      key={item.label}
-                      className="rounded-xl bg-slate-50 px-3 py-2"
-                    >
-                      <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
-                        {item.label}
-                      </p>
-                      <p
-                        className={`mt-1 text-[12px] font-semibold ${item.tone}`}
+              {attendance?.available ? (
+                <section>
+                  <h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                    Attendance{" "}
+                    <span className="font-normal">
+                      · monitoring only · not a prediction input
+                    </span>
+                  </h3>
+                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    {[
+                      {
+                        label: "Average Attendance",
+                        value: attendance.average,
+                      },
+                      {
+                        label: "Perfect Attendance",
+                        value: attendance.perfect,
+                      },
+                      {
+                        label: "Below 90%",
+                        value: attendance.below90,
+                      },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className="rounded-xl bg-slate-50 px-3 py-2"
                       >
-                        {item.value}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </section>
+                        <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-slate-400">
+                          {item.label}
+                        </p>
+                        <p className="mt-1 text-[12px] font-semibold text-slate-800">
+                          {item.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
 
               <section>
                 <h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                  Weak Subject Distribution{" "}
-                  <span className="font-normal">· read-only</span>
+                  Performance in this class
                 </h3>
                 <ul className="mt-2 space-y-2">
-                  {preview.weakSubjects.map((item) => (
-                    <li key={item.subject}>
+                  {buckets.map((item) => (
+                    <li key={item.id}>
                       <div className="mb-1 flex items-center justify-between gap-2">
                         <span className="text-[12px] font-medium text-slate-700">
-                          {item.subject}
+                          {item.label}
                         </span>
                         <span className="text-[11px] font-semibold text-slate-600">
                           {item.learners} learners · {item.percent}%
@@ -175,7 +257,10 @@ export default function ReportPreviewModal({
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
                         <div
-                          className="h-full rounded-full bg-cnhs-green-dark"
+                          className={cn(
+                            "h-full rounded-full",
+                            BUCKET_BAR[item.tone] || "bg-slate-400"
+                          )}
                           style={{ width: `${item.percent}%` }}
                         />
                       </div>
@@ -184,10 +269,7 @@ export default function ReportPreviewModal({
                 </ul>
               </section>
 
-              <MonitoringSummary monitoring={preview.monitoring} />
-              <RecommendationSummary
-                recommendations={preview.recommendations}
-              />
+              <MonitoringSummary interventions={preview.interventions} />
             </div>
           </div>
         </div>
@@ -197,7 +279,7 @@ export default function ReportPreviewModal({
             type="button"
             onClick={() => {
               onExport?.();
-              setToast("PDF export started.");
+              showToast("Report downloaded.");
             }}
             className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
           >
@@ -209,7 +291,7 @@ export default function ReportPreviewModal({
               type="button"
               onClick={() => {
                 onExportExcel();
-                setToast("Excel export started.");
+                showToast("Excel export started.");
               }}
               className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
             >

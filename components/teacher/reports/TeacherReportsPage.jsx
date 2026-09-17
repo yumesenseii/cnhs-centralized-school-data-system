@@ -5,26 +5,28 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  BarChart3,
   CalendarDays,
-  ClipboardList,
   Download,
   FileSpreadsheet,
   FileText,
+  Layers3,
   Loader2,
 } from "lucide-react";
+import AppSelect from "@/components/shared/AppSelect";
 import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import ClassReportsTable from "@/components/teacher/reports/ClassReportsTable";
 import ReportCharts from "@/components/teacher/reports/ReportCharts";
 import ReportPreviewModal from "@/components/teacher/reports/ReportPreviewModal";
 import ReportAttendancePanel from "@/components/reports/ReportAttendancePanel";
-import ReportByClassGrid from "@/components/reports/ReportByClassGrid";
+import ClassFolderLibrary from "@/components/reports/ClassFolderLibrary";
 import ReportClassPerformanceSummary from "@/components/reports/ReportClassPerformanceSummary";
 import ReportInsightCallout from "@/components/reports/ReportInsightCallout";
 import ReportKpiStrip from "@/components/reports/ReportKpiStrip";
 import ReportModule from "@/components/reports/ReportModule";
 import ReportSubmissionsPanel from "@/components/reports/ReportSubmissionsPanel";
+import { AnimatedBanner } from "@/components/shared/AnimatedFeedback";
+import { useAppToast } from "@/components/shared/AppToast";
 import { useTeacherReports } from "@/hooks/teacher/useTeacherReports";
 import {
   PASSING_GRADE,
@@ -40,6 +42,7 @@ import {
 import { passingRateFromGrades } from "@/lib/teacher/reportsCalculations";
 import { getSectionAttendanceAnalytics } from "@/lib/supabase/queries/attendance";
 import { MONTH_LABELS } from "@/lib/attendance/constants";
+import { cn } from "@/lib/utils";
 
 const PERF_TABS = [
   { id: "summary", label: "Summary" },
@@ -48,19 +51,61 @@ const PERF_TABS = [
   { id: "breakdown", label: "Breakdown" },
 ];
 
+const EMPTY_SF2_CHART = [];
+
+function sameSf2Attendance(prev, next) {
+  if (prev === next) return true;
+  if (!prev || !next) return prev == null && next == null;
+  return (
+    prev.avgAda === next.avgAda &&
+    prev.avgPa === next.avgPa &&
+    prev.totalAbsences === next.totalAbsences &&
+    prev.flaggedCount === next.flaggedCount
+  );
+}
+
+function sameSf2Chart(prev, next) {
+  if (prev === next) return true;
+  if (!Array.isArray(prev) || !Array.isArray(next)) return false;
+  if (prev.length !== next.length) return false;
+  return prev.every(
+    (point, i) => point.name === next[i].name && point.rate === next[i].rate
+  );
+}
+
+function sf2SectionKeyFromReports(reports = []) {
+  const keys = new Set();
+  for (const row of reports) {
+    const sectionName = String(row.sectionName || "")
+      .trim()
+      .toLowerCase();
+    const gradeSection = String(row.gradeSection || row.section || "")
+      .trim()
+      .toLowerCase();
+    if (sectionName) keys.add(sectionName);
+    if (gradeSection) {
+      keys.add(gradeSection);
+      const afterDot = gradeSection.split("·").pop()?.trim();
+      if (afterDot) keys.add(afterDot);
+      const afterGrade = gradeSection.replace(/^grade\s*\d+\s*/i, "").trim();
+      if (afterGrade) keys.add(afterGrade);
+    }
+  }
+  return [...keys].sort().join("|");
+}
+
 function ReportsSkeleton() {
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => (
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
           <div
-            key={`summary-skel-${index}`}
-            className="h-[110px] animate-pulse rounded-2xl border border-slate-100 bg-slate-100/80"
+            key={i}
+            className="h-[72px] animate-pulse rounded-xl border border-slate-100 bg-slate-50 dark:border-white/5 dark:bg-white/5"
           />
         ))}
       </div>
-      <div className="h-[280px] animate-pulse rounded-2xl border border-slate-100 bg-slate-100/80" />
-      <div className="h-[120px] animate-pulse rounded-2xl border border-slate-100 bg-slate-100/80" />
+      <div className="h-[220px] animate-pulse rounded-2xl border border-slate-100 bg-slate-50 dark:border-white/5 dark:bg-white/5" />
     </div>
   );
 }
@@ -89,10 +134,10 @@ export default function TeacherReportsPage() {
     setSection,
     getPreview,
   } = useTeacherReports();
+  const { showToast } = useAppToast();
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [preview, setPreview] = useState(null);
-  const [toast, setToast] = useState("");
   const [perfOpen, setPerfOpen] = useState(true);
   const [perfTab, setPerfTab] = useState("summary");
   const [subsOpen, setSubsOpen] = useState(false);
@@ -103,11 +148,10 @@ export default function TeacherReportsPage() {
   const [sf2ChartData, setSf2ChartData] = useState([]);
   const [sf2Loading, setSf2Loading] = useState(false);
 
-  useEffect(() => {
-    if (!toast) return undefined;
-    const timer = window.setTimeout(() => setToast(""), 2500);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
+  const sf2SectionKey = useMemo(
+    () => sf2SectionKeyFromReports(classReports),
+    [classReports]
+  );
 
   useEffect(() => {
     if (!exportOpen) return undefined;
@@ -122,25 +166,35 @@ export default function TeacherReportsPage() {
 
   useEffect(() => {
     if (!classReports.length) {
-      setSystemClassId("");
+      setSystemClassId((current) => (current === "" ? current : ""));
       return;
     }
-    if (!systemClassId || !classReports.some((r) => r.id === systemClassId)) {
-      setSystemClassId(classReports[0].id);
-    }
-  }, [classReports, systemClassId]);
+    const firstId = classReports[0].id;
+    setSystemClassId((current) => {
+      if (current && classReports.some((row) => row.id === current)) {
+        return current;
+      }
+      return firstId;
+    });
+  }, [classReports]);
 
   useEffect(() => {
     let cancelled = false;
 
+    function clearSf2() {
+      setSf2Attendance((prev) => (prev == null ? prev : null));
+      setSf2ChartData((prev) =>
+        sameSf2Chart(prev, EMPTY_SF2_CHART) ? prev : EMPTY_SF2_CHART
+      );
+    }
+
     async function loadSf2() {
       if (!schoolYear) {
-        setSf2Attendance(null);
-        setSf2ChartData([]);
+        clearSf2();
         return;
       }
 
-      setSf2Loading(true);
+      setSf2Loading((prev) => (prev ? prev : true));
       try {
         const result = await getSectionAttendanceAnalytics({
           schoolYear,
@@ -150,28 +204,13 @@ export default function TeacherReportsPage() {
         if (cancelled) return;
 
         if (result.error || !result.data?.hasData) {
-          setSf2Attendance(null);
-          setSf2ChartData([]);
+          clearSf2();
           return;
         }
 
-        const sectionKeys = new Set();
-        for (const row of classReports) {
-          const sectionName = String(row.sectionName || "")
-            .trim()
-            .toLowerCase();
-          const gradeSection = String(row.gradeSection || row.section || "")
-            .trim()
-            .toLowerCase();
-          if (sectionName) sectionKeys.add(sectionName);
-          if (gradeSection) {
-            sectionKeys.add(gradeSection);
-            const afterDot = gradeSection.split("·").pop()?.trim();
-            if (afterDot) sectionKeys.add(afterDot);
-            const afterGrade = gradeSection.replace(/^grade\s*\d+\s*/i, "").trim();
-            if (afterGrade) sectionKeys.add(afterGrade);
-          }
-        }
+        const sectionKeys = new Set(
+          sf2SectionKey ? sf2SectionKey.split("|") : []
+        );
 
         const rows = (result.data.rows ?? []).filter((row) => {
           if (!sectionKeys.size) return true;
@@ -187,8 +226,7 @@ export default function TeacherReportsPage() {
         });
 
         if (!rows.length) {
-          setSf2Attendance(null);
-          setSf2ChartData([]);
+          clearSf2();
           return;
         }
 
@@ -211,12 +249,16 @@ export default function TeacherReportsPage() {
             (r.pa != null && r.pa < 90)
         );
 
-        setSf2Attendance({
+        const nextAttendance = {
           avgAda: avg((r) => r.ada),
           avgPa: avg((r) => r.pa),
           totalAbsences: sum((r) => r.absences),
           flaggedCount: flagged.length,
-        });
+        };
+
+        setSf2Attendance((prev) =>
+          sameSf2Attendance(prev, nextAttendance) ? prev : nextAttendance
+        );
 
         const byMonth = new Map();
         for (const row of rows) {
@@ -244,14 +286,13 @@ export default function TeacherReportsPage() {
           }))
           .filter((point) => point.rate != null);
 
-        setSf2ChartData(chart);
+        setSf2ChartData((prev) => (sameSf2Chart(prev, chart) ? prev : chart));
       } catch {
-        if (!cancelled) {
-          setSf2Attendance(null);
-          setSf2ChartData([]);
-        }
+        if (!cancelled) clearSf2();
       } finally {
-        if (!cancelled) setSf2Loading(false);
+        if (!cancelled) {
+          setSf2Loading((prev) => (prev ? false : prev));
+        }
       }
     }
 
@@ -259,7 +300,7 @@ export default function TeacherReportsPage() {
     return () => {
       cancelled = true;
     };
-  }, [schoolYear, classReports]);
+  }, [schoolYear, sf2SectionKey]);
 
   const kpiItems = useMemo(() => {
     const avg =
@@ -290,14 +331,16 @@ export default function TeacherReportsPage() {
         label: "Passing rate",
         value: pass,
         hint: "Graded entries ≥ 75",
-        tone: "green",
+        tone:
+          summary?.passingRate != null && Number(summary.passingRate) < 75
+            ? "orange"
+            : "green",
       },
       {
         id: "aral",
         label: "At-risk / ARAL",
         value: aral,
         hint: `${summary?.classroomRemedialCount ?? 0} classroom remedial`,
-        badge: aral > 0 ? "Follow-up" : undefined,
         tone: aral > 0 ? "orange" : "green",
       },
     ];
@@ -382,24 +425,25 @@ export default function TeacherReportsPage() {
       classReports.find((item) => item.id === systemClassId) ||
       null;
     if (!row) {
-      setToast("Select a class to generate a system report.");
+      showToast("Select a class to generate a system report.");
       return;
     }
     try {
       exportClassPerformanceSystemReport({
         classReport: row,
+        preview: getPreview(row),
         teacherName,
         schoolYear,
         quarter: quarterLabel,
       });
-      setToast(
-        `Report opened for ${row.subject} · ${
+      showToast(
+        `Report downloaded for ${row.subject} · ${
           row.gradeSection || row.section
-        }. Use Print → Save as PDF.`
+        }.`
       );
       setPerfTab("by-class");
     } catch (err) {
-      setToast(err?.message ?? "Unable to generate system report.");
+      showToast(err?.message ?? "Unable to generate system report.");
     }
   }
 
@@ -413,9 +457,9 @@ export default function TeacherReportsPage() {
         classReports,
         charts,
       });
-      setToast("PDF export opened. Use Print → Save as PDF.");
+      showToast("Report downloaded.");
     } catch (err) {
-      setToast(err?.message ?? "Unable to export PDF.");
+      showToast(err?.message ?? "Unable to export PDF.");
     }
   }
 
@@ -429,25 +473,37 @@ export default function TeacherReportsPage() {
         schoolYear,
         quarter: quarterLabel,
       });
-      setToast("Excel export downloaded.");
+      showToast("Excel export downloaded.");
     } catch (err) {
-      setToast(err?.message ?? "Unable to export Excel.");
+      showToast(err?.message ?? "Unable to export Excel.");
     }
   }
 
   async function handleRowExport(row) {
     try {
       await exportSingleClassReportExcel(row);
-      setToast(`Exported Excel for ${row.subject}.`);
+      showToast(`Exported Excel for ${row.subject}.`);
     } catch (err) {
-      setToast(err?.message ?? "Unable to export class report.");
+      showToast(err?.message ?? "Unable to export class report.");
     }
   }
 
-  const fieldSelectClassName =
-    "mt-1 h-9 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-700 outline-none hover:bg-slate-50 focus:border-cnhs-green-dark";
   const fieldLabelClassName =
     "text-[10px] font-medium uppercase tracking-[0.04em] text-slate-400";
+
+  const perfSubtitle = [
+    schoolYear
+      ? /^sy\b/i.test(String(schoolYear))
+        ? schoolYear
+        : `SY ${schoolYear}`
+      : null,
+    quarterLabel || null,
+    classReports.length
+      ? `${classReports.length} class${classReports.length === 1 ? "" : "es"}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <motion.div
@@ -456,7 +512,7 @@ export default function TeacherReportsPage() {
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="pb-5"
     >
-      <header className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <header className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[10px] font-medium text-slate-400">
@@ -469,12 +525,11 @@ export default function TeacherReportsPage() {
             <h1 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-slate-800 sm:text-[22px]">
               Reports
             </h1>
-            <p className="mt-1 max-w-xl text-[12px] text-slate-500">
-              Filter your classes, then generate a report for one class you
-              handle.
+            <p className="mt-0.5 text-xs text-slate-500">
+              Class performance, interventions, and attendance summaries for
+              your sections.
             </p>
           </div>
-
           <MobileNavSheet
             ariaLabel="Open teacher menu"
             title="Teacher navigation"
@@ -482,236 +537,207 @@ export default function TeacherReportsPage() {
             {(close) => <TeacherSidebar mobile onNavigate={close} />}
           </MobileNavSheet>
         </div>
-      </header>
 
-      <section className="mb-3 rounded-xl border border-slate-200/80 bg-slate-50/80 p-3">
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
-          <label className="block min-w-0">
-            <span className={fieldLabelClassName}>School year</span>
-            <select
+        <div className="flex w-full min-w-0 flex-nowrap items-center gap-2 sm:w-auto sm:justify-end">
+          <div className="flex flex-nowrap items-center gap-2">
+            <AppSelect
+              label="School Year"
               value={schoolYear}
-              onChange={(event) => setSchoolYear(event.target.value)}
-              className={fieldSelectClassName}
-            >
-              {schoolYears.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block min-w-0">
-            <span className={fieldLabelClassName}>Term</span>
-            <select
+              onChange={setSchoolYear}
+              options={schoolYears}
+              icon={CalendarDays}
+              size="pill"
+              align="end"
+              className="w-[168px] shrink-0"
+            />
+            <AppSelect
+              label="Term"
               value={String(quarter)}
-              onChange={(event) => setQuarter(event.target.value)}
-              className={fieldSelectClassName}
-            >
-              {QUARTER_OPTIONS.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block min-w-0">
-            <span className={fieldLabelClassName}>Subject</span>
-            <select
-              value={subject}
-              onChange={(event) => setSubject(event.target.value)}
-              className={fieldSelectClassName}
-            >
-              <option value={REPORT_FILTER_ALL}>All subjects</option>
-              {subjects.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block min-w-0">
-            <span className={fieldLabelClassName}>Section</span>
-            <select
-              value={section}
-              onChange={(event) => setSection(event.target.value)}
-              className={fieldSelectClassName}
-            >
-              <option value={REPORT_FILTER_ALL}>All sections</option>
-              {sections.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <div className="mt-3 flex flex-col gap-2.5 border-t border-slate-200/70 pt-3 sm:flex-row sm:items-end">
-          <label className="block min-w-0 flex-1">
-            <span className={fieldLabelClassName}>Class for report</span>
-            <select
-              value={systemClassId}
-              onChange={(event) => setSystemClassId(event.target.value)}
-              disabled={loading || !classReports.length}
-              className={fieldSelectClassName}
-            >
-              {!classReports.length ? (
-                <option value="">No classes</option>
-              ) : (
-                classReports.map((row) => (
-                  <option key={row.id} value={row.id}>
-                    {(row.gradeSection || row.section) ?? "Class"} ·{" "}
-                    {row.subject}
-                  </option>
-                ))
-              )}
-            </select>
-          </label>
-
-          <div className="flex shrink-0 items-center gap-2">
+              onChange={setQuarter}
+              options={QUARTER_OPTIONS}
+              icon={Layers3}
+              size="pill"
+              align="end"
+              className="w-[132px] shrink-0"
+            />
+          </div>
+          <div className="relative ml-auto">
             <button
               type="button"
-              onClick={() => handleGenerateSystemReport()}
-              disabled={loading || !systemClassId}
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-4 text-[12px] font-semibold text-white transition-colors hover:bg-[#246f54] disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={(e) => {
+                e.stopPropagation();
+                setExportOpen((open) => !open);
+              }}
+              disabled={loading}
+              className={cn(
+                "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 shadow-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-[var(--card)] dark:text-slate-300 dark:hover:bg-white/5"
+              )}
             >
-              <FileText size={14} />
-              Generate report
+              <Download size={13} />
+              Export
             </button>
-
-            <div className="relative">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setExportOpen((open) => !open);
-                }}
-                disabled={loading}
-                className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-white/80 disabled:cursor-not-allowed disabled:opacity-60"
+            {exportOpen ? (
+              <div
+                className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-white/10 dark:bg-[var(--card)]"
+                onClick={(e) => e.stopPropagation()}
               >
-                <Download size={14} />
-                Export
-              </button>
-              {exportOpen ? (
-                <div
-                  className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
-                  onClick={(e) => e.stopPropagation()}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExportOpen(false);
+                    handleExportPdf();
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-[11px] font-semibold text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/6"
                 >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setExportOpen(false);
-                      handleExportPdf();
-                    }}
-                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
-                  >
-                    <Download size={12} className="text-red-500" />
-                    PDF (all classes)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setExportOpen(false);
-                      handleExportExcel();
-                    }}
-                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
-                  >
-                    <FileSpreadsheet
-                      size={12}
-                      className="text-cnhs-green-dark"
-                    />
-                    Excel (all classes)
-                  </button>
-                </div>
-              ) : null}
-            </div>
+                  <Download size={12} className="text-red-500" />
+                  PDF (all classes)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExportOpen(false);
+                    handleExportExcel();
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-[11px] font-semibold text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/6"
+                >
+                  <FileSpreadsheet size={12} className="text-cnhs-green-dark" />
+                  Excel (all classes)
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
+      </header>
+
+      <section className="mb-3 rounded-xl border border-slate-100 bg-white px-3 py-2.5 shadow-[0_4px_12px_rgba(15,23,42,0.03)] dark:border-white/5 dark:bg-[var(--card)] dark:shadow-none">
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="block min-w-[140px] flex-1">
+            <span className={fieldLabelClassName}>Subject</span>
+            <AppSelect
+              label="Subject"
+              value={subject}
+              onChange={setSubject}
+              options={[
+                { value: REPORT_FILTER_ALL, label: "All subjects" },
+                ...subjects.map((item) => ({ value: item, label: item })),
+              ]}
+              size="field"
+              className="mt-1"
+              triggerClassName="h-8 rounded-lg px-2 text-[12px] font-semibold text-slate-700"
+            />
+          </div>
+
+          <div className="block min-w-[140px] flex-1">
+            <span className={fieldLabelClassName}>Section</span>
+            <AppSelect
+              label="Section"
+              value={section}
+              onChange={setSection}
+              options={[
+                { value: REPORT_FILTER_ALL, label: "All sections" },
+                ...sections.map((item) => ({ value: item, label: item })),
+              ]}
+              size="field"
+              className="mt-1"
+              triggerClassName="h-8 rounded-lg px-2 text-[12px] font-semibold text-slate-700"
+            />
+          </div>
+
+          <div className="block min-w-[180px] flex-[1.4]">
+            <span className={fieldLabelClassName}>Class for report</span>
+            <AppSelect
+              label="Class for report"
+              value={systemClassId}
+              onChange={setSystemClassId}
+              disabled={loading || !classReports.length}
+              options={
+                !classReports.length
+                  ? [{ value: "", label: "No classes" }]
+                  : classReports.map((row) => ({
+                      value: row.id,
+                      label: `${(row.gradeSection || row.section) ?? "Class"} · ${row.subject}`,
+                    }))
+              }
+              size="field"
+              className="mt-1"
+              triggerClassName="h-8 rounded-lg px-2 text-[12px] font-semibold text-slate-700"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => handleGenerateSystemReport()}
+            disabled={loading || !systemClassId}
+            className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white transition-colors hover:bg-[#246f54] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <FileText size={13} />
+            Generate report
+          </button>
+        </div>
+        <p className="mt-2 text-[11px] text-slate-400">
+          Pick a class, then generate. School year and term are above.
+        </p>
       </section>
 
-      {toast ? (
-        <div className="mb-4 rounded-xl border border-green-100 bg-green-50 px-3 py-2.5 text-[12px] font-medium text-cnhs-green-dark">
-          {toast}
-        </div>
-      ) : null}
-
-      {error ? (
-        <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
-          {error}
-        </div>
-      ) : null}
+      <AnimatedBanner
+        message={error}
+        tone="error"
+        className="mb-4 text-sm font-medium"
+      />
 
       {loading ? (
         <div className="space-y-3">
-          <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-white px-3 py-2 text-sm text-slate-500">
+          <div className="flex items-center gap-2 py-2 text-sm text-slate-500">
             <Loader2 size={16} className="animate-spin" />
             Loading report data…
           </div>
           <ReportsSkeleton />
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <ReportKpiStrip items={kpiItems} />
 
           <ReportModule
             title="My Class Performance"
-            subtitle="Academic rates · charts · class cards · generate a report per class"
-            icon={<BarChart3 size={16} strokeWidth={1.8} />}
+            subtitle={perfSubtitle || undefined}
             open={perfOpen}
             onOpenChange={setPerfOpen}
             tabs={PERF_TABS}
             activeTab={perfTab}
             onTabChange={setPerfTab}
-            accent="green"
-            footer={
-              <ReportInsightCallout
-                text={performanceInsight.text}
-                actionLabel={performanceInsight.actionLabel}
-                onAction={
-                  performanceInsight.actionKind === "tab"
-                    ? () => setPerfTab(performanceInsight.target)
-                    : performanceInsight.actionKind === "generate"
-                      ? () =>
-                          handleGenerateSystemReport(performanceInsight.target)
-                      : undefined
-                }
-              />
-            }
           >
             {perfTab === "summary" ? (
-              <ReportClassPerformanceSummary
-                summary={summary}
-                gradedShare={gradedShare}
-              />
+              <div className="space-y-3">
+                {performanceInsight.text ? (
+                  <ReportInsightCallout
+                    text={performanceInsight.text}
+                    actionLabel={performanceInsight.actionLabel}
+                    onAction={
+                      performanceInsight.actionKind === "tab"
+                        ? () => setPerfTab(performanceInsight.target)
+                        : performanceInsight.actionKind === "generate"
+                          ? () =>
+                              handleGenerateSystemReport(
+                                performanceInsight.target
+                              )
+                          : undefined
+                    }
+                  />
+                ) : null}
+                <ReportClassPerformanceSummary
+                  summary={summary}
+                  gradedShare={gradedShare}
+                />
+              </div>
             ) : null}
             {perfTab === "charts" ? <ReportCharts charts={charts} /> : null}
             {perfTab === "by-class" ? (
-              <ReportByClassGrid
+              <ClassFolderLibrary
                 reports={classReports}
                 onDetails={openPreview}
                 onGenerateSystemReport={handleGenerateSystemReport}
-                mapRow={(row) => {
-                  const pass = passingRateFromGrades(row.subjectGrades);
-                  return {
-                    id: row.id,
-                    title: row.section ?? row.gradeSection ?? "Section",
-                    subtitle: row.subject,
-                    metric: row.averageGrade ?? "—",
-                    metricLabel: `${row.students ?? 0} learners`,
-                    passingRate: pass == null ? undefined : `${pass}%`,
-                    needsLabel:
-                      row.aralEligible === false
-                        ? "Not ARAL-eligible subject"
-                        : `${row.aralScreening ?? 0} ARAL · ${
-                            row.classroomRemedialRecommended
-                              ? "remedial"
-                              : "ok"
-                          }`,
-                  };
-                }}
+                groupMultiTerm={!quarter || quarter === "all"}
+                searchPlaceholder="Search classes by name or subject…"
               />
             ) : null}
             {perfTab === "breakdown" ? (
@@ -726,11 +752,9 @@ export default function TeacherReportsPage() {
 
           <ReportModule
             title="Submissions & follow-up"
-            subtitle="Lesson plans · monitoring progress"
-            icon={<ClipboardList size={16} strokeWidth={1.8} />}
+            subtitle="Lesson plans and monitoring progress"
             open={subsOpen}
             onOpenChange={setSubsOpen}
-            accent="orange"
           >
             <ReportSubmissionsPanel
               lessonSummary={lessonSummary}
@@ -745,10 +769,8 @@ export default function TeacherReportsPage() {
           <ReportModule
             title="Attendance (SF2)"
             subtitle="Monthly class summaries · submit via Attendance Monitoring"
-            icon={<CalendarDays size={16} strokeWidth={1.8} />}
             open={attendanceOpen}
             onOpenChange={setAttendanceOpen}
-            accent="sky"
           >
             {sf2Loading ? (
               <div className="flex items-center gap-2 py-6 text-sm text-slate-500">
@@ -759,6 +781,8 @@ export default function TeacherReportsPage() {
               <ReportAttendancePanel
                 attendance={sf2Attendance}
                 chartData={sf2ChartData}
+                monitoringHref="/teacher/attendance"
+                showSf2Archive
               />
             )}
           </ReportModule>
@@ -774,27 +798,19 @@ export default function TeacherReportsPage() {
           const row = classReports.find((item) => item.id === preview.id);
           if (row) {
             try {
-              exportTeacherReportsPdf({
+              exportClassPerformanceSystemReport({
+                classReport: row,
+                preview,
                 teacherName,
                 schoolYear,
                 quarter: quarterLabel,
-                summary: {
-                  totalClasses: 1,
-                  totalStudents: row.students,
-                  aralScreeningCount: row.aralScreening,
-                  classroomRemedialCount: row.classroomRemedialRecommended
-                    ? 1
-                    : 0,
-                  averageClassGrade:
-                    row.averageGradeValue ?? row.averageGrade,
-                  monitoringCompletionRate: 0,
-                },
-                classReports: [row],
-                charts,
+                generatedAt: preview.generatedAt
+                  ? new Date(preview.generatedAt)
+                  : new Date(),
               });
-              setToast("PDF export opened for class preview.");
+              showToast("Report downloaded for class preview.");
             } catch (err) {
-              setToast(err?.message ?? "Unable to export PDF.");
+              showToast(err?.message ?? "Unable to export PDF.");
             }
           }
         }}

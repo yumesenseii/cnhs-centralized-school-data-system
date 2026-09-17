@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { BookOpen, Download, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAppToast } from "@/components/shared/AppToast";
 
 function ContextRow({ label, value }) {
   if (value == null || value === "" || value === "—") return null;
   return (
-    <div className="flex items-baseline justify-between gap-3 border-b border-slate-100 py-1.5 last:border-b-0">
+    <div className="flex items-baseline justify-between gap-3 border-b border-slate-100 py-1 last:border-b-0 dark:border-white/5">
       <span className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400">
         {label}
       </span>
-      <span className="text-right text-[11px] font-semibold text-slate-800">
+      <span className="text-right text-[11px] font-semibold text-slate-800 dark:text-slate-100">
         {value}
       </span>
     </div>
@@ -20,13 +21,13 @@ function ContextRow({ label, value }) {
 
 function MetricCard({ label, value, hint, tone = "default" }) {
   const tones = {
-    default: "text-slate-900",
-    green: "text-cnhs-green-dark",
+    default: "text-slate-900 dark:text-slate-100",
+    green: "text-cnhs-green-dark dark:text-cnhs-green",
     orange: "text-cnhs-orange",
-    red: "text-red-600",
+    red: "text-red-600 dark:text-red-400",
   };
   return (
-    <div className="rounded-lg border border-slate-100 bg-white px-2 py-2">
+    <div className="rounded-lg border border-slate-100 bg-white px-2 py-2 dark:border-white/5 dark:bg-[var(--card)]">
       <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400">
         {label}
       </p>
@@ -47,11 +48,11 @@ function MetricCard({ label, value, hint, tone = "default" }) {
 
 function StatLine({ label, value, tone }) {
   return (
-    <div className="flex items-center justify-between gap-2 border-b border-slate-100 py-1.5 last:border-b-0">
-      <span className="text-[11px] text-slate-600">{label}</span>
+    <div className="flex items-center justify-between gap-2 border-b border-slate-100 py-1.5 last:border-b-0 dark:border-white/5">
+      <span className="text-[11px] text-slate-600 dark:text-slate-400">{label}</span>
       <span
         className={cn(
-          "text-[12px] font-semibold tabular-nums text-slate-800",
+          "text-[12px] font-semibold tabular-nums text-slate-800 dark:text-slate-100",
           tone
         )}
       >
@@ -62,9 +63,11 @@ function StatLine({ label, value, tone }) {
 }
 
 const riskTones = {
-  red: "border-red-100 bg-red-50/70 text-red-600",
-  orange: "border-orange-100 bg-orange-50/70 text-cnhs-orange",
-  green: "border-green-100 bg-green-50/70 text-cnhs-green-dark",
+  red: "border-red-200/80 bg-red-50/70 text-red-600 dark:border-red-500/40 dark:bg-transparent dark:text-red-400",
+  orange:
+    "border-orange-200/80 bg-orange-50/70 text-cnhs-orange dark:border-cnhs-orange/40 dark:bg-transparent dark:text-cnhs-orange",
+  green:
+    "border-green-200/80 bg-green-50/70 text-cnhs-green-dark dark:border-cnhs-green/40 dark:bg-transparent dark:text-cnhs-green",
 };
 
 function riskTextTone(level) {
@@ -82,17 +85,7 @@ export default function ReportPreviewModal({
   onClose,
   onExport,
 }) {
-  const [toast, setToast] = useState("");
-
-  useEffect(() => {
-    if (!open) setToast("");
-  }, [open]);
-
-  useEffect(() => {
-    if (!toast) return undefined;
-    const timer = window.setTimeout(() => setToast(""), 2500);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
+  const { showToast } = useAppToast();
 
   const info = preview?.classInformation ?? {};
   const academic = preview?.academic ?? {};
@@ -113,7 +106,9 @@ export default function ReportPreviewModal({
   }, [risk]);
 
   const aralCount = Number(intervention.aralScreening ?? 0);
-  const remediationCount = Number(intervention.classroomRemediation ?? 0);
+  const remediationCount = Number(
+    intervention.classroomRemedial ?? intervention.classroomRemediation ?? 0
+  );
   const showAral = preview?.aralEligible === true;
 
   if (!open || !preview) return null;
@@ -135,11 +130,11 @@ export default function ReportPreviewModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="report-preview-title"
-        className="relative z-10 flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-t-lg border border-slate-100 bg-white shadow-2xl sm:max-h-[88vh] sm:rounded-lg"
+        className="relative z-10 flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-t-lg border border-slate-100 bg-white shadow-2xl dark:border-white/5 dark:bg-[var(--card)] sm:max-h-[88vh] sm:rounded-lg"
       >
-        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-4 py-2.5 sm:px-5">
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-4 py-2.5 dark:border-white/5 sm:px-5">
           <div className="flex min-w-0 items-start gap-2.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cnhs-green-soft text-cnhs-green-dark ring-1 ring-green-100">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cnhs-green-soft text-cnhs-green-dark ring-1 ring-cnhs-green-dark/20 dark:bg-cnhs-green-dark/20 dark:text-cnhs-green dark:ring-cnhs-green/30">
               <BookOpen size={15} />
             </span>
             <div className="min-w-0">
@@ -148,7 +143,7 @@ export default function ReportPreviewModal({
               </p>
               <h2
                 id="report-preview-title"
-                className="text-[15px] font-semibold tracking-[-0.02em] text-slate-900"
+                className="text-[15px] font-semibold tracking-[-0.02em] text-slate-900 dark:text-slate-100"
               >
                 {preview.title}
               </h2>
@@ -156,21 +151,21 @@ export default function ReportPreviewModal({
                 {preview.subtitle}
               </p>
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-transparent dark:text-slate-300 dark:ring-1 dark:ring-white/5">
                   {learnerCount} learners
                 </span>
                 {info.graded != null ? (
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-transparent dark:text-slate-300 dark:ring-1 dark:ring-white/5">
                     {info.graded} graded
                   </span>
                 ) : null}
                 {Number(info.ungraded) > 0 ? (
-                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-amber-100">
+                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-amber-100 dark:bg-transparent dark:text-amber-400 dark:ring-amber-500/30">
                     {info.ungraded} ungraded
                   </span>
                 ) : null}
                 {preview.aralEligible === true ? (
-                  <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 ring-1 ring-sky-100">
+                  <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 dark:bg-transparent dark:text-sky-400 dark:ring-1 dark:ring-sky-500/30">
                     ARAL-eligible subject
                   </span>
                 ) : null}
@@ -180,22 +175,16 @@ export default function ReportPreviewModal({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
+            className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 dark:hover:bg-white/5 dark:hover:text-slate-200"
           >
             <X size={16} />
           </button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5">
-          {toast ? (
-            <div className="mb-3 rounded-xl border border-green-100 bg-green-50 px-3 py-2 text-[12px] font-medium text-cnhs-green-dark">
-              {toast}
-            </div>
-          ) : null}
-
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(200px,0.32fr)_1fr] lg:gap-4">
             <aside className="space-y-3">
-              <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+              <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 dark:border-white/5 dark:bg-transparent">
                 <h3 className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
                   Class context
                 </h3>
@@ -212,7 +201,7 @@ export default function ReportPreviewModal({
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-100 bg-white p-3">
+              <div className="rounded-xl border border-slate-100 bg-white p-3 dark:border-white/5 dark:bg-transparent">
                 <h3 className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
                   Intervention & monitoring
                 </h3>
@@ -221,7 +210,7 @@ export default function ReportPreviewModal({
                     <StatLine label="ARAL Learners" value={aralCount} />
                   ) : null}
                   <StatLine
-                    label="Classroom remediation"
+                    label="Classroom remedial"
                     value={remediationCount}
                   />
                   <StatLine
@@ -279,7 +268,7 @@ export default function ReportPreviewModal({
                 </div>
               </section>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <section>
                   <h3 className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
                     Risk classification
@@ -311,13 +300,13 @@ export default function ReportPreviewModal({
                   <h3 className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
                     Grade bands
                   </h3>
-                  <div className="mt-1.5 overflow-hidden rounded-lg border border-slate-100">
-                    <div className="grid grid-cols-3 divide-x divide-slate-100 bg-slate-50/80 text-center">
+                  <div className="mt-1.5 overflow-hidden rounded-lg border border-slate-100 dark:border-white/5">
+                    <div className="grid grid-cols-3 divide-x divide-slate-100 bg-slate-50/80 text-center dark:divide-white/5 dark:bg-transparent">
                       <div className="px-2 py-2">
                         <p className="text-[9px] font-semibold uppercase text-red-500">
                           &lt;75
                         </p>
-                        <p className="mt-0.5 text-lg font-semibold text-red-600">
+                        <p className="mt-0.5 text-lg font-semibold text-red-600 dark:text-red-400">
                           {gradeBands.below75 ?? 0}
                         </p>
                         <p className="text-[9px] text-slate-400">
@@ -346,10 +335,10 @@ export default function ReportPreviewModal({
                         </p>
                       </div>
                       <div className="px-2 py-2">
-                        <p className="text-[9px] font-semibold uppercase text-cnhs-green-dark">
+                        <p className="text-[9px] font-semibold uppercase text-cnhs-green-dark dark:text-cnhs-green">
                           85–100
                         </p>
-                        <p className="mt-0.5 text-lg font-semibold text-cnhs-green-dark">
+                        <p className="mt-0.5 text-lg font-semibold text-cnhs-green-dark dark:text-cnhs-green">
                           {gradeBands.band85plus ?? gradeBands.above80 ?? 0}
                         </p>
                         <p className="text-[9px] text-slate-400">
@@ -362,7 +351,7 @@ export default function ReportPreviewModal({
                         </p>
                       </div>
                     </div>
-                    <p className="border-t border-slate-100 px-2 py-1.5 text-[9px] text-slate-400">
+                    <p className="border-t border-slate-100 px-2 py-1.5 text-[9px] text-slate-400 dark:border-white/5">
                       Failed · Fairly passed · Passed — {gradeBands.graded ?? 0}{" "}
                       graded
                       {Number(gradeBands.ungraded) > 0
@@ -373,8 +362,8 @@ export default function ReportPreviewModal({
                 </section>
               </div>
 
-              <section>
-                <div className="mb-1.5 flex items-end justify-between gap-2">
+              <section className="mt-1">
+                <div className="mb-1 flex items-end justify-between gap-2">
                   <h3 className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
                     Priority learners
                   </h3>
@@ -382,9 +371,9 @@ export default function ReportPreviewModal({
                     High risk and/or ARAL · top {priorityLearners.length}
                   </p>
                 </div>
-                <div className="max-h-[220px] overflow-auto rounded-xl border border-slate-100">
+                <div className="max-h-[220px] overflow-auto rounded-xl border border-slate-100 dark:border-white/5">
                   <table className="min-w-full border-collapse text-left">
-                    <thead className="sticky top-0 bg-slate-50">
+                    <thead className="sticky top-0 bg-slate-50 dark:bg-[var(--card)]">
                       <tr>
                         {[
                           "#",
@@ -407,20 +396,20 @@ export default function ReportPreviewModal({
                         priorityLearners.map((row, index) => (
                           <tr
                             key={row.id || `${row.name}-${index}`}
-                            className="border-t border-slate-100 hover:bg-slate-50/70"
+                            className="border-t border-slate-100 hover:bg-slate-50/70 dark:border-white/5 dark:hover:bg-white/5"
                           >
                             <td className="px-2.5 py-1.5 text-[11px] tabular-nums text-slate-400">
                               {index + 1}
                             </td>
                             <td className="px-2.5 py-1.5">
-                              <p className="text-[11px] font-semibold text-slate-800">
+                              <p className="text-[11px] font-semibold text-slate-800 dark:text-slate-100">
                                 {row.name}
                               </p>
                               <p className="text-[9px] text-slate-400">
                                 {row.studentNumber}
                               </p>
                             </td>
-                            <td className="px-2.5 py-1.5 text-[11px] font-semibold tabular-nums text-slate-700">
+                            <td className="px-2.5 py-1.5 text-[11px] font-semibold tabular-nums text-slate-700 dark:text-slate-200">
                               {row.grade == null ? "—" : row.grade}
                             </td>
                             <td
@@ -431,7 +420,7 @@ export default function ReportPreviewModal({
                             >
                               {row.riskLevel || "—"}
                             </td>
-                            <td className="px-2.5 py-1.5 text-[11px] text-slate-600">
+                            <td className="px-2.5 py-1.5 text-[11px] text-slate-600 dark:text-slate-300">
                               {row.recommendation || "—"}
                             </td>
                           </tr>
@@ -440,27 +429,27 @@ export default function ReportPreviewModal({
                         <tr>
                           <td
                             colSpan={5}
-                            className="px-3 py-6 text-center text-[11px] text-slate-400"
+                            className="px-3 py-5 text-center text-[11px] leading-relaxed text-slate-400"
                           >
-                            No high-risk or ARAL-priority learners in this
-                            class overview.
+                            No high-risk learners listed here. Moderate risk
+                            appears in the bands above. ARAL priority is for
+                            English / Filipino only.
                           </td>
                         </tr>
                       )}
                     </tbody>
                   </table>
                 </div>
-                <p className="mt-1.5 text-[9px] text-slate-400">
+                <p className="mt-1 text-[9px] text-slate-400">
                   Full monitoring and weekly progress: Academic Monitoring.
                 </p>
               </section>
 
-              <p className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2 text-[10px] leading-relaxed text-slate-500">
+              <p className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2 text-[10px] leading-relaxed text-slate-500 dark:border-white/5 dark:bg-transparent">
                 Academic risk uses ECR grades only (&lt;75 High · 75–84 Moderate ·
-                85–100 Low) via the trained Random Forest. Risk and grade bands
-                count graded learners only; ungraded are not High Risk. SF2
-                attendance is tracked under{" "}
-                <span className="font-semibold text-slate-600">
+                85–100 Low). Risk and grade bands count graded learners only;
+                ungraded are not High Risk. SF2 attendance is tracked under{" "}
+                <span className="font-semibold text-slate-600 dark:text-slate-300">
                   Attendance Monitoring
                 </span>
                 , separate from this prediction.
@@ -469,11 +458,11 @@ export default function ReportPreviewModal({
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-slate-100 bg-white px-4 py-2.5 sm:px-5">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-slate-100 bg-white px-4 py-2.5 dark:border-white/5 dark:bg-[var(--card)] sm:px-5">
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-9 cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+            className="inline-flex h-9 cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-white/5 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/5"
           >
             Close
           </button>
@@ -481,7 +470,7 @@ export default function ReportPreviewModal({
             type="button"
             onClick={() => {
               onExport?.();
-              setToast("PDF export started.");
+              showToast("Report downloaded.");
             }}
             className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white transition-colors hover:bg-[#246f54]"
           >

@@ -34,15 +34,35 @@ import { cn } from "@/lib/utils";
 
 const menuNavigation = [
   { label: "Dashboard", href: "/teacher/dashboard", icon: LayoutGrid },
-  { label: "My Classes", href: "/teacher/my-classes", icon: BookOpen },
+  {
+    label: "My Classes",
+    href: "/teacher/my-classes",
+    icon: BookOpen,
+    tourId: "my-classes",
+  },
   { label: "Input Grades", href: "/teacher/input-grades", icon: CloudUpload },
-  { label: "Lesson Plans", href: "/teacher/lesson-plans", icon: ClipboardList },
+  {
+    label: "Lesson Plans",
+    href: "/teacher/lesson-plans",
+    icon: ClipboardList,
+    tourId: "lesson-plans",
+  },
 ];
 
 const analyticsNavigation = [
-  { label: "Academic Monitoring", href: "/teacher/monitoring", icon: Activity },
+  {
+    label: "Academic Monitoring",
+    href: "/teacher/monitoring",
+    icon: Activity,
+    tourId: "monitoring",
+  },
   { label: "ARAL Program", href: "/teacher/aral-program", icon: GraduationCap },
-  { label: "Attendance Monitoring", href: "/teacher/attendance", icon: CalendarDays },
+  {
+    label: "Attendance Monitoring",
+    href: "/teacher/attendance",
+    icon: CalendarDays,
+    tourId: "attendance",
+  },
   { label: "Reports", href: "/teacher/reports", icon: BarChart3 },
 ];
 
@@ -59,11 +79,13 @@ function NavLink({
   onNavigate,
   badge = 0,
   collapsed = false,
+  tourId,
 }) {
   return (
     <Link
       href={href}
       scroll={!isActive}
+      data-tour-id={tourId || undefined}
       onClick={(event) => {
         if (isActive) {
           event.preventDefault();
@@ -78,7 +100,9 @@ function NavLink({
         "group relative flex min-h-8 items-center gap-2.5 rounded-lg px-3 text-[13px] font-medium transition-all duration-200",
         "hover:bg-white/8 hover:text-white",
         collapsed && "justify-center px-2",
-        isActive ? "bg-cnhs-green/25 text-[#7dd8a9]" : "text-white/70"
+        isActive
+          ? "bg-transparent text-[#7dd8a9] ring-1 ring-inset ring-white/18"
+          : "text-white/70"
       )}
     >
       {isActive && !collapsed ? (
@@ -215,7 +239,7 @@ export default function TeacherSidebar({
   return (
     <aside
       className={cn(
-        "z-30 h-screen flex-col bg-cnhs-sidebar text-white transition-[width] duration-200 dark:bg-black",
+        "z-30 h-screen flex-col border-r border-white/10 bg-cnhs-sidebar text-white transition-[width] duration-200",
         widthClass,
         mobile ? "flex h-full w-full" : "fixed inset-y-0 left-0",
         className

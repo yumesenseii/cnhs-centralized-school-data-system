@@ -26,7 +26,7 @@ export default function GradeDistributionChart({ data, quarterlyAverages }) {
         <div className="mt-3 h-[180px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={quarterlyAverages} barSize={28}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
               <XAxis
                 dataKey="quarter"
                 tickLine={false}
@@ -40,8 +40,11 @@ export default function GradeDistributionChart({ data, quarterlyAverages }) {
                 tick={{ fill: "#94a3b8", fontSize: 11 }}
               />
               <Tooltip
+                cursor={{ fill: "rgba(255, 255, 255, 0.04)" }}
                 contentStyle={{
-                  border: "1px solid #e5e7eb",
+                  border: "1px solid var(--border)",
+                  backgroundColor: "var(--card)",
+                  color: "var(--card-foreground)",
                   borderRadius: 12,
                   fontSize: 12,
                 }}

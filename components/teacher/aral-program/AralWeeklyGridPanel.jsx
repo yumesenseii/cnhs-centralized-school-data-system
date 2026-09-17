@@ -1,29 +1,38 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Save, Upload } from "lucide-react";
+import { Download, Loader2, Save, Upload } from "lucide-react";
 import ConfirmModal from "@/components/shared/ConfirmModal";
 import {
   ARAL_FOCUS_OPTIONS,
   ARAL_PROGRESS_OPTIONS,
   ARAL_REMARKS_MAX,
-  ARAL_REMARKS_PLACEHOLDER,
   ARAL_SESSION_LABELS,
   ARAL_SESSION_OPTIONS,
+  ARAL_WEEKDAY_KEYS,
+  ARAL_WEEKDAY_LABELS,
   ARAL_WEEKLY_INTERVENTION,
   ARAL_WEEK_OPTIONS,
   aralObservationDateToday,
   clipAralRemarks,
+  compactAralSessionDays,
+  emptyAralSessionDays,
   formatAralRosterName,
   formatAralWeeklyRemarks,
+  hasAralSessionDayMark,
   parseAralProgress,
+  sessionDaysFromRecord,
   stripAralWeekPrefix,
+  summarizeAralSessionStatus,
 } from "@/lib/monitoring/aralProgress";
 import {
   buildWeekFileRows,
   groupMonitoringRecordsByLearner,
 } from "@/lib/monitoring/aralSectionFiles";
-import { parseAralWeeklyWorkbook } from "@/lib/reports/aralWeeklyProgressExport";
+import {
+  downloadAralWeeklyTemplateExcel,
+  parseAralWeeklyWorkbook,
+} from "@/lib/reports/aralWeeklyProgressExport";
 import { MONITORING_STATUS } from "@/lib/monitoring/recommendations";
 import {
   createMonitoringRecord,
@@ -32,12 +41,24 @@ import {
 } from "@/lib/supabase/queries/monitoring";
 import { confirmDestructive } from "@/lib/ui/confirmAction";
 import { cn } from "@/lib/utils";
+import { useAppToast } from "@/components/shared/AppToast";
+
+const th =
+  "sticky top-0 z-20 border border-slate-200 bg-slate-100 px-2 py-1.5 text-left text-[11px] font-semibold text-slate-600 whitespace-nowrap dark:border-white/10 dark:bg-[#222] dark:text-slate-300";
+const td =
+  "border border-slate-200 bg-transparent px-2 py-1 text-[12px] leading-snug text-slate-800 whitespace-nowrap dark:border-white/10 dark:text-slate-200";
+const cellControl =
+  "h-[28px] w-full appearance-none border-0 bg-transparent px-1 text-[12px] text-slate-800 shadow-none outline-none ring-0 focus:bg-cnhs-green-soft focus:ring-0 disabled:cursor-not-allowed disabled:text-slate-400 dark:text-slate-200 dark:focus:bg-white/6 dark:[color-scheme:dark]";
+const lrnSticky = "sticky left-0 z-10 w-[132px] min-w-[132px] max-w-[132px]";
+const nameSticky =
+  "sticky left-[132px] z-10 min-w-[180px] shadow-[4px_0_8px_-4px_rgba(15,23,42,0.18)]";
+const stickyFill = "bg-white";
 
 function emptyDraft() {
   return {
     recordId: null,
     observationDate: "",
-    sessionStatus: "",
+    sessionDays: emptyAralSessionDays(),
     skillFocus: "",
     topic: "",
     activity: "",
@@ -55,7 +76,7 @@ function draftsFromRows(rows) {
     next[row.learner.id] = {
       recordId: rec?.id || null,
       observationDate: rec?.observationDate || "",
-      sessionStatus: rec?.sessionStatus || "",
+      sessionDays: sessionDaysFromRecord(rec || {}),
       skillFocus: rec?.skillFocus || "",
       topic: rec?.topic || rec?.raw?.topic || "",
       activity: rec?.activity || rec?.raw?.activity || "",
@@ -73,7 +94,7 @@ function draftsFromRows(rows) {
 
 function rowHasWeeklyInput(cells) {
   return Boolean(
-    String(cells?.sessionStatus ?? "").trim() ||
+    hasAralSessionDayMark(cells?.sessionDays) ||
       String(cells?.skillFocus ?? "").trim() ||
       String(cells?.topic ?? "").trim() ||
       String(cells?.activity ?? "").trim() ||
@@ -87,8 +108,8 @@ function draftsEqual(a, b) {
 }
 
 /**
- * In-app Weekly grid for one week. Facilitator write; others view.
- * Session starts blank — do not auto-mark Present.
+ * Excel-style Weekly grid for one week. Facilitator write; others view.
+ * Mon–Fri starts blank — do not auto-mark Present. Not SF2.
  */
 export default function AralWeeklyGridPanel({
   group,
@@ -110,8 +131,9 @@ export default function AralWeeklyGridPanel({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState("");
-  const [toast, setToast] = useState("");
+  const { showToast } = useAppToast();
   const [records, setRecords] = useState([]);
   const [draft, setDraft] = useState({});
   const [savedDraft, setSavedDraft] = useState({});
@@ -172,7 +194,6 @@ export default function AralWeeklyGridPanel({
     setDraft(next);
     setSavedDraft(next);
     setError("");
-    setToast("");
   }, [weekNumber, records, learnerKey]);
 
   function setCell(learnerId, field, value) {
@@ -185,7 +206,24 @@ export default function AralWeeklyGridPanel({
         [field]: value,
       },
     }));
-    setToast("");
+  }
+
+  function setDay(learnerId, day, value) {
+    if (!canWrite) return;
+    setDraft((prev) => {
+      const current = { ...emptyDraft(), ...(prev[learnerId] || {}) };
+      return {
+        ...prev,
+        [learnerId]: {
+          ...current,
+          sessionDays: {
+            ...emptyAralSessionDays(),
+            ...(current.sessionDays || {}),
+            [day]: value,
+          },
+        },
+      };
+    });
   }
 
   function requestWeek(nextWeek) {
@@ -203,6 +241,7 @@ export default function AralWeeklyGridPanel({
       const cells = item.cells;
       const remarks = clipAralRemarks(cells.teacherRemarks);
       const progress = parseAralProgress(cells.studentProgress);
+      const sessionDays = compactAralSessionDays(cells.sessionDays);
       const payload = {
         observation_date:
           String(cells.observationDate || "").trim() || aralObservationDateToday(),
@@ -213,7 +252,8 @@ export default function AralWeeklyGridPanel({
         monitoring_status:
           cells.monitoringStatus || MONITORING_STATUS.ONGOING,
         week_number: targetWeek,
-        session_status: cells.sessionStatus || null,
+        session_days: sessionDays,
+        session_status: summarizeAralSessionStatus(sessionDays),
         skill_focus: cells.skillFocus || null,
         topic: String(cells.topic || "").trim() || null,
         activity: String(cells.activity || "").trim() || null,
@@ -244,7 +284,6 @@ export default function AralWeeklyGridPanel({
     }
 
     setError("");
-    setToast("");
 
     const toSave = [];
     for (const row of weekRows) {
@@ -263,7 +302,7 @@ export default function AralWeeklyGridPanel({
 
     if (!toSave.length) {
       setError(
-        "Mark session, topic, activity, skill, progress, or remarks for at least one learner. Empty rows are not saved. Session is not auto-marked Present."
+        "Mark Mon–Fri, topic, activity, skill, progress, or remarks for at least one learner. Empty rows are not saved. Blank is not Absent."
       );
       return;
     }
@@ -275,8 +314,27 @@ export default function AralWeeklyGridPanel({
       setError(result.error.message);
       return;
     }
-    setToast(`Saved Week ${weekNumber} for ${toSave.length} learner(s).`);
+    showToast(`Saved Week ${weekNumber} for ${toSave.length} learner(s).`);
     await refresh();
+  }
+
+  async function handleDownload() {
+    setDownloading(true);
+    setError("");
+    try {
+      await downloadAralWeeklyTemplateExcel({
+        learners,
+        records,
+        gradeSection,
+        schoolYear,
+        weekNumber,
+        generatedBy: "Facilitator",
+      });
+    } catch (err) {
+      setError(err?.message || "Unable to download the weekly Excel.");
+    } finally {
+      setDownloading(false);
+    }
   }
 
   function handleUploadClick() {
@@ -303,7 +361,6 @@ export default function AralWeeklyGridPanel({
 
     setUploading(true);
     setError("");
-    setToast("");
     try {
       const buffer = await picked.arrayBuffer();
       const parsed = parseAralWeeklyWorkbook(buffer, {
@@ -338,7 +395,7 @@ export default function AralWeeklyGridPanel({
           cells: {
             recordId: existing?.id || null,
             observationDate: item.observationDate,
-            sessionStatus: item.sessionStatus || "",
+            sessionDays: item.sessionDays || emptyAralSessionDays(),
             skillFocus: item.skillFocus || "",
             topic: item.topic || "",
             activity: item.activity || "",
@@ -355,7 +412,7 @@ export default function AralWeeklyGridPanel({
         setError(result.error.message);
         return;
       }
-      setToast(
+      showToast(
         `Uploaded Week ${weekNumber} for ${items.length} learner(s) from Excel.`
       );
       await refresh();
@@ -384,45 +441,49 @@ export default function AralWeeklyGridPanel({
           {error}
         </p>
       ) : null}
-      {toast ? (
-        <p className="rounded-lg border border-green-100 bg-green-50 px-3 py-2 text-[12px] font-medium text-cnhs-green-dark">
-          {toast}
-        </p>
-      ) : null}
 
-      <div className="flex flex-col gap-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-        <div>
-          <p className="text-[11px] font-medium text-slate-500">Week</p>
-          <div className="mt-1 flex flex-wrap gap-1">
-            {ARAL_WEEK_OPTIONS.map((week) => (
-              <button
-                key={week}
-                type="button"
-                onClick={() => requestWeek(week)}
-                className={cn(
-                  "inline-flex h-8 cursor-pointer items-center rounded-full px-3 text-[11px] font-semibold ring-1",
-                  week === weekNumber
-                    ? "bg-cnhs-green-dark text-white ring-cnhs-green-dark"
-                    : "bg-white text-slate-600 ring-slate-200 hover:bg-slate-50"
-                )}
-              >
-                Week {week}
-              </button>
-            ))}
-          </div>
-          <p className="mt-1.5 text-[10px] text-slate-400">
-            {filledCount} of {learners.length} saved · Session starts blank (not
-            Present). {canWrite ? "Facilitator can save." : "View only."}
-          </p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-1">
+          <span className="mr-1 text-[11px] font-medium text-slate-500">
+            Week
+          </span>
+          {ARAL_WEEK_OPTIONS.map((week) => (
+            <button
+              key={week}
+              type="button"
+              onClick={() => requestWeek(week)}
+              className={cn(
+                "inline-flex h-8 cursor-pointer items-center rounded-full px-3 text-[11px] font-semibold ring-1",
+                week === weekNumber
+                  ? "bg-cnhs-green-dark text-white ring-cnhs-green-dark"
+                  : "bg-white text-slate-600 ring-slate-200 hover:bg-slate-50 dark:bg-transparent dark:text-slate-300 dark:ring-white/10 dark:hover:bg-white/6"
+              )}
+            >
+              Week {week}
+            </button>
+          ))}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={downloading || !learners.length}
+            onClick={handleDownload}
+            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/6"
+          >
+            {downloading ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : (
+              <Download size={12} />
+            )}
+            Download Excel
+          </button>
           {canWrite ? (
             <button
               type="button"
               disabled={uploading}
               onClick={handleUploadClick}
-              className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/6"
             >
               {uploading ? (
                 <Loader2 size={12} className="animate-spin" />
@@ -448,90 +509,104 @@ export default function AralWeeklyGridPanel({
         </div>
       </div>
 
-      <p className="text-[11px] text-slate-500">
-        Same assigned ARAL roster only. Excel upload is optional — you can enter
-        this week in the grid. ARAL session is not official SF2 and is not an
-        Academic Prediction input.
+      <p className="text-[10px] text-slate-400">
+        {filledCount} of {learners.length} saved
+        {canWrite ? " · You can save this week." : " · View only."}
       </p>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-100">
-        <table className="min-w-[1180px] w-full border-collapse text-left">
+      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+        Mark who came each day this week. Leave a day empty if there was no
+        session.
+      </p>
+
+      <div className="aral-week-scroll overflow-x-auto rounded-lg border border-slate-200 dark:border-white/10 dark:bg-[#1c1c1c]">
+        <table className="w-full min-w-[1080px] border-collapse">
           <thead>
-            <tr className="bg-slate-50/80">
-              {[
-                "Learner",
-                "LRN",
-                "Session",
-                "Topic",
-                "Activity",
-                "Skill",
-                "Progress",
-                "Remarks",
-              ].map((column) => (
-                <th
-                  key={column}
-                  className="px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400"
-                >
-                  {column}
+            <tr>
+              <th className={cn(th, lrnSticky, "z-30 text-center")}>LRN</th>
+              <th className={cn(th, nameSticky, "z-30")}>Learner</th>
+              {ARAL_WEEKDAY_KEYS.map((day) => (
+                <th key={day} className={cn(th, "w-[76px] text-center")}>
+                  {ARAL_WEEKDAY_LABELS[day]}
                 </th>
               ))}
+              <th className={cn(th, "min-w-[140px]")}>Topic</th>
+              <th className={cn(th, "min-w-[140px]")}>Activity</th>
+              <th className={cn(th, "min-w-[120px]")}>Skill</th>
+              <th className={cn(th, "min-w-[150px]")}>Progress</th>
+              <th className={cn(th, "min-w-[180px]")}>Remarks</th>
             </tr>
           </thead>
           <tbody>
             {learners.map((learner) => {
               const cells = draft[learner.id] || emptyDraft();
+              const days = {
+                ...emptyAralSessionDays(),
+                ...(cells.sessionDays || {}),
+              };
               const name = formatAralRosterName(learner);
-              const fieldClass =
-                "h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-[12px] text-slate-800 outline-none focus:border-cnhs-green disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500";
+              const locked = !canWrite || !learner.sourceClassId;
               return (
                 <tr
                   key={learner.id}
-                  className="border-t border-slate-100 hover:bg-slate-50/60"
+                  className="hover:bg-slate-50/80 dark:hover:bg-white/4"
                 >
-                  <td className="px-3 py-2">
-                    <p className="text-[12px] font-semibold text-slate-800">
-                      {name}
-                    </p>
-                  </td>
-                  <td className="px-3 py-2 text-[12px] tabular-nums text-slate-600">
+                  <td
+                    className={cn(
+                      td,
+                      lrnSticky,
+                      stickyFill,
+                      "text-center tabular-nums text-slate-600 dark:text-slate-300"
+                    )}
+                  >
                     {learner.studentNumber || "—"}
                   </td>
-                  <td className="px-3 py-2">
-                    <select
-                      value={cells.sessionStatus || ""}
-                      disabled={!canWrite || !learner.sourceClassId}
-                      onChange={(e) =>
-                        setCell(learner.id, "sessionStatus", e.target.value)
-                      }
-                      className={fieldClass}
-                    >
-                      <option value="">—</option>
-                      {ARAL_SESSION_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {ARAL_SESSION_LABELS[opt]}
-                        </option>
-                      ))}
-                    </select>
+                  <td
+                    className={cn(
+                      td,
+                      nameSticky,
+                      stickyFill,
+                      "text-left font-medium"
+                    )}
+                  >
+                    {name}
                   </td>
-                  <td className="px-3 py-2">
+                  {ARAL_WEEKDAY_KEYS.map((day) => (
+                    <td key={day} className={cn(td, "p-0 text-center")}>
+                      <select
+                        aria-label={`${name} ${ARAL_WEEKDAY_LABELS[day]}`}
+                        value={days[day] || ""}
+                        disabled={locked}
+                        onChange={(e) => setDay(learner.id, day, e.target.value)}
+                        className={cn(cellControl, "text-center")}
+                      >
+                        <option value="">—</option>
+                        {ARAL_SESSION_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {ARAL_SESSION_LABELS[opt]}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  ))}
+                  <td className={cn(td, "p-0")}>
                     <input
                       type="text"
                       maxLength={80}
                       value={cells.topic || ""}
-                      disabled={!canWrite || !learner.sourceClassId}
+                      disabled={locked}
                       onChange={(e) =>
                         setCell(learner.id, "topic", e.target.value.slice(0, 80))
                       }
-                      placeholder="Session topic"
-                      className={cn(fieldClass, "min-w-[140px]")}
+                      className={cellControl}
                     />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className={cn(td, "p-0")}>
                     <input
                       type="text"
                       maxLength={80}
                       value={cells.activity || ""}
-                      disabled={!canWrite || !learner.sourceClassId}
+                      disabled={locked}
                       onChange={(e) =>
                         setCell(
                           learner.id,
@@ -539,18 +614,18 @@ export default function AralWeeklyGridPanel({
                           e.target.value.slice(0, 80)
                         )
                       }
-                      placeholder="Activity"
-                      className={cn(fieldClass, "min-w-[140px]")}
+                      className={cellControl}
                     />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className={cn(td, "p-0")}>
                     <select
+                      aria-label={`${name} skill`}
                       value={cells.skillFocus || ""}
-                      disabled={!canWrite || !learner.sourceClassId}
+                      disabled={locked}
                       onChange={(e) =>
                         setCell(learner.id, "skillFocus", e.target.value)
                       }
-                      className={fieldClass}
+                      className={cellControl}
                     >
                       <option value="">—</option>
                       {ARAL_FOCUS_OPTIONS.map((opt) => (
@@ -560,14 +635,15 @@ export default function AralWeeklyGridPanel({
                       ))}
                     </select>
                   </td>
-                  <td className="px-3 py-2">
+                  <td className={cn(td, "p-0")}>
                     <select
+                      aria-label={`${name} progress`}
                       value={cells.studentProgress || ""}
-                      disabled={!canWrite || !learner.sourceClassId}
+                      disabled={locked}
                       onChange={(e) =>
                         setCell(learner.id, "studentProgress", e.target.value)
                       }
-                      className={cn(fieldClass, "min-w-[160px]")}
+                      className={cellControl}
                     >
                       <option value="">—</option>
                       {ARAL_PROGRESS_OPTIONS.map((opt) => (
@@ -577,12 +653,12 @@ export default function AralWeeklyGridPanel({
                       ))}
                     </select>
                   </td>
-                  <td className="px-3 py-2">
+                  <td className={cn(td, "p-0")}>
                     <input
                       type="text"
                       maxLength={ARAL_REMARKS_MAX}
                       value={cells.teacherRemarks || ""}
-                      disabled={!canWrite || !learner.sourceClassId}
+                      disabled={locked}
                       onChange={(e) =>
                         setCell(
                           learner.id,
@@ -590,8 +666,7 @@ export default function AralWeeklyGridPanel({
                           e.target.value.slice(0, ARAL_REMARKS_MAX)
                         )
                       }
-                      placeholder={ARAL_REMARKS_PLACEHOLDER}
-                      className={cn(fieldClass, "min-w-[180px]")}
+                      className={cellControl}
                     />
                   </td>
                 </tr>
@@ -599,6 +674,11 @@ export default function AralWeeklyGridPanel({
             })}
           </tbody>
         </table>
+        {learners.length === 0 ? (
+          <p className="px-5 py-12 text-center text-sm text-slate-500">
+            No assigned ARAL learners in this section.
+          </p>
+        ) : null}
       </div>
 
       <input

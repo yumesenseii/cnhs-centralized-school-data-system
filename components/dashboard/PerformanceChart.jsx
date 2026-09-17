@@ -12,16 +12,16 @@ import {
 
 export default function PerformanceChart({ data }) {
   return (
-    <div className="h-[220px] w-full">
+    <div className="h-[200px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 6, right: 8, left: -28, bottom: 0 }}>
-          <CartesianGrid stroke="#eef2f7" strokeDasharray="3 3" vertical={false} />
+        <BarChart data={data} margin={{ top: 4, right: 6, left: -28, bottom: 0 }}>
+          <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
           <XAxis
             dataKey="grade"
             tickLine={false}
             axisLine={false}
-            tick={{ fontSize: 12, fill: "#94a3b8" }}
-            dy={8}
+            tick={{ fontSize: 11, fill: "#94a3b8" }}
+            dy={6}
           />
           <YAxis
             domain={[0, 100]}
@@ -33,7 +33,9 @@ export default function PerformanceChart({ data }) {
           <Tooltip
             cursor={{ fill: "rgba(82, 183, 136, 0.06)" }}
             contentStyle={{
-              border: "1px solid #e5e7eb",
+              border: "1px solid var(--border)",
+              backgroundColor: "var(--card)",
+              color: "var(--card-foreground)",
               borderRadius: 12,
               boxShadow: "0 12px 28px rgba(15, 23, 42, 0.08)",
               fontSize: 12,

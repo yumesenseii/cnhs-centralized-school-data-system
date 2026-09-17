@@ -48,7 +48,7 @@ export default function InputGradesUploadStep({
 
     setError("");
     setParsing(true);
-    setStatusLabel("Opening workbook...");
+    setStatusLabel("Opening file…");
 
     try {
       const buffer = await selected.arrayBuffer();
@@ -56,12 +56,12 @@ export default function InputGradesUploadStep({
         includeGrades: false,
         arrayBuffer: buffer,
         onProgress: ({ label }) => {
-          setStatusLabel(label || "Reading INPUT DATA...");
+          setStatusLabel(label || "Reading class details…");
         },
       });
 
       if (!parsed.ok || !parsed.metadata) {
-        setError(parsed.error || "Could not read E-Class Record metadata.");
+        setError(parsed.error || "We couldn’t read this E-Class Record.");
         onClear?.();
         return;
       }
@@ -75,7 +75,7 @@ export default function InputGradesUploadStep({
       });
       setStatusLabel("");
     } catch (err) {
-      setError(err?.message ?? "Unable to read the E-Class Record.");
+      setError(err?.message ?? "We couldn’t read this E-Class Record.");
       onClear?.();
     } finally {
       setParsing(false);
@@ -125,7 +125,7 @@ export default function InputGradesUploadStep({
           </span>
           <p className="mt-3 text-[13px] font-semibold text-slate-700">
             {parsing
-              ? statusLabel || "Reading workbook..."
+              ? statusLabel || "Reading file…"
               : "Drag & drop your .xlsx file here or click to browse"}
           </p>
           <p className="mt-1 text-[11px] text-slate-400">

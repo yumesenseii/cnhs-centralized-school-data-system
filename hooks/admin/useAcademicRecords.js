@@ -3,11 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   buildAcademicRecordsModel,
+  buildGradeFoldersFromClasses,
+  buildSectionFoldersFromClasses,
   groupAcademicRecordClassCards,
 } from "@/lib/admin/academicRecordsMappers";
 import {
   getCachedAdminSchoolYears,
   invalidateAdminRosterCache,
+  loadBuiltMonitoringRoster,
 } from "@/lib/admin/adminRosterCache";
 import { createClient } from "@/lib/supabase/client";
 import { getAdminReportsBundle } from "@/lib/supabase/queries/reports";
@@ -71,7 +74,8 @@ export function useAcademicRecords() {
   const [schoolYears, setSchoolYears] = useState([]);
   const [model, setModel] = useState(null);
   const [filtersReady, setFiltersReady] = useState(false);
-  const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(true);
+  const { loading, refreshing, beginLoad, endLoad, endFirstPaint } =
+    useSoftLoadState(true);
 
   const loadSeq = useRef(0);
   const hasBootedRef = useRef(false);
@@ -146,13 +150,43 @@ export function useAcademicRecords() {
           );
         }
 
-        const built = await buildAcademicRecordsModel({
+        const payload = {
+          classes: result.data.classes ?? [],
+          enrollments: result.data.enrollments ?? [],
+          grades: result.data.grades ?? [],
+          monitoringRecords: result.data.monitoringRecords ?? [],
+        };
+        const modelInput = {
           ...result.data,
           schoolYears: yearsForModel,
           filters: {
             schoolYear: resolvedYear || undefined,
             quarter: resolvedQuarter || undefined,
           },
+        };
+        const roster = await loadBuiltMonitoringRoster(
+          payload,
+          {
+            schoolYear: resolvedYear || null,
+            quarter: resolvedQuarter || null,
+          },
+          {
+            onShell: async (shell) => {
+              if (seq !== loadSeq.current) return;
+              const built = await buildAcademicRecordsModel({
+                ...modelInput,
+                roster: shell,
+              });
+              if (seq !== loadSeq.current) return;
+              setModel(built);
+              endFirstPaint();
+            },
+          }
+        );
+
+        const built = await buildAcademicRecordsModel({
+          ...modelInput,
+          roster,
         });
 
         if (seq !== loadSeq.current) return;
@@ -174,11 +208,11 @@ export function useAcademicRecords() {
         }
 
         setError(err?.message || "Unable to load academic records.");
-        setModel(null);
+        setModel((current) => current);
         endLoad(false);
       }
     },
-    [beginLoad, endLoad]
+    [beginLoad, endLoad, endFirstPaint]
   );
 
   useEffect(() => {
@@ -235,38 +269,27 @@ export function useAcademicRecords() {
     return groupAcademicRecordClassCards(classes);
   }, [model, quarter]);
 
+  const catalogForTeacher = useMemo(
+    () => catalog.filter((cls) => classMatchesTeacher(cls, teacherFilter)),
+    [catalog, teacherFilter]
+  );
+
+  const gradeSummary = useMemo(
+    () => buildGradeFoldersFromClasses(catalogForTeacher),
+    [catalogForTeacher]
+  );
+
   const classesInGrade = useMemo(() => {
     if (gradeFilter === "All Grades") return [];
-    return catalog.filter((cls) => {
-      if (!gradesMatch(cls.gradeLabel, gradeFilter)) return false;
-      if (!classMatchesTeacher(cls, teacherFilter)) return false;
-      return true;
-    });
-  }, [catalog, gradeFilter, teacherFilter]);
-
-  const sectionFolders = useMemo(() => {
-    const map = new Map();
-    for (const cls of classesInGrade) {
-      const key = cls.section || "—";
-      const entry = map.get(key) ?? {
-        section: key,
-        classCount: 0,
-        students: 0,
-        graded: 0,
-        pending: 0,
-        uploaded: 0,
-      };
-      entry.classCount += 1;
-      entry.students += cls.learnerCount;
-      entry.graded += cls.gradedCount;
-      entry.pending += cls.pendingCount;
-      if (cls.hasUpload) entry.uploaded += 1;
-      map.set(key, entry);
-    }
-    return [...map.values()].sort((a, b) =>
-      String(a.section).localeCompare(String(b.section))
+    return catalogForTeacher.filter((cls) =>
+      gradesMatch(cls.gradeLabel, gradeFilter)
     );
-  }, [classesInGrade]);
+  }, [catalogForTeacher, gradeFilter]);
+
+  const sectionFolders = useMemo(
+    () => buildSectionFoldersFromClasses(classesInGrade),
+    [classesInGrade]
+  );
 
   const scopedClasses = useMemo(() => {
     if (sectionFilter === "All Sections") return [];
@@ -312,7 +335,6 @@ export function useAcademicRecords() {
   const selectGradeFolder = useCallback((gradeLabel) => {
     setGradeFilter(gradeLabel || "All Grades");
     setSectionFilter("All Sections");
-    setTeacherFilter("All Teachers");
     setSelectedClassId(null);
     setStatusFilter("all");
     setSearch("");
@@ -375,7 +397,7 @@ export function useAcademicRecords() {
     setQuarter,
     refresh,
     summaryCards: model?.summaryCards ?? [],
-    gradeSummary: model?.gradeSummary ?? [],
+    gradeSummary,
     sectionFolders,
     classes: scopedClasses,
     selectedClass,

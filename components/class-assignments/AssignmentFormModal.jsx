@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import AnimatedModal from "@/components/shared/AnimatedModal";
+import AppSelect from "@/components/shared/AppSelect";
+import { AnimatedBanner } from "@/components/shared/AnimatedFeedback";
 import { formatPersonName } from "@/lib/admin/classAssignmentMappers";
 import {
   TERM_ALL_VALUE,
@@ -67,8 +70,6 @@ export default function AssignmentFormModal({
     if (!stillValid) setSectionId("");
   }, [open, activeSections, sectionId]);
 
-  if (!open) return null;
-
   const title =
     mode === "edit" ? "Edit Class Assignment" : "Assign Teacher to Class";
   const description =
@@ -110,19 +111,16 @@ export default function AssignmentFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <button
-        type="button"
-        aria-label="Close dialog backdrop"
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px]"
-        onClick={saving ? undefined : onClose}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="assignment-form-title"
-        className="relative z-10 w-full max-w-[560px] overflow-hidden rounded-lg bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]"
-      >
+    <AnimatedModal
+      open={open}
+      onClose={saving ? undefined : onClose}
+      labelledBy="assignment-form-title"
+      zClassName="z-[60]"
+      closeOnBackdrop={!saving}
+      closeOnEscape={!saving}
+      className="bg-slate-900/40"
+      panelClassName="w-full max-w-[560px] overflow-hidden rounded-lg bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]"
+    >
         <div className="border-b border-slate-100 px-4 py-3.5">
           <h2
             id="assignment-form-title"
@@ -134,47 +132,51 @@ export default function AssignmentFormModal({
         </div>
 
         <form className="space-y-3 px-4 py-3.5" onSubmit={handleSubmit}>
-          <label className="block">
+          <div className="block">
             <span className="mb-1.5 block text-[11px] font-semibold text-slate-600">
               Teacher
             </span>
-            <select
+            <AppSelect
+              label="Teacher"
               value={teacherId}
-              onChange={(event) => setTeacherId(event.target.value)}
-              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-cnhs-green-dark/40"
+              onChange={setTeacherId}
               required
-            >
-              <option value="">Select teacher</option>
-              {teachers.map((teacher) => (
-                <option key={teacher.id} value={teacher.id}>
-                  {formatPersonName(teacher)}
-                  {teacher.employee_number
-                    ? ` (${teacher.employee_number})`
-                    : ""}
-                </option>
-              ))}
-            </select>
-          </label>
+              placeholder="Select teacher"
+              options={[
+                { value: "", label: "Select teacher" },
+                ...teachers.map((teacher) => ({
+                  value: teacher.id,
+                  label: `${formatPersonName(teacher)}${
+                    teacher.employee_number
+                      ? ` (${teacher.employee_number})`
+                      : ""
+                  }`,
+                })),
+              ]}
+            />
+          </div>
 
-          <label className="block">
+          <div className="block">
             <span className="mb-1.5 block text-[11px] font-semibold text-slate-600">
               Subject
             </span>
-            <select
+            <AppSelect
+              label="Subject"
               value={subjectId}
-              onChange={(event) => setSubjectId(event.target.value)}
-              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-cnhs-green-dark/40"
+              onChange={setSubjectId}
               required
-            >
-              <option value="">Select subject</option>
-              {subjects.map((subject) => (
-                <option key={subject.id} value={subject.id}>
-                  {subject.subject_name}
-                  {subject.subject_code ? ` (${subject.subject_code})` : ""}
-                </option>
-              ))}
-            </select>
-          </label>
+              placeholder="Select subject"
+              options={[
+                { value: "", label: "Select subject" },
+                ...subjects.map((subject) => ({
+                  value: subject.id,
+                  label: `${subject.subject_name}${
+                    subject.subject_code ? ` (${subject.subject_code})` : ""
+                  }`,
+                })),
+              ]}
+            />
+          </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block">
@@ -196,75 +198,69 @@ export default function AssignmentFormModal({
               </datalist>
             </label>
 
-            <label className="block">
+            <div className="block">
               <span className="mb-1.5 block text-[11px] font-semibold text-slate-600">
                 Term
               </span>
-              <select
+              <AppSelect
+                label="Term"
                 value={quarter}
-                onChange={(event) => setQuarter(event.target.value)}
-                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-cnhs-green-dark/40"
+                onChange={setQuarter}
                 required
-              >
-                {TERM_FORM_OPTIONS.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+                options={TERM_FORM_OPTIONS}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="block">
+            <div className="block">
               <span className="mb-1.5 block text-[11px] font-semibold text-slate-600">
                 Grade Level
               </span>
-              <select
+              <AppSelect
+                label="Grade Level"
                 value={gradeLevel}
-                onChange={(event) => setGradeLevel(event.target.value)}
-                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-cnhs-green-dark/40"
+                onChange={setGradeLevel}
                 required
-              >
-                {GRADE_OPTIONS.map((grade) => (
-                  <option key={grade} value={grade}>
-                    Grade {grade}
-                  </option>
-                ))}
-              </select>
-            </label>
+                options={GRADE_OPTIONS.map((grade) => ({
+                  value: String(grade),
+                  label: `Grade ${grade}`,
+                }))}
+              />
+            </div>
 
-            <label className="block">
+            <div className="block">
               <span className="mb-1.5 block text-[11px] font-semibold text-slate-600">
                 Section
               </span>
-              <select
+              <AppSelect
+                label="Section"
                 value={sectionId}
-                onChange={(event) => setSectionId(event.target.value)}
-                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-cnhs-green-dark/40"
+                onChange={setSectionId}
                 required
-              >
-                <option value="">Select section</option>
-                {activeSections.map((section) => (
-                  <option key={section.id} value={section.id}>
-                    {section.section_name}
-                  </option>
-                ))}
-              </select>
+                placeholder="Select section"
+                options={[
+                  { value: "", label: "Select section" },
+                  ...activeSections.map((section) => ({
+                    value: section.id,
+                    label: section.section_name,
+                  })),
+                ]}
+              />
               {activeSections.length === 0 ? (
                 <span className="mt-1 block text-[10px] text-amber-600">
                   No active sections for this school year and grade. Create one
                   in Section Management first.
                 </span>
               ) : null}
-            </label>
+            </div>
           </div>
 
-          {formError ? (
-            <p className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-[11px] font-medium text-red-600">
-              {formError}
-            </p>
-          ) : null}
+          <AnimatedBanner
+            message={formError}
+            tone="error"
+            className="text-[11px]"
+          />
 
           <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
             <button
@@ -288,7 +284,6 @@ export default function AssignmentFormModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </AnimatedModal>
   );
 }
