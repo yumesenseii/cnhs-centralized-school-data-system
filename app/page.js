@@ -1,5 +1,6 @@
 import AuthRecoveryRedirect from "@/components/auth/AuthRecoveryRedirect";
 import PortalLanding from "@/components/landing/PortalLanding";
+import ForceLightMode from "@/components/theme/ForceLightMode";
 
 export const metadata = {
   title: "Cambaog National High School | CNHS Learn",
@@ -9,9 +10,9 @@ export const metadata = {
 
 export default function Home() {
   return (
-    <>
+    <ForceLightMode>
       <AuthRecoveryRedirect />
       <PortalLanding />
-    </>
+    </ForceLightMode>
   );
 }

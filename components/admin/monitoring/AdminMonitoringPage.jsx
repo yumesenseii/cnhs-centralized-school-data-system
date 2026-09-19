@@ -71,9 +71,9 @@ function StatCard({ label, value, icon: Icon, tone, alert, onClick, hint }) {
       onClick={onClick}
       title={hint}
       className={cn(
-        "relative flex min-w-0 items-center gap-2 rounded-lg border border-slate-100 bg-white px-2.5 py-2 text-left shadow-[0_4px_12px_rgba(15,23,42,0.03)]",
+        "relative flex min-w-0 w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2.5 text-left shadow-[0_4px_12px_rgba(15,23,42,0.03)] dark:border-white/5 dark:bg-[var(--card)] dark:shadow-none",
         clickable &&
-          "cursor-pointer transition-colors hover:border-cnhs-green/40 hover:bg-emerald-50/40"
+          "cursor-pointer transition-colors hover:border-cnhs-green/40 hover:bg-cnhs-green-soft/30 dark:hover:border-cnhs-green/25 dark:hover:bg-white/[0.04]"
       )}
     >
       {alert ? (
@@ -327,15 +327,21 @@ export default function AdminMonitoringPage() {
   useEffect(() => {
     const riskParam = searchParams.get("risk");
     const recommendationParam = searchParams.get("recommendation");
+    const tabParam = searchParams.get("tab");
     if (riskParam) {
       setRisk(normalizeRiskLevel(riskParam));
     }
     if (recommendationParam) {
       setRecommendation(normalizeRecommendationType(recommendationParam));
     }
-    if (riskParam || recommendationParam) {
-      setMoreFiltersOpen(true);
+    if (
+      tabParam &&
+      MONITORING_TABS.some((tab) => tab.id === tabParam)
+    ) {
+      setActiveTab(tabParam);
+      didAutoLandRef.current = true;
     }
+    // Keep More filters collapsed; active filters show a green dot on the button.
   }, [searchParams]);
 
   const filtered = useMemo(() => {
@@ -425,6 +431,17 @@ export default function AdminMonitoringPage() {
     () => buildHtInterventionSummary(dedupedMonitored, classSummaries),
     [dedupedMonitored, classSummaries]
   );
+
+  /** Always-shown trio + conditional KPIs — drives equal-width grid. */
+  const visibleKpiCount = useMemo(() => {
+    let n = 3;
+    if (htIntervention.notStarted > 0) n += 1;
+    if (kpiStats.ongoing > 0) n += 1;
+    if (htIntervention.needsFurtherSupport > 0) n += 1;
+    if (htIntervention.forFurtherMonitoring > 0) n += 1;
+    if (kpiStats.completed > 0) n += 1;
+    return n;
+  }, [htIntervention, kpiStats]);
 
   const actionCounts = useMemo(() => {
     const files = buildHtReceivedClassReportFiles({
@@ -656,7 +673,7 @@ export default function AdminMonitoringPage() {
               type="button"
               onClick={() => refreshWithCurrentFilters({ bustCache: true })}
               disabled={loading || refreshing}
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:border-cnhs-green/40 hover:bg-cnhs-green-soft/30 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <RefreshCw
                 size={13}
@@ -738,9 +755,11 @@ export default function AdminMonitoringPage() {
               onClick={() => setMoreFiltersOpen((open) => !open)}
               className={cn(
                 "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-[11px] font-semibold transition-colors",
-                moreFiltersOpen || moreFiltersActive
-                  ? "border-cnhs-green/40 bg-emerald-50 text-cnhs-green-dark"
-                  : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                moreFiltersOpen
+                  ? "border-cnhs-green/40 bg-cnhs-green-soft text-cnhs-green-dark"
+                  : moreFiltersActive
+                    ? "border-cnhs-green/30 bg-white text-cnhs-green-dark"
+                    : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
               )}
             >
               More filters
@@ -805,13 +824,13 @@ export default function AdminMonitoringPage() {
 
       {actionCounts.pendingFiles > 0 ||
       actionCounts.pendingAralApprovals > 0 ? (
-        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-amber-100 bg-amber-50/80 px-3 py-2 text-[12px] text-amber-950">
-          <span className="font-semibold">Needs your action</span>
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-cnhs-orange/30 bg-cnhs-orange-soft px-3 py-2 text-[12px]">
+          <span className="font-semibold text-cnhs-orange">Needs your action</span>
           {actionCounts.pendingFiles > 0 ? (
             <button
               type="button"
               onClick={() => goToTab("received")}
-              className="cursor-pointer rounded-full bg-white px-2.5 py-0.5 text-[11px] font-semibold text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100"
+              className="cursor-pointer rounded-full border border-cnhs-orange/40 bg-white px-2.5 py-0.5 text-[11px] font-semibold text-cnhs-orange transition-colors hover:bg-cnhs-orange/10 dark:border-cnhs-orange/20 dark:bg-cnhs-orange/10 dark:hover:bg-cnhs-orange/15"
             >
               {actionCounts.pendingFiles} file
               {actionCounts.pendingFiles === 1 ? "" : "s"} for review
@@ -821,7 +840,7 @@ export default function AdminMonitoringPage() {
             <button
               type="button"
               onClick={() => goToTab("approve")}
-              className="cursor-pointer rounded-full bg-white px-2.5 py-0.5 text-[11px] font-semibold text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100"
+              className="cursor-pointer rounded-full border border-cnhs-orange/40 bg-white px-2.5 py-0.5 text-[11px] font-semibold text-cnhs-orange transition-colors hover:bg-cnhs-orange/10 dark:border-cnhs-orange/20 dark:bg-cnhs-orange/10 dark:hover:bg-cnhs-orange/15"
             >
               {actionCounts.pendingAralApprovals} ARAL approval
               {actionCounts.pendingAralApprovals === 1 ? "" : "s"}
@@ -830,13 +849,22 @@ export default function AdminMonitoringPage() {
         </div>
       ) : null}
 
-      <div className="mb-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-2.5 sm:p-3">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+      <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50/40 p-2.5 sm:p-3 dark:border-white/5 dark:bg-white/[0.03]">
+        <div
+          className={cn(
+            "grid gap-3",
+            visibleKpiCount <= 3
+              ? "grid-cols-1 sm:grid-cols-3"
+              : visibleKpiCount === 4
+                ? "grid-cols-2 lg:grid-cols-4"
+                : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-5"
+          )}
+        >
           <StatCard
             label="ARAL learners"
             value={kpiStats.aral}
             icon={Clock3}
-            tone="bg-orange-50 text-cnhs-orange"
+            tone="bg-cnhs-orange-soft text-cnhs-orange"
             alert={kpiStats.aral > 0}
             hint={
               actionCounts.pendingAralApprovals > 0
@@ -854,7 +882,7 @@ export default function AdminMonitoringPage() {
             label="Classroom remedial"
             value={kpiStats.classroomRemedialLearners}
             icon={Users}
-            tone="bg-sky-50 text-sky-600"
+            tone="bg-cnhs-green-soft text-cnhs-green-dark"
             alert={kpiStats.classroomRemedialLearners > 0}
             hint="Open Monitored · Classroom remedial"
             onClick={() => goToTab("students", "nonAral")}
@@ -864,7 +892,7 @@ export default function AdminMonitoringPage() {
               label="Not started"
               value={htIntervention.notStarted}
               icon={Clock3}
-              tone="bg-slate-50 text-slate-500"
+              tone="bg-slate-100 text-slate-500"
               hint="Open Monitored students"
               onClick={() => goToTab("students")}
             />
@@ -874,7 +902,7 @@ export default function AdminMonitoringPage() {
               label="Needs follow-up"
               value={kpiStats.ongoing}
               icon={AlertTriangle}
-              tone="bg-red-50 text-red-500"
+              tone="bg-cnhs-red-soft text-cnhs-red"
               alert
               hint="Open ARAL assessments"
               onClick={() => goToTab("progress")}
@@ -885,7 +913,7 @@ export default function AdminMonitoringPage() {
               label="Further support"
               value={htIntervention.needsFurtherSupport}
               icon={AlertTriangle}
-              tone="bg-orange-50 text-cnhs-orange"
+              tone="bg-cnhs-orange-soft text-cnhs-orange"
               onClick={() => goToTab("students")}
             />
           ) : null}
@@ -894,7 +922,7 @@ export default function AdminMonitoringPage() {
               label="Further monitoring"
               value={htIntervention.forFurtherMonitoring}
               icon={Clock3}
-              tone="bg-amber-50 text-amber-700"
+              tone="bg-cnhs-orange-soft text-cnhs-orange"
               onClick={() => goToTab("students")}
             />
           ) : null}
@@ -903,7 +931,7 @@ export default function AdminMonitoringPage() {
               label="Completed"
               value={kpiStats.completed}
               icon={CheckCircle2}
-              tone="bg-emerald-50 text-emerald-600"
+              tone="bg-cnhs-green-soft text-cnhs-green-dark"
               hint="Open Monitored students"
               onClick={() => goToTab("students", "aral")}
             />
@@ -912,7 +940,7 @@ export default function AdminMonitoringPage() {
             label="Classroom remedial classes"
             value={kpiStats.remediation}
             icon={BookOpen}
-            tone="bg-green-50 text-cnhs-green-dark"
+            tone="bg-cnhs-green-soft text-cnhs-green-dark"
             hint="Open Monitored · Classroom remedial"
             onClick={() => goToTab("students", "nonAral")}
           />
@@ -922,7 +950,7 @@ export default function AdminMonitoringPage() {
             {htIntervention.bySection.slice(0, 8).map((row) => (
               <span
                 key={row.label}
-                className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200"
+                className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200 dark:bg-white/5 dark:text-slate-300 dark:ring-0"
               >
                 {row.label} · {row.count}
               </span>
@@ -930,7 +958,7 @@ export default function AdminMonitoringPage() {
             {htIntervention.bySubject.slice(0, 6).map((row) => (
               <span
                 key={`sub-${row.label}`}
-                className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-cnhs-green-dark ring-1 ring-emerald-100"
+                className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-cnhs-green-dark ring-1 ring-emerald-100 dark:bg-cnhs-green/15 dark:text-cnhs-green dark:ring-0"
               >
                 {row.label} · {row.count}
               </span>
@@ -983,6 +1011,7 @@ export default function AdminMonitoringPage() {
           <AdminAralApprovalPanel
             students={filtered}
             onChanged={() => refreshWithCurrentFilters({ bustCache: true })}
+            onViewStudent={openStudent}
           />
         ) : null}
 

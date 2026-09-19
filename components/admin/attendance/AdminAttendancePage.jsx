@@ -29,7 +29,6 @@ export default function AdminAttendancePage() {
                 "Filter by school year, month, and grade, then Apply.",
                 "Present and absent counts are Morning plus Afternoon marks, not unique students.",
                 "PDF / Excel open a preview first, then download. Working report only — not the official SF2.",
-                "Uploaded SF2 files (collapsed below) hold official figures from uploaded forms.",
                 "Advisers record daily marks on the teacher attendance page.",
               ]}
             />

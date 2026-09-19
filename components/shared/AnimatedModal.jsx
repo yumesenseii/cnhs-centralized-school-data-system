@@ -21,6 +21,7 @@ export default function AnimatedModal({
   describedBy,
   className,
   panelClassName,
+  panelProps,
   zClassName = "z-50",
   closeOnBackdrop = true,
   closeOnEscape = true,
@@ -33,6 +34,26 @@ export default function AnimatedModal({
   }, []);
 
   useEffect(() => {
+    if (!open) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const previousPaddingRight = document.body.style.paddingRight;
+    const scrollbarGap =
+      typeof window !== "undefined"
+        ? window.innerWidth - document.documentElement.clientWidth
+        : 0;
+
+    document.body.style.overflow = "hidden";
+    if (scrollbarGap > 0) {
+      document.body.style.paddingRight = `${scrollbarGap}px`;
+    }
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.paddingRight = previousPaddingRight;
+    };
+  }, [open]);
+
+  useEffect(() => {
     if (!open || !closeOnEscape) return undefined;
     function onKeyDown(e) {
       if (e.key === "Escape") onClose?.();
@@ -40,6 +61,13 @@ export default function AnimatedModal({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, closeOnEscape, onClose]);
+
+  const {
+    className: panelPropClassName,
+    style: panelStyle,
+    onClick: panelOnClick,
+    ...restPanelProps
+  } = panelProps || {};
 
   const tree = (
     <AnimatePresence>
@@ -60,12 +88,17 @@ export default function AnimatedModal({
           }}
         >
           <motion.div
-            className={cn("relative z-10", panelClassName)}
+            {...restPanelProps}
+            className={cn("relative z-10", panelClassName, panelPropClassName)}
+            style={panelStyle}
             initial={{ opacity: 0, scale: 0.97, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: 6 }}
             transition={PANEL_TRANSITION}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              panelOnClick?.(e);
+            }}
           >
             {children}
           </motion.div>

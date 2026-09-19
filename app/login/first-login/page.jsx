@@ -1,5 +1,10 @@
 import FirstLoginForm from "@/components/auth/FirstLoginForm";
+import ForceLightMode from "@/components/theme/ForceLightMode";
 
 export default function FirstLoginPage() {
-  return <FirstLoginForm />;
+  return (
+    <ForceLightMode>
+      <FirstLoginForm />
+    </ForceLightMode>
+  );
 }

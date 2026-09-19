@@ -4,10 +4,12 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import LoginForm from "@/components/auth/LoginForm";
 import LoginHero from "@/components/auth/LoginHero";
+import ForceLightMode from "@/components/theme/ForceLightMode";
 import { loginContent } from "@/lib/constants/loginContent";
 
 export default function AuthLayout() {
   return (
+    <ForceLightMode>
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -48,5 +50,6 @@ export default function AuthLayout() {
         </motion.div>
       </main>
     </motion.div>
+    </ForceLightMode>
   );
 }

@@ -219,7 +219,7 @@ export default function TeacherAcademicAnalytics({
                     id: "lesson-plan",
                     label: "Upload Lesson Plan",
                     icon: "file",
-                    href: "/teacher/lesson-plans/upload",
+                    href: "/teacher/lesson-plans/upload?fresh=1",
                   },
                   {
                     id: "monitoring",

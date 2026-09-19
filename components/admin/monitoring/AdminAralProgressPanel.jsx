@@ -186,14 +186,14 @@ export default function AdminAralProgressPanel({
   }, [sectionGroups, activeSectionKey]);
 
   return (
-    <section className="overflow-hidden rounded-xl border border-sky-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-sky-50 bg-sky-50/40 px-3 py-2.5 sm:px-4">
+    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2.5 sm:px-4">
         <div>
           <h2 className="text-sm font-semibold text-slate-900">
             ARAL Assessments
           </h2>
         </div>
-        <span className="inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
+        <span className="inline-flex rounded-full bg-cnhs-green-soft px-2 py-0.5 text-[10px] font-semibold text-cnhs-green-dark">
           {aralLearners.length} learner
           {aralLearners.length === 1 ? "" : "s"} · {sectionGroups.length}{" "}
           section{sectionGroups.length === 1 ? "" : "s"}
@@ -386,9 +386,9 @@ export default function AdminAralProgressPanel({
               key={folder.grade}
               type="button"
               onClick={() => setSelectedGrade(folder.grade)}
-              className="group flex cursor-pointer flex-col rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-[0_6px_16px_rgba(15,23,42,0.04)] transition-colors hover:border-sky-200 hover:bg-sky-50/30"
+              className="group flex cursor-pointer flex-col rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-[0_6px_16px_rgba(15,23,42,0.04)] transition-colors hover:border-cnhs-green/40 hover:bg-cnhs-green-soft/20"
             >
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50 text-sky-700 ring-1 ring-sky-100">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cnhs-green-soft text-cnhs-green-dark">
                 <Folder size={18} strokeWidth={1.75} />
               </span>
               <p className="mt-4 text-[13px] font-semibold text-slate-900">
@@ -397,7 +397,7 @@ export default function AdminAralProgressPanel({
               <p className="mt-0.5 text-[11px] text-slate-500">
                 {folder.count} learners · {folder.sections.length} sections
               </p>
-              <span className="mt-4 text-[11px] font-semibold text-sky-700 opacity-0 transition-opacity group-hover:opacity-100">
+              <span className="mt-4 text-[11px] font-semibold text-cnhs-green-dark opacity-0 transition-opacity group-hover:opacity-100">
                 Open →
               </span>
             </button>

@@ -25,7 +25,6 @@ import { useClassReport } from "@/hooks/teacher/useClassReport";
 import { getCurrentTeacherSession } from "@/lib/supabase/queries/myClasses";
 import {
   exportClassPerformanceSystemReport,
-  exportClassReportExcel,
 } from "@/lib/teacher/reportsExport";
 import { UPLOAD_STORAGE_KEY } from "@/data/teacher/lessonPlans";
 import { buildQuarterlyAverages } from "@/lib/teacher/myClassesMappers";
@@ -115,7 +114,7 @@ export default function ClassOverview({ classId }) {
         /* ignore storage errors — query param still preselects */
       }
       router.push(
-        `/teacher/lesson-plans/upload?classId=${encodeURIComponent(targetClassId)}`
+        `/teacher/lesson-plans/upload?classId=${encodeURIComponent(targetClassId)}&fresh=1`
       );
       return;
     }
@@ -136,32 +135,17 @@ export default function ClassOverview({ classId }) {
     }
   }
 
-  function handleExportReportPdf() {
+  async function handleExportReportExcel() {
     if (!report?.classReport) return;
     try {
-      exportClassPerformanceSystemReport({
+      await exportClassPerformanceSystemReport({
         classReport: report.classReport,
         preview: report.preview,
         teacherName: report.teacherName,
         schoolYear: report.schoolYear,
         quarter: report.quarter,
-        generatedAt: report.preview?.generatedAt
-          ? new Date(report.preview.generatedAt)
-          : new Date(),
+        charts: report.charts,
       });
-    } catch (err) {
-      showToast(err?.message ?? "Unable to export PDF.");
-    }
-  }
-
-  async function handleExportReportExcel() {
-    if (!report?.classReport) return;
-    try {
-      await exportClassReportExcel(
-        report.classReport,
-        report.charts,
-        report.preview
-      );
       showToast("Excel export downloaded.");
     } catch (err) {
       showToast(err?.message ?? "Unable to export Excel.");
@@ -480,8 +464,8 @@ export default function ClassOverview({ classId }) {
         open={reportOpen}
         preview={report?.preview ?? null}
         onClose={closeReport}
-        onExport={handleExportReportPdf}
-        onExportExcel={handleExportReportExcel}
+        onExport={handleExportReportExcel}
+        exportLabel="Export Excel"
         closeLabel="Close"
       />
 

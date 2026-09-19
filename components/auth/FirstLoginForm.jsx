@@ -165,10 +165,8 @@ export default function FirstLoginForm() {
               }}
               required
               error={fieldErrors.password}
+              hint={form.firstLoginPasswordHint || PASSWORD_HINT}
             />
-            <p className="-mt-2 mb-3 text-[11px] leading-4 text-slate-400">
-              {form.firstLoginPasswordHint || PASSWORD_HINT}
-            </p>
             <PasswordInput
               id="confirm-password"
               name="confirm-password"

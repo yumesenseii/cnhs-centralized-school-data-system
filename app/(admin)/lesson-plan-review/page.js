@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { CalendarDays, RefreshCw } from "lucide-react";
 import AppSelect from "@/components/shared/AppSelect";
@@ -53,7 +54,24 @@ function HeaderControls({
   );
 }
 
-export default function LessonPlanReviewPage() {
+export default function LessonPlanReviewRoute() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-16 text-sm text-slate-500">
+          Loading lesson plan review…
+        </div>
+      }
+    >
+      <LessonPlanReviewPage />
+    </Suspense>
+  );
+}
+
+function LessonPlanReviewPage() {
+  const searchParams = useSearchParams();
+  const planFromUrl = searchParams?.get("plan")?.trim() || null;
+
   const {
     plans,
     recentActivity,
@@ -78,6 +96,7 @@ export default function LessonPlanReviewPage() {
   const [learningArea, setLearningArea] = useState("All Learning Areas");
   const [grade, setGrade] = useState("All Grades");
   const [status, setStatus] = useState("All Status");
+  const [openedFromUrl, setOpenedFromUrl] = useState(null);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -120,6 +139,16 @@ export default function LessonPlanReviewPage() {
       setDrawerLesson(latest);
     }
   }, [plans, drawerLesson]);
+
+  useEffect(() => {
+    if (!planFromUrl || loading || !plans.length) return;
+    if (openedFromUrl === planFromUrl) return;
+    const match = plans.find((p) => p.id === planFromUrl);
+    if (!match) return;
+    setDrawerLesson(match);
+    setDrawerOpen(true);
+    setOpenedFromUrl(planFromUrl);
+  }, [planFromUrl, plans, loading, openedFromUrl]);
 
   const quarterSummary = useMemo(() => {
     const total = plans.length || 1;

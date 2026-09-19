@@ -17,10 +17,10 @@ const icons = {
 };
 
 const tones = {
-  green: "bg-green-50 text-cnhs-green-dark",
-  blue: "bg-sky-50 text-sky-600",
-  orange: "bg-orange-50 text-cnhs-orange",
-  red: "bg-red-50 text-red-500",
+  green: "bg-green-50 text-cnhs-green-dark dark:bg-cnhs-green/15 dark:text-cnhs-green",
+  blue: "bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300",
+  orange: "bg-orange-50 text-cnhs-orange dark:bg-cnhs-orange/15 dark:text-cnhs-orange",
+  red: "bg-red-50 text-red-500 dark:bg-red-500/15 dark:text-red-300",
 };
 
 export default function LessonPlanStats({ kpis }) {
@@ -33,7 +33,7 @@ export default function LessonPlanStats({ kpis }) {
             key={kpi.id}
             whileHover={{ y: -2 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
-            className="relative min-h-[72px] rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)]"
+            className="relative min-h-[72px] rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] dark:border-white/10 dark:bg-[var(--card)] dark:shadow-none"
           >
             {kpi.alert ? (
               <span
@@ -51,10 +51,12 @@ export default function LessonPlanStats({ kpis }) {
                 <Icon size={18} strokeWidth={1.8} />
               </span>
               <div className="min-w-0">
-                <p className="text-2xl font-semibold tracking-[-0.03em] text-slate-900">
+                <p className="text-2xl font-semibold tracking-[-0.03em] text-slate-900 dark:text-slate-100">
                   {kpi.value}
                 </p>
-                <p className="mt-1 text-[12px] font-semibold text-slate-600">{kpi.label}</p>
+                <p className="mt-1 text-[12px] font-semibold text-slate-600 dark:text-slate-300">
+                  {kpi.label}
+                </p>
               </div>
             </div>
           </motion.section>

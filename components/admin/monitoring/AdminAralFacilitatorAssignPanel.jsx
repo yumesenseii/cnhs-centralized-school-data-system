@@ -398,14 +398,14 @@ export default function AdminAralFacilitatorAssignPanel({
   }
 
   return (
-    <section className="overflow-hidden rounded-xl border border-violet-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-violet-50 bg-violet-50/40 px-3 py-2.5 sm:px-4">
+    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2.5 sm:px-4">
         <div>
           <h2 className="text-sm font-semibold text-slate-900">
             Assign ARAL Facilitators
           </h2>
         </div>
-        <span className="inline-flex rounded-full bg-violet-100 px-2.5 py-0.5 text-[10px] font-semibold text-violet-700">
+        <span className="inline-flex rounded-full bg-cnhs-green-soft px-2.5 py-0.5 text-[10px] font-semibold text-cnhs-green-dark">
           {uniqueLearnerCount} learner
           {uniqueLearnerCount === 1 ? "" : "s"} · {sectionGroups.length}{" "}
           section{sectionGroups.length === 1 ? "" : "s"} · {gradeFolders.length}{" "}
@@ -434,34 +434,34 @@ export default function AdminAralFacilitatorAssignPanel({
                   key={folder.grade}
                   type="button"
                   onClick={() => setSelectedGrade(folder.grade)}
-                  className="group flex cursor-pointer flex-col rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-[0_6px_16px_rgba(15,23,42,0.04)] transition-colors hover:border-violet-200 hover:bg-violet-50/30"
+                  className="group flex cursor-pointer flex-col rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-[0_6px_16px_rgba(15,23,42,0.04)] transition-colors hover:border-cnhs-green/40 hover:bg-cnhs-green-soft/20 dark:border-white/5 dark:bg-[var(--card)] dark:shadow-none dark:hover:border-cnhs-green/25 dark:hover:bg-white/[0.04]"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-700 ring-1 ring-violet-100">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cnhs-green-soft text-cnhs-green-dark">
                       <Folder size={18} strokeWidth={1.75} />
                     </span>
                     <span
                       className={cn(
-                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1",
                         attention
-                          ? "bg-amber-50 text-amber-800 ring-1 ring-amber-100"
-                          : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
+                          ? "bg-cnhs-orange-soft text-cnhs-orange ring-cnhs-orange/30 dark:bg-cnhs-orange/15 dark:text-cnhs-orange dark:ring-0"
+                          : "bg-cnhs-green-soft text-cnhs-green-dark ring-cnhs-green/25 dark:bg-cnhs-green/15 dark:text-cnhs-green dark:ring-0"
                       )}
                     >
                       <span
                         className={cn(
                           "h-1.5 w-1.5 rounded-full",
-                          attention ? "bg-amber-500" : "bg-emerald-500"
+                          attention ? "bg-cnhs-orange" : "bg-cnhs-green"
                         )}
                       />
                       {attention ? "Needs assign" : "Assigned"}
                     </span>
                   </div>
 
-                  <p className="mt-4 text-[13px] font-semibold tracking-[-0.01em] text-slate-900">
+                  <p className="mt-4 text-[13px] font-semibold tracking-[-0.01em] text-slate-900 dark:text-slate-100">
                     {folder.grade}
                   </p>
-                  <p className="mt-0.5 text-[11px] text-slate-500">
+                  <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
                     {folder.count} learner{folder.count === 1 ? "" : "s"} ·{" "}
                     {folder.sections.length} section
                     {folder.sections.length === 1 ? "" : "s"}
@@ -469,21 +469,21 @@ export default function AdminAralFacilitatorAssignPanel({
 
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {folder.unassigned > 0 ? (
-                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800 ring-1 ring-amber-100">
+                      <span className="rounded-full bg-cnhs-orange-soft px-2 py-0.5 text-[10px] font-medium text-cnhs-orange ring-1 ring-cnhs-orange/30 dark:bg-cnhs-orange/15 dark:text-cnhs-orange dark:ring-0">
                         {folder.unassigned} unassigned
                       </span>
                     ) : (
-                      <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-100">
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-200 dark:bg-white/5 dark:text-slate-400 dark:ring-0">
                         All assigned
                       </span>
                     )}
                   </div>
 
-                  <div className="mt-4 flex items-center justify-between border-t border-slate-50 pt-3">
+                  <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-white/5">
                     <span className="text-[11px] text-slate-400">
                       Open sections
                     </span>
-                    <span className="text-[11px] font-semibold text-violet-700 opacity-0 transition-opacity group-hover:opacity-100">
+                    <span className="text-[11px] font-semibold text-cnhs-green-dark opacity-0 transition-opacity group-hover:opacity-100">
                       Open →
                     </span>
                   </div>
@@ -533,13 +533,13 @@ export default function AdminAralFacilitatorAssignPanel({
 
               return (
                 <div key={group.gradeSection} className="px-3 py-3 sm:px-4">
-                  <div className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_4px_12px_rgba(15,23,42,0.03)]">
+                  <div className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_4px_12px_rgba(15,23,42,0.03)] dark:border-white/5 dark:bg-[var(--card)] dark:shadow-none">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="text-[13px] font-semibold text-slate-800">
+                        <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-100">
                           {group.sectionName}
                         </p>
-                        <p className="mt-0.5 text-[10px] text-slate-500">
+                        <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
                           {group.count} learner{group.count === 1 ? "" : "s"}
                           {group.unassigned > 0
                             ? ` · ${group.unassigned} unassigned`
@@ -549,21 +549,21 @@ export default function AdminAralFacilitatorAssignPanel({
                           className={cn(
                             "mt-1 text-[11px] font-medium",
                             allAssigned && !group.facilitator?.mixed
-                              ? "text-violet-700"
+                              ? "text-cnhs-green-dark"
                               : group.facilitator?.mixed
-                                ? "text-amber-700"
-                                : "text-amber-600"
+                                ? "text-cnhs-orange"
+                                : "text-cnhs-orange"
                           )}
                         >
                           Facilitator: {facilitatorLabel}
                         </p>
                       </div>
                       {group.unassigned > 0 ? (
-                        <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-100">
+                        <span className="inline-flex rounded-full bg-cnhs-orange-soft px-2 py-0.5 text-[10px] font-semibold text-cnhs-orange ring-1 ring-cnhs-orange/30 dark:bg-cnhs-orange/15 dark:text-cnhs-orange dark:ring-0">
                           {group.unassigned} pending
                         </span>
                       ) : (
-                        <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
+                        <span className="inline-flex rounded-full bg-cnhs-green-soft px-2 py-0.5 text-[10px] font-semibold text-cnhs-green-dark ring-1 ring-cnhs-green/25 dark:bg-cnhs-green/15 dark:text-cnhs-green dark:ring-0">
                           Assigned
                         </span>
                       )}
@@ -749,11 +749,11 @@ export default function AdminAralFacilitatorAssignPanel({
                                     ) : null}
 
                                     {learner.aralFacilitatorName ? (
-                                      <p className="mt-0.5 text-[10px] text-violet-600">
+                                      <p className="mt-0.5 text-[10px] text-cnhs-green-dark">
                                         Current: {learner.aralFacilitatorName}
                                       </p>
                                     ) : (
-                                      <p className="mt-0.5 text-[10px] text-amber-600">
+                                      <p className="mt-0.5 text-[10px] text-cnhs-orange">
                                         Unassigned
                                       </p>
                                     )}

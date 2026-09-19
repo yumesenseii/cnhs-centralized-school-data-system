@@ -113,6 +113,7 @@ export default function ReportPreviewModal({
   onClose,
   onExport,
   onExportExcel,
+  exportLabel = "Export Excel",
   closeLabel = "Return to Reports",
 }) {
   const { showToast } = useAppToast();
@@ -275,23 +276,32 @@ export default function ReportPreviewModal({
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-slate-100 bg-white px-4 py-2.5 sm:px-5">
-          <button
-            type="button"
-            onClick={() => {
-              onExport?.();
-              showToast("Report downloaded.");
-            }}
-            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
-          >
-            <Download size={13} />
-            Export PDF
-          </button>
+          {onExport ? (
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await onExport?.();
+                } catch (err) {
+                  showToast(err?.message ?? "Unable to export.");
+                }
+              }}
+              className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+            >
+              <Download size={13} />
+              {exportLabel}
+            </button>
+          ) : null}
           {onExportExcel ? (
             <button
               type="button"
-              onClick={() => {
-                onExportExcel();
-                showToast("Excel export started.");
+              onClick={async () => {
+                try {
+                  await onExportExcel();
+                  showToast("Excel export downloaded.");
+                } catch (err) {
+                  showToast(err?.message ?? "Unable to export Excel.");
+                }
               }}
               className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
             >

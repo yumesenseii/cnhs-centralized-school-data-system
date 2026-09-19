@@ -9,7 +9,7 @@ import AppSelect from "@/components/shared/AppSelect";
 function Field({ label, required, error, children }) {
   return (
     <label className="block">
-      <span className="text-[11px] font-medium text-slate-600">
+      <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">
         {label}
         {required ? <span className="text-red-500"> *</span> : null}
       </span>
@@ -20,9 +20,9 @@ function Field({ label, required, error, children }) {
 }
 
 const inputClass =
-  "mt-1.5 h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-[12px] text-slate-700 outline-none transition-colors focus:border-cnhs-green";
+  "mt-1.5 h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-[12px] text-slate-700 outline-none transition-colors focus:border-cnhs-green dark:border-white/10 dark:bg-transparent dark:text-slate-200";
 const readonlyClass =
-  "mt-1.5 h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-[12px] font-medium text-slate-600";
+  "mt-1.5 h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-[12px] font-medium text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300";
 
 export default function LessonInformationForm({
   selectedClass,
@@ -54,11 +54,13 @@ export default function LessonInformationForm({
   return (
     <form
       onSubmit={handleContinue}
-      className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-3.5"
+      className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] dark:border-white/10 dark:bg-[var(--card)] dark:shadow-none sm:p-3.5"
     >
       <div className="mb-4">
-        <h2 className="text-sm font-semibold text-slate-900">Lesson Information</h2>
-        <p className="mt-1 text-[11px] text-slate-400">
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          Lesson Information
+        </h2>
+        <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
           Fields with * are required. Class details come from your assignment.
           Objectives, strategies, and modality stay in the uploaded lesson plan
           file.
@@ -210,7 +212,7 @@ export default function LessonInformationForm({
       <div className="mt-3 flex justify-end">
         <button
           type="submit"
-          className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-[#9fc9b4] px-4 text-[12px] font-semibold text-cnhs-green-dark transition-colors hover:bg-[#8fbea6]"
+          className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-4 text-[12px] font-semibold text-white transition-colors hover:bg-[#246f54]"
         >
           Continue
           <ArrowRight size={14} />

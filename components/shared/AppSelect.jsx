@@ -201,7 +201,7 @@ export default function AppSelect({
                   maxHeight: coords.maxHeight,
                   transformOrigin: coords.bottom ? "bottom center" : "top center",
                 }}
-                className="z-[70] overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-[0_12px_32px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-[#1c1c1c] dark:shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
+                className="z-[200] overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-[0_12px_32px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-[#1c1c1c] dark:shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
               >
                 {items.length ? (
                   items.map((item, index) => {

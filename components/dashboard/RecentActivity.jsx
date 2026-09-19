@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { useState } from "react";
 import { BarChart3, CheckCircle2, Clock3, FileText, UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,11 +17,16 @@ const VARIANTS = {
 
 const DEFAULT_LIMIT = 5;
 
+/**
+ * Dashboard recent activity. "View all" expands in place (same list source)
+ * instead of navigating to an empty Notifications page.
+ */
 export default function RecentActivity({
   activities = [],
   limit = DEFAULT_LIMIT,
-  viewAllHref = "/notifications",
 }) {
+  const [expanded, setExpanded] = useState(false);
+
   if (!activities.length) {
     return (
       <p className="py-6 text-center text-xs text-slate-400">
@@ -30,7 +35,7 @@ export default function RecentActivity({
     );
   }
 
-  const visible = activities.slice(0, limit);
+  const visible = expanded ? activities : activities.slice(0, limit);
   const hasMore = activities.length > limit;
 
   return (
@@ -69,13 +74,14 @@ export default function RecentActivity({
           );
         })}
       </div>
-      {hasMore && viewAllHref ? (
-        <Link
-          href={viewAllHref}
-          className="mt-2 inline-block text-[11px] font-semibold text-cnhs-green-dark hover:underline"
+      {hasMore ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((prev) => !prev)}
+          className="mt-2 inline-block cursor-pointer text-[11px] font-semibold text-cnhs-green-dark transition-colors duration-200 hover:underline"
         >
-          View all
-        </Link>
+          {expanded ? "Show less" : `View all (${activities.length})`}
+        </button>
       ) : null}
     </div>
   );

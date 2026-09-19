@@ -80,9 +80,11 @@ export default function UploadLessonFile({ file, onFileChange, onBack, onPreview
 
   return (
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_280px]">
-      <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-3.5">
-        <h2 className="text-sm font-semibold text-slate-900">Upload File</h2>
-        <p className="mt-1 text-[11px] text-slate-400">
+      <section className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] dark:border-white/10 dark:bg-[var(--card)] dark:shadow-none sm:p-3.5">
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          Upload File
+        </h2>
+        <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
           Accepted formats: PDF, DOCX, DOC. Maximum file size:{" "}
           {lessonPlansData.uploadHints.maxSizeMb} MB.
         </p>
@@ -100,21 +102,21 @@ export default function UploadLessonFile({ file, onFileChange, onBack, onPreview
             className={cn(
               "mt-4 flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-12 transition-colors",
               dragging
-                ? "border-cnhs-green-dark bg-green-50/60"
-                : "border-slate-200 bg-slate-50/40 hover:border-cnhs-green-dark/40 hover:bg-green-50/30"
+                ? "border-cnhs-green-dark bg-green-50/60 dark:border-cnhs-green dark:bg-cnhs-green/10"
+                : "border-slate-200 bg-slate-50/40 hover:border-cnhs-green-dark/40 hover:bg-green-50/30 dark:border-white/15 dark:bg-white/5 dark:hover:border-cnhs-green/40 dark:hover:bg-cnhs-green/10"
             )}
           >
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-cnhs-green-dark shadow-sm">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-cnhs-green-dark shadow-sm dark:bg-white/10 dark:text-cnhs-green">
               <CloudUpload size={24} />
             </span>
-            <p className="mt-3 text-[13px] font-semibold text-slate-700">
+            <p className="mt-3 text-[13px] font-semibold text-slate-700 dark:text-slate-200">
               Drag & drop your file here or click to browse
             </p>
             <div className="mt-3 flex flex-wrap justify-center gap-2">
               {lessonPlansData.uploadHints.acceptedFormats.map((format) => (
                 <span
                   key={format}
-                  className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-500"
+                  className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-500 dark:bg-white/10 dark:text-slate-300"
                 >
                   {format}
                 </span>
@@ -144,13 +146,15 @@ export default function UploadLessonFile({ file, onFileChange, onBack, onPreview
           onChange={(e) => handleSelected(e.target.files?.[0])}
         />
 
-        {error ? <p className="mt-3 text-[11px] font-medium text-red-500">{error}</p> : null}
+        {error ? (
+          <p className="mt-3 text-[11px] font-medium text-red-500">{error}</p>
+        ) : null}
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
           <button
             type="button"
             onClick={() => onBack?.()}
-            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/5"
           >
             <ArrowLeft size={14} />
             Back
@@ -158,7 +162,7 @@ export default function UploadLessonFile({ file, onFileChange, onBack, onPreview
           <button
             type="button"
             onClick={handlePreview}
-            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-[#9fc9b4] px-4 text-[12px] font-semibold text-cnhs-green-dark transition-colors hover:bg-[#8fbea6]"
+            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-4 text-[12px] font-semibold text-white transition-colors hover:bg-[#246f54]"
           >
             Preview Submission
             <ArrowRight size={14} />
@@ -167,21 +171,27 @@ export default function UploadLessonFile({ file, onFileChange, onBack, onPreview
       </section>
 
       <aside className="space-y-3">
-        <div className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-          <h3 className="text-[12px] font-semibold text-slate-800">Accepted Formats</h3>
-          <p className="mt-2 text-[11px] text-slate-500">
+        <div className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] dark:border-white/10 dark:bg-[var(--card)] dark:shadow-none">
+          <h3 className="text-[12px] font-semibold text-slate-800 dark:text-slate-100">
+            Accepted Formats
+          </h3>
+          <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
             {lessonPlansData.uploadHints.acceptedFormats.join(", ")}
           </p>
         </div>
-        <div className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-          <h3 className="text-[12px] font-semibold text-slate-800">Maximum File Size</h3>
-          <p className="mt-2 text-[11px] text-slate-500">
+        <div className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] dark:border-white/10 dark:bg-[var(--card)] dark:shadow-none">
+          <h3 className="text-[12px] font-semibold text-slate-800 dark:text-slate-100">
+            Maximum File Size
+          </h3>
+          <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
             {lessonPlansData.uploadHints.maxSizeMb} MB per upload
           </p>
         </div>
-        <div className="rounded-xl border border-orange-100 bg-orange-50/50 p-4">
-          <h3 className="text-[12px] font-semibold text-cnhs-orange">Submission Reminder</h3>
-          <p className="mt-2 text-[11px] leading-5 text-slate-600">
+        <div className="rounded-xl border border-orange-100 bg-orange-50/50 p-4 dark:border-cnhs-orange/30 dark:bg-cnhs-orange/10">
+          <h3 className="text-[12px] font-semibold text-cnhs-orange">
+            Submission Reminder
+          </h3>
+          <p className="mt-2 text-[11px] leading-5 text-slate-600 dark:text-slate-300">
             {lessonPlansData.uploadHints.reminder}
           </p>
         </div>

@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   CalendarDays,
+  ChevronDown,
   Download,
   FileSpreadsheet,
+  FileText,
   Layers3,
   Loader2,
+  Printer,
 } from "lucide-react";
 import AppSelect from "@/components/shared/AppSelect";
 import Header from "@/components/layout/Header";
@@ -16,14 +19,18 @@ import PageHelp from "@/components/shared/PageHelp";
 import TabSwitchPanel from "@/components/shared/TabSwitchPanel";
 import AdminReportCharts from "@/components/admin/reports/AdminReportCharts";
 import ReportPreviewModal from "@/components/admin/reports/ReportPreviewModal";
+import ExportSchoolReportModal from "@/components/admin/reports/ExportSchoolReportModal";
 import ReportAttendancePanel from "@/components/reports/ReportAttendancePanel";
 import ClassFolderLibrary from "@/components/reports/ClassFolderLibrary";
 import ReportKpiStrip from "@/components/reports/ReportKpiStrip";
 import ReportSummaryMetrics from "@/components/reports/ReportSummaryMetrics";
+import AdminReportsOverviewExtras from "@/components/admin/reports/AdminReportsOverviewExtras";
 import { useAppToast } from "@/components/shared/AppToast";
 import { useAdminReports } from "@/hooks/admin/useAdminReports";
 import {
+  buildDailyAttendanceExportSummary,
   exportAdminClassReportPdf,
+  exportAdminMeetingBriefPdf,
   exportAdminReportsExcel,
   exportAdminReportsPdf,
 } from "@/lib/admin/reportsExport";
@@ -36,6 +43,14 @@ const PAGE_TABS = [
   { id: "classes", label: "Classes" },
   { id: "attendance", label: "Attendance" },
 ];
+
+const MONITORING_TAB_IDS = new Set([
+  "received",
+  "approve",
+  "facilitators",
+  "progress",
+  "students",
+]);
 
 export default function AdminReportsPage() {
   const router = useRouter();
@@ -53,6 +68,9 @@ export default function AdminReportsPage() {
     lessonSummary,
     schoolSummary,
     attendance,
+    overviewActionCounts,
+    overviewHotspots,
+    overviewMonitoringHealth,
     setSchoolYear,
     setQuarter,
     refresh,
@@ -65,6 +83,29 @@ export default function AdminReportsPage() {
   const [previewClassId, setPreviewClassId] = useState(null);
   const [pageTab, setPageTab] = useState("overview");
   const [daily, setDaily] = useState(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState("pdf");
+  const [exportBusy, setExportBusy] = useState(false);
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
+  const downloadMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!downloadMenuOpen) return undefined;
+    function onPointerDown(event) {
+      if (!downloadMenuRef.current?.contains(event.target)) {
+        setDownloadMenuOpen(false);
+      }
+    }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setDownloadMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [downloadMenuOpen]);
 
   const currentMonth = String(Number(todayIsoDateManila().slice(5, 7)));
 
@@ -112,21 +153,21 @@ export default function AdminReportsPage() {
         id: "learners",
         label: "Learners",
         value: learners,
-        hint: "Unique learners · ECR class lists",
+        hint: "Unique learners from class records",
         tone: "green",
       },
       {
         id: "at-risk",
         label: "At-risk learners",
         value: atRisk,
-        hint: "ARAL Learners + Classroom remedial",
+        hint: "ARAL Learners and Classroom remedial",
         tone: Number(atRisk) > 0 ? "orange" : "green",
       },
       {
         id: "aral",
         label: "ARAL Learners",
         value: aral,
-        hint: "English / Filipino below 75",
+        hint: "English or Filipino below 75",
         tone: Number(aral) > 0 ? "blue" : "green",
       },
       {
@@ -152,6 +193,11 @@ export default function AdminReportsPage() {
     [summary, schoolSummary, lessonSummary]
   );
 
+  function goMonitoring(tab) {
+    const safe = MONITORING_TAB_IDS.has(tab) ? tab : "received";
+    router.push(`/monitoring?tab=${safe}`);
+  }
+
   function openPreview(classReport) {
     const live = getPreview(classReport?.id);
     if (!live) {
@@ -163,37 +209,87 @@ export default function AdminReportsPage() {
     setPreviewOpen(true);
   }
 
-  function handleExportPdf() {
+  function openPreviewById(classId) {
+    const row = classReports.find((item) => item.id === classId);
+    if (row) {
+      openPreview(row);
+      return;
+    }
+    setPageTab("classes");
+  }
+
+  const dailyExportSummary = useMemo(
+    () => buildDailyAttendanceExportSummary(daily),
+    [daily]
+  );
+
+  const exportContext = useMemo(
+    () => ({
+      schoolYear,
+      quarter: quarterLabel,
+      summary,
+      schoolSummary: {
+        ...schoolSummary,
+        lpPending: lessonSummary?.pending ?? schoolSummary?.lpPending,
+      },
+      classReports,
+      charts,
+      dailyAttendance: dailyExportSummary,
+      supportSections: overviewHotspots?.sections ?? [],
+      actionCounts: overviewActionCounts,
+      lessonSummary,
+    }),
+    [
+      schoolYear,
+      quarterLabel,
+      summary,
+      schoolSummary,
+      lessonSummary,
+      classReports,
+      charts,
+      dailyExportSummary,
+      overviewHotspots,
+      overviewActionCounts,
+    ]
+  );
+
+  function openExportChooser(format) {
+    setExportFormat(format);
+    setExportOpen(true);
+  }
+
+  async function handleExportConfirm(sections) {
+    setExportBusy(true);
     try {
-      exportAdminReportsPdf({
-        schoolYear,
-        quarter: quarterLabel,
-        summary,
-        schoolSummary,
-        classReports,
-        charts,
-        attendance,
-      });
-      showToast("Report downloaded.");
+      if (exportFormat === "excel") {
+        await exportAdminReportsExcel({
+          ...exportContext,
+          sections,
+          attendance: null,
+        });
+        showToast("Excel downloaded.");
+      } else {
+        exportAdminReportsPdf({
+          ...exportContext,
+          sections,
+          attendance: null,
+        });
+        showToast("PDF downloaded.");
+      }
+      setExportOpen(false);
     } catch (err) {
-      showToast(err?.message ?? "Unable to export PDF.");
+      showToast(err?.message ?? "Unable to export.");
+    } finally {
+      setExportBusy(false);
     }
   }
 
-  async function handleExportExcel() {
+  function handlePrintForMeeting() {
     try {
-      await exportAdminReportsExcel({
-        classReports,
-        summary,
-        schoolSummary,
-        charts,
-        attendance,
-        schoolYear,
-        quarter: quarterLabel,
-      });
-      showToast("Excel export downloaded.");
+      exportAdminMeetingBriefPdf(exportContext);
+      showToast("Meeting brief PDF downloaded.");
     } catch (err) {
-      showToast(err?.message ?? "Unable to export Excel.");
+      showToast(err?.message ?? "Unable to prepare meeting brief.");
     }
   }
 
@@ -213,7 +309,7 @@ export default function AdminReportsPage() {
   function handlePreviewExport() {
     const row = classReports.find((item) => item.id === previewClassId);
     if (!row) {
-      handleExportPdf();
+      openExportChooser("pdf");
       return;
     }
     handleRowExportPdf(row);
@@ -229,18 +325,19 @@ export default function AdminReportsPage() {
       <Header
         breadcrumb="Home / Reports"
         title="Reports"
-        description="School snapshot of grades, who needs support, lesson plans, and attendance."
+        description="Summary of grades, learners needing support, lesson plans, and attendance."
         controls={
-          <div className="flex w-full min-w-0 flex-nowrap items-center gap-2 sm:w-auto">
-            <div className="flex flex-nowrap items-center gap-2">
+          <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <PageHelp
-                summary="School snapshot from ECR grades. Daily attendance lives on Attendance Monitoring. Uploaded SF2 is archive only."
+                summary="School summary of grades, learners needing support, lesson plans, and attendance for the selected school year and term."
                 steps={[
-                  "Filter by school year and term, then review the four learner counts.",
-                  "Overview shows unique learners, ARAL Learners, and Classroom remedial from ECR grades.",
-                  "Classes opens grade and section folders. Use List if you prefer a table.",
-                  "Attendance uses Morning and Afternoon marks. Open Attendance Monitoring for the full month.",
-                  "Uploaded SF2 figures stay separate and are not mixed into academic risk.",
+                  "Choose the school year and term, then review the learner counts at the top.",
+                  "Overview shows items that need your attention, learner monitoring, sections and classes needing support, and this month’s attendance.",
+                  "Use Download for a meeting brief, PDF, or Excel. PDF and Excel let you choose what to include.",
+                  "Classes shows reports by grade and section.",
+                  "Attendance shows Morning and Afternoon attendance recorded by advisers.",
+                  "ARAL Learners are those below 75 in English or Filipino. Classroom remedial covers other subjects needing support.",
                 ]}
               />
               <AppSelect
@@ -270,7 +367,7 @@ export default function AdminReportsPage() {
                 triggerClassName="rounded-lg"
               />
             </div>
-            <div className="ml-auto flex flex-nowrap items-center gap-2">
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => refresh()}
@@ -278,24 +375,72 @@ export default function AdminReportsPage() {
               >
                 Refresh
               </button>
-              <button
-                type="button"
-                onClick={handleExportPdf}
-                disabled={loading}
-                className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60 dark:border-white/10 dark:bg-[var(--card)] dark:text-slate-300 dark:hover:bg-white/5"
-              >
-                <Download size={12} />
-                Export PDF
-              </button>
-              <button
-                type="button"
-                onClick={handleExportExcel}
-                disabled={loading}
-                className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white transition-colors hover:bg-[#246f54] disabled:opacity-60"
-              >
-                <FileSpreadsheet size={12} />
-                Export Excel
-              </button>
+              <div className="relative" ref={downloadMenuRef}>
+                <button
+                  type="button"
+                  disabled={loading}
+                  aria-expanded={downloadMenuOpen}
+                  aria-haspopup="menu"
+                  onClick={() => setDownloadMenuOpen((open) => !open)}
+                  className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white transition-colors hover:bg-[#246f54] disabled:opacity-60"
+                >
+                  <Download size={12} />
+                  Download
+                  <ChevronDown
+                    size={12}
+                    className={cn(
+                      "transition-transform",
+                      downloadMenuOpen ? "rotate-180" : ""
+                    )}
+                  />
+                </button>
+                {downloadMenuOpen ? (
+                  <div
+                    role="menu"
+                    className="absolute right-0 z-40 mt-1.5 w-[13.5rem] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-white/10 dark:bg-[var(--card)]"
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setDownloadMenuOpen(false);
+                        handlePrintForMeeting();
+                      }}
+                      className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/5"
+                    >
+                      <Printer size={13} className="text-cnhs-green-dark" />
+                      Print for meeting
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setDownloadMenuOpen(false);
+                        openExportChooser("pdf");
+                      }}
+                      className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/5"
+                    >
+                      <FileText size={13} className="text-cnhs-green-dark" />
+                      Export PDF…
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setDownloadMenuOpen(false);
+                        openExportChooser("excel");
+                      }}
+                      className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/5"
+                    >
+                      <FileSpreadsheet
+                        size={13}
+                        className="text-cnhs-green-dark"
+                      />
+                      Export Excel…
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         }
@@ -310,7 +455,7 @@ export default function AdminReportsPage() {
       {loading ? (
         <div className="flex items-center gap-2 rounded-2xl border border-slate-100 bg-white px-4 py-10 text-sm text-slate-400 dark:border-white/10 dark:bg-[var(--card)]">
           <Loader2 size={16} className="animate-spin" />
-          Loading school snapshot…
+          Loading school summary…
         </div>
       ) : (
         <div className="space-y-3">
@@ -355,24 +500,21 @@ export default function AdminReportsPage() {
           >
             {pageTab === "overview" ? (
               <div className="space-y-3">
-                {schoolSummary?.predictionsPending ? (
-                  <p className="text-[12px] text-slate-500">
-                    Academic prediction is not ready yet. ARAL Learners and
-                    Classroom remedial still use ECR grades.
-                  </p>
-                ) : null}
+                <AdminReportsOverviewExtras
+                  schoolYear={schoolYear}
+                  quarterLabel={quarterLabel}
+                  actionCounts={overviewActionCounts}
+                  monitoringHealth={overviewMonitoringHealth}
+                  hotspots={overviewHotspots}
+                  lessonSummary={lessonSummary}
+                  daily={daily}
+                  onGoMonitoring={goMonitoring}
+                  onGoAttendance={() => router.push("/attendance")}
+                  onGoLessonPlans={() => router.push("/lesson-plan-review")}
+                  onOpenClassesTab={() => setPageTab("classes")}
+                  onPreviewClass={openPreviewById}
+                />
                 <ReportSummaryMetrics rows={extraRows} />
-                <p className="text-[12px] text-slate-500">
-                  <button
-                    type="button"
-                    onClick={() => router.push("/lesson-plan-review")}
-                    className="cursor-pointer font-semibold text-cnhs-green-dark underline-offset-2 hover:underline"
-                  >
-                    Lesson plans pending
-                  </button>
-                  {": "}
-                  {lessonSummary?.pending ?? 0} awaiting review.
-                </p>
                 <AdminReportCharts charts={charts} hideAttendance hideEmpty />
               </div>
             ) : null}
@@ -392,6 +534,18 @@ export default function AdminReportsPage() {
           </TabSwitchPanel>
         </div>
       )}
+
+      <ExportSchoolReportModal
+        open={exportOpen}
+        format={exportFormat}
+        schoolYear={schoolYear}
+        termLabel={quarterLabel}
+        busy={exportBusy}
+        onClose={() => {
+          if (!exportBusy) setExportOpen(false);
+        }}
+        onConfirm={handleExportConfirm}
+      />
 
       <ReportPreviewModal
         open={previewOpen}

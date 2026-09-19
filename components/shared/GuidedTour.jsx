@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import {
-  hasCompletedTour,
-  markTourCompleted,
+  hasCompletedTourLocal,
+  markTourCompletedLocal,
 } from "@/lib/onboarding/guidedTourStorage";
 import {
   ADMIN_TOUR_STEPS,
@@ -55,6 +55,7 @@ function measureTarget(tourId) {
 
 /**
  * First-time coach-mark tour — spotlights sidebar targets.
+ * Shows once per account (profiles.guided_tour_completed_at + localStorage).
  * role: "admin" | "teacher"
  */
 export default function GuidedTour({ role = "teacher" }) {
@@ -78,12 +79,34 @@ export default function GuidedTour({ role = "teacher" }) {
       } = await supabase.auth.getUser();
       if (cancelled || !user?.id) return;
       setUserId(user.id);
-      if (!hasCompletedTour(role, user.id)) {
-        // Wait for sidebar paint (desktop + mobile sheet may differ).
-        window.setTimeout(() => {
-          if (!cancelled) setActive(true);
-        }, 450);
+
+      // Fast path: already completed in this browser.
+      if (hasCompletedTourLocal(role, user.id)) return;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select(
+          "guided_tour_completed_at, must_change_password, accepted_terms_at, temp_password"
+        )
+        .eq("auth_user_id", user.id)
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      // Persist cache if DB already says done (new browser after completion).
+      if (profile?.guided_tour_completed_at) {
+        markTourCompletedLocal(role, user.id);
+        return;
       }
+
+      // Don't interrupt first-login password / terms gate.
+      const temp = String(profile?.temp_password ?? "").trim();
+      if (profile?.must_change_password && temp) return;
+      if (!profile?.accepted_terms_at) return;
+
+      window.setTimeout(() => {
+        if (!cancelled) setActive(true);
+      }, 450);
     })();
     return () => {
       cancelled = true;
@@ -113,9 +136,24 @@ export default function GuidedTour({ role = "teacher" }) {
     };
   }, [active, refreshBox]);
 
-  function finish() {
-    if (userId) markTourCompleted(role, userId);
+  async function finish() {
     setActive(false);
+    if (userId) markTourCompletedLocal(role, userId);
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user?.id) return;
+      await supabase
+        .from("profiles")
+        .update({ guided_tour_completed_at: new Date().toISOString() })
+        .eq("auth_user_id", user.id)
+        .is("guided_tour_completed_at", null);
+      markTourCompletedLocal(role, user.id);
+    } catch {
+      /* local flag already set */
+    }
   }
 
   function next() {
@@ -138,15 +176,11 @@ export default function GuidedTour({ role = "teacher" }) {
     tipLeft = preferRight
       ? box.left + box.width + 12
       : Math.max(16, Math.min(box.left, window.innerWidth - tipWidth - 16));
-    tipTop = Math.min(
-      Math.max(12, box.top),
-      window.innerHeight - 170
-    );
+    tipTop = Math.min(Math.max(12, box.top), window.innerHeight - 170);
   }
 
   return createPortal(
     <div className="fixed inset-0 z-[200]" role="dialog" aria-modal="true" aria-label="Guided tour">
-      {/* Dim — four panes around the spotlight cutout */}
       {box ? (
         <>
           <div
@@ -213,14 +247,14 @@ export default function GuidedTour({ role = "teacher" }) {
           <button
             type="button"
             onClick={finish}
-            className="cursor-pointer text-[11px] font-semibold text-slate-500 hover:text-slate-700"
+            className="cursor-pointer text-[11px] font-semibold text-slate-500 transition-colors duration-200 hover:text-slate-700"
           >
             Skip
           </button>
           <button
             type="button"
             onClick={next}
-            className="inline-flex h-8 cursor-pointer items-center rounded-lg bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white hover:bg-[#246f54]"
+            className="inline-flex h-8 cursor-pointer items-center rounded-lg bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white transition-colors duration-200 hover:bg-[#246f54]"
           >
             {isLast ? "Done" : "Next"}
           </button>

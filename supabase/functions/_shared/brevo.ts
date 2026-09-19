@@ -272,6 +272,101 @@ export function welcomeAccountEmail({
   };
 }
 
+/** Forgot-password recovery email (same Brevo API path as welcome mail). */
+export function passwordResetEmail({
+  email,
+  resetUrl,
+}: {
+  email: string;
+  resetUrl: string;
+}) {
+  const safeEmail = escapeHtml(email);
+  const safeResetUrl = escapeHtml(resetUrl);
+  const origin =
+    appOriginFromEnv() ||
+    (resetUrl ? resetUrl.replace(/\/login\/reset-password\/?$/, "") : "");
+  const safeOrigin = origin ? escapeHtml(origin) : "";
+  const logoUrl = safeOrigin ? `${safeOrigin}/cnhs-logo.png` : "";
+
+  const textContent = [
+    "CNHS Learn",
+    "Cambaog National High School",
+    "",
+    "We received a request to reset your CNHS Learn password.",
+    "",
+    `Account email: ${email}`,
+    "",
+    "Open this link to choose a new password:",
+    resetUrl,
+    "",
+    "If you did not request a reset, you can ignore this email. Your password will stay the same.",
+    "",
+    "Cambaog National High School",
+    "cnhslearn091305@gmail.com",
+    "",
+    "© 2026 CNHS Learn. All rights reserved.",
+  ].join("\n");
+
+  const logoCell = logoUrl
+    ? `<img src="${logoUrl}" width="44" height="44" alt="CNHS Learn" style="display:block;width:44px;height:44px;border-radius:22px;border:2px solid rgba(255,255,255,0.35);background:#ffffff;" />`
+    : `<div style="width:44px;height:44px;border-radius:22px;background:#ffffff;color:#174D37;font-size:11px;font-weight:700;line-height:44px;text-align:center;">CNHS</div>`;
+
+  const htmlContent = `
+    <div style="margin:0;padding:24px 12px;background:#f1f5f4;font-family:Arial,Helvetica,sans-serif;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
+        <tr>
+          <td style="background:#174D37;padding:20px 24px 18px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td width="56" valign="middle">${logoCell}</td>
+                <td valign="middle" style="padding-left:12px;color:#ffffff;">
+                  <div style="font-size:18px;font-weight:700;letter-spacing:-0.02em;line-height:1.2;">CNHS Learn</div>
+                  <div style="margin-top:3px;font-size:12px;line-height:1.35;color:#d1fae5;">Cambaog National High School</div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:28px 28px 6px;color:#0f172a;font-size:22px;font-weight:700;letter-spacing:-0.03em;line-height:1.3;">
+            Reset your password
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 28px 18px;color:#475569;font-size:14px;line-height:1.6;">
+            We received a request to reset your <strong>CNHS Learn</strong> password for
+            <span style="color:#0f172a;">${safeEmail}</span>. Click the button below to choose a new one.
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:8px 28px 20px;">
+            <a href="${safeResetUrl}" style="display:block;background:#174D37;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;padding:14px 22px;border-radius:999px;text-align:center;">
+              Reset Password
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 28px 22px;color:#94a3b8;font-size:12px;line-height:1.55;">
+            If you did not request a reset, you can ignore this email. Your password will stay the same.
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 28px 24px;border-top:1px solid #e2e8f0;color:#94a3b8;font-size:11px;line-height:1.5;">
+            Cambaog National High School · CNHS Learn<br />
+            © 2026 CNHS Learn. All rights reserved.
+          </td>
+        </tr>
+      </table>
+    </div>
+  `;
+
+  return {
+    subject: "CNHS Learn · Reset your password",
+    textContent,
+    htmlContent,
+  };
+}
+
 function escapeHtml(value: string) {
   return String(value)
     .replaceAll("&", "&amp;")

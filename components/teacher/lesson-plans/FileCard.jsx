@@ -13,33 +13,37 @@ export default function FileCard({ file, onReplace, onRemove, progress }) {
   if (!file) return null;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-white/5">
       <div className="flex items-start gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-cnhs-green-dark shadow-sm">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-cnhs-green-dark shadow-sm dark:bg-white/10 dark:text-cnhs-green">
           <FileText size={18} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold text-slate-800">{file.name}</p>
-          <p className="mt-1 text-[11px] text-slate-500">
+          <p className="truncate text-[13px] font-semibold text-slate-800 dark:text-slate-100">
+            {file.name}
+          </p>
+          <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
             {formatBytes(file.size)} · {file.extension?.toUpperCase()} · Uploaded{" "}
             {file.uploadedAt}
           </p>
 
           {typeof progress === "number" && progress < 100 ? (
             <div className="mt-3">
-              <div className="mb-1 flex items-center justify-between text-[10px] font-medium text-slate-500">
+              <div className="mb-1 flex items-center justify-between text-[10px] font-medium text-slate-500 dark:text-slate-400">
                 <span>Uploading...</span>
                 <span>{progress}%</span>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-slate-200">
+              <div className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
                 <div
-                  className="h-full rounded-full bg-cnhs-green-dark transition-all"
+                  className="h-full rounded-full bg-cnhs-green-dark transition-all dark:bg-cnhs-green"
                   style={{ width: `${progress}%` }}
                 />
               </div>
             </div>
           ) : (
-            <p className="mt-2 text-[11px] font-medium text-cnhs-green-dark">Upload complete</p>
+            <p className="mt-2 text-[11px] font-medium text-cnhs-green-dark dark:text-cnhs-green">
+              Upload complete
+            </p>
           )}
         </div>
       </div>
@@ -48,7 +52,7 @@ export default function FileCard({ file, onReplace, onRemove, progress }) {
         <button
           type="button"
           onClick={onReplace}
-          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/5"
         >
           <RefreshCw size={12} />
           Replace File
@@ -56,7 +60,7 @@ export default function FileCard({ file, onReplace, onRemove, progress }) {
         <button
           type="button"
           onClick={onRemove}
-          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 text-[11px] font-semibold text-red-600 transition-colors hover:bg-red-50"
+          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 text-[11px] font-semibold text-red-600 transition-colors hover:bg-red-50 dark:border-red-500/30 dark:bg-transparent dark:hover:bg-red-950/30"
         >
           <Trash2 size={12} />
           Remove File

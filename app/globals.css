@@ -121,8 +121,8 @@
   --accent: #222222;
   --accent-foreground: #e8e8e8;
   --destructive: #d83a3a;
-  --border: #2a2a2a;
-  --input: #2a2a2a;
+  --border: rgba(255, 255, 255, 0.06);
+  --input: rgba(255, 255, 255, 0.06);
   --ring: #52b788;
   --sidebar: #141414;
   --sidebar-foreground: #e8e8e8;
@@ -130,7 +130,7 @@
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: rgba(82, 183, 136, 0.16);
   --sidebar-accent-foreground: #7dd8a9;
-  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-border: rgba(255, 255, 255, 0.06);
   --sidebar-ring: #52b788;
   --cnhs-sidebar: #141414;
   --cnhs-sidebar-muted: #222222;
@@ -165,6 +165,12 @@
 
   body {
     @apply min-h-screen bg-cnhs-page font-sans text-foreground antialiased;
+  }
+
+  /* One custom eye control only — hide Edge/IE native password reveal */
+  input[type="password"]::-ms-reveal,
+  input[type="password"]::-ms-clear {
+    display: none;
   }
 
   html.dark {
@@ -318,6 +324,55 @@ html.dark [data-force-light="true"] .bg-white {
   background-color: #ffffff !important;
 }
 
+/* Portaled auth modals — never inherit html.dark charcoal (avoids bg-white remap). */
+.cnhs-force-light-panel,
+html.dark .cnhs-force-light-panel {
+  background-color: #ffffff !important;
+  color-scheme: light !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.dark .cnhs-force-light-panel [class~="text-slate-500"],
+html.dark .cnhs-force-light-panel [class~="text-slate-400"] {
+  color: #64748b !important;
+}
+
+html.dark .cnhs-force-light-panel [class~="text-slate-700"],
+html.dark .cnhs-force-light-panel [class~="text-slate-600"] {
+  color: #334155 !important;
+}
+
+html.dark .cnhs-force-light-panel [class~="hover:bg-slate-50"]:hover {
+  background-color: #f8fafc !important;
+}
+
+html.dark .cnhs-force-light-panel [class~="border-slate-100"],
+html.dark .cnhs-force-light-panel [class~="border-slate-200"] {
+  border-color: #e2e8f0 !important;
+}
+
+html.dark .cnhs-force-light-panel .bg-white,
+html.dark .cnhs-force-light-panel [class~="bg-white"] {
+  background-color: #ffffff !important;
+}
+
+html.dark .cnhs-force-light-panel [class~="bg-emerald-50"],
+html.dark .cnhs-force-light-panel .bg-emerald-50,
+html.dark .cnhs-force-light-panel [class~="bg-green-50"],
+html.dark .cnhs-force-light-panel [class~="bg-[#f0fdf4]"] {
+  background-color: #f0fdf4 !important;
+}
+
+html.dark .cnhs-force-light-panel [class~="border-emerald-100"],
+html.dark .cnhs-force-light-panel [class~="border-[#bbf7d0]"] {
+  border-color: #bbf7d0 !important;
+}
+
+html.dark .cnhs-force-light-panel [class~="text-cnhs-green-dark"],
+html.dark .cnhs-force-light-panel [class~="text-[#174D37]"] {
+  color: #174D37 !important;
+}
+
 /*
  * Auth / login surfaces — always light, even when html.dark is set.
  */
@@ -399,6 +454,45 @@ html.dark [data-force-light="true"] [class~="border-red-100"] {
   border-color: #fee2e2 !important;
 }
 
+html.dark [data-force-light="true"] [class~="bg-emerald-50"],
+html.dark [data-force-light="true"] [class~="bg-green-50"],
+html.dark [data-force-light="true"] [class~="bg-[#f0fdf4]"] {
+  background-color: #f0fdf4 !important;
+}
+
+html.dark [data-force-light="true"] [class~="border-emerald-100"],
+html.dark [data-force-light="true"] [class~="border-[#bbf7d0]"] {
+  border-color: #bbf7d0 !important;
+}
+
+html.dark [data-force-light="true"] [class~="text-cnhs-green-dark"],
+html.dark [data-force-light="true"] [class~="text-[#174D37]"] {
+  color: #174D37 !important;
+}
+
+html.dark [data-force-light="true"] [class~="bg-[#f7faf7]"],
+html.dark [data-force-light="true"] [class~="bg-[#fafafa]"],
+html.dark [data-force-light="true"] [class~="bg-[#f3f3f3]"] {
+  background-color: #f7faf7 !important;
+}
+
+html.dark [data-force-light="true"] [class~="bg-[#f8fbf8]"] {
+  background-color: #f8fbf8 !important;
+}
+
+html.dark [data-force-light="true"] .bg-white\/95,
+html.dark [data-force-light="true"] [class~="bg-white/95"] {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+html.dark [data-force-light="true"] [class~="text-[#123d2c]"] {
+  color: #123d2c !important;
+}
+
+html.dark [data-force-light="true"] [class~="border-green-100"] {
+  border-color: #dcfce7 !important;
+}
+
 html.dark [class~="bg-slate-50"],
 html.dark [class~="bg-slate-50/40"],
 html.dark [class~="bg-slate-50/50"],
@@ -457,33 +551,59 @@ html.dark [class~="text-slate-300"] {
   color: #9ca3af;
 }
 
+html.dark [class~="border-slate-50"],
 html.dark [class~="border-slate-100"],
 html.dark [class~="border-slate-200"],
 html.dark [class~="border-slate-300"] {
-  border-color: #2a2a2a;
+  border-color: rgba(255, 255, 255, 0.06);
 }
 
-html.dark [class~="divide-slate-100"] > :not(:last-child) {
-  border-color: #2a2a2a;
+html.dark [class~="divide-slate-100"] > :not(:last-child),
+html.dark [class~="divide-slate-200"] > :not(:last-child) {
+  border-color: rgba(255, 255, 255, 0.06);
 }
 
 html.dark [class~="ring-slate-100"],
-html.dark [class~="ring-slate-200"] {
-  --tw-ring-color: #2a2a2a;
+html.dark [class~="ring-slate-200"],
+html.dark [class~="ring-1"][class~="ring-slate-200"] {
+  --tw-ring-color: rgba(255, 255, 255, 0.08);
+}
+
+html.dark [class~="ring-cnhs-orange\/20"],
+html.dark [class~="ring-cnhs-orange\/30"],
+html.dark [class~="ring-orange-100"],
+html.dark [class~="ring-orange-200"],
+html.dark [class~="ring-amber-100"],
+html.dark [class~="ring-amber-200"] {
+  --tw-ring-color: rgba(232, 137, 47, 0.14);
+}
+
+html.dark [class~="ring-cnhs-green\/20"],
+html.dark [class~="ring-cnhs-green\/25"],
+html.dark [class~="ring-cnhs-green\/30"],
+html.dark [class~="ring-emerald-100"],
+html.dark [class~="ring-emerald-200"] {
+  --tw-ring-color: rgba(82, 183, 136, 0.14);
 }
 
 html.dark [class~="border-red-100"] {
-  border-color: rgba(216, 58, 58, 0.22);
+  border-color: rgba(216, 58, 58, 0.16);
 }
 
 html.dark [class~="border-amber-100"],
 html.dark [class~="border-orange-100"] {
-  border-color: rgba(232, 137, 47, 0.22);
+  border-color: rgba(232, 137, 47, 0.16);
 }
 
 html.dark [class~="border-green-100"],
-html.dark [class~="border-emerald-100"] {
-  border-color: rgba(82, 183, 136, 0.22);
+html.dark [class~="border-emerald-100"],
+html.dark [class~="border-emerald-200"] {
+  border-color: rgba(82, 183, 136, 0.18);
+}
+
+html.dark [class~="border-sky-100"],
+html.dark [class~="border-sky-200"] {
+  border-color: rgba(56, 189, 248, 0.16);
 }
 
 html.dark [class~="bg-cnhs-red-soft"] {
@@ -526,7 +646,7 @@ html.dark [class~="bg-orange-50"],
 html.dark [class~="bg-amber-50"],
 html.dark [class~="bg-amber-50/80"],
 html.dark [class~="bg-amber-100"] {
-  background-color: color-mix(in srgb, #1c1c1c 88%, #e8892f 12%);
+  background-color: color-mix(in srgb, #1c1c1c 78%, #e8892f 22%);
 }
 
 html.dark [class~="bg-sky-50"],
@@ -536,10 +656,6 @@ html.dark [class~="bg-sky-50/80"],
 html.dark [class~="bg-sky-100"],
 html.dark [class~="bg-teal-50"] {
   background-color: rgba(14, 165, 233, 0.12);
-}
-
-html.dark [class~="border-sky-100"] {
-  border-color: rgba(56, 189, 248, 0.35);
 }
 
 html.dark [class~="text-sky-800"] {
@@ -554,8 +670,39 @@ html.dark [class~="text-cnhs-green-dark"] {
   color: #52b788;
 }
 
+html.dark [class~="text-amber-600"],
 html.dark [class~="text-amber-700"],
-html.dark [class~="text-amber-800"] {
+html.dark [class~="text-amber-800"],
+html.dark [class~="text-amber-900"],
+html.dark [class~="text-amber-950"] {
+  color: #fbbf24;
+}
+
+html.dark [class~="text-orange-700"],
+html.dark [class~="text-orange-800"],
+html.dark [class~="text-orange-900"] {
+  color: #fb923c;
+}
+
+html.dark [class~="border-cnhs-orange\/20"],
+html.dark [class~="border-cnhs-orange\/30"],
+html.dark [class~="border-cnhs-orange\/35"],
+html.dark [class~="border-cnhs-orange\/40"] {
+  border-color: rgba(232, 137, 47, 0.16);
+}
+
+html.dark [class~="border-cnhs-green"],
+html.dark [class~="border-cnhs-green\/30"],
+html.dark [class~="border-cnhs-green\/35"],
+html.dark [class~="border-cnhs-green\/40"],
+html.dark [class~="border-cnhs-green-dark"],
+html.dark [class~="border-cnhs-green-dark\/35"],
+html.dark [class~="border-cnhs-green-dark\/40"],
+html.dark [class~="hover\:border-cnhs-green\/40"]:hover {
+  border-color: rgba(82, 183, 136, 0.22);
+}
+
+html.dark [class~="text-cnhs-orange"] {
   color: #fbbf24;
 }
 
@@ -583,8 +730,9 @@ html.dark [class~="text-teal-700"] {
 html.dark [class~="hover:bg-white"]:hover,
 html.dark [class~="hover:bg-slate-50"]:hover,
 html.dark [class~="hover:bg-slate-50/60"]:hover,
-html.dark [class~="hover:bg-slate-50/70"]:hover {
-  background-color: #222222;
+html.dark [class~="hover:bg-slate-50/70"]:hover,
+html.dark [class~="hover:bg-slate-50/80"]:hover {
+  background-color: rgba(255, 255, 255, 0.04);
 }
 
 html.dark [class~="focus:bg-white"]:focus {

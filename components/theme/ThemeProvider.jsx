@@ -8,10 +8,12 @@ import {
   useMemo,
   useState,
 } from "react";
+import { usePathname } from "next/navigation";
 import {
   THEME_CHANGE_EVENT,
   THEME_STORAGE_KEY,
   applyThemePreference,
+  isPublicForceLightPath,
   loadThemePreference,
   normalizeTheme,
   saveThemePreference,
@@ -20,15 +22,22 @@ import {
 const ThemeContext = createContext(null);
 
 export function ThemeProvider({ children }) {
+  const pathname = usePathname();
   const [theme, setThemeState] = useState("light");
   const [resolvedTheme, setResolvedTheme] = useState("light");
   const [hydrated, setHydrated] = useState(false);
 
   const apply = useCallback((preference) => {
+    if (isPublicForceLightPath(pathname)) {
+      setThemeState("light");
+      setResolvedTheme("light");
+      applyThemePreference("light", pathname);
+      return;
+    }
     const normalized = normalizeTheme(preference);
     setThemeState(normalized);
-    setResolvedTheme(applyThemePreference(normalized));
-  }, []);
+    setResolvedTheme(applyThemePreference(normalized, pathname));
+  }, [pathname]);
 
   const setTheme = useCallback(
     (preference) => {
@@ -44,10 +53,22 @@ export function ThemeProvider({ children }) {
   }, [apply]);
 
   useEffect(() => {
+    if (isPublicForceLightPath(pathname)) {
+      setThemeState("light");
+      setResolvedTheme("light");
+      applyThemePreference("light", pathname);
+    } else {
+      const current = loadThemePreference();
+      setThemeState(current);
+      setResolvedTheme(applyThemePreference(current, pathname));
+    }
+  }, [pathname]);
+
+  useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
 
     function handleSystemChange() {
-      if (loadThemePreference() === "system") {
+      if (!isPublicForceLightPath(pathname) && loadThemePreference() === "system") {
         apply("system");
       }
     }
@@ -71,7 +92,7 @@ export function ThemeProvider({ children }) {
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener(THEME_CHANGE_EVENT, handleThemeChange);
     };
-  }, [apply]);
+  }, [apply, pathname]);
 
   const value = useMemo(
     () => ({ theme, resolvedTheme, hydrated, setTheme }),

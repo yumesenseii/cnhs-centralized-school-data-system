@@ -22,10 +22,118 @@ import {
   reviewAralRecommendation,
 } from "@/lib/supabase/queries/aralApprovals";
 import { getAdminSession } from "@/lib/supabase/queries/adminAuth";
+import { parseRecordedGrade } from "@/lib/ecr/computeGrades";
+import { normalizeSubjectName } from "@/lib/services/recommendation/subjectCapabilities";
 import { Pill } from "@/components/teacher/monitoring/shared";
 import { cn } from "@/lib/utils";
 
 const SECTIONS_PAGE_SIZE = 10;
+const ARAL_GRADE_THRESHOLD = 75;
+
+function resolveQuarterNumber(row = {}) {
+  const n = Number(
+    row.aralApprovalQuarter ??
+      row.quarterNumber ??
+      String(row.quarter ?? "").replace(/\D/g, "")
+  );
+  return Number.isFinite(n) && n >= 1 && n <= 4 ? n : null;
+}
+
+/**
+ * Real class-subject grade only — never invent 0 from null/empty.
+ * Prefer classSubjectGrade → termGrades[q] → subjectGrades match → aralClassSubjectGrade.
+ */
+function resolveSubjectGrade(row = {}) {
+  const direct = parseRecordedGrade(row.classSubjectGrade);
+  if (direct !== null) return direct;
+
+  const qNum = resolveQuarterNumber(row);
+  const terms = row.termGrades || {};
+  if (qNum != null) {
+    const fromTerm = parseRecordedGrade(terms[qNum] ?? terms[String(qNum)]);
+    if (fromTerm !== null) return fromTerm;
+  }
+  // Any recorded term for this class subject if quarter key missed
+  for (const key of [1, 2, 3, 4]) {
+    const g = parseRecordedGrade(terms[key] ?? terms[String(key)]);
+    if (g !== null) return g;
+  }
+
+  const target = normalizeSubjectName(row.subject);
+  if (target && Array.isArray(row.subjectGrades)) {
+    for (const g of row.subjectGrades) {
+      const name = normalizeSubjectName(g.subject ?? g.subjectName);
+      if (name !== target) continue;
+      if (
+        qNum != null &&
+        g.quarter != null &&
+        Number(g.quarter) !== qNum
+      ) {
+        continue;
+      }
+      const grade = parseRecordedGrade(g.grade ?? g.finalGrade);
+      if (grade !== null) return grade;
+    }
+    // Same subject, any quarter
+    for (const g of row.subjectGrades) {
+      const name = normalizeSubjectName(g.subject ?? g.subjectName);
+      if (name !== target) continue;
+      const grade = parseRecordedGrade(g.grade ?? g.finalGrade);
+      if (grade !== null) return grade;
+    }
+  }
+
+  const aralOnly = parseRecordedGrade(row.aralClassSubjectGrade);
+  if (aralOnly !== null) return aralOnly;
+
+  return null;
+}
+
+function formatGradeDisplay(grade) {
+  if (grade === null || grade === undefined) return "—";
+  return Number.isInteger(grade) ? String(grade) : String(grade);
+}
+
+function buildIdentifiedEntry(row) {
+  const subject = String(row.subject || "").trim();
+  if (!subject) return null;
+  return {
+    subject,
+    grade: resolveSubjectGrade(row),
+    quarter: row.quarter || null,
+  };
+}
+
+function upsertIdentifiedSubject(list, entry) {
+  if (!entry) return list;
+  const next = [...list];
+  const idx = next.findIndex((e) => e.subject === entry.subject);
+  if (idx === -1) {
+    next.push(entry);
+    return next;
+  }
+  const prev = next[idx];
+  // Backfill grade/quarter when a later source row has real data
+  next[idx] = {
+    subject: entry.subject,
+    grade: prev.grade !== null ? prev.grade : entry.grade,
+    quarter: prev.quarter || entry.quarter,
+  };
+  return next;
+}
+
+/** One muted reason line under subject chips when any grade is below 75. */
+function identificationReasonLine(entries = [], fallbackQuarter = null) {
+  const failing = entries.filter(
+    (e) => e.grade !== null && e.grade < ARAL_GRADE_THRESHOLD
+  );
+  if (!failing.length) return null;
+  const quarter = failing[0].quarter || fallbackQuarter || null;
+  const termPart = quarter ? String(quarter) : null;
+  return termPart
+    ? `${termPart} · below ${ARAL_GRADE_THRESHOLD}`
+    : `below ${ARAL_GRADE_THRESHOLD}`;
+}
 
 function isPendingHt(status) {
   return (
@@ -104,6 +212,8 @@ function buildApprovalSectionGroups(aralRows = []) {
     const existing = learners.get(studentId);
     const status = row.aralApprovalStatus || ARAL_APPROVAL_STATUS.SUGGESTED;
 
+    const identified = buildIdentifiedEntry(row);
+
     if (!existing) {
       learners.set(studentId, {
         studentId,
@@ -113,7 +223,9 @@ function buildApprovalSectionGroups(aralRows = []) {
         gradeLevel: row.gradeLevel || null,
         schoolYear: row.schoolYear,
         quarter: row.quarter,
+        classId: row.classId || null,
         subjects: row.subject ? [row.subject] : [],
+        identifiedSubjects: identified ? [identified] : [],
         statuses: [status],
         note: row.aralApprovalNote || "",
         sourceRows: [row],
@@ -126,8 +238,13 @@ function buildApprovalSectionGroups(aralRows = []) {
     if (row.subject && !existing.subjects.includes(row.subject)) {
       existing.subjects.push(row.subject);
     }
+    existing.identifiedSubjects = upsertIdentifiedSubject(
+      existing.identifiedSubjects,
+      identified
+    );
     existing.statuses.push(status);
     existing.sourceRows.push(row);
+    if (!existing.classId && row.classId) existing.classId = row.classId;
     if (row.aralApprovalNote && !existing.note) {
       existing.note = row.aralApprovalNote;
     }
@@ -149,7 +266,11 @@ function buildApprovalSectionGroups(aralRows = []) {
                 : learner.statuses.includes(ARAL_APPROVAL_STATUS.APPROVED)
                   ? ARAL_APPROVAL_STATUS.APPROVED
                   : ARAL_APPROVAL_STATUS.SUGGESTED;
-          return { ...learner, displayStatus };
+          const reasonLine = identificationReasonLine(
+            learner.identifiedSubjects,
+            learner.quarter
+          );
+          return { ...learner, displayStatus, reasonLine };
         })
         .sort((a, b) => String(a.name).localeCompare(String(b.name)));
 
@@ -174,7 +295,11 @@ function buildApprovalSectionGroups(aralRows = []) {
  * Admin/HT panel: approve or return ARAL recommendations.
  * OneData-style grade folders → sections → learners.
  */
-export default function AdminAralApprovalPanel({ students = [], onChanged }) {
+export default function AdminAralApprovalPanel({
+  students = [],
+  onChanged,
+  onViewStudent,
+}) {
   const aralRows = useMemo(
     () => students.filter(isAralHtTrackedLearner),
     [students]
@@ -401,14 +526,14 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
   }
 
   return (
-    <section className="overflow-hidden rounded-xl border border-emerald-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-50 bg-emerald-50/40 px-3 py-2.5 sm:px-4">
+    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)] dark:border-white/5 dark:bg-[var(--card)] dark:shadow-none">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2.5 sm:px-4 dark:border-white/5">
         <div>
-          <h2 className="text-sm font-semibold text-slate-900">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
             Approve ARAL Recommendations
           </h2>
         </div>
-        <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+        <span className="inline-flex rounded-full bg-cnhs-green-soft px-2.5 py-0.5 text-[10px] font-semibold text-cnhs-green-dark">
           {uniqueLearnerCount} learner
           {uniqueLearnerCount === 1 ? "" : "s"} · {sectionGroups.length}{" "}
           section{sectionGroups.length === 1 ? "" : "s"} · {gradeFolders.length}{" "}
@@ -440,19 +565,19 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
                   type="button"
                   onClick={() => openGrade(folder.grade)}
                   className={cn(
-                    "group flex cursor-pointer flex-col rounded-2xl border bg-white p-4 text-left shadow-[0_6px_16px_rgba(15,23,42,0.04)] transition-colors hover:border-green-100 hover:bg-cnhs-green-soft/20"
+                    "group flex cursor-pointer flex-col rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-[0_6px_16px_rgba(15,23,42,0.04)] transition-colors hover:border-cnhs-green/40 hover:bg-cnhs-green-soft/20 dark:border-white/5 dark:bg-[var(--card)] dark:shadow-none dark:hover:border-cnhs-green/25 dark:hover:bg-white/[0.04]"
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cnhs-green-soft text-cnhs-green-dark ring-1 ring-green-100">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cnhs-green-soft text-cnhs-green-dark">
                       <Folder size={18} strokeWidth={1.75} />
                     </span>
                     <span
                       className={cn(
-                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1",
                         attention
-                          ? "bg-orange-50 text-cnhs-orange ring-1 ring-orange-100"
-                          : "bg-green-50 text-cnhs-green-dark ring-1 ring-green-100"
+                          ? "bg-cnhs-orange-soft text-cnhs-orange ring-cnhs-orange/30 dark:bg-cnhs-orange/15 dark:text-cnhs-orange dark:ring-0"
+                          : "bg-cnhs-green-soft text-cnhs-green-dark ring-cnhs-green/25 dark:bg-cnhs-green/15 dark:text-cnhs-green dark:ring-0"
                       )}
                     >
                       <span
@@ -465,10 +590,10 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
                     </span>
                   </div>
 
-                  <p className="mt-4 text-[13px] font-semibold tracking-[-0.01em] text-slate-900">
+                  <p className="mt-4 text-[13px] font-semibold tracking-[-0.01em] text-slate-900 dark:text-slate-100">
                     {folder.grade}
                   </p>
-                  <p className="mt-0.5 text-[11px] text-slate-500">
+                  <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
                     {folder.count} learner{folder.count === 1 ? "" : "s"} ·{" "}
                     {folder.sections.length} section
                     {folder.sections.length === 1 ? "" : "s"}
@@ -476,17 +601,17 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
 
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {folder.pending > 0 ? (
-                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800 ring-1 ring-amber-100">
+                      <span className="rounded-full bg-cnhs-orange-soft px-2 py-0.5 text-[10px] font-medium text-cnhs-orange ring-1 ring-cnhs-orange/30 dark:bg-cnhs-orange/15 dark:text-cnhs-orange dark:ring-0">
                         {folder.pending} pending HT
                       </span>
                     ) : (
-                      <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-100">
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-200 dark:bg-white/5 dark:text-slate-400 dark:ring-0">
                         None pending
                       </span>
                     )}
                   </div>
 
-                  <div className="mt-4 flex items-center justify-between border-t border-slate-50 pt-3">
+                  <div className="mt-4 flex items-center justify-between border-t border-slate-50 pt-3 dark:border-white/5">
                     <span className="text-[11px] text-slate-400">
                       Open sections
                     </span>
@@ -501,20 +626,20 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-3 py-2.5 sm:px-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-3 py-2.5 sm:px-4 dark:border-white/5">
             <button
               type="button"
               onClick={backToGrades}
-              className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
+              className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/5 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
             >
               <ChevronLeft size={13} />
               All grades
             </button>
             <div className="min-w-0 text-right">
-              <p className="text-[13px] font-semibold text-slate-800">
+              <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-100">
                 {selectedGrade}
               </p>
-              <p className="text-[10px] text-slate-500">
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">
                 {activeFolder?.count ?? 0} learner
                 {(activeFolder?.count ?? 0) === 1 ? "" : "s"} ·{" "}
                 {visibleSections.length} section
@@ -545,7 +670,7 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
                   <button
                     type="button"
                     onClick={() => toggleSection(group.gradeSection)}
-                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-slate-50/80 sm:px-4"
+                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-slate-50/80 dark:hover:bg-white/[0.04] sm:px-4"
                   >
                     <ChevronDown
                       size={16}
@@ -555,10 +680,10 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
                       )}
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[13px] font-semibold text-slate-800">
+                      <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-100">
                         {group.sectionName}
                       </p>
-                      <p className="text-[10px] text-slate-500">
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">
                         {group.count} learner{group.count === 1 ? "" : "s"}
                         {group.pending > 0
                           ? ` · ${group.pending} pending HT`
@@ -566,18 +691,18 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
                       </p>
                     </div>
                     {group.pending > 0 ? (
-                      <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-100">
+                      <span className="inline-flex rounded-full bg-cnhs-orange-soft px-2 py-0.5 text-[10px] font-semibold text-cnhs-orange ring-1 ring-cnhs-orange/30 dark:bg-cnhs-orange/15 dark:text-cnhs-orange dark:ring-0">
                         {group.pending} pending
                       </span>
                     ) : (
-                      <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
+                      <span className="inline-flex rounded-full bg-cnhs-green-soft px-2 py-0.5 text-[10px] font-semibold text-cnhs-green-dark ring-1 ring-cnhs-green/25 dark:bg-cnhs-green/15 dark:text-cnhs-green dark:ring-0">
                         Clear
                       </span>
                     )}
                   </button>
 
                   {open ? (
-                    <div className="border-t border-slate-50 bg-slate-50/40 px-3 py-3 sm:px-4">
+                    <div className="border-t border-slate-50 bg-slate-50/40 px-3 py-3 sm:px-4 dark:border-white/5 dark:bg-white/[0.03]">
                       <div className="mb-3 flex flex-wrap items-center gap-2">
                         <button
                           type="button"
@@ -600,17 +725,17 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
                             runBatchForSection(group, ARAL_APPROVAL_DB.RETURNED)
                           }
                           disabled={batchBusy || selectedInSection === 0}
-                          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-3 text-[11px] font-semibold text-orange-800 hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-cnhs-orange/35 bg-cnhs-orange-soft px-3 text-[11px] font-semibold text-cnhs-orange hover:bg-cnhs-orange/15 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <RotateCcw size={12} />
                           Return selected
                         </button>
                       </div>
 
-                      <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white">
+                      <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white dark:border-white/5 dark:bg-[var(--card)]">
                         <table className="min-w-[780px] w-full border-collapse text-left">
                           <thead>
-                            <tr className="bg-slate-50/80">
+                            <tr className="bg-slate-50/80 dark:bg-white/[0.03]">
                               <th className="px-2.5 py-1.5">
                                 <input
                                   type="checkbox"
@@ -625,7 +750,7 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
                                 "Learner",
                                 "Identified in",
                                 "Approval",
-                                "Note",
+                                "HT note",
                                 "Actions",
                               ].map((h) => (
                                 <th
@@ -644,7 +769,7 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
                               return (
                                 <tr
                                   key={learner.selectKey}
-                                  className="border-t border-slate-100 hover:bg-slate-50/60"
+                                  className="border-t border-slate-100 hover:bg-slate-50/60 dark:border-white/5 dark:hover:bg-white/[0.03]"
                                 >
                                   <td className="px-2.5 py-2">
                                     <input
@@ -661,26 +786,84 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
                                     />
                                   </td>
                                   <td className="px-2.5 py-2">
-                                    <p className="text-[12px] font-semibold text-slate-800">
-                                      {learner.name}
-                                    </p>
-                                    <p className="text-[10px] text-slate-400">
-                                      {learner.studentNumber}
-                                      {learner.quarter
-                                        ? ` · ${learner.quarter}`
-                                        : ""}
-                                    </p>
+                                    {typeof onViewStudent === "function" &&
+                                    (learner.classId ||
+                                      learner.sourceRows?.[0]?.classId) ? (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          onViewStudent(
+                                            learner.sourceRows?.[0] || learner
+                                          )
+                                        }
+                                        className="text-left"
+                                      >
+                                        <p className="text-[12px] font-semibold text-slate-800 hover:text-cnhs-green-dark dark:text-slate-100 dark:hover:text-cnhs-green">
+                                          {learner.name}
+                                        </p>
+                                        <p className="text-[10px] text-slate-400">
+                                          {learner.studentNumber}
+                                          {learner.quarter
+                                            ? ` · ${learner.quarter}`
+                                            : ""}
+                                        </p>
+                                      </button>
+                                    ) : (
+                                      <>
+                                        <p className="text-[12px] font-semibold text-slate-800 dark:text-slate-100">
+                                          {learner.name}
+                                        </p>
+                                        <p className="text-[10px] text-slate-400">
+                                          {learner.studentNumber}
+                                          {learner.quarter
+                                            ? ` · ${learner.quarter}`
+                                            : ""}
+                                        </p>
+                                      </>
+                                    )}
                                   </td>
                                   <td className="px-2.5 py-2">
-                                    <div className="flex flex-wrap gap-1">
-                                      {learner.subjects.map((subject) => (
-                                        <span
-                                          key={subject}
-                                          className="inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700"
-                                        >
-                                          {subject}
-                                        </span>
-                                      ))}
+                                    <div className="flex flex-col gap-1">
+                                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                        {(learner.identifiedSubjects?.length
+                                          ? learner.identifiedSubjects
+                                          : learner.subjects.map((subject) => ({
+                                              subject,
+                                              grade: null,
+                                            }))
+                                        ).map((entry) => {
+                                          const failing =
+                                            entry.grade !== null &&
+                                            entry.grade < ARAL_GRADE_THRESHOLD;
+                                          return (
+                                            <span
+                                              key={entry.subject}
+                                              className="inline-flex items-center gap-1.5"
+                                            >
+                                              <span className="inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 dark:bg-sky-500/15 dark:text-sky-300 dark:ring-0">
+                                                {entry.subject}
+                                              </span>
+                                              <span
+                                                className={cn(
+                                                  "text-[11px] font-semibold tabular-nums",
+                                                  entry.grade === null
+                                                    ? "text-slate-400 dark:text-slate-500"
+                                                    : failing
+                                                      ? "text-cnhs-orange"
+                                                      : "text-slate-700 dark:text-slate-200"
+                                                )}
+                                              >
+                                                {formatGradeDisplay(entry.grade)}
+                                              </span>
+                                            </span>
+                                          );
+                                        })}
+                                      </div>
+                                      {learner.reasonLine ? (
+                                        <p className="text-[10px] text-slate-400">
+                                          {learner.reasonLine}
+                                        </p>
+                                      ) : null}
                                     </div>
                                   </td>
                                   <td className="px-2.5 py-2">
@@ -700,25 +883,43 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
                                     />
                                   </td>
                                   <td className="px-2.5 py-2">
-                                    <input
-                                      value={
-                                        noteDrafts[learner.selectKey] ??
-                                        learner.note ??
-                                        ""
-                                      }
-                                      onChange={(e) =>
-                                        setNoteDrafts((prev) => ({
-                                          ...prev,
-                                          [learner.selectKey]: e.target.value,
-                                        }))
-                                      }
-                                      placeholder={
-                                        locked ? "—" : "Optional note"
-                                      }
-                                      disabled={locked}
-                                      readOnly={locked}
-                                      className="h-7 w-40 rounded-full border border-slate-200 px-2.5 text-[11px] outline-none focus:border-cnhs-green disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
-                                    />
+                                    {locked ? (
+                                      (() => {
+                                        const noteText = String(
+                                          noteDrafts[learner.selectKey] ??
+                                            learner.note ??
+                                            ""
+                                        ).trim();
+                                        return noteText ? (
+                                          <p
+                                            className="max-w-[10rem] text-[11px] leading-snug text-slate-600 dark:text-slate-300"
+                                            title={noteText}
+                                          >
+                                            {noteText}
+                                          </p>
+                                        ) : (
+                                          <p className="text-[10px] text-slate-400">
+                                            No note
+                                          </p>
+                                        );
+                                      })()
+                                    ) : (
+                                      <input
+                                        value={
+                                          noteDrafts[learner.selectKey] ??
+                                          learner.note ??
+                                          ""
+                                        }
+                                        onChange={(e) =>
+                                          setNoteDrafts((prev) => ({
+                                            ...prev,
+                                            [learner.selectKey]: e.target.value,
+                                          }))
+                                        }
+                                        placeholder="Optional return / review note"
+                                        className="h-7 w-44 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] text-slate-700 outline-none placeholder:text-slate-400 focus:border-cnhs-green dark:border-white/5 dark:bg-white/[0.03] dark:text-slate-200 dark:placeholder:text-slate-500"
+                                      />
+                                    )}
                                   </td>
                                   <td className="px-2.5 py-2">
                                     {locked ? (
@@ -757,7 +958,7 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
                                             ARAL_APPROVAL_DB.RETURNED
                                           )
                                         }
-                                        className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2.5 text-[10px] font-semibold text-orange-800 hover:bg-orange-100 disabled:opacity-50"
+                                        className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-cnhs-orange/35 bg-cnhs-orange-soft px-2.5 text-[10px] font-semibold text-cnhs-orange hover:bg-cnhs-orange/15 disabled:opacity-50"
                                       >
                                         <RotateCcw size={11} />
                                         Return
@@ -796,7 +997,7 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
                   type="button"
                   onClick={() => setPage(safePage - 1)}
                   disabled={safePage <= 1}
-                  className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/5 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
                 >
                   <ChevronLeft size={13} />
                   Previous
@@ -808,7 +1009,7 @@ export default function AdminAralApprovalPanel({ students = [], onChanged }) {
                   type="button"
                   onClick={() => setPage(safePage + 1)}
                   disabled={safePage >= totalPages}
-                  className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/5 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
                 >
                   Next
                   <ChevronRight size={13} />

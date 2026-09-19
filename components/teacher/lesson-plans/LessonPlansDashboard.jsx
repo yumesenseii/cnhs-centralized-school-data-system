@@ -266,7 +266,7 @@ export default function LessonPlansDashboard() {
           <button
             type="button"
             onClick={() => refresh()}
-            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
+            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:bg-[var(--card)] dark:text-slate-300 dark:hover:bg-white/5"
           >
             <RefreshCw
               size={12}
@@ -276,7 +276,7 @@ export default function LessonPlansDashboard() {
           </button>
 
           <Link
-            href="/teacher/lesson-plans/upload"
+            href="/teacher/lesson-plans/upload?fresh=1"
             className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white transition-colors hover:bg-[#246f54]"
           >
             <Upload size={12} />
@@ -323,7 +323,7 @@ export default function LessonPlansDashboard() {
 
       <div className="mt-4">
         {loading && plans.length === 0 ? (
-          <div className="rounded-xl border border-slate-100 bg-white px-4 py-10 text-center text-sm text-slate-400">
+          <div className="rounded-xl border border-slate-100 bg-white px-4 py-10 text-center text-sm text-slate-400 dark:border-white/10 dark:bg-[var(--card)] dark:text-slate-500">
             Loading lesson plans...
           </div>
         ) : (

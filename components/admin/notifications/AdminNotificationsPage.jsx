@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import PageHelp from "@/components/shared/PageHelp";
-import NotificationList from "@/components/notifications/NotificationList";
+import PaginatedNotificationList from "@/components/notifications/PaginatedNotificationList";
 import NotificationStats from "@/components/notifications/NotificationStats";
 import RecentActivity from "@/components/notifications/RecentActivity";
 import TeacherNotificationFilters from "@/components/teacher/notifications/TeacherNotificationFilters";
@@ -23,60 +23,8 @@ import {
   listPendingDeleteRequests,
   rejectDeleteRequest,
 } from "@/lib/supabase/queries/deleteRequests";
+import { mapLessonPlanEvents } from "@/lib/notifications/mapLessonPlanActivity";
 import { getRecentLessonPlanActivity } from "@/lib/supabase/queries/lessonPlans";
-
-function mapLessonPlanEvents(rows = []) {
-  return rows.map((row) => {
-    const plan = Array.isArray(row.lesson_plans)
-      ? row.lesson_plans[0]
-      : row.lesson_plans;
-    const teacher = plan?.teachers;
-    const teacherName = teacher
-      ? [teacher.first_name, teacher.last_name].filter(Boolean).join(" ")
-      : null;
-    const event = String(row.event_type || "").toLowerCase();
-    let icon = "file";
-    let tone = "violet";
-    let title = plan?.lesson_title
-      ? `Lesson plan — ${plan.lesson_title}`
-      : "Lesson plan update";
-
-    if (event.includes("approv")) {
-      icon = "check";
-      tone = "green";
-      title = `Approved — ${plan?.lesson_title || "Lesson plan"}`;
-    } else if (event.includes("revision") || event.includes("needs")) {
-      icon = "revision";
-      tone = "orange";
-      title = `Needs revision — ${plan?.lesson_title || "Lesson plan"}`;
-    } else if (event.includes("submit")) {
-      icon = "file";
-      tone = "violet";
-      title = `Submitted — ${plan?.lesson_title || "Lesson plan"}`;
-    }
-
-    const when = row.created_at ? new Date(row.created_at) : null;
-    const timestamp = when
-      ? when.toLocaleString("en-PH", {
-          month: "short",
-          day: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-        })
-      : "—";
-
-    return {
-      id: row.id,
-      title,
-      description: [row.actor_name || teacherName, row.remarks]
-        .filter(Boolean)
-        .join(" · "),
-      timestamp,
-      icon,
-      tone,
-    };
-  });
-}
 
 export default function AdminNotificationsPage() {
   const router = useRouter();
@@ -112,7 +60,7 @@ export default function AdminNotificationsPage() {
     (async () => {
       setActivityLoading(true);
       const [activityResult, requestsResult] = await Promise.all([
-        getRecentLessonPlanActivity(8),
+        getRecentLessonPlanActivity(5),
         listPendingDeleteRequests(),
       ]);
       if (cancelled) return;
@@ -246,7 +194,7 @@ export default function AdminNotificationsPage() {
           <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
             <div>
               {filtered.length ? (
-                <NotificationList
+                <PaginatedNotificationList
                   notifications={filtered}
                   onAction={handleAction}
                   onMarkRead={(notification) => markRead(notification.id)}
@@ -275,11 +223,11 @@ export default function AdminNotificationsPage() {
 
 function EmptyState({ hasNotifications }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-100 bg-white px-6 py-10 text-center shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-100 bg-white px-6 py-10 text-center shadow-[0_6px_16px_rgba(15,23,42,0.04)] dark:border-white/10 dark:bg-[var(--card)] dark:shadow-none">
+      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-white/10">
         <BellOff size={18} strokeWidth={1.8} />
       </span>
-      <p className="text-sm font-semibold text-slate-700">
+      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
         {hasNotifications
           ? "No matching notifications"
           : "No notifications in your inbox"}

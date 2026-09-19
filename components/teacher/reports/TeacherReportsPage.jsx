@@ -419,7 +419,7 @@ export default function TeacherReportsPage() {
     setPreviewOpen(true);
   }
 
-  function handleGenerateSystemReport(classReport) {
+  async function handleGenerateSystemReport(classReport) {
     const row =
       classReport ||
       classReports.find((item) => item.id === systemClassId) ||
@@ -429,12 +429,13 @@ export default function TeacherReportsPage() {
       return;
     }
     try {
-      exportClassPerformanceSystemReport({
+      await exportClassPerformanceSystemReport({
         classReport: row,
         preview: getPreview(row),
         teacherName,
         schoolYear,
         quarter: quarterLabel,
+        charts,
       });
       showToast(
         `Report downloaded for ${row.subject} · ${
@@ -793,25 +794,22 @@ export default function TeacherReportsPage() {
         open={previewOpen}
         preview={preview}
         onClose={() => setPreviewOpen(false)}
-        onExport={() => {
+        onExport={async () => {
           if (!preview?.id) return;
           const row = classReports.find((item) => item.id === preview.id);
-          if (row) {
-            try {
-              exportClassPerformanceSystemReport({
-                classReport: row,
-                preview,
-                teacherName,
-                schoolYear,
-                quarter: quarterLabel,
-                generatedAt: preview.generatedAt
-                  ? new Date(preview.generatedAt)
-                  : new Date(),
-              });
-              showToast("Report downloaded for class preview.");
-            } catch (err) {
-              showToast(err?.message ?? "Unable to export PDF.");
-            }
+          if (!row) return;
+          try {
+            await exportClassPerformanceSystemReport({
+              classReport: row,
+              preview,
+              teacherName,
+              schoolYear,
+              quarter: quarterLabel,
+              charts,
+            });
+            showToast("Report downloaded for class preview.");
+          } catch (err) {
+            showToast(err?.message ?? "Unable to export Excel.");
           }
         }}
       />

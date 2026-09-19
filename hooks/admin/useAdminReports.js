@@ -158,6 +158,22 @@ export function useAdminReports() {
     lessonSummary: model?.lessonSummary ?? null,
     schoolSummary: model?.schoolSummary ?? null,
     attendance: model?.attendance ?? null,
+    overviewActionCounts: model?.overviewActionCounts ?? {
+      pendingFiles: 0,
+      pendingAralApprovals: 0,
+      unassignedFacilitators: 0,
+    },
+    overviewHotspots: model?.overviewHotspots ?? {
+      sections: [],
+      weakClasses: [],
+    },
+    overviewMonitoringHealth: model?.overviewMonitoringHealth ?? {
+      underMonitoring: 0,
+      completed: 0,
+      completionRate: 0,
+      ongoing: 0,
+      notStarted: 0,
+    },
     setSchoolYear,
     setQuarter,
     refresh: () => refresh({ bustCache: true }),

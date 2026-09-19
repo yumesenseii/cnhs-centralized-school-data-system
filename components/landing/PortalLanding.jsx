@@ -126,7 +126,12 @@ export default function PortalLanding() {
   }, [mobileNavOpen]);
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#f7faf7] text-slate-900">
+    <div
+      data-force-light="true"
+      data-keep-white="true"
+      style={{ colorScheme: "light" }}
+      className="min-h-screen overflow-x-hidden bg-[#f7faf7] text-slate-900"
+    >
       <header
         className={cn(
           "fixed inset-x-0 top-0 z-30 transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300",

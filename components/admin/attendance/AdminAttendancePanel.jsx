@@ -2,19 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  CalendarDays,
-  ChevronDown,
   FileSpreadsheet,
   FileText,
   Loader2,
   RefreshCw,
-  Upload,
 } from "lucide-react";
 import {
-  getSectionAttendanceAnalytics,
-  importSf2CompAttendance,
   invalidateAttendanceAnalyticsCache,
-  listAttendanceUploads,
 } from "@/lib/supabase/queries/attendance";
 import {
   getSchoolDailyMonth,
@@ -33,19 +27,11 @@ import {
   exportSchoolDailyExcel,
   exportSchoolDailyPdf,
 } from "@/lib/attendance/exportDailyReport";
-import {
-  exportSchoolSf2Excel,
-  exportSchoolSf2Pdf,
-} from "@/lib/attendance/exportSf2Report";
 import { cn } from "@/lib/utils";
 import AppSelect from "@/components/shared/AppSelect";
 import {
-  AttendanceFlags,
   AttendanceKpi,
-  AttendanceMfTable,
   fmtAttendance,
-  runSf2CompImport,
-  sectionStatus,
 } from "@/components/attendance/attendanceUiShared";
 import {
   CartesianGrid,
@@ -211,26 +197,17 @@ export default function AdminAttendancePanel({
     grade: "",
   });
   const [daily, setDaily] = useState(null);
-  const [archive, setArchive] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const { showToast } = useAppToast();
   const [selectedId, setSelectedId] = useState(null);
-  const [archiveOpen, setArchiveOpen] = useState(false);
-  const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [previewBusy, setPreviewBusy] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewFormat, setPreviewFormat] = useState("pdf");
   const [preview, setPreview] = useState(null);
   const [pendingExport, setPendingExport] = useState(null);
-  const [uploads, setUploads] = useState([]);
-  const [form, setForm] = useState({
-    schoolYear: "SY 2026-2027",
-    sectionId: "",
-    file: null,
-  });
 
   const reload = useCallback(
     async (override = null) => {
@@ -242,17 +219,10 @@ export default function AdminAttendancePanel({
       const schoolYear = active.schoolYear || null;
       const month = active.month || currentMonth;
 
-      const [dailyResult, archiveResult, uploadsResult] = await Promise.all([
-        getSchoolDailyMonth({
-          schoolYear,
-          month: Number(month),
-        }),
-        getSectionAttendanceAnalytics({
-          schoolYear,
-          month: Number(month),
-        }),
-        listAttendanceUploads(8),
-      ]);
+      const dailyResult = await getSchoolDailyMonth({
+        schoolYear,
+        month: Number(month),
+      });
 
       if (dailyResult.error) {
         setError(dailyResult.error.message);
@@ -266,9 +236,6 @@ export default function AdminAttendancePanel({
           return pickFirstRecordedSection(rows)?.id ?? null;
         });
       }
-
-      if (!archiveResult.error) setArchive(archiveResult.data);
-      if (!uploadsResult.error) setUploads(uploadsResult.data ?? []);
 
       setLoading(false);
       setRefreshing(false);
@@ -293,7 +260,6 @@ export default function AdminAttendancePanel({
         if (years.length) {
           setSchoolYears(years);
           setFilters((prev) => ({ ...prev, schoolYear: years[0] }));
-          setForm((prev) => ({ ...prev, schoolYear: years[0] }));
           await reload({
             schoolYear: years[0],
             month: currentMonth,
@@ -354,51 +320,6 @@ export default function AdminAttendancePanel({
     );
     return [...set].sort((a, b) => Number(a) - Number(b));
   }, [sections]);
-
-  const archiveRows = useMemo(() => {
-    const rows = archive?.rows ?? [];
-    if (!filters.grade) return rows;
-    return rows.filter(
-      (r) => String(r.gradeLevel) === String(filters.grade)
-    );
-  }, [archive, filters.grade]);
-
-  async function handleImport(e) {
-    e?.preventDefault?.();
-    setError("");
-    if (!form.file) {
-      setError("Choose an SF2 Excel file first.");
-      return;
-    }
-    setImporting(true);
-    try {
-      const result = await runSf2CompImport({
-        file: form.file,
-        schoolYear: form.schoolYear,
-        sectionId: form.sectionId || null,
-        importSf2CompAttendance,
-        createClient,
-      });
-      if (result.error) setError(result.error.message);
-      else {
-        showToast(
-          `Archived ${result.data.importedMonths} month(s) for ${
-            result.data.sectionHint || "section"
-          }`
-        );
-        setForm((prev) => ({ ...prev, file: null }));
-        invalidateAttendanceAnalyticsCache();
-        await reload({
-          ...filters,
-          schoolYear: form.schoolYear,
-        });
-      }
-    } catch (err) {
-      setError(err?.message || "Unable to import.");
-    } finally {
-      setImporting(false);
-    }
-  }
 
   function clearFilters() {
     const sy = schoolYears[0] || filters.schoolYear;
@@ -494,106 +415,46 @@ export default function AdminAttendancePanel({
     }
   }
 
-  function openArchivePreview(kind) {
-    if (!archiveRows.length) {
-      setError("No archived SF2-COMP rows for this filter.");
-      return;
-    }
-    setError("");
-    const monthLabel = filters.month
-      ? MONTH_LABELS[Number(filters.month) - 1]
-      : "All months";
-    setPendingExport({ kind: "archive", format: kind });
-    setPreviewFormat(kind);
-    setPreview({
-      title: "Archived SF2-COMP snapshot",
-      schoolYear: filters.schoolYear,
-      sectionLabel: filters.grade ? `Grade ${filters.grade}` : "All sections",
-      monthName: monthLabel,
-      enrolled: archiveRows.length,
-      present: null,
-      absent: archive?.totalAbsences,
-      sessionRate: "—",
-      closed: true,
-      ada: archive?.avgAda,
-      attendancePercent: archive?.avgPa,
-      note: "From uploaded SF2-COMP. Not daily AM/PM records. Working report, not official DepEd SF2.",
-    });
-    setPreviewOpen(true);
-  }
-
   async function handlePreviewConfirm() {
-    if (!pendingExport) return;
+    if (!pendingExport || pendingExport.kind !== "daily") return;
     setExporting(true);
     setError("");
     try {
-      if (pendingExport.kind === "daily") {
-        if (!daily) return;
-        const present =
-          preview?.present ??
-          tableRows.reduce((sum, row) => sum + (row.present || 0), 0);
-        const absent =
-          preview?.absent ??
-          tableRows.reduce((sum, row) => sum + (row.absent || 0), 0);
-        const payload = {
-          schoolYear: filters.schoolYear,
-          monthName: daily.monthName,
-          summary: {
-            ...daily,
-            rows: preview?.rows ?? tableRows,
-            learners: preview?.learners ?? [],
-            scopeLabel:
-              preview?.sectionLabel ||
-              (filters.grade ? `Grade ${filters.grade}` : "All sections"),
-            sectionCount: preview?.sectionCount ?? tableRows.length,
-            sectionsWithData:
-              preview?.sectionsWithData ??
-              tableRows.filter((row) => hasDailyRecords(row)).length,
-            presentSessions: present,
-            absentSessions: absent,
-            sessionRate:
-              preview?.sessionRateValue ??
-              sessionRatePercent({ present, absent }),
-          },
-        };
-        if (pendingExport.format === "pdf") exportSchoolDailyPdf(payload);
-        else await exportSchoolDailyExcel(payload);
-        showToast(
-          pendingExport.format === "pdf"
-            ? "Report downloaded."
-            : "Excel downloaded."
-        );
-      } else {
-        const monthLabel = filters.month
-          ? MONTH_LABELS[Number(filters.month) - 1]
-          : "All months";
-        const snapshot = {
-          avgAda: archive?.avgAda,
-          avgPa: archive?.avgPa,
-          totalAbsences: archive?.totalAbsences,
-          flaggedCount: archive?.flaggedSections?.length ?? 0,
-        };
-        if (pendingExport.format === "pdf") {
-          exportSchoolSf2Pdf({
-            schoolYear: filters.schoolYear,
-            monthLabel,
-            snapshot,
-            rows: archiveRows,
-          });
-        } else {
-          await exportSchoolSf2Excel({
-            schoolYear: filters.schoolYear,
-            monthLabel,
-            snapshot,
-            rows: archiveRows,
-          });
-        }
-        showToast(
-          pendingExport.format === "pdf"
-            ? "Archive report downloaded."
-            : "Archive Excel downloaded."
-        );
-      }
+      if (!daily) return;
+      const present =
+        preview?.present ??
+        tableRows.reduce((sum, row) => sum + (row.present || 0), 0);
+      const absent =
+        preview?.absent ??
+        tableRows.reduce((sum, row) => sum + (row.absent || 0), 0);
+      const payload = {
+        schoolYear: filters.schoolYear,
+        monthName: daily.monthName,
+        summary: {
+          ...daily,
+          rows: preview?.rows ?? tableRows,
+          learners: preview?.learners ?? [],
+          scopeLabel:
+            preview?.sectionLabel ||
+            (filters.grade ? `Grade ${filters.grade}` : "All sections"),
+          sectionCount: preview?.sectionCount ?? tableRows.length,
+          sectionsWithData:
+            preview?.sectionsWithData ??
+            tableRows.filter((row) => hasDailyRecords(row)).length,
+          presentSessions: present,
+          absentSessions: absent,
+          sessionRate:
+            preview?.sessionRateValue ??
+            sessionRatePercent({ present, absent }),
+        },
+      };
+      if (pendingExport.format === "pdf") exportSchoolDailyPdf(payload);
+      else await exportSchoolDailyExcel(payload);
+      showToast(
+        pendingExport.format === "pdf"
+          ? "Report downloaded."
+          : "Excel downloaded."
+      );
       setPreviewOpen(false);
       setPreview(null);
       setPendingExport(null);
@@ -854,210 +715,6 @@ export default function AdminAttendancePanel({
         </>
       )}
 
-      <section className="rounded-xl border border-dashed border-slate-200 bg-slate-50/40">
-        <button
-          type="button"
-          onClick={() => setArchiveOpen((open) => !open)}
-          className="flex w-full cursor-pointer items-center justify-between px-3 py-2.5 text-left"
-        >
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
-              Archive
-            </p>
-            <h2 className="text-sm font-semibold text-slate-700">
-              Uploaded SF2 files
-            </h2>
-            <p className="mt-0.5 text-[11px] text-slate-500">
-              Official SF2 figures from uploaded files, not daily marks.
-            </p>
-          </div>
-          <ChevronDown
-            size={16}
-            className={cn(
-              "shrink-0 text-slate-400 transition-transform",
-              archiveOpen && "rotate-180"
-            )}
-          />
-        </button>
-        {archiveOpen ? (
-          <div className="border-t border-slate-200/80 bg-white px-3 pb-3 pt-2">
-            <div className="mb-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={exporting || !archiveRows.length}
-                onClick={() => openArchivePreview("pdf")}
-                className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-              >
-                <FileText size={13} />
-                Archive PDF
-              </button>
-              <button
-                type="button"
-                disabled={exporting || !archiveRows.length}
-                onClick={() => openArchivePreview("excel")}
-                className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-              >
-                <FileSpreadsheet size={13} />
-                Archive Excel
-              </button>
-            </div>
-
-            {!archive?.hasData ? (
-              <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center">
-                <CalendarDays size={22} className="mx-auto text-slate-300" />
-                <p className="mt-2 text-sm font-semibold text-slate-700">
-                  No uploaded SF2 files yet
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-[880px] w-full border-collapse text-left">
-                  <thead>
-                    <tr className="bg-slate-50/80">
-                      {["Section", "Month", "ADA", "PA", "Absences", "Status"].map(
-                        (col) => (
-                          <th
-                            key={col}
-                            className="px-2 py-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] text-slate-400"
-                          >
-                            {col}
-                          </th>
-                        )
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {archiveRows.map((row) => {
-                      const status = sectionStatus(row);
-                      return (
-                        <tr
-                          key={row.id}
-                          className="border-t border-slate-100 text-[12px]"
-                        >
-                          <td className="px-2 py-1.5 font-semibold text-slate-800">
-                            G{row.gradeLevel} · {row.sectionName}
-                          </td>
-                          <td className="px-2 py-1.5">{row.monthName}</td>
-                          <td className="px-2 py-1.5">
-                            {fmtAttendance(row.ada)}
-                          </td>
-                          <td className="px-2 py-1.5">
-                            {fmtAttendance(row.pa, "%")}
-                          </td>
-                          <td className="px-2 py-1.5">
-                            {fmtAttendance(row.absences)}
-                          </td>
-                          <td className="px-2 py-1.5">
-                            <span
-                              className={cn(
-                                "inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
-                                status.tone
-                              )}
-                            >
-                              {status.label}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-                {archiveRows[0] ? (
-                  <div className="mt-3">
-                    <AttendanceFlags row={archiveRows[0]} />
-                    <AttendanceMfTable breakdown={archiveRows[0].breakdown} />
-                  </div>
-                ) : null}
-              </div>
-            )}
-
-            <form
-              onSubmit={handleImport}
-              className="mt-4 flex flex-wrap items-end gap-2"
-            >
-              <div className="text-[11px] font-medium text-slate-500">
-                School year
-                <AppSelect
-                  label="School year"
-                  value={form.schoolYear}
-                  onChange={(next) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      schoolYear: next,
-                    }))
-                  }
-                  options={schoolYears}
-                  className="mt-1"
-                  triggerClassName="h-9 rounded-lg px-2 text-[11px] font-semibold"
-                />
-              </div>
-              <div className="text-[11px] font-medium text-slate-500">
-                Section
-                <AppSelect
-                  label="Section"
-                  value={form.sectionId}
-                  onChange={(next) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      sectionId: next,
-                    }))
-                  }
-                  options={[
-                    { value: "", label: "Auto from filename" },
-                    ...sections
-                      .filter(
-                        (s) =>
-                          !form.schoolYear || s.school_year === form.schoolYear
-                      )
-                      .map((s) => ({
-                        value: s.id,
-                        label: `G${s.grade_level} · ${s.section_name}`,
-                      })),
-                  ]}
-                  className="mt-1 min-w-[140px]"
-                  triggerClassName="h-9 rounded-lg px-2 text-[11px] font-semibold"
-                />
-              </div>
-              <label className="text-[11px] font-medium text-slate-500">
-                File
-                <input
-                  type="file"
-                  accept=".xlsx,.xls,.csv"
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      file: e.target.files?.[0] || null,
-                    }))
-                  }
-                  className="mt-1 block h-9 w-full min-w-[12rem] cursor-pointer rounded-lg border border-slate-200 bg-white px-2 text-[11px] text-slate-600 file:mr-2 file:rounded-md file:border-0 file:bg-slate-100 file:px-2 file:py-1 file:text-[11px] file:font-semibold file:text-slate-700"
-                />
-              </label>
-              <button
-                type="submit"
-                disabled={importing}
-                className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-              >
-                {importing ? (
-                  <Loader2 size={13} className="animate-spin" />
-                ) : (
-                  <Upload size={13} />
-                )}
-                Import to archive
-              </button>
-            </form>
-            {uploads.length ? (
-              <ul className="mt-3 space-y-1 text-[11px] text-slate-500">
-                {uploads.slice(0, 5).map((u) => (
-                  <li key={u.id}>
-                    {u.file_name} · {u.section?.section_name || "—"} ·{" "}
-                    {u.row_count} month(s)
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-        ) : null}
-      </section>
       <Sf2ExportPreviewModal
         open={previewOpen}
         preview={preview}

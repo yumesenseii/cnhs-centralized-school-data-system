@@ -224,7 +224,7 @@ export default function ReportAttendancePanel({
           <p className="mt-0.5 text-[11px] text-slate-500">
             {showDaily
               ? "From teachers’ Morning and Afternoon marks. Not unique people per day."
-              : "Open Attendance Monitoring for daily marks and uploaded SF2."}
+              : "Open Attendance Monitoring for Morning and Afternoon attendance."}
           </p>
         </div>
         <Link
@@ -358,11 +358,7 @@ export default function ReportAttendancePanel({
             </div>
           ) : null}
         </section>
-      ) : (
-        <p className="text-[11px] text-slate-500">
-          Uploaded SF2 archive is on Attendance Monitoring.
-        </p>
-      )}
+      ) : null}
     </div>
   );
 }

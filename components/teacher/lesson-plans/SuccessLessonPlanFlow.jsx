@@ -21,7 +21,7 @@ export default function SuccessLessonPlanFlow() {
 
   function handleUploadAnother() {
     clearUpload();
-    router.push("/teacher/lesson-plans/upload");
+    router.push("/teacher/lesson-plans");
   }
 
   if (!hydrated || !state.submittedAt) {

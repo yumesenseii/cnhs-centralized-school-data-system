@@ -16,6 +16,7 @@ export default function PreviewLessonPlanFlow() {
     ready,
     update,
     submitLessonPlan,
+    clearUpload,
     selectedClass,
     submitting,
     submitError,
@@ -79,6 +80,7 @@ export default function PreviewLessonPlanFlow() {
           submitting={submitting}
           submitError={submitError}
           onSubmit={submitLessonPlan}
+          onClearDraft={clearUpload}
           onBack={() => {
             update({ step: 2 });
             router.push("/teacher/lesson-plans/upload");

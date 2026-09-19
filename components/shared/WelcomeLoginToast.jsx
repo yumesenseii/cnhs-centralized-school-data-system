@@ -6,10 +6,10 @@ import { Check, X } from "lucide-react";
 import { consumeWelcomeToast } from "@/lib/auth/welcomeToast";
 import { cn } from "@/lib/utils";
 
-const DURATION_MS = 10_000;
+const DURATION_MS = 5_000;
 
 /**
- * Top-right welcome toast after login. Shows once for ~10 seconds.
+ * Top-right welcome toast after login. Shows once for ~5 seconds.
  * Same copy for all roles; follows light/dark theme.
  */
 export default function WelcomeLoginToast() {
@@ -37,7 +37,7 @@ export default function WelcomeLoginToast() {
       className={cn(
         "fixed right-4 top-4 z-[200] flex w-[min(22rem,calc(100vw-2rem))] items-start gap-3 rounded-2xl border px-3.5 py-3 shadow-[0_12px_40px_rgba(15,23,42,0.14)] backdrop-blur-md sm:right-6 sm:top-5",
         "border-emerald-100/80 bg-gradient-to-br from-emerald-50/95 via-white to-teal-50/90",
-        "dark:border-cnhs-green/35 dark:bg-card dark:bg-none dark:shadow-[0_12px_40px_rgba(0,0,0,0.5)]"
+        "dark:border-cnhs-green/40 dark:bg-[var(--card)] dark:bg-none dark:shadow-[0_12px_40px_rgba(0,0,0,0.55)]"
       )}
     >
       <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cnhs-green text-white shadow-sm">

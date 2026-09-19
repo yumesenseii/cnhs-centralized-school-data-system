@@ -28,6 +28,7 @@ import { clearAdminMonitoringUiSnapshot } from "@/lib/admin/adminMonitoringUiCac
 import { createClient } from "@/lib/supabase/client";
 import LogoutConfirmModal from "@/components/shared/LogoutConfirmModal";
 import { useTheme } from "@/components/theme/ThemeProvider";
+import { useUnreadNotificationCount } from "@/hooks/teacher/useUnreadNotificationCount";
 import { cn } from "@/lib/utils";
 
 const menuNavigation = [
@@ -89,6 +90,7 @@ function NavLink({
   onNavigate,
   collapsed,
   tourId,
+  badge = 0,
 }) {
   return (
     <Link
@@ -121,17 +123,33 @@ function NavLink({
           aria-hidden="true"
         />
       ) : null}
-      <Icon
-        size={16}
-        strokeWidth={1.9}
-        className={cn(
-          "shrink-0 transition-colors",
-          isActive ? "text-cnhs-green" : "text-white/45 group-hover:text-white/75"
-        )}
-      />
+      <span className="relative shrink-0">
+        <Icon
+          size={16}
+          strokeWidth={1.9}
+          className={cn(
+            "transition-colors",
+            isActive ? "text-cnhs-green" : "text-white/45 group-hover:text-white/75"
+          )}
+        />
+        {collapsed && badge > 0 ? (
+          <span
+            className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-cnhs-green ring-2 ring-cnhs-sidebar"
+            aria-label={`${badge} unread`}
+          />
+        ) : null}
+      </span>
       {!collapsed ? (
         <>
           <span className="min-w-0 flex-1 leading-5">{label}</span>
+          {badge > 0 ? (
+            <span
+              className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-cnhs-green px-1.5 text-[10px] font-semibold leading-none text-white"
+              aria-label={`${badge} unread`}
+            >
+              {badge > 99 ? "99+" : badge}
+            </span>
+          ) : null}
           {isActive ? (
             <ChevronRight size={14} className="shrink-0 text-cnhs-green" />
           ) : null}
@@ -173,6 +191,7 @@ export default function Sidebar({
   });
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const { count: unreadCount } = useUnreadNotificationCount();
   const showCollapseToggle = !mobile && typeof onToggleCollapse === "function";
   const isDark = resolvedTheme === "dark";
 
@@ -325,6 +344,7 @@ export default function Sidebar({
               collapsed={collapsed}
               isActive={isActive(item.href)}
               onNavigate={onNavigate}
+              badge={item.href === "/notifications" ? unreadCount : 0}
             />
           ))}
         </NavSection>

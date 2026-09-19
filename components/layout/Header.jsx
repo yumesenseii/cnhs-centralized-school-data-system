@@ -3,7 +3,19 @@
 import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import Sidebar from "@/components/layout/Sidebar";
 
-export default function Header({ breadcrumb, title, description, controls }) {
+/**
+ * Page header shell shared by admin and teacher portals.
+ * Pass `renderMobileNav` to swap the admin sidebar for teacher (or other) nav.
+ */
+export default function Header({
+  breadcrumb,
+  title,
+  description,
+  controls,
+  renderMobileNav = null,
+  mobileNavAriaLabel = "Open admin menu",
+  mobileNavTitle = "Admin navigation",
+}) {
   return (
     <header className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
       <div className="flex items-start justify-between gap-4">
@@ -12,11 +24,19 @@ export default function Header({ breadcrumb, title, description, controls }) {
           <h1 className="mt-0.5 text-xl font-semibold tracking-[-0.03em] text-slate-800 sm:text-[22px]">
             {title}
           </h1>
-          {description ? <p className="mt-0.5 text-xs text-slate-500">{description}</p> : null}
+          {description ? (
+            <p className="mt-0.5 text-xs text-slate-500">{description}</p>
+          ) : null}
         </div>
 
-        <MobileNavSheet ariaLabel="Open admin menu" title="Admin navigation">
-          {(close) => <Sidebar mobile onNavigate={close} />}
+        <MobileNavSheet ariaLabel={mobileNavAriaLabel} title={mobileNavTitle}>
+          {(close) =>
+            renderMobileNav ? (
+              renderMobileNav(close)
+            ) : (
+              <Sidebar mobile onNavigate={close} />
+            )
+          }
         </MobileNavSheet>
       </div>
 

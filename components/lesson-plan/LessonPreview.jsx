@@ -91,7 +91,7 @@ export default function LessonPreview({ lesson, fileUrl }) {
     <section>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
-          Lesson Plan
+          Review content
         </h3>
         {fileUrl ? (
           <a

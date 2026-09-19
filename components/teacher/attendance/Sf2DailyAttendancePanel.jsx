@@ -1,7 +1,8 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Save, Search } from "lucide-react";
+import { createPortal } from "react-dom";
+import { ChevronDown, Loader2, Save, Search } from "lucide-react";
 import {
   otherSessionKey,
   otherSessionStatus,
@@ -64,6 +65,127 @@ function groupRowsBySex(rows = []) {
       rows: rows.filter((row) => row.sex !== "M" && row.sex !== "F"),
     },
   ].filter((group) => group.rows.length);
+}
+
+/**
+ * Page-scoped bulk mark menu (current page only, not whole section).
+ */
+function MarkPageMenu({ disabled, onMarkPresent, onMarkAbsent }) {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState(null);
+  const triggerRef = useRef(null);
+  const menuRef = useRef(null);
+
+  function measure() {
+    const node = triggerRef.current;
+    if (!node || typeof window === "undefined") return null;
+    const rect = node.getBoundingClientRect();
+    const width = Math.max(rect.width, 168);
+    return {
+      top: rect.bottom + 6,
+      left: Math.min(rect.left, window.innerWidth - width - 8),
+      width,
+    };
+  }
+
+  useEffect(() => {
+    if (!open) return undefined;
+    setCoords(measure());
+
+    function onPointer(event) {
+      if (triggerRef.current?.contains(event.target)) return;
+      if (menuRef.current?.contains(event.target)) return;
+      setOpen(false);
+    }
+    function onKey(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    function onReposition() {
+      setCoords(measure());
+    }
+
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
+  }, [open]);
+
+  const menu =
+    open && coords
+      ? createPortal(
+          <ul
+            ref={menuRef}
+            role="menu"
+            style={{
+              position: "fixed",
+              top: coords.top,
+              left: Math.max(8, coords.left),
+              width: coords.width,
+            }}
+            className="z-[200] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-[0_12px_32px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-[#1c1c1c] dark:shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
+          >
+            <li role="none">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  onMarkPresent?.();
+                }}
+                className="flex w-full cursor-pointer px-3 py-2 text-left text-[12px] font-semibold text-cnhs-green-dark hover:bg-cnhs-green-soft dark:text-cnhs-green dark:hover:bg-cnhs-green/15"
+              >
+                Mark page Present
+              </button>
+            </li>
+            <li role="none">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  onMarkAbsent?.();
+                }}
+                className="flex w-full cursor-pointer px-3 py-2 text-left text-[12px] font-semibold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/15"
+              >
+                Mark page Absent
+              </button>
+            </li>
+          </ul>,
+          document.body
+        )
+      : null;
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        disabled={disabled}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title="Applies to this page only. Other pages are unchanged until you open them or Save."
+        onClick={() => {
+          if (disabled) return;
+          setOpen((prev) => !prev);
+        }}
+        className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-md px-2.5 text-[11px] font-semibold text-cnhs-green-dark hover:bg-cnhs-green-soft disabled:cursor-not-allowed disabled:opacity-50 dark:text-cnhs-green dark:hover:bg-cnhs-green/15"
+      >
+        Mark this page
+        <ChevronDown
+          size={13}
+          className={cn("transition-transform", open && "rotate-180")}
+          aria-hidden="true"
+        />
+      </button>
+      {menu}
+    </>
+  );
 }
 
 export default function Sf2DailyAttendancePanel({
@@ -285,33 +407,44 @@ export default function Sf2DailyAttendancePanel({
     setDrafts((prev) => ({ ...prev, [studentId]: status }));
   }
 
-  function applyVisiblePresent(targets) {
+  function applyVisibleStatus(targets, status) {
     setDrafts((prev) => {
       const next = { ...prev };
       for (const row of targets) {
-        next[row.studentId] = SF2_STATUS.PRESENT;
+        next[row.studentId] = status;
       }
       return next;
     });
   }
 
-  function markVisiblePresent() {
+  function markVisibleStatus(status) {
     if (!isAdviser || !pageRows.length) return;
     const targets = pageRows;
-    const overwriting = targets.filter(
-      (row) => row.status === SF2_STATUS.ABSENT
-    );
+    const opposite =
+      status === SF2_STATUS.PRESENT ? SF2_STATUS.ABSENT : SF2_STATUS.PRESENT;
+    const overwriting = targets.filter((row) => row.status === opposite);
+    const label = status === SF2_STATUS.PRESENT ? "Present" : "Absent";
     const scope =
-      `This marks ${targets.length} learner(s) on the current page as Present. ` +
+      `This marks ${targets.length} learner(s) on the current page as ${label}. ` +
       "Other pages are unchanged until you open them or Save.";
     setConfirm({
-      title: "Mark this page as Present",
+      title: `Mark this page as ${label}`,
       message: overwriting.length
-        ? `${overwriting.length} learner(s) on this page are marked Absent. ${scope}`
+        ? `${overwriting.length} learner(s) on this page are marked ${
+            opposite === SF2_STATUS.ABSENT ? "Absent" : "Present"
+          }. ${scope}`
         : scope,
-      confirmLabel: "Mark Present",
-      action: () => applyVisiblePresent(targets),
+      confirmLabel: `Mark ${label}`,
+      action: () => applyVisibleStatus(targets, status),
     });
+  }
+
+  function markVisiblePresent() {
+    markVisibleStatus(SF2_STATUS.PRESENT);
+  }
+
+  function markVisibleAbsent() {
+    markVisibleStatus(SF2_STATUS.ABSENT);
   }
 
   async function handleSave() {
@@ -507,15 +640,11 @@ export default function Sf2DailyAttendancePanel({
               {item.label}
             </button>
           ))}
-          <button
-            type="button"
+          <MarkPageMenu
             disabled={!isAdviser || !pageRows.length}
-            onClick={markVisiblePresent}
-            title="Applies to this page only (20 learners). Does not mark the rest of the section."
-            className="h-8 cursor-pointer rounded-md px-2.5 text-[11px] font-semibold text-cnhs-green-dark hover:bg-cnhs-green-soft disabled:opacity-50"
-          >
-            Mark page Present
-          </button>
+            onMarkPresent={markVisiblePresent}
+            onMarkAbsent={markVisibleAbsent}
+          />
         </div>
       </div>
 

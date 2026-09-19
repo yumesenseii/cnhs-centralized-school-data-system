@@ -11,6 +11,8 @@ import {
   resubmitLessonPlan,
   reviewLessonPlan,
   deleteTeacherLessonPlan,
+  subscribeToLessonPlanReviewChanges,
+  subscribeToTeacherLessonPlans,
 } from "@/lib/supabase/queries/lessonPlans";
 import { getCurrentTeacherSession } from "@/lib/supabase/queries/myClasses";
 import { getAdminSession } from "@/lib/supabase/queries/adminAuth";
@@ -23,6 +25,7 @@ import {
   mapRecentLessonPlanActivity,
   quarterToLabel,
 } from "@/lib/teacher/lessonPlanMappers";
+import { debounce } from "@/lib/notifications/debounce";
 import { useSoftLoadState } from "@/hooks/useSoftLoadState";
 
 export function useTeacherLessonPlans() {
@@ -99,6 +102,16 @@ export function useTeacherLessonPlans() {
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [refresh]);
+
+  useEffect(() => {
+    if (!teacher?.id) return undefined;
+    const onChange = debounce(() => refresh(), 400);
+    const unsubscribe = subscribeToTeacherLessonPlans(teacher.id, onChange);
+    return () => {
+      onChange.cancel();
+      unsubscribe();
+    };
+  }, [teacher?.id, refresh]);
 
   const resubmit = useCallback(
     async ({ id, file, previousFilePath, schoolYear }) => {
@@ -248,7 +261,7 @@ export function useAdminLessonPlanReview() {
             nextSchoolYear === "All School Years" ? null : nextSchoolYear,
           quarter: nextQuarter === "All Terms" ? null : nextQuarter,
         }),
-        getRecentLessonPlanActivity(8),
+        getRecentLessonPlanActivity(5),
       ]);
 
       // When filters are "all", the filtered query already has meta options.
@@ -297,6 +310,15 @@ export function useAdminLessonPlanReview() {
     }
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
+  }, [refresh]);
+
+  useEffect(() => {
+    const onChange = debounce(() => refresh(), 400);
+    const unsubscribe = subscribeToLessonPlanReviewChanges(onChange);
+    return () => {
+      onChange.cancel();
+      unsubscribe();
+    };
   }, [refresh]);
 
   const periodOptions = useMemo(() => {

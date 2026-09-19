@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   UPLOAD_STORAGE_KEY,
   lessonPlansData,
@@ -67,7 +67,10 @@ function writeStorage(next) {
 
 export function useLessonPlanUpload() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const urlClassId = searchParams?.get("classId")?.trim() || null;
+  const startFresh =
+    searchParams?.get("fresh") === "1" || searchParams?.get("new") === "1";
 
   const [state, setState] = useState(initialState);
   const [hydrated, setHydrated] = useState(false);
@@ -79,25 +82,64 @@ export function useLessonPlanUpload() {
   const [submitError, setSubmitError] = useState("");
 
   useEffect(() => {
-    const stored = readStorage();
-    // Prefer ?classId= from My Classes quick action over stale session storage.
-    if (urlClassId) {
-      const next = {
-        ...stored,
-        classId: urlClassId,
-        selectedClassSnapshot:
-          stored.selectedClassSnapshot?.id === urlClassId
-            ? stored.selectedClassSnapshot
-            : null,
-        step: stored.step || 1,
+    let next;
+    if (startFresh) {
+      clearPendingLessonPlanFile();
+      next = {
+        ...initialState,
+        ...(urlClassId ? { classId: urlClassId } : {}),
       };
-      writeStorage(next);
-      setState(next);
     } else {
-      setState(stored);
+      const stored = readStorage();
+      // Completed submit left draft in session — start clean on upload entry.
+      if (stored.submittedAt) {
+        clearPendingLessonPlanFile();
+        next = {
+          ...initialState,
+          ...(urlClassId ? { classId: urlClassId } : {}),
+        };
+      } else if (urlClassId) {
+        // Prefer ?classId= from My Classes quick action over stale session storage.
+        next = {
+          ...stored,
+          classId: urlClassId,
+          selectedClassSnapshot:
+            stored.selectedClassSnapshot?.id === urlClassId
+              ? stored.selectedClassSnapshot
+              : null,
+          step: stored.step || 1,
+        };
+      } else {
+        next = stored;
+      }
+
+      // File meta without an in-memory File is stale (e.g. after tab reload).
+      if (
+        next.file &&
+        !getPendingLessonPlanFile() &&
+        !next.submittedAt &&
+        (next.step ?? 1) < 4
+      ) {
+        next = { ...next, file: null };
+      }
     }
+
+    writeStorage(next);
+    setState(next);
+    setSubmitError("");
     setHydrated(true);
-    // Only apply URL classId on first hydrate so the class dropdown stays editable.
+
+    if (startFresh) {
+      const params = new URLSearchParams();
+      if (urlClassId) params.set("classId", urlClassId);
+      const qs = params.toString();
+      router.replace(
+        qs
+          ? `/teacher/lesson-plans/upload?${qs}`
+          : "/teacher/lesson-plans/upload"
+      );
+    }
+    // Only apply URL classId / fresh on first hydrate so the class dropdown stays editable.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional one-shot hydrate
   }, []);
 

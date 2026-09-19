@@ -175,8 +175,17 @@ export default function LearnersAttention({
                   </td>
                   <td className="px-2 py-1">
                     <Link
-                      href={`/teacher/monitoring/${learner.classId}/students/${learner.studentId}`}
-                      className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+                      href={
+                        learner.classId && learner.studentId
+                          ? `/teacher/monitoring/${learner.classId}/students/${learner.studentId}`
+                          : "/teacher/monitoring"
+                      }
+                      className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-600 transition-colors duration-200 hover:bg-slate-50"
+                      title={
+                        learner.classId && learner.studentId
+                          ? "Open learner monitoring"
+                          : "Open Academic Monitoring"
+                      }
                     >
                       <Eye size={11} />
                       View

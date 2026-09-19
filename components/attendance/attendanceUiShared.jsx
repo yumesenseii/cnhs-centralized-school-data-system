@@ -48,7 +48,7 @@ export function AttendanceMfTable({ breakdown }) {
     ["PA", breakdown.pa],
   ];
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-100">
+    <div className="mt-1.5 overflow-hidden rounded-lg">
       <table className="w-full text-left text-[11px]">
         <thead>
           <tr className="bg-slate-50">
