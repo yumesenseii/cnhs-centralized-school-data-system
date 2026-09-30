@@ -10,12 +10,12 @@ const TRANSITION = { duration: 0.18, ease: "easeOut" };
 
 const TONE = {
   error:
-    "rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-medium text-red-600",
+    "rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:border-red-900/60 dark:bg-red-950/60 dark:text-red-300",
   success:
-    "rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs font-medium text-cnhs-green-dark",
-  info: "rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700",
+    "rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-cnhs-green-dark dark:border-emerald-900/60 dark:bg-emerald-950/60 dark:text-emerald-300",
+  info: "rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200",
   toast:
-    "rounded-xl bg-slate-900 px-4 py-2.5 text-[11px] font-medium text-white shadow-lg",
+    "rounded-xl bg-slate-900 px-4 py-2.5 text-[11px] font-medium text-white shadow-lg dark:bg-slate-800 dark:border dark:border-slate-700",
 };
 
 /** Inline validation / status banner with enter-exit motion. */

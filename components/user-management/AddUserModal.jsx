@@ -92,18 +92,28 @@ export default function AddUserModal({ open, options, onClose, onSubmit }) {
             required
           />
         </div>
-        <label className="block">
-          <span className="mb-1.5 block text-[11px] font-semibold text-slate-600">
-            Employee ID
-          </span>
+        <div className="block">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-slate-600">
+              Employee ID
+            </span>
+            <button
+              type="button"
+              onClick={() => setEmployeeId(makeEmployeeId())}
+              className="cursor-pointer text-[11px] font-medium text-cnhs-green-dark hover:underline"
+            >
+              Generate New ID
+            </button>
+          </div>
           <input
             name="employeeId"
             value={employeeId}
-            readOnly
+            onChange={(e) => setEmployeeId(e.target.value)}
+            placeholder="e.g. EMP-2026-1234"
             required
-            className="h-10 w-full rounded-xl border border-slate-200 bg-slate-100 px-3 text-xs text-slate-700 outline-none"
+            className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs text-slate-700 outline-none transition-colors placeholder:text-slate-400 focus:border-cnhs-green focus:bg-white"
           />
-        </label>
+        </div>
         <Field
           label="Email"
           name="email"

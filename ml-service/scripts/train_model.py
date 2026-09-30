@@ -25,7 +25,7 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
 )
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "app"))
@@ -115,6 +115,12 @@ def main() -> None:
         class_weight="balanced_subsample",
         n_jobs=-1,
     )
+
+    # 5-Fold Stratified Cross-Validation across entire dataset
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=args.seed)
+    cv_accuracy = cross_val_score(model, X, y, cv=skf, scoring="accuracy")
+    cv_f1_macro = cross_val_score(model, X, y, cv=skf, scoring="f1_macro")
+
     model.fit(X_train, y_train)
 
     y_pred = model.predict(X_test)
@@ -123,6 +129,8 @@ def main() -> None:
     metrics = {
         "model_configuration": "Model B (production)",
         "general_average_in_features": False,
+        "n_estimators": 200,
+        "max_depth": 12,
         "accuracy": float(accuracy_score(y_test, y_pred)),
         "precision_macro": float(
             precision_score(y_test, y_pred, average="macro", zero_division=0)
@@ -140,6 +148,13 @@ def main() -> None:
         "f1_weighted": float(
             f1_score(y_test, y_pred, average="weighted", zero_division=0)
         ),
+        "cross_validation_5fold": {
+            "accuracy_mean": float(cv_accuracy.mean()),
+            "accuracy_std": float(cv_accuracy.std()),
+            "f1_macro_mean": float(cv_f1_macro.mean()),
+            "f1_macro_std": float(cv_f1_macro.std()),
+            "fold_accuracies": [float(v) for v in cv_accuracy],
+        },
         "confusion_matrix": {
             "labels": labels,
             "matrix": confusion_matrix(y_test, y_pred, labels=labels).tolist(),

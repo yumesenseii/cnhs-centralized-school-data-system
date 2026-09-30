@@ -78,14 +78,26 @@ export default function UserDrawer({
               <KeyRound size={14} />
               Reset Password
             </button>
-            <button
-              type="button"
-              onClick={() => onToggleStatus?.(user)}
-              className="inline-flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-            >
-              {isActive ? <UserX size={14} /> : <UserCheck size={14} />}
-              {isActive ? "Deactivate" : "Activate"}
-            </button>
+            {user.isCurrentAdmin ? (
+              <button
+                type="button"
+                disabled
+                title="You cannot deactivate your own logged-in account"
+                className="inline-flex h-10 cursor-not-allowed items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100 text-xs font-semibold text-slate-400"
+              >
+                <UserX size={14} />
+                Deactivate
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onToggleStatus?.(user)}
+                className="inline-flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                {isActive ? <UserX size={14} /> : <UserCheck size={14} />}
+                {isActive ? "Deactivate" : "Activate"}
+              </button>
+            )}
             <button
               type="button"
               onClick={onClose}

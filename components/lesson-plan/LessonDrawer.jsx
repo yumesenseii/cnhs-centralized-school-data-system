@@ -2,19 +2,32 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  AlertCircle,
   CheckCheck,
+  FileCheck,
+  FileText,
+  HelpCircle,
   Loader2,
   Maximize2,
+  MessageSquare,
+  MessageSquarePlus,
   Minimize2,
   RotateCcw,
+  ShieldCheck,
   X,
 } from "lucide-react";
 import LessonInformation from "@/components/lesson-plan/LessonInformation";
 import LessonPreview from "@/components/lesson-plan/LessonPreview";
+import AddSectionRemarkModal from "@/components/lesson-plan/AddSectionRemarkModal";
+import LessonRemarksSidePanel from "@/components/lesson-plan/LessonRemarksSidePanel";
 import StatusBadge from "@/components/lesson-plan/StatusBadge";
 import AnimatedModal from "@/components/shared/AnimatedModal";
 import { AnimatedBanner } from "@/components/shared/AnimatedFeedback";
-import { getLessonPlanSignedUrl } from "@/lib/supabase/queries/lessonPlans";
+import {
+  getLessonPlanSignedUrl,
+  saveLessonPlanSectionRemarks,
+} from "@/lib/supabase/queries/lessonPlans";
+import { cn } from "@/lib/utils";
 
 export default function LessonDrawer({
   open,
@@ -22,17 +35,30 @@ export default function LessonDrawer({
   onClose,
   onSubmitDecision,
   onOpenedPending,
+  reviewerName = "Principal",
 }) {
   const [fileUrl, setFileUrl] = useState(null);
   const [decision, setDecision] = useState(null);
   const [remarks, setRemarks] = useState("");
+  const [sectionRemarks, setSectionRemarks] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState(false);
+  const [confirmApproveModal, setConfirmApproveModal] = useState(false);
+
+  // Side-along remarks panel toggle
+  const [sidePanelOpen, setSidePanelOpen] = useState(true);
+  const [addRemarkModalOpen, setAddRemarkModalOpen] = useState(false);
+  const [remarkModalInitialText, setRemarkModalInitialText] = useState("");
+  const [selectedRemarkId, setSelectedRemarkId] = useState(null);
+
   const markedUnderReviewRef = useRef(null);
 
   useEffect(() => {
-    if (!open) setExpanded(false);
+    if (!open) {
+      setExpanded(false);
+      setAddRemarkModalOpen(false);
+    }
   }, [open]);
 
   useEffect(() => {
@@ -50,6 +76,11 @@ export default function LessonDrawer({
 
     setDecision(null);
     setRemarks(lesson?.remarks || "");
+    const loadedRemarks = Array.isArray(lesson?.sectionRemarks)
+      ? lesson.sectionRemarks
+      : [];
+    setSectionRemarks(loadedRemarks);
+    setSidePanelOpen(loadedRemarks.length > 0);
     setError("");
     loadUrl();
 
@@ -75,10 +106,75 @@ export default function LessonDrawer({
     onOpenedPending?.(lesson);
   }, [open, lesson, onOpenedPending]);
 
-  async function handleDecision(nextStatus) {
+  // Handle adding section remark
+  function handleAddRemark(newRemark) {
+    const next = [...sectionRemarks, newRemark];
+    setSectionRemarks(next);
+    setSidePanelOpen(true);
+    setSelectedRemarkId(newRemark.id);
+    if (lesson?.id) {
+      saveLessonPlanSectionRemarks({ id: lesson.id, sectionRemarks: next });
+    }
+  }
+
+  // Handle deleting section remark
+  function handleDeleteRemark(remarkId) {
+    const next = sectionRemarks.filter((r) => r.id !== remarkId);
+    setSectionRemarks(next);
+    if (selectedRemarkId === remarkId) {
+      setSelectedRemarkId(null);
+    }
+    if (lesson?.id) {
+      saveLessonPlanSectionRemarks({ id: lesson.id, sectionRemarks: next });
+    }
+  }
+
+  // Handle toggling resolve
+  function handleToggleResolve(remarkId) {
+    const next = sectionRemarks.map((r) =>
+      r.id === remarkId
+        ? {
+            ...r,
+            status: r.status === "resolved" ? "open" : "resolved",
+            resolvedAt: r.status === "resolved" ? null : new Date().toISOString(),
+            resolvedBy: reviewerName,
+          }
+        : r
+    );
+    setSectionRemarks(next);
+    if (lesson?.id) {
+      saveLessonPlanSectionRemarks({ id: lesson.id, sectionRemarks: next });
+    }
+  }
+
+  // Handle text selection from doc preview
+  function handleSelectText(textSnippet) {
+    setRemarkModalInitialText(textSnippet);
+    setAddRemarkModalOpen(true);
+  }
+
+  const openNeedsRevisionCount = sectionRemarks.filter(
+    (r) => r.severity === "Needs Revision" && r.status !== "resolved"
+  ).length;
+
+  async function handleDecision(nextStatus, bypassConfirmation = false) {
     if (!lesson) return;
-    if (nextStatus === "Needs Revision" && !remarks.trim()) {
-      setError("Remarks are required when requesting revision.");
+
+    if (
+      nextStatus === "Approved" &&
+      openNeedsRevisionCount > 0 &&
+      !bypassConfirmation
+    ) {
+      setConfirmApproveModal(true);
+      return;
+    }
+
+    if (
+      nextStatus === "Needs Revision" &&
+      !remarks.trim() &&
+      sectionRemarks.length === 0
+    ) {
+      setError("Please provide a remark or add at least one comment specifying the needed revision.");
       setDecision("Needs Revision");
       return;
     }
@@ -91,6 +187,7 @@ export default function LessonDrawer({
       id: lesson.id,
       status: nextStatus,
       remarks: remarks.trim() || null,
+      sectionRemarks,
     });
     setSubmitting(false);
 
@@ -99,12 +196,9 @@ export default function LessonDrawer({
       return;
     }
 
+    setConfirmApproveModal(false);
     onClose?.();
   }
-
-  const metaLine = [lesson?.schoolYear, lesson?.quarter]
-    .filter(Boolean)
-    .join(" · ");
 
   return (
     <AnimatedModal
@@ -112,119 +206,243 @@ export default function LessonDrawer({
       onClose={submitting ? undefined : onClose}
       closeOnBackdrop={!submitting}
       closeOnEscape={!submitting}
-      panelClassName={`flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl dark:border-white/5 dark:bg-[var(--card)] ${
+      panelClassName={`flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[var(--card)] ${
         expanded
-          ? "h-[96vh] w-[98vw]"
-          : "h-[min(85vh,780px)] w-[min(1180px,96vw)]"
+          ? "h-[98vh] w-[98vw] max-w-none"
+          : "h-[min(90vh,890px)] w-[min(1360px,96vw)]"
       }`}
     >
       {lesson ? (
         <>
-          {/* Header — same chrome family as class-report HT modal */}
-          <header className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 px-5 py-3.5 dark:border-white/5">
+          {/* Header */}
+          <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-5 py-3 dark:border-white/5 dark:bg-[var(--card)]">
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <h2 className="break-words text-[17px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="break-words text-sm sm:text-base font-bold tracking-tight text-slate-900 dark:text-slate-100">
                   {lesson.lessonTitle}
                 </h2>
                 <StatusBadge value={lesson.status} />
               </div>
-              <p className="mt-1 text-[12px] text-slate-500 dark:text-slate-400">
+              <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
                 {lesson.teacher} · {lesson.learningArea} · {lesson.gradeSection}
-                {lesson.trackingNumber
-                  ? ` · ${lesson.trackingNumber}`
-                  : ""}
+                {lesson.trackingNumber ? ` · ${lesson.trackingNumber}` : ""}
               </p>
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
+              {/* Add Comment Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setRemarkModalInitialText("");
+                  setAddRemarkModalOpen(true);
+                }}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
+              >
+                <MessageSquarePlus size={13} className="text-amber-600" />
+                <span className="hidden sm:inline">Add Comment</span>
+              </button>
+
+              {/* Toggle Side-Along Comments Panel Button */}
+              <button
+                type="button"
+                onClick={() => setSidePanelOpen((v) => !v)}
+                className={cn(
+                  "inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition shadow-2xs",
+                  sidePanelOpen
+                    ? "border-cnhs-green/30 bg-cnhs-green/10 text-cnhs-green-dark dark:border-cnhs-green/40 dark:bg-cnhs-green/20 dark:text-cnhs-green"
+                    : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                )}
+              >
+                <MessageSquare size={13} />
+                <span>Comments ({sectionRemarks.length})</span>
+                {openNeedsRevisionCount > 0 ? (
+                  <span className="rounded-full bg-red-600 px-1.5 py-0.2 text-[9px] font-bold text-white">
+                    {openNeedsRevisionCount}
+                  </span>
+                ) : null}
+              </button>
+
               <button
                 type="button"
                 aria-label={expanded ? "Exit full screen" : "Expand"}
                 onClick={() => setExpanded((v) => !v)}
-                className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-200"
+                className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-200"
               >
-                {expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                {expanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
               </button>
               <button
                 type="button"
                 onClick={onClose}
                 disabled={submitting}
                 aria-label="Close review"
-                className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-200"
+                className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-200"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
           </header>
 
-          {/* Body — lesson content only (no sticky actions) */}
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
-            <LessonInformation lesson={lesson} />
-            <LessonPreview lesson={lesson} fileUrl={fileUrl} />
-            <AnimatedBanner message={error} tone="error" className="text-sm" />
+          {/* Body: Side-by-Side Document + Google Docs-style Comments Panel */}
+          <div className="flex min-h-0 flex-1 gap-3 overflow-hidden p-4 sm:p-5">
+            {/* Left: Authentic Document Canvas */}
+            <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+              <div className="space-y-3">
+                <LessonInformation lesson={lesson} />
+                <LessonPreview
+                  lesson={lesson}
+                  fileUrl={fileUrl}
+                  remarks={sectionRemarks}
+                  selectedRemarkId={selectedRemarkId}
+                  onSelectRemark={(remIdOrObj) =>
+                    setSelectedRemarkId(
+                      typeof remIdOrObj === "object" && remIdOrObj !== null
+                        ? remIdOrObj.id
+                        : remIdOrObj
+                    )
+                  }
+                  onSelectText={handleSelectText}
+                />
+              </div>
+            </div>
+
+            {/* Right: Side-Along Comments & History Panel (No backdrop overlay) */}
+            {sidePanelOpen ? (
+              <LessonRemarksSidePanel
+                open={sidePanelOpen}
+                onClose={() => setSidePanelOpen(false)}
+                remarks={sectionRemarks}
+                timeline={lesson?.timeline || []}
+                selectedRemarkId={selectedRemarkId}
+                onSelectRemark={(rem) => setSelectedRemarkId(rem?.id)}
+                onAddNewRemark={() => {
+                  setRemarkModalInitialText("");
+                  setAddRemarkModalOpen(true);
+                }}
+                onDeleteRemark={handleDeleteRemark}
+                onToggleResolve={handleToggleResolve}
+                reviewerName={reviewerName}
+              />
+            ) : null}
           </div>
 
-          {/* Footer — Head Teacher review block (mirrors class-report HT chrome) */}
-          <div className="sticky bottom-0 shrink-0 border-t border-slate-200 bg-white px-5 py-3 dark:border-white/5 dark:bg-[var(--card)]">
-            <p className="mb-2 text-[12px] font-semibold text-slate-800 dark:text-slate-100">
-              Head Teacher review
-            </p>
-            <label>
-              <span className="sr-only">Review remarks</span>
-              <textarea
-                rows={2}
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
-                placeholder="Required when requesting revision. Optional notes for approval."
-                disabled={submitting}
-                className="mb-2 w-full resize-none rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm text-slate-700 outline-none placeholder:text-slate-400 focus:border-cnhs-green disabled:opacity-60 dark:border-white/5 dark:bg-white/[0.03] dark:text-slate-200 dark:placeholder:text-slate-500"
-              />
-            </label>
-            <div className="mb-3 flex flex-wrap gap-2">
+          <AnimatedBanner message={error} tone="error" className="mx-5 mb-2 text-xs" />
+
+          {/* Footer: Principal Review Actions */}
+          <footer className="shrink-0 border-t border-slate-200 bg-white px-5 py-3 dark:border-white/5 dark:bg-[var(--card)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-100">
+                  <ShieldCheck size={14} className="text-cnhs-green" />
+                  <span>Reviewer:</span>
+                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-white/10 dark:text-slate-300">
+                    {reviewerName || "Principal"}
+                  </span>
+                </div>
+                {openNeedsRevisionCount > 0 ? (
+                  <span className="rounded bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-700 dark:bg-red-950/60 dark:text-red-300">
+                    ⚠️ {openNeedsRevisionCount} revision required
+                  </span>
+                ) : sectionRemarks.length > 0 ? (
+                  <span className="rounded bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                    ✓ All comments noted
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={submitting}
+                  className="inline-flex h-8 cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                >
+                  Close
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDecision("Needs Revision")}
+                  disabled={submitting}
+                  className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-orange px-3 text-xs font-semibold text-white shadow-sm hover:bg-[#d47828] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {submitting && decision === "Needs Revision" ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <RotateCcw size={13} />
+                  )}
+                  Return for Revision
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDecision("Approved")}
+                  disabled={submitting}
+                  className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3.5 text-xs font-semibold text-white shadow-sm hover:bg-[#246f54] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {submitting && decision === "Approved" ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <CheckCheck size={13} />
+                  )}
+                  Approve Lesson Plan
+                </button>
+              </div>
+            </div>
+          </footer>
+        </>
+      ) : null}
+
+      {/* Lightweight Add Remark Modal */}
+      <AddSectionRemarkModal
+        open={addRemarkModalOpen}
+        onClose={() => setAddRemarkModalOpen(false)}
+        onSave={handleAddRemark}
+        initialText={remarkModalInitialText}
+        reviewerName={reviewerName}
+      />
+
+      {/* Confirmation Modal when Approving with open revision remarks */}
+      {confirmApproveModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-white/10 dark:bg-[var(--card)]">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                <AlertCircle size={20} />
+              </span>
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                  Approve with Open Revision Remarks?
+                </h4>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  There {openNeedsRevisionCount === 1 ? "is" : "are"}{" "}
+                  <strong className="text-amber-700 dark:text-amber-300">
+                    {openNeedsRevisionCount} section remark{openNeedsRevisionCount === 1 ? "" : "s"}
+                  </strong>{" "}
+                  marked as "Needs Revision". Approving will finalize this submission.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex items-center justify-end gap-2">
               <button
                 type="button"
-                onClick={() => handleDecision("Approved")}
-                disabled={submitting}
-                className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3 text-[12px] font-semibold text-white hover:bg-[#246f54] disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => setConfirmApproveModal(false)}
+                className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/5"
               >
-                {submitting && decision === "Approved" ? (
-                  <Loader2 size={13} className="animate-spin" />
-                ) : (
-                  <CheckCheck size={13} />
-                )}
-                Approve
+                Back to Review
               </button>
               <button
                 type="button"
-                onClick={() => handleDecision("Needs Revision")}
-                disabled={submitting}
-                className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-orange px-3 text-[12px] font-semibold text-white hover:bg-[#d47828] disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => handleDecision("Approved", true)}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-[#246f54]"
               >
-                {submitting && decision === "Needs Revision" ? (
-                  <Loader2 size={13} className="animate-spin" />
-                ) : (
-                  <RotateCcw size={13} />
-                )}
-                Needs Revision
+                <CheckCheck size={13} />
+                Yes, Approve Lesson Plan
               </button>
             </div>
           </div>
-
-          <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-white px-5 py-3 dark:border-white/5 dark:bg-[var(--card)]">
-            <span className="text-[11px] text-slate-400">
-              {metaLine || "Lesson plan review"}
-            </span>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="inline-flex h-9 cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-4 text-[13px] font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/5 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
-            >
-              Close
-            </button>
-          </footer>
-        </>
+        </div>
       ) : null}
     </AnimatedModal>
   );

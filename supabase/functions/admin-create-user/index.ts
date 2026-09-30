@@ -38,6 +38,33 @@ function generateTemporaryPassword() {
   return `CNHS-${token || "TMP9X7K2"}`;
 }
 
+function extractErrorMessage(err: unknown): string {
+  if (!err) return "Unable to save user records.";
+  if (typeof err === "string") return err;
+  if (typeof err === "object" && err !== null) {
+    const rec = err as Record<string, unknown>;
+    const code = String(rec.code ?? "");
+    const msg = String(rec.message ?? "");
+    const details = String(rec.details ?? "");
+
+    if (code === "23505" || msg.includes("duplicate key")) {
+      if (msg.includes("employee_number") || details.includes("employee_number")) {
+        return "A staff member with this employee ID already exists.";
+      }
+      if (msg.includes("email") || details.includes("email")) {
+        return "A user with this email already exists.";
+      }
+      if (msg.includes("username") || details.includes("username")) {
+        return "A user with this username already exists.";
+      }
+      return "A record with this information already exists.";
+    }
+    if (msg) return msg;
+    if (details) return details;
+  }
+  return "Unable to save user records.";
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -49,11 +76,6 @@ Deno.serve(async (req: Request) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !anonKey || !serviceRoleKey) {
     return json({ ok: false, error: "Supabase function environment is incomplete." }, 500);
-  }
-
-  const brevo = requireBrevoConfig();
-  if (!brevo.ok) {
-    return json({ ok: false, error: brevo.error }, 500);
   }
 
   const authorization = req.headers.get("Authorization");
@@ -71,13 +93,13 @@ Deno.serve(async (req: Request) => {
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
-  const { data: profile, error: profileError } = await admin
+  const { data: callerProfile, error: profileError } = await admin
     .from("profiles")
     .select("role, is_active")
     .eq("auth_user_id", caller.id)
     .single();
 
-  if (profileError || profile?.role !== "admin" || profile.is_active === false) {
+  if (profileError || callerProfile?.role !== "admin" || callerProfile.is_active === false) {
     return json({ ok: false, error: "Only active administrators can create users." }, 403);
   }
 
@@ -92,7 +114,6 @@ Deno.serve(async (req: Request) => {
   const lastName = clean(body.lastName);
   const employeeId = clean(body.employeeId);
   const email = clean(body.email).toLowerCase();
-  // Ignore any client-supplied password. HT never sees or shares it.
   const password = generateTemporaryPassword();
   const role = body.role === "admin" ? "admin" : "teacher";
   const status = body.status === "inactive" ? "inactive" : "active";
@@ -103,21 +124,110 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, error: "First name, last name, employee ID, and email are required." }, 400);
   }
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return json({ ok: false, error: "Please enter a valid email address." }, 400);
+  }
+
+  // =========================================================================
+  // 1. PRE-VALIDATION: Prevent duplicate accounts before touching Auth
+  // =========================================================================
+
+  // Check email in public.users
+  const { data: existingUser } = await admin
+    .from("users")
+    .select("id, email")
+    .ilike("email", email)
+    .maybeSingle();
+
+  if (existingUser) {
+    // Check if user genuinely exists in Supabase Auth
+    const { data: authCheck } = await admin.auth.admin.getUserById(existingUser.id);
+    if (authCheck?.user) {
+      return json({ ok: false, error: "A user with this email already exists." }, 400);
+    } else {
+      // Dangling ghost record without an auth account — clean up so creation can proceed
+      await admin.from("teachers").update({ user_id: null }).eq("user_id", existingUser.id);
+      await admin.from("users").delete().eq("id", existingUser.id);
+    }
+  }
+
+  // Check if a teacher row already exists with this email or employee number
+  const { data: existingTeacherByEmail } = await admin
+    .from("teachers")
+    .select("id, email, user_id, employee_number")
+    .ilike("email", email)
+    .maybeSingle();
+
+  const { data: existingTeacherByEmp } = await admin
+    .from("teachers")
+    .select("id, email, user_id, employee_number")
+    .ilike("employee_number", employeeId)
+    .maybeSingle();
+
+  const matchedTeacher = existingTeacherByEmail || existingTeacherByEmp;
+
+  if (matchedTeacher?.user_id) {
+    // Check if the linked user actually exists in Auth
+    const { data: linkedAuthCheck } = await admin.auth.admin.getUserById(matchedTeacher.user_id);
+    if (linkedAuthCheck?.user) {
+      if (existingTeacherByEmail) {
+        return json({ ok: false, error: "A user with this email already exists." }, 400);
+      }
+      return json(
+        { ok: false, error: `A staff member with employee ID "${employeeId}" already exists.` },
+        400
+      );
+    } else {
+      // Orphaned user_id on teacher record — unbind so we can rebind to the new legitimate account
+      await admin.from("teachers").update({ user_id: null }).eq("id", matchedTeacher.id);
+      matchedTeacher.user_id = null;
+    }
+  }
+
+  // =========================================================================
+  // 2. USERNAME GENERATION: Guarantee a non-colliding username
+  // =========================================================================
+  const baseUsername = usernameFromEmail(email) || "staff";
+  let chosenUsername = baseUsername;
+  const { data: existingUsername } = await admin
+    .from("users")
+    .select("id")
+    .eq("username", chosenUsername)
+    .maybeSingle();
+
+  if (existingUsername) {
+    const suffix = Math.floor(100 + Math.random() * 900);
+    chosenUsername = `${baseUsername}-${suffix}`;
+  }
+
+  // =========================================================================
+  // 3. CREATE AUTH USER
+  // =========================================================================
   const { data: authData, error: authError } = await admin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
     user_metadata: { full_name: fullName, role, must_change_password: true },
   });
+
   if (authError || !authData.user) {
-    return json({ ok: false, error: authError?.message || "Unable to create Auth user." }, 400);
+    const rawMsg = authError?.message || "";
+    if (rawMsg.includes("already registered") || rawMsg.includes("already been registered")) {
+      return json({ ok: false, error: "A user with this email already exists." }, 400);
+    }
+    return json({ ok: false, error: rawMsg || "Unable to create Auth user." }, 400);
   }
 
   const authUserId = authData.user.id;
+
+  // =========================================================================
+  // 4. INSERT APPLICATION RECORDS (users -> profiles -> teachers)
+  // =========================================================================
   try {
     const { error: accountError } = await admin.from("users").insert({
       id: authUserId,
-      username: usernameFromEmail(email),
+      username: chosenUsername,
       email,
       password_hash: "supabase-auth-managed",
       role,
@@ -139,48 +249,94 @@ Deno.serve(async (req: Request) => {
     if (profileUpsertError) throw profileUpsertError;
 
     if (role === "teacher") {
-      const { error: teacherError } = await admin.from("teachers").insert({
-        user_id: authUserId,
-        employee_number: employeeId,
-        first_name: firstName,
-        last_name: lastName,
-        email,
-        learning_area: learningArea || null,
-        status,
-      });
-      if (teacherError) throw teacherError;
+      if (matchedTeacher?.id) {
+        // Link existing teacher record to the newly created user
+        const { error: teacherUpdateError } = await admin
+          .from("teachers")
+          .update({
+            user_id: authUserId,
+            first_name: firstName,
+            last_name: lastName,
+            email,
+            employee_number: employeeId || matchedTeacher.employee_number,
+            learning_area: learningArea || null,
+            status,
+          })
+          .eq("id", matchedTeacher.id);
+        if (teacherUpdateError) throw teacherUpdateError;
+      } else {
+        const { error: teacherError } = await admin.from("teachers").insert({
+          user_id: authUserId,
+          employee_number: employeeId,
+          first_name: firstName,
+          last_name: lastName,
+          email,
+          learning_area: learningArea || null,
+          status,
+        });
+        if (teacherError) throw teacherError;
+      }
     }
 
-    // Safer: keep the account only if the welcome email is sent.
-    // HT can retry Add User; the teacher never gets an account they cannot sign into.
-    const message = welcomeAccountEmail({
-      fullName,
-      email,
-      temporaryPassword: password,
-      loginUrl: loginUrlFromEnv(),
-    });
-    const emailed = await sendBrevoTransactionalEmail({
-      toEmail: email,
-      toName: fullName,
-      subject: message.subject,
-      textContent: message.textContent,
-      htmlContent: message.htmlContent,
-    });
-    if (!emailed.ok) throw new Error(emailed.error);
+    // =======================================================================
+    // 5. WELCOME EMAIL (Non-fatal if email service fails)
+    // =======================================================================
+    let emailSent = false;
+    let emailErrorMessage: string | null = null;
+
+    try {
+      const brevo = requireBrevoConfig();
+      if (brevo.ok) {
+        const message = welcomeAccountEmail({
+          fullName,
+          email,
+          temporaryPassword: password,
+          loginUrl: loginUrlFromEnv(),
+        });
+        const emailed = await sendBrevoTransactionalEmail({
+          toEmail: email,
+          toName: fullName,
+          subject: message.subject,
+          textContent: message.textContent,
+          htmlContent: message.htmlContent,
+        });
+        emailSent = emailed.ok;
+        if (!emailed.ok) {
+          emailErrorMessage = emailed.error;
+        }
+      } else {
+        emailErrorMessage = brevo.error;
+      }
+    } catch (mailErr) {
+      emailErrorMessage = mailErr instanceof Error ? mailErr.message : "Email sending failed.";
+    }
 
     return json({
       ok: true,
+      emailSent,
+      emailError: emailErrorMessage,
+      temporaryPassword: password,
       user: { id: authUserId, email, fullName, role, status },
     });
   } catch (error) {
-    await admin.from("teachers").delete().eq("user_id", authUserId);
-    await admin.from("profiles").delete().eq("auth_user_id", authUserId);
-    await admin.from("users").delete().eq("id", authUserId);
-    await admin.auth.admin.deleteUser(authUserId);
+    // Safe reverse cleanup on failure so no partial/ghost records remain
+    try {
+      if (matchedTeacher?.id) {
+        await admin.from("teachers").update({ user_id: null }).eq("id", matchedTeacher.id);
+      } else {
+        await admin.from("teachers").delete().eq("user_id", authUserId);
+      }
+      await admin.from("profiles").delete().eq("auth_user_id", authUserId);
+      await admin.from("users").delete().eq("id", authUserId);
+      await admin.auth.admin.deleteUser(authUserId);
+    } catch {
+      /* ignore rollback cascade errors */
+    }
+
     return json(
       {
         ok: false,
-        error: error instanceof Error ? error.message : "Unable to save user records.",
+        error: extractErrorMessage(error),
       },
       400
     );

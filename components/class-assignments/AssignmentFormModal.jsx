@@ -9,8 +9,7 @@ import {
   TERM_ALL_VALUE,
   TERM_FORM_OPTIONS,
 } from "@/lib/academic/termLabels";
-
-const GRADE_OPTIONS = [7, 8, 9, 10];
+import { GRADE_OPTIONS } from "@/lib/academic/gradeLevels";
 
 export default function AssignmentFormModal({
   open,
@@ -222,10 +221,7 @@ export default function AssignmentFormModal({
                 value={gradeLevel}
                 onChange={setGradeLevel}
                 required
-                options={GRADE_OPTIONS.map((grade) => ({
-                  value: String(grade),
-                  label: `Grade ${grade}`,
-                }))}
+                options={GRADE_OPTIONS}
               />
             </div>
 

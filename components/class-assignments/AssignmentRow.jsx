@@ -1,11 +1,10 @@
 "use client";
 
-import { Eraser, Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 
 export default function AssignmentRow({
   assignment,
   onEdit,
-  onClearGrades,
   onDelete,
   busy,
 }) {
@@ -46,18 +45,8 @@ export default function AssignmentRow({
           <button
             type="button"
             disabled={busy}
-            onClick={() => onClearGrades?.(assignment)}
-            title="Clear imported ECR grades only — keeps class assignment"
-            className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-red-200 bg-white px-2.5 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-40"
-          >
-            <Eraser size={11} />
-            Clear grades
-          </button>
-          <button
-            type="button"
-            disabled={busy}
             onClick={() => onDelete?.(assignment)}
-            className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-500 transition-colors hover:bg-slate-50 disabled:opacity-40"
+            className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-red-200 bg-white px-2.5 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-40"
           >
             <Trash2 size={11} />
             Remove

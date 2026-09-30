@@ -154,7 +154,7 @@ export function useClassAssignments() {
       const result = await createClassAssignment({ ...base, quarter: q });
       if (result.error) {
         const message = result.error.message || "Unable to save assignment.";
-        if (/already assigned/i.test(message)) {
+        if (/already (assigned|exists)/i.test(message)) {
           skipped += 1;
         } else {
           errors.push(`Term ${q}: ${message}`);
@@ -164,8 +164,13 @@ export function useClassAssignments() {
       }
     }
 
-    if (created === 0 && errors.length) {
-      return { ok: false, error: errors.join(" ") };
+    if (created === 0) {
+      if (errors.length) {
+        return { ok: false, error: errors.join(" ") };
+      }
+      if (skipped > 0) {
+        return { ok: false, error: "Class assignment already exists." };
+      }
     }
 
     const synced = await syncAllTermAssignmentRosters({

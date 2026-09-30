@@ -4,6 +4,7 @@ import AssignmentRow from "@/components/class-assignments/AssignmentRow";
 import AppSelect from "@/components/shared/AppSelect";
 import { formatPersonName } from "@/lib/admin/classAssignmentMappers";
 import { TERM_ALL_LABEL, TERM_OPTIONS } from "@/lib/academic/termLabels";
+import { GRADE_FILTER_OPTIONS } from "@/lib/academic/gradeLevels";
 
 const columns = [
   "Teacher",
@@ -22,7 +23,6 @@ export default function AssignmentsTable({
   teachers,
   onFiltersChange,
   onEdit,
-  onClearGrades,
   onDelete,
   busy,
 }) {
@@ -53,13 +53,7 @@ export default function AssignmentsTable({
           <SelectFilter
             label="Grade"
             value={filters.grade}
-            options={[
-              "All Grades",
-              "Grade 7",
-              "Grade 8",
-              "Grade 9",
-              "Grade 10",
-            ]}
+            options={GRADE_FILTER_OPTIONS}
             onChange={(value) => onFiltersChange({ ...filters, grade: value })}
           />
           <SelectFilter
@@ -117,7 +111,6 @@ export default function AssignmentsTable({
                   key={assignment.id}
                   assignment={assignment}
                   onEdit={onEdit}
-                  onClearGrades={onClearGrades}
                   onDelete={onDelete}
                   busy={busy}
                 />

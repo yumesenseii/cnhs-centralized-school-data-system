@@ -1,13 +1,28 @@
 {
   "model_configuration": "Model B (production)",
   "general_average_in_features": false,
-  "accuracy": 0.96875,
-  "precision_macro": 0.9667518062455903,
-  "recall_macro": 0.9688835358882346,
-  "f1_macro": 0.9675530277946783,
-  "precision_weighted": 0.9696819557356133,
-  "recall_weighted": 0.96875,
-  "f1_weighted": 0.9689731281896162,
+  "n_estimators": 200,
+  "max_depth": 12,
+  "accuracy": 0.9916666666666667,
+  "precision_macro": 0.991662658329325,
+  "recall_macro": 0.9881983439611689,
+  "f1_macro": 0.9898584003061615,
+  "precision_weighted": 0.9917334722890279,
+  "recall_weighted": 0.9916666666666667,
+  "f1_weighted": 0.991644342390611,
+  "cross_validation_5fold": {
+    "accuracy_mean": 0.9841666666666666,
+    "accuracy_std": 0.004444444444444476,
+    "f1_macro_mean": 0.9809617711860794,
+    "f1_macro_std": 0.005350657501023398,
+    "fold_accuracies": [
+      0.9791666666666666,
+      0.9861111111111112,
+      0.9805555555555555,
+      0.9833333333333333,
+      0.9916666666666667
+    ]
+  },
   "confusion_matrix": {
     "labels": [
       "High Risk",
@@ -16,57 +31,57 @@
     ],
     "matrix": [
       [
-        167,
+        296,
         0,
-        5
+        0
       ],
       [
         0,
-        164,
-        6
+        265,
+        1
       ],
       [
-        2,
-        2,
-        134
+        0,
+        5,
+        153
       ]
     ]
   },
   "classification_report": {
     "High Risk": {
-      "precision": 0.9881656804733728,
-      "recall": 0.9709302325581395,
-      "f1-score": 0.9794721407624634,
-      "support": 172.0
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 296.0
     },
     "Low Risk": {
-      "precision": 0.9879518072289156,
-      "recall": 0.9647058823529412,
-      "f1-score": 0.9761904761904762,
-      "support": 170.0
+      "precision": 0.9814814814814815,
+      "recall": 0.9962406015037594,
+      "f1-score": 0.9888059701492538,
+      "support": 266.0
     },
     "Moderate Risk": {
-      "precision": 0.9241379310344827,
-      "recall": 0.9710144927536232,
-      "f1-score": 0.9469964664310954,
-      "support": 138.0
+      "precision": 0.9935064935064936,
+      "recall": 0.9683544303797469,
+      "f1-score": 0.9807692307692307,
+      "support": 158.0
     },
-    "accuracy": 0.96875,
+    "accuracy": 0.9916666666666667,
     "macro avg": {
-      "precision": 0.9667518062455903,
-      "recall": 0.9688835358882346,
-      "f1-score": 0.9675530277946783,
-      "support": 480.0
+      "precision": 0.991662658329325,
+      "recall": 0.9881983439611689,
+      "f1-score": 0.9898584003061615,
+      "support": 720.0
     },
     "weighted avg": {
-      "precision": 0.9696819557356133,
-      "recall": 0.96875,
-      "f1-score": 0.9689731281896162,
-      "support": 480.0
+      "precision": 0.9917334722890279,
+      "recall": 0.9916666666666667,
+      "f1-score": 0.991644342390611,
+      "support": 720.0
     }
   },
-  "n_train": 1920,
-  "n_test": 480,
+  "n_train": 2880,
+  "n_test": 720,
   "feature_names": [
     "english_grade",
     "filipino_grade",
@@ -98,18 +113,18 @@
     "label_source": "general_average (GWA) \u2014 labels only, not an RF feature"
   },
   "feature_importances": {
-    "english_grade": 0.03628715790118178,
-    "filipino_grade": 0.045492105844539464,
-    "mathematics_grade": 0.04291831496527773,
-    "science_grade": 0.06532599355326305,
-    "mapeh_grade": 0.05037216305704308,
-    "araling_panlipunan_grade": 0.075264442904205,
-    "tle_grade": 0.07249245057645802,
-    "values_education_grade": 0.028902803091392024,
-    "failing_subject_count": 0.23250050281147336,
-    "language_fail_count": 0.02095299720179531,
-    "non_language_fail_count": 0.13175474849065608,
-    "lowest_grade": 0.19738715187294545,
-    "available_grade_count": 0.0003491677297697641
+    "english_grade": 0.06523132850465764,
+    "filipino_grade": 0.07200166384285854,
+    "mathematics_grade": 0.11284295538396666,
+    "science_grade": 0.04222223016327031,
+    "mapeh_grade": 0.043875551008111885,
+    "araling_panlipunan_grade": 0.028556189434220707,
+    "tle_grade": 0.03703975378981602,
+    "values_education_grade": 0.04880159833259234,
+    "failing_subject_count": 0.1900710081792974,
+    "language_fail_count": 0.04114785341454284,
+    "non_language_fail_count": 0.13204443663129714,
+    "lowest_grade": 0.1860574328500608,
+    "available_grade_count": 0.0001079984653077844
   }
 }

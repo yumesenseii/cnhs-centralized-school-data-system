@@ -29,8 +29,6 @@ import {
 import { UPLOAD_STORAGE_KEY } from "@/data/teacher/lessonPlans";
 import { buildQuarterlyAverages } from "@/lib/teacher/myClassesMappers";
 import { termLabel } from "@/lib/academic/termLabels";
-import { createDeleteRequest } from "@/lib/supabase/queries/deleteRequests";
-import DeleteConfirmModal from "@/components/shared/DeleteConfirmModal";
 import { useAppToast } from "@/components/shared/AppToast";
 
 export default function ClassOverview({ classId }) {
@@ -57,8 +55,6 @@ export default function ClassOverview({ classId }) {
   const [reportOpen, setReportOpen] = useState(false);
   const [teacherId, setTeacherId] = useState(null);
   const { showToast } = useAppToast();
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [requesting, setRequesting] = useState(false);
 
   async function openUpload() {
     const session = await getCurrentTeacherSession();
@@ -117,21 +113,6 @@ export default function ClassOverview({ classId }) {
         `/teacher/lesson-plans/upload?classId=${encodeURIComponent(targetClassId)}&fresh=1`
       );
       return;
-    }
-    if (action.id === "qa-ecr" || action.id === "qa-class") {
-      const label = `${classItem.subject} · ${classItem.gradeSection} · ${termLabel(viewQuarter) || classItem.currentQuarter} · ${classItem.schoolYear}`;
-      setDeleteConfirm({
-        kind: action.id === "qa-ecr" ? "ecr" : "class",
-        title:
-          action.id === "qa-ecr"
-            ? "Request clear ECR"
-            : "Request delete class",
-        itemLabel: label,
-        consequence:
-          action.id === "qa-ecr"
-            ? "The head teacher must approve before imported grades are cleared."
-            : "The head teacher must approve before this class assignment is removed.",
-      });
     }
   }
 
@@ -362,18 +343,6 @@ export default function ClassOverview({ classId }) {
               label: "Generate Class Report",
               icon: "report",
             },
-            {
-              id: "qa-ecr",
-              label: "Request clear ECR",
-              icon: "eraser",
-              dividerBefore: true,
-            },
-            {
-              id: "qa-class",
-              label: "Request delete class",
-              icon: "trash",
-              tone: "danger",
-            },
           ]}
           busyId={reportLoading ? "qa3" : null}
           onAction={handleQuickAction}
@@ -467,35 +436,6 @@ export default function ClassOverview({ classId }) {
         onExport={handleExportReportExcel}
         exportLabel="Export Excel"
         closeLabel="Close"
-      />
-
-      <DeleteConfirmModal
-        open={Boolean(deleteConfirm)}
-        title={deleteConfirm?.title}
-        itemLabel={deleteConfirm?.itemLabel}
-        consequence={deleteConfirm?.consequence}
-        confirmLabel="Send request"
-        confirming={requesting}
-        confirmingLabel="Sending…"
-        tone="request"
-        icon="request"
-        onCancel={() => !requesting && setDeleteConfirm(null)}
-        onConfirm={async () => {
-          if (!deleteConfirm || !classItem?.id) return;
-          setRequesting(true);
-          const result = await createDeleteRequest({
-            targetType: deleteConfirm.kind,
-            targetId: classItem.id,
-            label: deleteConfirm.itemLabel,
-          });
-          setRequesting(false);
-          setDeleteConfirm(null);
-          showToast(
-            result.error
-              ? result.error.message
-              : "Request sent to the head teacher."
-          );
-        }}
       />
     </motion.div>
   );

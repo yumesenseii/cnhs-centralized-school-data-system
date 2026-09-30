@@ -8,6 +8,7 @@ import AttendanceMonitoringPanel from "@/components/attendance/AttendanceMonitor
 import DeferredMount from "@/components/shared/DeferredMount";
 import PageHelp from "@/components/shared/PageHelp";
 import GuidedTour from "@/components/shared/GuidedTour";
+import { AlertCircle, RefreshCw } from "lucide-react";
 import { useAdminDashboard } from "@/hooks/admin/useAdminDashboard";
 
 function DashboardLoading() {
@@ -31,7 +32,7 @@ function DashboardLoading() {
 }
 
 export default function DashboardPage() {
-  const { data, loading, error, refresh } = useAdminDashboard();
+  const { data, loading, refreshing, error, refresh } = useAdminDashboard();
 
   if (loading && !data) {
     return (
@@ -53,15 +54,24 @@ export default function DashboardPage() {
         transition={{ duration: 0.3, ease: "easeOut" }}
         className="pb-5"
       >
-        <Header description="Unable to load the school overview." />
-        <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-10 text-center">
-          <p className="text-sm font-medium text-red-700">{error}</p>
+        <Header description="Overview status" />
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-red-200/80 bg-red-50/70 p-8 text-center shadow-sm dark:border-red-900/40 dark:bg-red-950/30 sm:p-12">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400">
+            <AlertCircle size={24} />
+          </div>
+          <h3 className="mt-3 text-base font-semibold text-slate-800 dark:text-slate-100">
+            {error}
+          </h3>
+          <p className="mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">
+            Please verify that your server is running and click Retry to reload the latest school overview data.
+          </p>
           <button
             type="button"
             onClick={refresh}
-            className="mt-4 inline-flex h-9 cursor-pointer items-center rounded-lg bg-cnhs-green-dark px-4 text-[12px] font-semibold text-white hover:bg-[#246f54]"
+            className="mt-5 inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl bg-cnhs-green-dark px-5 text-[12.5px] font-semibold text-white shadow-sm transition-all hover:bg-[#246f54] active:scale-95"
           >
-            Retry
+            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+            <span>Retry Connection</span>
           </button>
         </div>
       </motion.div>

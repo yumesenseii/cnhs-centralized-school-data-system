@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Eraser } from "lucide-react";
+import { Plus } from "lucide-react";
 import Header from "@/components/layout/Header";
 import AssignmentFormModal from "@/components/class-assignments/AssignmentFormModal";
 import AssignmentSummaryCards from "@/components/class-assignments/AssignmentSummaryCards";
@@ -212,15 +212,6 @@ export default function ClassAssignmentManagement({ embedded = false }) {
 
   const headerControls = (
     <div className="flex flex-wrap items-center gap-2">
-      <button
-        type="button"
-        onClick={onClearAll}
-        disabled={saving || confirming}
-        className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-red-200 bg-white px-3 text-[11px] font-semibold text-red-600 shadow-sm transition-colors duration-200 hover:bg-red-50 disabled:opacity-50"
-      >
-        <Eraser size={13} />
-        Clear all
-      </button>
       {assignButton}
     </div>
   );
@@ -281,7 +272,6 @@ export default function ClassAssignmentManagement({ embedded = false }) {
           teachers={teachers}
           onFiltersChange={setFilters}
           onEdit={openEdit}
-          onClearGrades={onClearGrades}
           onDelete={onDelete}
           busy={saving}
         />

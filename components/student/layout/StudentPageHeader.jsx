@@ -18,7 +18,7 @@ export default function StudentPageHeader({
             {title}
           </h1>
           {subtitle ? (
-            <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
+            <div className="mt-0.5 text-xs text-muted-foreground">{subtitle}</div>
           ) : null}
         </div>
         <MobileNavSheet ariaLabel="Open student menu" title="Student navigation">

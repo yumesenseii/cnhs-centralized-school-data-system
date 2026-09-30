@@ -61,212 +61,114 @@ export default function AdminReportCharts({
   const hasAttendance = !hideAttendance && attendance.length > 0;
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {hasRisk || !hideEmpty ? (
-        <ChartCard
-          title="Risk Distribution"
-          subtitle="From ECR grades"
-        >
-          {!hasRisk ? (
-            <EmptyChart />
-          ) : (
-            <div className="grid min-h-[210px] grid-cols-1 items-center gap-3 sm:grid-cols-[1fr_130px]">
-              <div className="h-[190px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={risk}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={48}
-                      outerRadius={74}
-                      paddingAngle={2}
-                      stroke="var(--card)"
-                      strokeWidth={3}
-                    >
-                      {risk.map((item) => (
-                        <Cell key={item.name} fill={item.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={tooltipStyle}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <ul className="space-y-2.5">
-                {risk.map((item) => (
-                  <li key={item.name} className="flex items-start gap-2">
-                    <span
-                      className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    <span className="text-xs leading-4">
-                      <span className="block font-medium text-slate-500">
-                        {item.name}
-                      </span>
-                      <span
-                        className="font-semibold"
-                        style={{ color: item.color }}
+          <ChartCard
+            title="Academic Risk Distribution"
+            subtitle="Categorized from electronic class record (ECR) subject grades"
+          >
+            {!hasRisk ? (
+              <EmptyChart />
+            ) : (
+              <div className="grid min-h-[210px] grid-cols-1 items-center gap-3 sm:grid-cols-[1fr_130px]">
+                <div className="h-[190px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={risk}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={48}
+                        outerRadius={74}
+                        paddingAngle={2}
+                        stroke="var(--card)"
+                        strokeWidth={3}
                       >
-                        {item.value} ({item.percent}%)
+                        {risk.map((item) => (
+                          <Cell key={item.name} fill={item.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={tooltipStyle} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <ul className="space-y-2.5">
+                  {risk.map((item) => (
+                    <li key={item.name} className="flex items-start gap-2">
+                      <span
+                        className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <span className="text-xs leading-4">
+                        <span className="block font-medium text-slate-500">
+                          {item.name}
+                        </span>
+                        <span
+                          className="font-semibold"
+                          style={{ color: item.color }}
+                        >
+                          {item.value} ({item.percent}%)
+                        </span>
                       </span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </ChartCard>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </ChartCard>
         ) : null}
 
         {hasPerformance || !hideEmpty ? (
-        <ChartCard
-          title="Average Grade by Subject"
-          subtitle="Class subject averages for the selected period"
-        >
-          {!hasPerformance ? (
-            <EmptyChart />
-          ) : (
-            <div className="h-[210px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={performance}
-                  margin={{ top: 16, right: 8, left: -20, bottom: 0 }}
-                >
-                  <CartesianGrid
-                    stroke="var(--border)"
-                    strokeDasharray="3 3"
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="subject"
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fontSize: 10, fill: "#94a3b8" }}
-                  />
-                  <YAxis
-                    domain={[0, 100]}
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fontSize: 11, fill: "#94a3b8" }}
-                    width={28}
-                  />
-                  <Tooltip
-                    cursor={{ fill: "rgba(82, 183, 136, 0.06)" }}
-                    contentStyle={tooltipStyle}
-                    formatter={(value) => [`${value}`, "Average"]}
-                  />
-                  <Bar
-                    dataKey="average"
-                    fill="#40916c"
-                    radius={[8, 8, 0, 0]}
-                    maxBarSize={48}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </ChartCard>
-        ) : null}
-
-        {hasIntervention || !hideEmpty ? (
-        <ChartCard
-          title="Intervention Mix"
-          subtitle="ARAL Learners vs Classroom remedial (grades-based)"
-        >
-          {!hasIntervention ? (
-            <EmptyChart />
-          ) : (
-            <div className="h-[210px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={intervention}
-                  margin={{ top: 16, right: 8, left: -20, bottom: 0 }}
-                >
-                  <CartesianGrid
-                    stroke="var(--border)"
-                    strokeDasharray="3 3"
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="name"
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fontSize: 10, fill: "#94a3b8" }}
-                  />
-                  <YAxis
-                    allowDecimals={false}
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fontSize: 11, fill: "#94a3b8" }}
-                    width={28}
-                  />
-                  <Tooltip
-                    cursor={{ fill: "rgba(82, 183, 136, 0.06)" }}
-                    contentStyle={tooltipStyle}
-                  />
-                  <Bar dataKey="value" radius={[8, 8, 0, 0]} maxBarSize={56}>
-                    {intervention.map((item) => (
-                      <Cell key={item.name} fill={item.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </ChartCard>
-        ) : null}
-
-        {hasLessonPlans || !hideEmpty ? (
-        <ChartCard
-          title="Lesson Plan Status"
-          subtitle="Submitted plans for the selected school year / term"
-        >
-          {!hasLessonPlans ? (
-            <EmptyChart />
-          ) : (
-            <div className="h-[210px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={lessonPlans}
-                  margin={{ top: 16, right: 8, left: -20, bottom: 0 }}
-                >
-                  <CartesianGrid
-                    stroke="var(--border)"
-                    strokeDasharray="3 3"
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="name"
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fontSize: 10, fill: "#94a3b8" }}
-                  />
-                  <YAxis
-                    allowDecimals={false}
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fontSize: 11, fill: "#94a3b8" }}
-                    width={28}
-                  />
-                  <Tooltip
-                    cursor={{ fill: "rgba(82, 183, 136, 0.06)" }}
-                    contentStyle={tooltipStyle}
-                  />
-                  <Bar dataKey="value" radius={[8, 8, 0, 0]} maxBarSize={48}>
-                    {lessonPlans.map((item) => (
-                      <Cell key={item.name} fill={item.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </ChartCard>
+          <ChartCard
+            title="Average Grade by Learning Area"
+            subtitle="Class subject averages across enrolled sections"
+          >
+            {!hasPerformance ? (
+              <EmptyChart />
+            ) : (
+              <div className="h-[210px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={performance}
+                    margin={{ top: 16, right: 8, left: -20, bottom: 0 }}
+                  >
+                    <CartesianGrid
+                      stroke="#f1f5f9"
+                      strokeDasharray="3 3"
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="subject"
+                      tickLine={false}
+                      axisLine={{ stroke: "#e2e8f0" }}
+                      tick={{ fontSize: 10, fill: "#64748b" }}
+                    />
+                    <YAxis
+                      domain={[0, 100]}
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fontSize: 11, fill: "#64748b" }}
+                      width={28}
+                    />
+                    <Tooltip
+                      cursor={{ fill: "rgba(27, 94, 67, 0.05)" }}
+                      contentStyle={tooltipStyle}
+                      formatter={(value) => [`${value}`, "Average Grade"]}
+                    />
+                    <Bar
+                      dataKey="average"
+                      fill="#1b5e43"
+                      radius={[6, 6, 0, 0]}
+                      maxBarSize={44}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </ChartCard>
         ) : null}
       </div>
 

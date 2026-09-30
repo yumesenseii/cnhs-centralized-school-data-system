@@ -125,20 +125,24 @@ export default function ActionButtons({
                 <KeyRound size={13} aria-hidden="true" />
                 Reset password
               </button>
-              <div className="my-1 border-t border-slate-100" />
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => runAction(onToggleStatus)}
-                className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cnhs-green/25"
-              >
-                {isActive ? (
-                  <UserX size={13} aria-hidden="true" />
-                ) : (
-                  <UserCheck size={13} aria-hidden="true" />
-                )}
-                {isActive ? "Deactivate user" : "Activate user"}
-              </button>
+              {user.isCurrentAdmin ? null : (
+                <>
+                  <div className="my-1 border-t border-slate-100" />
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => runAction(onToggleStatus)}
+                    className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cnhs-green/25"
+                  >
+                    {isActive ? (
+                      <UserX size={13} aria-hidden="true" />
+                    ) : (
+                      <UserCheck size={13} aria-hidden="true" />
+                    )}
+                    {isActive ? "Deactivate user" : "Activate user"}
+                  </button>
+                </>
+              )}
             </div>,
             document.body
           )

@@ -28,16 +28,11 @@ export function useAdminReports() {
       const yearsResult = await getCachedAdminSchoolYears();
       if (cancelled) return;
 
-      if (yearsResult.error) {
-        setError(yearsResult.error.message || "Unable to load admin reports.");
-        setFiltersReady(true);
-        endLoad(false);
-        return;
-      }
-
-      const years = yearsResult.data ?? [];
+      const years = yearsResult.data?.length
+        ? yearsResult.data
+        : ["SY 2026-2027", "SY 2025-2026"];
       setSchoolYears(years);
-      setSchoolYear((current) => current || years[0] || "");
+      setSchoolYear((current) => current || years[0] || "SY 2026-2027");
       setFiltersReady(true);
     }
 

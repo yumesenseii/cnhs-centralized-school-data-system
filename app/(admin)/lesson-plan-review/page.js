@@ -8,7 +8,6 @@ import AppSelect from "@/components/shared/AppSelect";
 import FilterDropdown from "@/components/lesson-plan/FilterDropdown";
 import LessonDrawer from "@/components/lesson-plan/LessonDrawer";
 import LessonPlanTable from "@/components/lesson-plan/LessonPlanTable";
-import ReviewContextAccordion from "@/components/lesson-plan/ReviewContextAccordion";
 import SearchBar from "@/components/lesson-plan/SearchBar";
 import SummaryCards from "@/components/lesson-plan/SummaryCards";
 import Header from "@/components/layout/Header";
@@ -87,6 +86,7 @@ function LessonPlanReviewPage() {
     refresh,
     submitDecision,
     markUnderReview,
+    reviewerName,
   } = useAdminLessonPlanReview();
 
   const [drawerLesson, setDrawerLesson] = useState(null);
@@ -149,36 +149,6 @@ function LessonPlanReviewPage() {
     setDrawerOpen(true);
     setOpenedFromUrl(planFromUrl);
   }, [planFromUrl, plans, loading, openedFromUrl]);
-
-  const quarterSummary = useMemo(() => {
-    const total = plans.length || 1;
-    const approved = plans.filter((p) => p.dbStatus === "Approved").length;
-    const pending = plans.filter(
-      (p) =>
-        p.dbStatus === "Pending Review" || p.dbStatus === "Under Review"
-    ).length;
-    const revision = plans.filter((p) => p.dbStatus === "Needs Revision").length;
-    return [
-      {
-        label: "Approved",
-        value: approved,
-        percent: Math.round((approved / total) * 100),
-        tone: "green",
-      },
-      {
-        label: "Pending",
-        value: pending,
-        percent: Math.round((pending / total) * 100),
-        tone: "orange",
-      },
-      {
-        label: "Needs Revision",
-        value: revision,
-        percent: Math.round((revision / total) * 100),
-        tone: "red",
-      },
-    ];
-  }, [plans]);
 
   function openDrawer(lesson) {
     setDrawerLesson(lesson);
@@ -263,18 +233,13 @@ function LessonPlanReviewPage() {
         )}
       </div>
 
-      <ReviewContextAccordion
-        recentActivity={recentActivity}
-        quarterSummary={quarterSummary}
-        actionRequired={actionRequired}
-      />
-
       <LessonDrawer
         open={drawerOpen}
         lesson={drawerLesson}
         onClose={() => setDrawerOpen(false)}
         onSubmitDecision={submitDecision}
         onOpenedPending={handleOpenedPending}
+        reviewerName={reviewerName}
       />
     </motion.div>
   );

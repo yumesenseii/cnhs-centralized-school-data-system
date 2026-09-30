@@ -19,14 +19,39 @@ export const riskStyles = {
 
 export const interventionStyles = {
   [RECOMMENDATION.ARAL]: "bg-sky-50 text-sky-700",
+  "ARAL Program": "bg-sky-50 text-sky-700",
+  "ARAL Program (RA 12028)": "bg-sky-50 text-sky-700",
+  "ARAL Learners": "bg-sky-50 text-sky-700",
   "ARAL Screening": "bg-sky-50 text-sky-700",
   "Recommended for ARAL Learners": "bg-sky-50 text-sky-700",
   "Recommended for ARAL Screening": "bg-sky-50 text-sky-700",
   "Potential ARAL Learners": "bg-sky-50 text-sky-700",
   "Potential ARAL Screening": "bg-sky-50 text-sky-700",
   [RECOMMENDATION.REMEDIATION]:
-    "bg-green-50 text-cnhs-green-dark ring-1 ring-green-100",
+    "bg-emerald-50 text-cnhs-green-dark ring-1 ring-emerald-100",
+  "Classroom Remediation": "bg-emerald-50 text-cnhs-green-dark ring-1 ring-emerald-100",
   [RECOMMENDATION.NONE]: "bg-slate-100 text-slate-500 ring-1 ring-slate-200",
+};
+
+export const pathwayStyles = {
+  "ARAL Program": "bg-sky-50 text-sky-700 border border-sky-200/60",
+  "ARAL Program (RA 12028)": "bg-sky-50 text-sky-700 border border-sky-200/60",
+  "Classroom Remediation": "bg-emerald-50 text-cnhs-green-dark border border-emerald-200/60",
+  "No Recommendation": "bg-slate-100 text-slate-500",
+};
+
+export const tierStyles = {
+  Basic: "bg-indigo-50 text-indigo-700 font-bold border border-indigo-200/60",
+  Plus: "bg-blue-50 text-blue-700 font-bold border border-blue-200/60",
+  basic: "bg-indigo-50 text-indigo-700 font-bold border border-indigo-200/60",
+  plus: "bg-blue-50 text-blue-700 font-bold border border-blue-200/60",
+};
+
+export const readingLevelStyles = {
+  Frustration: "bg-red-50 text-red-700 font-bold border border-red-200/60",
+  Instructional: "bg-amber-50 text-amber-800 font-bold border border-amber-200/60",
+  Independent: "bg-emerald-50 text-emerald-800 font-bold border border-emerald-200/60",
+  "Non-Reader": "bg-rose-100 text-rose-800 font-extrabold border border-rose-300",
 };
 
 export const classroomRemedialStyles = {
@@ -42,6 +67,9 @@ export const monitoringStatusStyles = {
   [MONITORING_STATUS.NEEDS_FURTHER_SUPPORT]: "bg-orange-50 text-cnhs-orange",
   [MONITORING_STATUS.FOR_FURTHER_MONITORING]: "bg-amber-50 text-amber-800",
   [MONITORING_STATUS.COMPLETED]: "bg-green-50 text-cnhs-green-dark",
+  "Active": "bg-sky-50 text-sky-700",
+  "Completed / Exited": "bg-emerald-50 text-emerald-700",
+  "Retained in Program": "bg-amber-50 text-amber-800",
   "Needs Update": "bg-orange-50 text-cnhs-orange",
 };
 

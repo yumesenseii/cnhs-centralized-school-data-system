@@ -86,19 +86,19 @@ export default function LessonPlanTable({
                   </td>
                   <td className="px-3 py-2.5 text-xs text-slate-500 dark:text-slate-400">{plan.lastUpdated}</td>
                   <td className="px-3 py-2.5">
-                    <div className="flex flex-wrap items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => onView?.(plan)}
-                        className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-cnhs-green-dark/35 bg-white px-2.5 text-[10px] font-semibold text-cnhs-green-dark transition-colors hover:bg-green-50 dark:border-cnhs-green/40 dark:bg-transparent dark:text-cnhs-green dark:hover:bg-cnhs-green/10"
+                        className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                       >
-                        <Eye size={11} />
+                        <Eye size={11} className="text-cnhs-green-dark dark:text-cnhs-green" />
                         View
                       </button>
                       <button
                         type="button"
                         onClick={() => onDownload?.(plan)}
-                        className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/5"
+                        className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                       >
                         <Download size={11} />
                         Download
@@ -111,7 +111,7 @@ export default function LessonPlanTable({
                             setPendingPlan(plan);
                             fileInputRef.current?.click();
                           }}
-                          className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-cnhs-orange/40 bg-orange-50 px-2.5 text-[10px] font-semibold text-cnhs-orange transition-colors hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-cnhs-orange/10 dark:hover:bg-cnhs-orange/20"
+                          className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md bg-cnhs-orange px-2.5 text-[11px] font-bold text-white shadow-xs transition-colors hover:bg-[#d47828] disabled:opacity-60"
                         >
                           {isBusy ? (
                             <Loader2 size={11} className="animate-spin" />
@@ -129,14 +129,14 @@ export default function LessonPlanTable({
                           await onDelete?.(plan);
                           setBusyId(null);
                         }}
-                        className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-red-200 bg-white px-2.5 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-70 dark:border-red-500/30 dark:bg-transparent dark:hover:bg-red-950/30"
+                        className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border border-red-200 bg-white px-2 text-[11px] font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-60 dark:border-red-900/40 dark:bg-white/5 dark:text-red-400"
+                        title="Delete lesson plan"
                       >
                         {isBusy ? (
                           <Loader2 size={11} className="animate-spin" />
                         ) : (
                           <Trash2 size={11} />
                         )}
-                        Delete
                       </button>
                     </div>
                   </td>

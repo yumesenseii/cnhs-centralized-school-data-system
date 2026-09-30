@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, CloudUpload } from "lucide-react";
+import { ArrowLeft, ArrowRight, CloudUpload, Download } from "lucide-react";
 import FileCard from "@/components/teacher/lesson-plans/FileCard";
 import { lessonPlansData } from "@/data/teacher/lessonPlans";
 import { confirmDelete } from "@/lib/ui/confirmAction";
@@ -171,6 +171,23 @@ export default function UploadLessonFile({ file, onFileChange, onBack, onPreview
       </section>
 
       <aside className="space-y-3">
+        <div className="rounded-xl border border-cnhs-green/30 bg-emerald-50/60 p-3.5 shadow-[0_6px_16px_rgba(15,23,42,0.04)] dark:border-cnhs-green/40 dark:bg-emerald-950/30">
+          <h3 className="text-[12px] font-bold text-cnhs-green-dark dark:text-cnhs-green">
+            Official DepEd Template
+          </h3>
+          <p className="mt-1.5 text-[11px] text-slate-600 dark:text-slate-300">
+            Use the standard CNHS Daily Lesson Plan format (DO 3 s.2026).
+          </p>
+          <a
+            href="/templates/LP_20week1.docx"
+            download="LP_Week1_2026-2027_Template.docx"
+            className="mt-2.5 inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-cnhs-green-dark py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[#246f54]"
+          >
+            <Download size={13} />
+            Download DLP Template (DOCX)
+          </a>
+        </div>
+
         <div className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] dark:border-white/10 dark:bg-[var(--card)] dark:shadow-none">
           <h3 className="text-[12px] font-semibold text-slate-800 dark:text-slate-100">
             Accepted Formats

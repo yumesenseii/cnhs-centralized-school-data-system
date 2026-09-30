@@ -7,6 +7,7 @@ import PerformanceChart from "@/components/dashboard/PerformanceChart";
 import PriorityLearnersTable from "@/components/dashboard/PriorityLearnersTable";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import RiskDistributionChart from "@/components/dashboard/RiskDistributionChart";
+import LongitudinalImpactPanel from "@/components/dashboard/LongitudinalImpactPanel";
 import StatCard from "@/components/dashboard/StatCard";
 import WeakSubjectChart from "@/components/dashboard/WeakSubjectChart";
 import DeferredMount from "@/components/shared/DeferredMount";
@@ -17,6 +18,7 @@ const TABS = [
   { id: "summary", label: "Summary" },
   { id: "charts", label: "Charts" },
   { id: "by-level", label: "By Level" },
+  { id: "longitudinal", label: "Longitudinal & AI Insights" },
   { id: "breakdown", label: "Breakdown" },
 ];
 
@@ -284,6 +286,10 @@ export default function AdminAcademicAnalytics({
               </div>
             </section>
           </div>
+        ) : null}
+
+        {activeTab === "longitudinal" ? (
+          <LongitudinalImpactPanel schoolYear={schoolYear} />
         ) : null}
 
         {activeTab === "breakdown" ? (

@@ -2,6 +2,7 @@
 
 import SectionRow from "@/components/section-management/SectionRow";
 import AppSelect from "@/components/shared/AppSelect";
+import { GRADE_FILTER_OPTIONS } from "@/lib/academic/gradeLevels";
 
 const columns = [
   "Grade Level",
@@ -49,13 +50,7 @@ export default function SectionsTable({
           <SelectFilter
             label="Grade"
             value={filters.grade}
-            options={[
-              "All Grades",
-              "Grade 7",
-              "Grade 8",
-              "Grade 9",
-              "Grade 10",
-            ]}
+            options={GRADE_FILTER_OPTIONS}
             onChange={(value) => onFiltersChange({ ...filters, grade: value })}
           />
           <SelectFilter

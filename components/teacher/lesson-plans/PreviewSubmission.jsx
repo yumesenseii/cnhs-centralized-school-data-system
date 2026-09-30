@@ -41,7 +41,7 @@ export default function PreviewSubmission({
     try {
       await onSubmit?.();
       onClearDraft?.();
-      showToast("Lesson plan submitted for Head Teacher review.");
+      showToast("Lesson plan submitted for Principal review.");
       router.replace("/teacher/lesson-plans");
     } catch (error) {
       setLocalError(error?.message ?? "Failed to submit lesson plan.");
@@ -57,7 +57,7 @@ export default function PreviewSubmission({
               Lesson Information
             </h2>
             <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
-              Review all details before submitting to the Head Teacher.
+              Review all details before submitting to the Principal.
             </p>
           </div>
           <StatusBadge status="Pending Review" />
@@ -122,7 +122,7 @@ export default function PreviewSubmission({
           className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-4 text-[12px] font-semibold text-white transition-colors hover:bg-[#246f54] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {submitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-          {submitting ? "Submitting..." : "Submit to Head Teacher"}
+          {submitting ? "Submitting..." : "Submit to Principal"}
         </button>
       </div>
     </div>

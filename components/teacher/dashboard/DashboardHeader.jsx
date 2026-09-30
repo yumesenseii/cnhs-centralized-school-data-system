@@ -17,6 +17,9 @@ export default function DashboardHeader({ controls }) {
           <h1 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-slate-800 sm:text-[22px]">
             Teacher Dashboard
           </h1>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Your classes, learners, attendance, and tasks at a glance.
+          </p>
         </div>
 
         <MobileNavSheet ariaLabel="Open teacher menu" title="Teacher navigation">

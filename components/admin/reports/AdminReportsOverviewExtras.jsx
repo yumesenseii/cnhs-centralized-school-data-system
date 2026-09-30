@@ -5,6 +5,7 @@ import {
   sessionRatePercent,
 } from "@/lib/attendance/dailyAnalytics";
 import { monthLabel } from "@/lib/attendance/constants";
+import MultiYearCaseloadTrendCard from "@/components/admin/reports/MultiYearCaseloadTrendCard";
 import { cn } from "@/lib/utils";
 
 function hasDailyRecords(row = {}) {
@@ -74,78 +75,44 @@ export default function AdminReportsOverviewExtras({
   const weakClasses = hotspots.weakClasses ?? [];
 
   return (
-    <div className="space-y-3">
-      {hasActions ? (
-        <div className="inline-flex w-fit max-w-full flex-wrap items-center gap-2 rounded-xl border border-cnhs-orange/30 bg-cnhs-orange-soft px-3 py-2 text-[12px]">
-          <span className="font-semibold text-cnhs-orange">
-            Needs your attention
-          </span>
-          {pendingFiles > 0 ? (
-            <button
-              type="button"
-              onClick={() => onGoMonitoring?.("received")}
-              className="cursor-pointer rounded-full border border-cnhs-orange/40 bg-white px-2.5 py-0.5 text-[11px] font-semibold text-cnhs-orange transition-colors hover:bg-cnhs-orange/10"
-            >
-              {pendingFiles} class report
-              {pendingFiles === 1 ? "" : "s"} for review
-            </button>
-          ) : null}
-          {pendingApprovals > 0 ? (
-            <button
-              type="button"
-              onClick={() => onGoMonitoring?.("approve")}
-              className="cursor-pointer rounded-full border border-cnhs-orange/40 bg-white px-2.5 py-0.5 text-[11px] font-semibold text-cnhs-orange transition-colors hover:bg-cnhs-orange/10"
-            >
-              {pendingApprovals} ARAL recommendation
-              {pendingApprovals === 1 ? "" : "s"} to approve
-            </button>
-          ) : null}
-          {unassigned > 0 ? (
-            <button
-              type="button"
-              onClick={() => onGoMonitoring?.("facilitators")}
-              className="cursor-pointer rounded-full border border-cnhs-orange/40 bg-white px-2.5 py-0.5 text-[11px] font-semibold text-cnhs-orange transition-colors hover:bg-cnhs-orange/10"
-            >
-              {unassigned} learner{unassigned === 1 ? "" : "s"} need
-              {unassigned === 1 ? "s" : ""} an ARAL facilitator
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+    <div className="space-y-4">
+      {/* Year-over-Year Intervention Progress & Caseload Comparison */}
+      <MultiYearCaseloadTrendCard />
 
-      <section className="rounded-xl border border-slate-200 bg-white px-3 py-3 dark:border-white/5 dark:bg-[var(--card)]">
+      {/* Intervention Progress Summary */}
+      <section className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm dark:border-white/5 dark:bg-[var(--card)]">
         <SectionHeader
-          title="Learner monitoring"
-          actionLabel="View learners"
+          title="Current Academic Year Intervention Status"
+          actionLabel="View in Academic Monitoring →"
           onAction={() => onGoMonitoring?.("students")}
         />
         <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
             {
-              label: "Under monitoring",
+              label: "Active Intervention",
               value: monitoringHealth.underMonitoring ?? 0,
             },
             {
-              label: "Completed",
+              label: "Completed / Exited",
               value: monitoringHealth.completed ?? 0,
             },
             {
-              label: "Needs follow-up",
+              label: "Needs Follow-up",
               value: monitoringHealth.ongoing ?? 0,
             },
             {
-              label: "Completion rate",
+              label: "Program Exit Rate",
               value: `${monitoringHealth.completionRate ?? 0}%`,
             },
           ].map((item) => (
             <div
               key={item.label}
-              className="rounded-lg bg-slate-50/80 px-2.5 py-2.5 dark:bg-white/[0.03]"
+              className="rounded-lg border border-slate-100 bg-slate-50/70 p-2.5 dark:border-white/5 dark:bg-white/[0.03]"
             >
-              <p className="text-[10px] font-medium text-slate-500">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                 {item.label}
               </p>
-              <p className="mt-1 text-[15px] font-semibold tracking-[-0.02em] text-slate-900 dark:text-slate-100">
+              <p className="mt-1 text-base font-bold text-slate-900 dark:text-slate-100">
                 {item.value}
               </p>
             </div>

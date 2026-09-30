@@ -5,8 +5,7 @@ import AnimatedModal from "@/components/shared/AnimatedModal";
 import AppSelect from "@/components/shared/AppSelect";
 import { AnimatedBanner } from "@/components/shared/AnimatedFeedback";
 import { formatTeacherName } from "@/lib/admin/sectionMappers";
-
-const GRADE_OPTIONS = [7, 8, 9, 10];
+import { GRADE_OPTIONS } from "@/lib/academic/gradeLevels";
 
 export default function SectionFormModal({
   open,
@@ -102,10 +101,7 @@ export default function SectionFormModal({
                 value={gradeLevel}
                 onChange={setGradeLevel}
                 required
-                options={GRADE_OPTIONS.map((grade) => ({
-                  value: String(grade),
-                  label: `Grade ${grade}`,
-                }))}
+                options={GRADE_OPTIONS}
               />
             </div>
 

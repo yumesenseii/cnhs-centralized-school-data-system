@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import WelcomeLoginToast from "@/components/shared/WelcomeLoginToast";
 import StudentSidebar from "@/components/student/layout/StudentSidebar";
+import TopHeader from "@/components/layout/TopHeader";
 import {
   SIDEBAR_CONTENT_OFFSET_CLASS,
   SIDEBAR_CONTENT_OFFSET_COLLAPSED_CLASS,
@@ -62,13 +63,18 @@ export default function StudentShell({ children }) {
       />
       <div
         className={cn(
-          "min-h-screen transition-[padding] duration-200",
+          "min-h-screen flex flex-col transition-[padding] duration-200",
           sidebarCollapsed
             ? SIDEBAR_CONTENT_OFFSET_COLLAPSED_CLASS
             : SIDEBAR_CONTENT_OFFSET_CLASS
         )}
       >
-        <main className="mx-auto w-full max-w-[1180px] px-3 py-3 sm:px-4 lg:px-4 lg:py-3">
+        <TopHeader
+          role="student"
+          mobileNavTitle="Student navigation"
+          renderMobileNav={(close) => <StudentSidebar mobile onNavigate={close} />}
+        />
+        <main className="mx-auto w-full max-w-[1180px] flex-1 px-3 py-3 sm:px-4 lg:px-4 lg:py-3">
           {children}
         </main>
       </div>

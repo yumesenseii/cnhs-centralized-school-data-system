@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
+  AlertCircle,
   CalendarDays,
   ChevronRight,
   Download,
@@ -206,8 +207,19 @@ export default function AcademicRecordsPage() {
       />
 
       {error ? (
-        <div className="mb-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200/80 bg-red-50/90 px-4 py-3 text-sm text-red-700 shadow-xs dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} className="shrink-0 text-red-500" />
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={refresh}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-red-300/80 bg-white px-3 py-1 text-xs font-semibold text-red-700 shadow-xs transition hover:bg-red-50 active:scale-95 dark:border-red-800 dark:bg-slate-900 dark:text-red-300 dark:hover:bg-slate-800"
+          >
+            <RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />
+            Retry
+          </button>
         </div>
       ) : null}
 

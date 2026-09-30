@@ -10,6 +10,7 @@ import {
   invalidateTeacherRosterCache,
   loadBuiltTeacherRoster,
 } from "@/lib/teacher/teacherRosterCache";
+import { getSectionAttendanceAnalytics } from "@/lib/supabase/queries/attendance";
 import { buildTeacherDashboardModel } from "@/lib/teacher/dashboardMappers";
 import { useSoftLoadState } from "@/hooks/useSoftLoadState";
 
@@ -127,6 +128,16 @@ export function useTeacherDashboard() {
       setBuilding(true);
       setError("");
       try {
+        let attendanceAnalytics = null;
+        try {
+          const attRes = await getSectionAttendanceAnalytics({ schoolYear });
+          if (!attRes.error) {
+            attendanceAnalytics = attRes.data ?? null;
+          }
+        } catch (e) {
+          console.warn("[useTeacherDashboard] attendance load error", e);
+        }
+
         const next = await loadBuiltTeacherRoster(
           {
             classes: bundle.classes ?? [],
@@ -148,6 +159,7 @@ export function useTeacherDashboard() {
                 quarter,
                 teacherId,
                 roster: shell,
+                attendanceAnalytics,
               });
               if (cancelled) return;
               setData((current) => {
@@ -173,6 +185,7 @@ export function useTeacherDashboard() {
           quarter,
           teacherId,
           roster: next,
+          attendanceAnalytics,
         });
         if (cancelled) return;
         if (mapped.roster?.predictionsPending) {
@@ -196,6 +209,7 @@ export function useTeacherDashboard() {
             quarter,
             teacherId,
             roster: retried,
+            attendanceAnalytics,
           });
         }
         if (cancelled) return;

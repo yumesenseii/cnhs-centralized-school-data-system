@@ -10,6 +10,7 @@ import {
   markLessonPlanUnderReview,
   resubmitLessonPlan,
   reviewLessonPlan,
+  saveLessonPlanSectionRemarks,
   deleteTeacherLessonPlan,
   subscribeToLessonPlanReviewChanges,
   subscribeToTeacherLessonPlans,
@@ -114,7 +115,7 @@ export function useTeacherLessonPlans() {
   }, [teacher?.id, refresh]);
 
   const resubmit = useCallback(
-    async ({ id, file, previousFilePath, schoolYear }) => {
+    async ({ id, file, previousFilePath, schoolYear, revisionNote = null }) => {
       if (!teacher?.id) {
         return { ok: false, error: new Error("Teacher session is required.") };
       }
@@ -124,6 +125,7 @@ export function useTeacherLessonPlans() {
         teacherId: teacher.id,
         schoolYear,
         file,
+        revisionNote,
         previousFilePath,
       });
 
@@ -380,13 +382,14 @@ export function useAdminLessonPlanReview() {
   }
 
   const submitDecision = useCallback(
-    async ({ id, status, remarks }) => {
+    async ({ id, status, remarks, sectionRemarks = [] }) => {
       const result = await reviewLessonPlan({
         id,
         status,
         remarks,
+        sectionRemarks,
         reviewedBy: reviewerProfileId,
-        reviewerName,
+        reviewerName: reviewerName || "Principal",
       });
 
       if (result.error) return { ok: false, error: result.error };
@@ -399,6 +402,22 @@ export function useAdminLessonPlanReview() {
     [refresh, reviewerProfileId, reviewerName]
   );
 
+  const saveDraftRemarks = useCallback(
+    async ({ id, sectionRemarks = [] }) => {
+      const result = await saveLessonPlanSectionRemarks({
+        id,
+        sectionRemarks,
+      });
+      if (result.error) return { ok: false, error: result.error };
+      await refresh();
+      return {
+        ok: true,
+        plan: result.data ? mapLessonPlanForAdmin(result.data) : null,
+      };
+    },
+    [refresh]
+  );
+
   const markUnderReview = useCallback(
     async (lesson) => {
       if (!lesson?.id) return { ok: false, error: new Error("Missing lesson id.") };
@@ -408,7 +427,7 @@ export function useAdminLessonPlanReview() {
 
       const result = await markLessonPlanUnderReview(lesson.id, {
         actorProfileId: reviewerProfileId,
-        actorName: reviewerName,
+        actorName: reviewerName || "Principal",
       });
       if (result.error) return { ok: false, error: result.error };
 
@@ -441,7 +460,9 @@ export function useAdminLessonPlanReview() {
     error,
     refresh,
     submitDecision,
+    saveDraftRemarks,
     markUnderReview,
     reviewerProfileId,
+    reviewerName: reviewerName || "Principal",
   };
 }

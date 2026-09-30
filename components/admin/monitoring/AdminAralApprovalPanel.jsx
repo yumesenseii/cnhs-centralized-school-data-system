@@ -135,7 +135,7 @@ function identificationReasonLine(entries = [], fallbackQuarter = null) {
     : `below ${ARAL_GRADE_THRESHOLD}`;
 }
 
-function isPendingHt(status) {
+function isPendingPrincipal(status) {
   return (
     status === ARAL_APPROVAL_STATUS.SUGGESTED ||
     status === ARAL_APPROVAL_STATUS.SUBMITTED ||
@@ -143,7 +143,7 @@ function isPendingHt(status) {
   );
 }
 
-/** After HT Approve, the row is locked (no re-approve / return / note). */
+/** After Principal Approve, the row is locked (no re-approve / return / note). */
 function isApprovedLocked(learner) {
   return learner?.displayStatus === ARAL_APPROVAL_STATUS.APPROVED;
 }
@@ -274,7 +274,7 @@ function buildApprovalSectionGroups(aralRows = []) {
         })
         .sort((a, b) => String(a.name).localeCompare(String(b.name)));
 
-      const pending = learners.filter((l) => isPendingHt(l.displayStatus)).length;
+      const pending = learners.filter((l) => isPendingPrincipal(l.displayStatus)).length;
       const sample = learners[0];
       const grade = parseGradeLabel(gradeSection, sample?.gradeLevel);
       return {
@@ -602,7 +602,7 @@ export default function AdminAralApprovalPanel({
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {folder.pending > 0 ? (
                       <span className="rounded-full bg-cnhs-orange-soft px-2 py-0.5 text-[10px] font-medium text-cnhs-orange ring-1 ring-cnhs-orange/30 dark:bg-cnhs-orange/15 dark:text-cnhs-orange dark:ring-0">
-                        {folder.pending} pending HT
+                        {folder.pending} pending Principal review
                       </span>
                     ) : (
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-200 dark:bg-white/5 dark:text-slate-400 dark:ring-0">
@@ -645,7 +645,7 @@ export default function AdminAralApprovalPanel({
                 {visibleSections.length} section
                 {visibleSections.length === 1 ? "" : "s"}
                 {activeFolder?.pending
-                  ? ` · ${activeFolder.pending} pending HT`
+                  ? ` · ${activeFolder.pending} pending Principal review`
                   : " · none pending"}
               </p>
             </div>
@@ -686,7 +686,7 @@ export default function AdminAralApprovalPanel({
                       <p className="text-[10px] text-slate-500 dark:text-slate-400">
                         {group.count} learner{group.count === 1 ? "" : "s"}
                         {group.pending > 0
-                          ? ` · ${group.pending} pending HT`
+                          ? ` · ${group.pending} pending Principal review`
                           : " · none pending"}
                       </p>
                     </div>
@@ -750,7 +750,7 @@ export default function AdminAralApprovalPanel({
                                 "Learner",
                                 "Identified in",
                                 "Approval",
-                                "HT note",
+                                "Principal note",
                                 "Actions",
                               ].map((h) => (
                                 <th
@@ -863,6 +863,17 @@ export default function AdminAralApprovalPanel({
                                         <p className="text-[10px] text-slate-400">
                                           {learner.reasonLine}
                                         </p>
+                                      ) : null}
+                                      {learner.sourceRows?.[0]?.rfPredictedRisk ? (
+                                        <div className="flex items-center gap-1 text-[10px] text-purple-700 dark:text-purple-300">
+                                          <span className="font-semibold">RF Pattern:</span>
+                                          <span>{learner.sourceRows[0].rfPredictedRisk}</span>
+                                          {learner.sourceRows[0].recommendationConfidence ? (
+                                            <span className="text-slate-400">
+                                              ({Math.round(learner.sourceRows[0].recommendationConfidence * 100)}%)
+                                            </span>
+                                          ) : null}
+                                        </div>
                                       ) : null}
                                     </div>
                                   </td>

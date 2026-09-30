@@ -56,12 +56,12 @@ export const lessonPlansData = {
   uploadHints: {
     acceptedFormats: ["PDF", "DOCX", "DOC"],
     maxSizeMb: 10,
-    reminder: "Submit early to allow enough time for Head Teacher review before the weekly deadline.",
+    reminder: "Submit early to allow enough time for Principal review before the weekly deadline.",
   },
   successDefaults: {
     trackingNumber: "LP-2026-000125",
     status: "Pending Review",
-    submittedTo: "Head Teacher Queue",
+    submittedTo: "Principal Queue",
     notification: "Portal Notification",
     timeline: [
       { id: "submitted", label: "Submitted", done: true },

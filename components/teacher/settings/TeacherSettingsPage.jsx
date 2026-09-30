@@ -320,15 +320,14 @@ export default function TeacherSettingsPage() {
           </div>
           <ul className="space-y-2 text-[12px] leading-5 text-slate-600">
             <li>
-              Use <span className="font-medium text-slate-800">My Classes</span>,{" "}
-              <span className="font-medium text-slate-800">Input Grades</span>,{" "}
+              Use <span className="font-medium text-slate-800">My Classes</span> (for learner rosters, E-Record grade entry, and imports),{" "}
               <span className="font-medium text-slate-800">Lesson Plans</span>,
               monitoring, attendance, and reports for day-to-day work.
             </li>
             <li>
-              Class assignments are set by the Head Teacher under{" "}
+              Class assignments are set by the Principal under{" "}
               <span className="font-medium text-slate-800">
-                Classes & Sections
+                Class Organization
               </span>
               .
             </li>

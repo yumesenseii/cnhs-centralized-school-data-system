@@ -118,8 +118,8 @@ export function useAcademicRecords() {
         if (seq !== loadSeq.current) return;
 
         if (result.error) {
-          if (isTransientFetchError(result.error) && retryCount < 1) {
-            await delay(350);
+          if (isTransientFetchError(result.error) && retryCount < 2) {
+            await delay(400 * (retryCount + 1));
             if (seq !== loadSeq.current) return;
             return loadData({
               schoolYear: resolvedYear,
@@ -129,7 +129,11 @@ export function useAcademicRecords() {
             });
           }
 
-          setError(result.error.message || "Unable to load academic records.");
+          setError(
+            isTransientFetchError(result.error)
+              ? "Connection temporarily interrupted. Please click Refresh."
+              : result.error.message || "Unable to load academic records."
+          );
           setModel(null);
           endLoad(false);
           return;
@@ -196,8 +200,8 @@ export function useAcademicRecords() {
       } catch (err) {
         if (seq !== loadSeq.current) return;
 
-        if (isTransientFetchError(err) && retryCount < 1) {
-          await delay(350);
+        if (isTransientFetchError(err) && retryCount < 2) {
+          await delay(400 * (retryCount + 1));
           if (seq !== loadSeq.current) return;
           return loadData({
             schoolYear: resolvedYear,
@@ -207,7 +211,11 @@ export function useAcademicRecords() {
           });
         }
 
-        setError(err?.message || "Unable to load academic records.");
+        setError(
+          isTransientFetchError(err)
+            ? "Connection temporarily interrupted. Please click Refresh."
+            : err?.message || "Unable to load academic records."
+        );
         setModel((current) => current);
         endLoad(false);
       }
@@ -225,17 +233,10 @@ export function useAcademicRecords() {
       const yearsResult = await getCachedAdminSchoolYears();
       if (cancelled) return;
 
-      if (yearsResult.error) {
-        setError(
-          yearsResult.error.message || "Unable to load academic records."
-        );
-        setFiltersReady(true);
-        endLoad(false);
-        return;
-      }
-
-      const years = yearsResult.data ?? [];
-      const resolvedYear = years[0] ?? "";
+      const years = yearsResult.data?.length
+        ? yearsResult.data
+        : ["SY 2026-2027", "SY 2025-2026"];
+      const resolvedYear = years[0] ?? "SY 2026-2027";
 
       schoolYearsRef.current = years;
       setSchoolYears(years);

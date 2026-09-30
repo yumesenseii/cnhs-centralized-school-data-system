@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import PageHelp from "@/components/shared/PageHelp";
+import AdminGradeProgressMatrix from "@/components/admin/monitoring/AdminGradeProgressMatrix";
 import AdminAralFacilitatorAssignPanel from "@/components/admin/monitoring/AdminAralFacilitatorAssignPanel";
 import AdminAralApprovalPanel from "@/components/admin/monitoring/AdminAralApprovalPanel";
 import AdminAralProgressPanel from "@/components/admin/monitoring/AdminAralProgressPanel";
@@ -55,11 +56,10 @@ import { cn } from "@/lib/utils";
 import AppSelect from "@/components/shared/AppSelect";
 
 const MONITORING_TABS = [
-  { id: "received", label: "Received files" },
-  { id: "approve", label: "Approve ARAL" },
-  { id: "facilitators", label: "Assign facilitators" },
-  { id: "progress", label: "ARAL assessments" },
-  { id: "students", label: "Monitored students" },
+  { id: "matrix", label: "School Overview & Sections" },
+  { id: "intake", label: "Teacher Endorsements" },
+  { id: "facilitators", label: "Assign Facilitators" },
+  { id: "assessments", label: "Assessments & Learning Progress" },
 ];
 
 function StatCard({ label, value, icon: Icon, tone, alert, onClick, hint }) {
@@ -319,7 +319,8 @@ export default function AdminMonitoringPage() {
   const [status, setStatus] = useState("All Status");
   const [exportingAral, setExportingAral] = useState(false);
   const [exportingIntervention, setExportingIntervention] = useState(false);
-  const [activeTab, setActiveTab] = useState("received");
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("matrix");
   const [monitoredSubview, setMonitoredSubview] = useState("aral");
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
   const didAutoLandRef = useRef(false);
@@ -334,14 +335,18 @@ export default function AdminMonitoringPage() {
     if (recommendationParam) {
       setRecommendation(normalizeRecommendationType(recommendationParam));
     }
-    if (
-      tabParam &&
-      MONITORING_TABS.some((tab) => tab.id === tabParam)
-    ) {
-      setActiveTab(tabParam);
+    if (tabParam) {
+      if (tabParam === "matrix" || tabParam === "intake" || tabParam === "facilitators" || tabParam === "assessments") {
+        setActiveTab(tabParam);
+      } else if (tabParam === "approve" || tabParam === "received") {
+        setActiveTab("intake");
+      } else if (tabParam === "progress") {
+        setActiveTab("assessments");
+      } else if (tabParam === "students") {
+        setActiveTab("matrix");
+      }
       didAutoLandRef.current = true;
     }
-    // Keep More filters collapsed; active filters show a green dot on the button.
   }, [searchParams]);
 
   const filtered = useMemo(() => {
@@ -466,28 +471,16 @@ export default function AdminMonitoringPage() {
     if (didAutoLandRef.current || loading) return;
     if (!students.length && !classSummaries.length) return;
     didAutoLandRef.current = true;
-    if (actionCounts.pendingFiles > 0) {
-      setActiveTab("received");
-    } else if (actionCounts.pendingAralApprovals > 0) {
-      setActiveTab("approve");
-    } else if (kpiStats.aral > 0) {
-      setActiveTab("students");
-      setMonitoredSubview("aral");
-    } else if (kpiStats.classroomRemedialLearners > 0 || kpiStats.totalAtRisk > 0) {
-      setActiveTab("students");
-      setMonitoredSubview("nonAral");
+    if (actionCounts.pendingAralApprovals > 0) {
+      setActiveTab("intake");
     } else {
-      setActiveTab("received");
+      setActiveTab("matrix");
     }
   }, [
     loading,
     students.length,
     classSummaries.length,
-    actionCounts.pendingFiles,
     actionCounts.pendingAralApprovals,
-    kpiStats.aral,
-    kpiStats.classroomRemedialLearners,
-    kpiStats.totalAtRisk,
   ]);
 
   function goToTab(tabId, subview) {
@@ -623,52 +616,75 @@ export default function AdminMonitoringPage() {
       <Header
         breadcrumb="Home > Academic Monitoring"
         title="Academic Monitoring"
-        description="Track at-risk learners, ARAL approvals, and remediation across classes."
+        description="Track at-risk learners, ARAL teacher endorsements, and remediation across classes."
         controls={
           <>
             <PageHelp
-              summary="School-wide recommendations, ARAL approvals, and remediation oversight."
+              summary="School-wide academic support, ARAL approvals, and learning progress."
               steps={[
-                "Filter by school year, quarter, grade, or search a learner.",
-                "Review recommendations (ARAL Learners or Classroom Remedial) from ECR grades.",
-                "Use ARAL Approvals for Head Teacher review of facilitator class reports.",
-                "Intervention Excel exports recorded progress — not a causation claim.",
-                "Attendance does not drive academic risk; use Attendance for AM/PM records.",
+                "Filter by school year, term, grade, or search a learner name or number.",
+                "Review teacher endorsements for ARAL (English & Filipino) and Classroom Remediation.",
+                "Assign ARAL facilitators and monitor learner progress from Pre-Test to Post-Test.",
+                "Intervention Excel exports official student support records.",
+                "Attendance does not drive academic risk; use Attendance for morning/afternoon records.",
               ]}
             />
-            <button
-              type="button"
-              onClick={handleExportInterventionCaseload}
-              disabled={loading || exportingIntervention}
-              title="Export learners under intervention (Recorded Progress, not a causation claim)"
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-[12px] font-semibold text-cnhs-green-dark transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {exportingIntervention ? (
-                <Loader2 size={13} className="animate-spin" />
-              ) : (
-                <Download size={13} />
-              )}
-              Intervention Excel
-            </button>
-            <button
-              type="button"
-              onClick={handleExportAralRecommended}
-              disabled={loading || exportingAral}
-              title="Export ARAL-recommended learners as a formal PDF report"
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50 px-3 text-[12px] font-semibold text-sky-800 transition-colors hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {exportingAral ? (
-                <Loader2 size={13} className="animate-spin" />
-              ) : (
-                <FileText size={13} />
-              )}
-              Export ARAL
-              {aralExportCount > 0 ? (
-                <span className="rounded-full bg-white/80 px-1.5 text-[10px] font-bold text-sky-700">
-                  {aralExportCount}
-                </span>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setExportMenuOpen((prev) => !prev)}
+                disabled={loading || exportingIntervention || exportingAral}
+                className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {exportingIntervention || exportingAral ? (
+                  <Loader2 size={13} className="animate-spin text-cnhs-green-dark" />
+                ) : (
+                  <Download size={13} className="text-slate-500" />
+                )}
+                Export Reports
+                <ChevronDown size={12} className={cn("text-slate-400 transition-transform", exportMenuOpen && "rotate-180")} />
+              </button>
+
+              {exportMenuOpen ? (
+                <>
+                  <div
+                    className="fixed inset-0 z-20"
+                    onClick={() => setExportMenuOpen(false)}
+                  />
+                  <div className="absolute right-0 top-full z-30 mt-1.5 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExportMenuOpen(false);
+                        handleExportInterventionCaseload();
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-800"
+                    >
+                      <Download size={13} className="text-emerald-600" />
+                      <div>
+                        <p>Student Support Records</p>
+                        <p className="text-[10px] font-normal text-slate-400">Excel (.xlsx)</p>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExportMenuOpen(false);
+                        handleExportAralRecommended();
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-sky-50 hover:text-sky-800"
+                    >
+                      <FileText size={13} className="text-sky-600" />
+                      <div>
+                        <p>ARAL Endorsement Roster</p>
+                        <p className="text-[10px] font-normal text-slate-400">Official PDF report</p>
+                      </div>
+                    </button>
+                  </div>
+                </>
               ) : null}
-            </button>
+            </div>
+
             <button
               type="button"
               onClick={() => refreshWithCurrentFilters({ bustCache: true })}
@@ -696,7 +712,7 @@ export default function AdminMonitoringPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search student name or number…"
+            placeholder="Search learner name, student number, or section…"
             className="h-9 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-[12px] text-slate-700 outline-none placeholder:text-slate-400 focus:border-cnhs-green"
           />
           <div className="flex flex-wrap items-center gap-2">
@@ -825,146 +841,73 @@ export default function AdminMonitoringPage() {
       {actionCounts.pendingFiles > 0 ||
       actionCounts.pendingAralApprovals > 0 ? (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-cnhs-orange/30 bg-cnhs-orange-soft px-3 py-2 text-[12px]">
-          <span className="font-semibold text-cnhs-orange">Needs your action</span>
+          <span className="font-semibold text-cnhs-orange">Needs Principal action:</span>
           {actionCounts.pendingFiles > 0 ? (
             <button
               type="button"
-              onClick={() => goToTab("received")}
+              onClick={() => goToTab("intake")}
               className="cursor-pointer rounded-full border border-cnhs-orange/40 bg-white px-2.5 py-0.5 text-[11px] font-semibold text-cnhs-orange transition-colors hover:bg-cnhs-orange/10 dark:border-cnhs-orange/20 dark:bg-cnhs-orange/10 dark:hover:bg-cnhs-orange/15"
             >
               {actionCounts.pendingFiles} file
-              {actionCounts.pendingFiles === 1 ? "" : "s"} for review
+              {actionCounts.pendingFiles === 1 ? "" : "s"} submitted
             </button>
           ) : null}
           {actionCounts.pendingAralApprovals > 0 ? (
             <button
               type="button"
-              onClick={() => goToTab("approve")}
+              onClick={() => goToTab("intake")}
               className="cursor-pointer rounded-full border border-cnhs-orange/40 bg-white px-2.5 py-0.5 text-[11px] font-semibold text-cnhs-orange transition-colors hover:bg-cnhs-orange/10 dark:border-cnhs-orange/20 dark:bg-cnhs-orange/10 dark:hover:bg-cnhs-orange/15"
             >
-              {actionCounts.pendingAralApprovals} ARAL approval
-              {actionCounts.pendingAralApprovals === 1 ? "" : "s"}
+              {actionCounts.pendingAralApprovals} ARAL endorsement
+              {actionCounts.pendingAralApprovals === 1 ? "" : "s"} awaiting review
             </button>
           ) : null}
         </div>
       ) : null}
 
-      <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50/40 p-2.5 sm:p-3 dark:border-white/5 dark:bg-white/[0.03]">
-        <div
-          className={cn(
-            "grid gap-3",
-            visibleKpiCount <= 3
-              ? "grid-cols-1 sm:grid-cols-3"
-              : visibleKpiCount === 4
-                ? "grid-cols-2 lg:grid-cols-4"
-                : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-5"
-          )}
-        >
+      <div className="mb-4 rounded-2xl border border-slate-200/80 bg-slate-50/40 p-2.5 sm:p-3 dark:border-white/5 dark:bg-white/[0.03]">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard
-            label="ARAL learners"
+            label="In ARAL Program"
             value={kpiStats.aral}
             icon={Clock3}
-            tone="bg-cnhs-orange-soft text-cnhs-orange"
-            alert={kpiStats.aral > 0}
+            tone="bg-purple-50 text-purple-700"
+            alert={actionCounts.pendingAralApprovals > 0}
             hint={
               actionCounts.pendingAralApprovals > 0
-                ? "Open Approve ARAL"
-                : "Open Monitored · ARAL Learners"
+                ? "Open Teacher Endorsements review queue"
+                : "Open School Overview & Sections"
             }
             onClick={() =>
-              goToTab(
-                actionCounts.pendingAralApprovals > 0 ? "approve" : "students",
-                actionCounts.pendingAralApprovals > 0 ? undefined : "aral"
-              )
+              goToTab(actionCounts.pendingAralApprovals > 0 ? "intake" : "matrix")
             }
           />
           <StatCard
-            label="Classroom remedial"
+            label="Classroom Remediation"
             value={kpiStats.classroomRemedialLearners}
             icon={Users}
-            tone="bg-cnhs-green-soft text-cnhs-green-dark"
-            alert={kpiStats.classroomRemedialLearners > 0}
-            hint="Open Monitored · Classroom remedial"
-            onClick={() => goToTab("students", "nonAral")}
+            tone="bg-blue-50 text-blue-700"
+            hint="Open School Overview & Sections"
+            onClick={() => goToTab("matrix")}
           />
-          {htIntervention.notStarted > 0 ? (
-            <StatCard
-              label="Not started"
-              value={htIntervention.notStarted}
-              icon={Clock3}
-              tone="bg-slate-100 text-slate-500"
-              hint="Open Monitored students"
-              onClick={() => goToTab("students")}
-            />
-          ) : null}
-          {kpiStats.ongoing > 0 ? (
-            <StatCard
-              label="Needs follow-up"
-              value={kpiStats.ongoing}
-              icon={AlertTriangle}
-              tone="bg-cnhs-red-soft text-cnhs-red"
-              alert
-              hint="Open ARAL assessments"
-              onClick={() => goToTab("progress")}
-            />
-          ) : null}
-          {htIntervention.needsFurtherSupport > 0 ? (
-            <StatCard
-              label="Further support"
-              value={htIntervention.needsFurtherSupport}
-              icon={AlertTriangle}
-              tone="bg-cnhs-orange-soft text-cnhs-orange"
-              onClick={() => goToTab("students")}
-            />
-          ) : null}
-          {htIntervention.forFurtherMonitoring > 0 ? (
-            <StatCard
-              label="Further monitoring"
-              value={htIntervention.forFurtherMonitoring}
-              icon={Clock3}
-              tone="bg-cnhs-orange-soft text-cnhs-orange"
-              onClick={() => goToTab("students")}
-            />
-          ) : null}
-          {kpiStats.completed > 0 ? (
-            <StatCard
-              label="Completed"
-              value={kpiStats.completed}
-              icon={CheckCircle2}
-              tone="bg-cnhs-green-soft text-cnhs-green-dark"
-              hint="Open Monitored students"
-              onClick={() => goToTab("students", "aral")}
-            />
-          ) : null}
           <StatCard
-            label="Classroom remedial classes"
-            value={kpiStats.remediation}
-            icon={BookOpen}
-            tone="bg-cnhs-green-soft text-cnhs-green-dark"
-            hint="Open Monitored · Classroom remedial"
-            onClick={() => goToTab("students", "nonAral")}
+            label="Follow-up Needed"
+            value={kpiStats.ongoing + (htIntervention.needsFurtherSupport || 0)}
+            icon={AlertTriangle}
+            tone="bg-amber-50 text-amber-700"
+            alert={(kpiStats.ongoing + (htIntervention.needsFurtherSupport || 0)) > 0}
+            hint="Open Assessments & Learning Progress"
+            onClick={() => goToTab("assessments")}
+          />
+          <StatCard
+            label="Completed & Exited"
+            value={kpiStats.completed}
+            icon={CheckCircle2}
+            tone="bg-emerald-50 text-emerald-700"
+            hint="Open Assessments & Learning Progress"
+            onClick={() => goToTab("assessments")}
           />
         </div>
-        {htIntervention.bySection.length ? (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {htIntervention.bySection.slice(0, 8).map((row) => (
-              <span
-                key={row.label}
-                className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200 dark:bg-white/5 dark:text-slate-300 dark:ring-0"
-              >
-                {row.label} · {row.count}
-              </span>
-            ))}
-            {htIntervention.bySubject.slice(0, 6).map((row) => (
-              <span
-                key={`sub-${row.label}`}
-                className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-cnhs-green-dark ring-1 ring-emerald-100 dark:bg-cnhs-green/15 dark:text-cnhs-green dark:ring-0"
-              >
-                {row.label} · {row.count}
-              </span>
-            ))}
-          </div>
-        ) : null}
       </div>
 
       <div
@@ -999,15 +942,18 @@ export default function AdminMonitoringPage() {
         id={`admin-monitoring-panel-${activeTab}`}
         aria-labelledby={`admin-monitoring-tab-${activeTab}`}
       >
-        {activeTab === "received" ? (
-          <AdminClassReportFilesPanel
-            students={students}
+        {activeTab === "matrix" ? (
+          <AdminGradeProgressMatrix
+            students={filtered}
             classSummaries={classSummaries}
-            onChanged={() => refreshWithCurrentFilters({ bustCache: true })}
+            onNavigateTab={(tab) => setActiveTab(tab)}
+            onViewStudent={openStudent}
+            schoolYear={activeSchoolYear}
+            quarter={quarter === "All Terms" ? "All Terms" : quarter}
           />
         ) : null}
 
-        {activeTab === "approve" ? (
+        {activeTab === "intake" ? (
           <AdminAralApprovalPanel
             students={filtered}
             onChanged={() => refreshWithCurrentFilters({ bustCache: true })}
@@ -1030,22 +976,10 @@ export default function AdminMonitoringPage() {
           />
         ) : null}
 
-        {activeTab === "progress" ? (
+        {activeTab === "assessments" ? (
           <AdminAralProgressPanel
             students={students}
             onViewStudent={openStudent}
-          />
-        ) : null}
-
-        {activeTab === "students" ? (
-          <AdminMonitoredStudentsPanel
-            learners={dedupedMonitored}
-            schoolYear={activeSchoolYear}
-            quarter={quarter === "All Terms" ? "All Terms" : quarter}
-            onViewMonitoring={openStudent}
-            loading={loading}
-            subview={monitoredSubview}
-            onSubviewChange={setMonitoredSubview}
           />
         ) : null}
       </div>

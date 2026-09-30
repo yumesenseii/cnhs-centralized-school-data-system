@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { CalendarDays, Layers3, RefreshCw, Upload } from "lucide-react";
+import { CalendarDays, Download, Layers3, RefreshCw, Upload } from "lucide-react";
 import AppSelect from "@/components/shared/AppSelect";
 import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
@@ -13,6 +13,10 @@ import LessonPlanTable from "@/components/teacher/lesson-plans/LessonPlanTable";
 import TeacherLessonPlanDrawer from "@/components/teacher/lesson-plans/TeacherLessonPlanDrawer";
 import { useTeacherLessonPlans } from "@/hooks/teacher/useLessonPlans";
 import { getLessonPlanSignedUrl } from "@/lib/supabase/queries/lessonPlans";
+import {
+  downloadFileFromUrl,
+  formatLessonPlanDownloadName,
+} from "@/lib/lesson-plan/docxExport";
 import { lessonPlansData } from "@/data/teacher/lessonPlans";
 import { TERM_ALL_LABEL, TERM_OPTIONS } from "@/lib/academic/termLabels";
 import DeleteConfirmModal from "@/components/shared/DeleteConfirmModal";
@@ -130,18 +134,31 @@ export default function LessonPlansDashboard() {
     if (!plan?.filePath) return;
     const signed = await getLessonPlanSignedUrl(plan.filePath);
     if (signed.data) {
-      window.open(signed.data, "_blank", "noopener,noreferrer");
+      const fileName = formatLessonPlanDownloadName(plan);
+      await downloadFileFromUrl(signed.data, fileName);
     }
   }
 
-  async function handleResubmit(plan, file) {
+  async function handleResubmit(payloadOrPlan, maybeFile) {
+    const payload =
+      payloadOrPlan?.file
+        ? payloadOrPlan
+        : {
+            id: payloadOrPlan?.id,
+            file: maybeFile,
+            previousFilePath: payloadOrPlan?.filePath,
+            schoolYear: payloadOrPlan?.schoolYear,
+            revisionNote: null,
+          };
+
     setResubmitting(true);
     setActionError("");
     const result = await resubmit({
-      id: plan.id,
-      file,
-      previousFilePath: plan.filePath,
-      schoolYear: plan.schoolYear,
+      id: payload.id,
+      file: payload.file,
+      previousFilePath: payload.previousFilePath,
+      schoolYear: payload.schoolYear,
+      revisionNote: payload.revisionNote,
     });
     setResubmitting(false);
 
@@ -168,7 +185,7 @@ export default function LessonPlansDashboard() {
       itemLabel: plan.lessonTitle || "this lesson plan",
       consequence: isDraft
         ? "This file will be removed. This cannot be undone."
-        : "The head teacher must approve before this submitted file is removed.",
+        : "The Principal must approve before this submitted file is removed.",
       confirmLabel: isDraft ? "Delete" : "Send request",
       tone: isDraft ? "danger" : "request",
     });
@@ -233,7 +250,7 @@ export default function LessonPlansDashboard() {
               Lesson Plans
             </h1>
             <p className="mt-1 text-[12px] text-slate-500">
-              Manage and submit lesson plans for Head Teacher review.
+              Manage and submit lesson plans for Principal review.
             </p>
           </div>
 
@@ -274,6 +291,16 @@ export default function LessonPlansDashboard() {
             />
             Refresh
           </button>
+
+          <a
+            href="/templates/LP_20week1.docx"
+            download="LP_Week1_2026-2027_Template.docx"
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-cnhs-green/30 bg-emerald-50 px-3 text-[11px] font-semibold text-cnhs-green-dark transition-colors hover:bg-emerald-100 dark:border-cnhs-green/40 dark:bg-emerald-950/40 dark:text-cnhs-green"
+            title="Download the official DepEd Daily Lesson Plan template"
+          >
+            <Download size={12} />
+            Template (DOCX)
+          </a>
 
           <Link
             href="/teacher/lesson-plans/upload?fresh=1"

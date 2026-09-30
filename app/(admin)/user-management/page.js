@@ -196,6 +196,14 @@ export default function UserManagementPage() {
     }
   }, [directory, refreshStudents]);
 
+  useEffect(() => {
+    if (!selectedUser?.id || !data.users?.length) return;
+    const updated = data.users.find((u) => u.id === selectedUser.id);
+    if (updated && updated !== selectedUser) {
+      setSelectedUser(updated);
+    }
+  }, [data.users, selectedUser]);
+
   function openView(user) {
     setSelectedUser(user);
     setDrawerOpen(true);

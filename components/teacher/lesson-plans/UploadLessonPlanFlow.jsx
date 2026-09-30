@@ -50,7 +50,7 @@ export default function UploadLessonPlanFlow() {
         selectedClass={selectedClass}
         subtitle={
           step === 1
-            ? "Submit a lesson plan for Head Teacher review."
+            ? "Submit a lesson plan for Principal review."
             : undefined
         }
         controls={

@@ -19,6 +19,16 @@ function keepRfModel(current, next) {
   return next;
 }
 
+function isTransientFetchError(err) {
+  const message = String(err?.message ?? err ?? "").toLowerCase();
+  return (
+    message.includes("failed to fetch") ||
+    message.includes("network") ||
+    message.includes("aborted") ||
+    err?.name === "AbortError"
+  );
+}
+
 export function useAdminDashboard() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
@@ -36,9 +46,23 @@ export function useAdminDashboard() {
         if (bustCache) invalidateAdminRosterCache();
         const result = await getAdminDashboardBundle();
         if (seq !== loadSeq.current) return;
+
         if (result.error || !result.data) {
-          setData(null);
-          setError(result.error?.message ?? "Unable to load admin dashboard.");
+          const err = result.error;
+          if ((isTransientFetchError(err) || !result.data) && retryCount < 3) {
+            window.setTimeout(() => {
+              if (seq !== loadSeq.current) return;
+              refresh({ retryCount: retryCount + 1, bustCache });
+            }, 500 * (retryCount + 1));
+            return;
+          }
+
+          setData((current) => current);
+          setError(
+            isTransientFetchError(err)
+              ? "Connection temporarily interrupted. Please click Retry."
+              : err?.message ?? "Unable to load school overview."
+          );
           endLoad(false);
           return;
         }
@@ -72,7 +96,7 @@ export function useAdminDashboard() {
         );
         if (seq !== loadSeq.current) return;
 
-        if (roster?.predictionsPending && retryCount < 1) {
+        if (roster?.predictionsPending && retryCount < 2) {
           const model = await buildAdminDashboardModel(result.data, roster);
           apply(model);
           endFirstPaint();
@@ -89,21 +113,27 @@ export function useAdminDashboard() {
         else endLoad(true);
       } catch (err) {
         if (seq !== loadSeq.current) return;
-        if (retryCount < 1) {
+
+        if (isTransientFetchError(err) && retryCount < 3) {
           endFirstPaint();
           window.setTimeout(() => {
             if (seq !== loadSeq.current) return;
-            refresh({ retryCount: retryCount + 1 });
-          }, 800);
+            refresh({ retryCount: retryCount + 1, bustCache });
+          }, 500 * (retryCount + 1));
           return;
         }
+
         let hadData = false;
         setData((current) => {
           hadData = Boolean(current);
           return current ?? null;
         });
         if (!hadData) {
-          setError(err?.message ?? "Unable to load admin dashboard.");
+          setError(
+            isTransientFetchError(err)
+              ? "Connection temporarily interrupted. Please click Retry."
+              : err?.message ?? "Unable to load school overview."
+          );
         }
         endLoad(false);
       }
@@ -123,3 +153,4 @@ export function useAdminDashboard() {
     refresh: () => refresh({ bustCache: true }),
   };
 }
+

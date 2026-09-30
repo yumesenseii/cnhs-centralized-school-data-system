@@ -1,10 +1,10 @@
-import TeacherInputGradesPage from "@/components/teacher/input-grades/TeacherInputGradesPage";
+import { redirect } from "next/navigation";
 
 export const metadata = {
   title: "Input Grades | CNHS Learn",
-  description: "Upload Official DepEd E-Class Records for assigned classes.",
+  description: "Grade entry and E-Class Records are managed directly in My Classes.",
 };
 
 export default function InputGradesRoute() {
-  return <TeacherInputGradesPage />;
+  redirect("/teacher/my-classes");
 }

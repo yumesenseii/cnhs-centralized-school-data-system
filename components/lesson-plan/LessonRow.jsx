@@ -43,7 +43,7 @@ export default function LessonRow({ lesson, onReview }) {
         <button
           type="button"
           onClick={() => onReview(lesson)}
-          className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full bg-cnhs-green-dark px-2.5 text-[10px] font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-[#246f54]"
+          className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md bg-cnhs-green-dark px-2.5 text-[11px] font-semibold text-white shadow-xs transition-colors duration-150 hover:bg-[#246f54]"
         >
           {isApproved ? (
             <Eye size={12} aria-hidden="true" />

@@ -802,8 +802,8 @@ html.dark .recharts-sector {
 
 .lesson-plan-docx td,
 .lesson-plan-docx th {
-  border: 1px solid #334155;
-  padding: 5px 7px;
+  border: 1px solid #475569;
+  padding: 6px 8px;
   vertical-align: top;
   word-break: break-word;
   overflow-wrap: anywhere;
@@ -812,6 +812,78 @@ html.dark .recharts-sector {
 .lesson-plan-docx img {
   max-width: 100%;
   height: auto;
+}
+
+/* ==========================================================================
+   Document Paper Sheet — Always Crisp White Paper with Dark Text in Dark Mode
+   ========================================================================== */
+.document-paper-sheet,
+html.dark .document-paper-sheet,
+[data-document-paper="true"],
+html.dark [data-document-paper="true"],
+[data-document-paper="true"] .bg-white,
+html.dark [data-document-paper="true"] .bg-white {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  color-scheme: light !important;
+}
+
+.document-paper-sheet *,
+html.dark .document-paper-sheet *,
+[data-document-paper="true"] *,
+html.dark [data-document-paper="true"] * {
+  color-scheme: light !important;
+}
+
+.document-paper-sheet .lesson-plan-docx,
+html.dark .document-paper-sheet .lesson-plan-docx {
+  color: #0f172a !important;
+  background-color: #ffffff !important;
+}
+
+.document-paper-sheet .lesson-plan-docx p,
+.document-paper-sheet .lesson-plan-docx h1,
+.document-paper-sheet .lesson-plan-docx h2,
+.document-paper-sheet .lesson-plan-docx h3,
+.document-paper-sheet .lesson-plan-docx h4,
+.document-paper-sheet .lesson-plan-docx span,
+.document-paper-sheet .lesson-plan-docx li,
+.document-paper-sheet .lesson-plan-docx strong,
+.document-paper-sheet .lesson-plan-docx b,
+.document-paper-sheet .lesson-plan-docx em,
+.document-paper-sheet .lesson-plan-docx i,
+html.dark .document-paper-sheet .lesson-plan-docx p,
+html.dark .document-paper-sheet .lesson-plan-docx h1,
+html.dark .document-paper-sheet .lesson-plan-docx h2,
+html.dark .document-paper-sheet .lesson-plan-docx h3,
+html.dark .document-paper-sheet .lesson-plan-docx h4,
+html.dark .document-paper-sheet .lesson-plan-docx span,
+html.dark .document-paper-sheet .lesson-plan-docx li,
+html.dark .document-paper-sheet .lesson-plan-docx strong,
+html.dark .document-paper-sheet .lesson-plan-docx b,
+html.dark .document-paper-sheet .lesson-plan-docx em,
+html.dark .document-paper-sheet .lesson-plan-docx i {
+  color: #0f172a !important;
+}
+
+.document-paper-sheet .lesson-plan-docx table,
+html.dark .document-paper-sheet .lesson-plan-docx table {
+  background-color: #ffffff !important;
+  border-color: #475569 !important;
+}
+
+.document-paper-sheet .lesson-plan-docx td,
+html.dark .document-paper-sheet .lesson-plan-docx td {
+  border-color: #475569 !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.document-paper-sheet .lesson-plan-docx th,
+html.dark .document-paper-sheet .lesson-plan-docx th {
+  border-color: #475569 !important;
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
 }
 
 /* Light global click feedback — primary actions & native buttons */
