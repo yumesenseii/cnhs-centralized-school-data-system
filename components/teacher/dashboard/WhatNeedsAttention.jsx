@@ -63,9 +63,9 @@ export default function WhatNeedsAttention({ items = [] }) {
         ) : null}
       </div>
 
-      <div className="p-4 sm:p-5">
+      <div className="p-3 sm:p-4">
         {hasItems ? (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
             {items.map((item) => {
               const tone = TONES[item.tone] ?? TONES.default;
               const Icon = ICONS[item.type] ?? AlertTriangle;
@@ -74,24 +74,24 @@ export default function WhatNeedsAttention({ items = [] }) {
                 <div
                   key={item.id}
                   className={cn(
-                    "flex flex-col justify-between gap-3 rounded-xl border p-3.5 transition-all duration-150 hover:shadow-sm sm:flex-row sm:items-center",
+                    "flex items-center justify-between gap-3 rounded-xl border p-2.5 sm:px-3 transition-all duration-150 hover:shadow-sm",
                     tone.bg
                   )}
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <span
                       className={cn(
-                        "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
                         tone.iconWrap
                       )}
                     >
                       <Icon size={16} />
                     </span>
-                    <div>
-                      <h3 className="text-xs font-semibold leading-snug">
+                    <div className="flex flex-col min-w-0">
+                      <h3 className="truncate text-xs font-semibold leading-tight text-slate-900">
                         {item.title}
                       </h3>
-                      <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600">
+                      <p className="truncate text-[11px] text-slate-600">
                         {item.description}
                       </p>
                     </div>
@@ -100,13 +100,14 @@ export default function WhatNeedsAttention({ items = [] }) {
                   {item.href ? (
                     <Link
                       href={item.href}
+                      title={item.actionLabel || "View"}
                       className={cn(
-                        "inline-flex shrink-0 items-center justify-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition-colors",
+                        "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold shadow-sm transition-colors",
                         tone.button
                       )}
                     >
-                      {item.actionLabel || "View"}
-                      <ArrowRight size={12} />
+                      <span className="hidden lg:inline-block">{item.actionLabel || "View"}</span>
+                      <ArrowRight size={14} />
                     </Link>
                   ) : null}
                 </div>

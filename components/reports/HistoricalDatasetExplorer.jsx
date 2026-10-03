@@ -192,7 +192,7 @@ export default function HistoricalDatasetExplorer({ initialSchoolYear = "SY 2025
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              placeholder="Search by learner ID (e.g. CNHS-SYN-2526-0001) or weak subject…"
+              placeholder="Search by learner ID (e.g. CNHS-SYN-2526-0001) or area needing attention…"
               className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/50 pl-9 pr-3 text-[12px] text-slate-800 placeholder:text-slate-400 outline-none transition-colors focus:border-cnhs-green focus:bg-white"
             />
           </div>
@@ -289,7 +289,7 @@ export default function HistoricalDatasetExplorer({ initialSchoolYear = "SY 2025
         </div>
       </div>
 
-      {/* Dataset Table & Trajectory Expansion */}
+      {/* Dataset Table & Trend Expansion */}
       <div className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm">
         {loading ? (
           <div className="flex h-64 items-center justify-center">
@@ -308,11 +308,11 @@ export default function HistoricalDatasetExplorer({ initialSchoolYear = "SY 2025
                   <th className="px-3 py-2.5">Learner ID</th>
                   <th className="px-3 py-2.5">Grade</th>
                   <th className="px-3 py-2.5">Academic Risk</th>
-                  <th className="px-3 py-2.5">Weak Subject</th>
+                  <th className="px-3 py-2.5">Area Needing Attention</th>
                   <th className="px-3 py-2.5">Pathway / Tier</th>
                   <th className="px-3 py-2.5">Phil-IRI Level</th>
                   <th className="px-3 py-2.5">Final Outcome</th>
-                  <th className="px-3 py-2.5 text-right">Trajectory</th>
+                  <th className="px-3 py-2.5 text-right">Academic Risk Trend</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-[12px]">
@@ -385,12 +385,12 @@ export default function HistoricalDatasetExplorer({ initialSchoolYear = "SY 2025
                           </div>
                         </div>
 
-                        {/* Expanded Trajectory Card */}
+                        {/* Expanded Trend Card */}
                         {isExpanded && (
                           <div className="border-t border-slate-100 bg-slate-50/70 p-4">
                             <div className="mb-2 flex items-center justify-between">
                               <p className="text-[11px] font-semibold text-slate-700">
-                                Longitudinal 3-Term Trajectory & Progress Details:
+                                3-Term Academic Risk Trend & Progress Details:
                               </p>
                               <span className="text-[10px] text-slate-400">
                                 Status: {learner.interventionStatus} · Reviewed by Principal

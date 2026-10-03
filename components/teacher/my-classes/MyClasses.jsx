@@ -15,10 +15,8 @@ import {
 } from "@/components/teacher/my-classes/shared";
 import { useTeacherClasses } from "@/hooks/teacher/useMyClasses";
 import { TERM_ALL_LABEL, termLabel } from "@/lib/academic/termLabels";
-import {
-  generateClassReportFilesForTerms,
-  REPORT_TERM_ALL,
-} from "@/lib/monitoring/classReportFiles";
+import { REPORT_TERM_ALL } from "@/lib/monitoring/classReportFiles";
+import { buildAndSaveClassReportSnapshot } from "@/lib/monitoring/classReportSnapshot";
 import { formatPersonName } from "@/lib/teacher/monitoringMappers";
 import { useAppToast } from "@/components/shared/AppToast";
 
@@ -55,14 +53,15 @@ export default function MyClasses() {
     setGenerateClass(classItem);
   }
 
-  function handleConfirmGenerate(termSelection) {
+  async function handleConfirmGenerate(termSelection) {
     if (!generateClass) return;
     setGeneratingId(generateClass.id);
     try {
-      const { files, terms } = generateClassReportFilesForTerms({
+      const { files, terms } = await buildAndSaveClassReportSnapshot({
         classItem: generateClass,
         termSelection,
-        uploadedBy: teacherDisplayName,
+        teacherId,
+        teacherName: teacherDisplayName,
       });
 
       if (!files.length) {

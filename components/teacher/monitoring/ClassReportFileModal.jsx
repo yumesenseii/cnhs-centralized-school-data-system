@@ -348,6 +348,70 @@ export default function ClassReportFileModal({
           </div>
         </div>
 
+        {/* Snapshot Summaries */}
+        {file.generated && !editing ? (
+          <div className="shrink-0 border-b border-slate-100 bg-slate-50 px-5 py-4">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              {/* Class Summary */}
+              <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Class Summary</h3>
+                <div className="space-y-1.5 text-[12px]">
+                  <div className="flex justify-between"><span className="text-slate-500">Total Learners</span><span className="font-semibold text-slate-700">{allLearners.length}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">High Risk</span><span className="font-semibold text-red-600">{allLearners.filter(l => l.academicRisk === "High Risk").length}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">Moderate Risk</span><span className="font-semibold text-orange-600">{allLearners.filter(l => l.academicRisk === "Moderate Risk").length}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">Low Risk</span><span className="font-semibold text-green-600">{allLearners.filter(l => l.academicRisk === "Low Risk").length}</span></div>
+                </div>
+              </div>
+
+              {/* Intervention Summary */}
+              <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Intervention Summary</h3>
+                <div className="space-y-1.5 text-[12px]">
+                  <div className="flex justify-between"><span className="text-slate-500">Needs Review</span><span className="font-semibold text-slate-700">{allLearners.filter(l => l.monitoringStatus === "Needs Review").length}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">Not Started</span><span className="font-semibold text-slate-700">{allLearners.filter(l => l.monitoringStatus === "Not Started").length}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">Ongoing</span><span className="font-semibold text-slate-700">{allLearners.filter(l => l.monitoringStatus === "Ongoing").length}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">Completed</span><span className="font-semibold text-slate-700">{allLearners.filter(l => l.monitoringStatus === "Completed").length}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">Needs Further Support</span><span className="font-semibold text-slate-700">{allLearners.filter(l => l.monitoringStatus === "Needs Further Support").length}</span></div>
+                </div>
+              </div>
+
+              {/* Assessment Summary */}
+              <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Assessment Summary</h3>
+                <div className="space-y-1.5 text-[12px]">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">BEG Average</span>
+                    <span className="font-semibold text-slate-700">
+                      {(() => {
+                        const valid = allLearners.map(l => l.begScore).filter(s => s != null);
+                        return valid.length ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : "—";
+                      })()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">MID Average</span>
+                    <span className="font-semibold text-slate-700">
+                      {(() => {
+                        const valid = allLearners.map(l => l.midScore).filter(s => s != null);
+                        return valid.length ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : "—";
+                      })()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">END Average</span>
+                    <span className="font-semibold text-slate-700">
+                      {(() => {
+                        const valid = allLearners.map(l => l.endScore).filter(s => s != null);
+                        return valid.length ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : "—";
+                      })()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {/* Edge-to-edge spreadsheet */}
         <div className="relative min-h-0 flex-1 overflow-auto bg-white">
           <form id="class-report-edit-form" onSubmit={handleSave} className="h-full">
@@ -371,7 +435,16 @@ export default function ClassReportFileModal({
                       </span>
                     ) : null}
                   </th>
-                  <th className={cn(th, "min-w-[72px] text-center")}>
+                  {!editing && (
+                    <>
+                      <th className={cn(th, "w-[60px] text-center border-l-2 border-slate-300")}>BEG</th>
+                      <th className={cn(th, "w-[60px] text-center")}>MID</th>
+                      <th className={cn(th, "w-[60px] text-center")}>END</th>
+                      <th className={cn(th, "min-w-[120px] text-left")}>Intervention Pathway</th>
+                      <th className={cn(th, "min-w-[100px] text-left")}>Status</th>
+                    </>
+                  )}
+                  <th className={cn(th, "min-w-[72px] text-center border-l-2 border-slate-300")}>
                     Priority
                   </th>
                 </tr>
@@ -421,9 +494,28 @@ export default function ClassReportFileModal({
                         </td>
                       ))}
                       <td className={cn(td, "text-center text-slate-600")}>
-                        {riskLabel(learner.riskLevel)}
+                        {riskLabel(learner.riskLevel || learner.academicRisk)}
                       </td>
-                      <td className={cn(td, "text-center")}>
+                      {!editing && (
+                        <>
+                          <td className={cn(td, "text-center text-slate-600 border-l-2 border-slate-300")}>
+                            {learner.begScore != null ? learner.begScore : <span className="text-[10px] text-slate-400">Not assessed</span>}
+                          </td>
+                          <td className={cn(td, "text-center text-slate-600")}>
+                            {learner.midScore != null ? learner.midScore : <span className="text-[10px] text-slate-400">Not assessed</span>}
+                          </td>
+                          <td className={cn(td, "text-center text-slate-600")}>
+                            {learner.endScore != null ? learner.endScore : <span className="text-[10px] text-slate-400">Not assessed</span>}
+                          </td>
+                          <td className={cn(td, "text-left text-slate-600")}>
+                            {learner.interventionPathway || "—"}
+                          </td>
+                          <td className={cn(td, "text-left text-slate-600 font-medium")}>
+                            {learner.monitoringStatus || "—"}
+                          </td>
+                        </>
+                      )}
+                      <td className={cn(td, "text-center border-l-2 border-slate-300")}>
                         <PriorityCue learner={learner} />
                       </td>
                     </tr>

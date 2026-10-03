@@ -7,9 +7,7 @@ import DashboardHeader from "@/components/teacher/dashboard/DashboardHeader";
 import StatCard from "@/components/dashboard/StatCard";
 import WhatNeedsAttention from "@/components/teacher/dashboard/WhatNeedsAttention";
 import MyClassesTable from "@/components/teacher/dashboard/MyClassesTable";
-import AttendanceOverview from "@/components/teacher/dashboard/AttendanceOverview";
-import TodaysTasks from "@/components/teacher/dashboard/TodaysTasks";
-import RecentActivities from "@/components/teacher/dashboard/RecentActivities";
+import AcademicOverviewCompact from "@/components/teacher/dashboard/AcademicOverviewCompact";
 import GuidedTour from "@/components/shared/GuidedTour";
 import { useTeacherDashboard } from "@/hooks/teacher/useTeacherDashboard";
 
@@ -90,17 +88,15 @@ export default function Dashboard() {
           {/* What Needs Your Attention */}
           <WhatNeedsAttention items={data.attentionItems || []} />
 
+          <div className="mb-4">
+            <AcademicOverviewCompact
+              riskTrend={data.riskTrend}
+              earlyWarningCount={(data.stats?.find(s => s.id === "high-risk")?.value || 0) + (data.stats?.find(s => s.id === "moderate-risk")?.value || 0)}
+            />
+          </div>
+
           {/* My Classes */}
           <MyClassesTable classes={data.classes || []} />
-
-          {/* Attendance Overview */}
-          <AttendanceOverview summary={data.attendanceSummary} />
-
-          {/* Two-Column Grid: To Do + Recent Activity */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <TodaysTasks tasks={data.todaysTasks || { items: [] }} />
-            <RecentActivities activities={data.recentActivities || []} />
-          </div>
         </div>
       ) : (
         <div className="rounded-xl border border-slate-100 bg-white py-10 text-center text-sm text-slate-500 shadow-sm">

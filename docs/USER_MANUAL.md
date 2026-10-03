@@ -170,7 +170,7 @@ Navigation is grouped as **Menu · Analytics · Account** in each portal sidebar
 
 1. Go to **Academic Records**.  
 2. Filter by grade, section, risk, or teacher as needed.  
-3. Review general average, weak subject, risk level, and system recommendation.  
+3. Review general average, area needing attention, risk level, and system recommendation.  
 
 ### 2.1.3 How to Manage Classes & Sections
 

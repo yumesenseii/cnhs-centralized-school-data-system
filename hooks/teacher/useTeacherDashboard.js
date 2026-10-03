@@ -109,7 +109,7 @@ export function useTeacherDashboard() {
           .filter(Number.isFinite)
       ),
     ].sort((a, b) => a - b);
-    return values.length ? values.map(String) : ["1", "2", "3", "4"];
+    return values.length ? values.map(String) : ["1", "2", "3"];
   }, [bundle, schoolYear]);
 
   useEffect(() => {

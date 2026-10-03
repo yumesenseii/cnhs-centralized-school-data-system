@@ -25,6 +25,8 @@ function StatusPill({ value }) {
 }
 
 export default function MyClassesTable({ classes = [], embedded = false }) {
+  const displayClasses = embedded ? classes : classes.slice(0, 3);
+
   const table = (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[700px] border-collapse text-left">
@@ -36,7 +38,6 @@ export default function MyClassesTable({ classes = [], embedded = false }) {
               "Learners",
               "Attendance",
               "Needs Attention",
-              "Lesson Plan",
               "Action",
             ].map((column) => (
               <th
@@ -49,8 +50,8 @@ export default function MyClassesTable({ classes = [], embedded = false }) {
           </tr>
         </thead>
         <tbody>
-          {classes.length ? (
-            classes.map((row) => (
+          {displayClasses.length ? (
+            displayClasses.map((row) => (
               <tr
                 key={row.id}
                 className="border-t border-slate-100 transition-colors hover:bg-slate-50/70"
@@ -80,9 +81,6 @@ export default function MyClassesTable({ classes = [], embedded = false }) {
                   )}
                 </td>
                 <td className="px-3 py-2">
-                  <StatusPill value={row.lessonPlan} />
-                </td>
-                <td className="px-3 py-2">
                   <Link
                     href={`/teacher/my-classes/${row.id}`}
                     className="inline-flex h-7 items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-600 shadow-sm transition-colors hover:bg-slate-50"
@@ -96,7 +94,7 @@ export default function MyClassesTable({ classes = [], embedded = false }) {
           ) : (
             <tr>
               <td
-                colSpan={7}
+                colSpan={6}
                 className="px-3 py-6 text-center text-[11px] text-slate-500"
               >
                 No assigned classes for the selected school year and quarter.

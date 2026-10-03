@@ -107,7 +107,7 @@ export default function LearnersAttention({
               {[
                 "Student",
                 "Grade & Section",
-                "Weak Subject",
+                "Area Needing Attention",
                 "Grade",
                 "Risk",
                 "Intervention",

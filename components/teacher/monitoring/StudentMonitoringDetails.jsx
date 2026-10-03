@@ -215,7 +215,7 @@ export default function StudentMonitoringDetails({ classId, studentId }) {
                     </p>
                   </div>
                   <div className="rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-1.5">
-                    <FieldLabel>Weak Subjects</FieldLabel>
+                    <FieldLabel>Areas Needing Attention</FieldLabel>
                     <p className="mt-0.5 text-[12px] font-semibold text-slate-700">
                       {detail.weakSubjects.length
                         ? detail.weakSubjects.join(", ")

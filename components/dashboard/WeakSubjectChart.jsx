@@ -28,7 +28,7 @@ export default function WeakSubjectChart({ data = [] }) {
                 className="h-full rounded-full bg-cnhs-green-dark"
                 style={{ width }}
                 role="progressbar"
-                aria-label={`${item.subject} weak subject count`}
+                aria-label={`${item.subject} area needing attention count`}
                 aria-valuenow={item.count}
                 aria-valuemin={0}
                 aria-valuemax={maxCount}
@@ -36,7 +36,7 @@ export default function WeakSubjectChart({ data = [] }) {
             </div>
             <p
               className="text-right text-xs font-semibold text-slate-700"
-              aria-label={`${item.count} weak learners`}
+              aria-label={`${item.count} flagged learners`}
             >
               {item.count}
             </p>

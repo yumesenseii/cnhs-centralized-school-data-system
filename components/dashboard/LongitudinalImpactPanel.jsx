@@ -369,7 +369,7 @@ export default function LongitudinalImpactPanel({ schoolYear = "SY 2026-2027" })
             </p>
           </div>
 
-          {/* Trimester Risk Trajectory Pipeline */}
+          {/* Trimester Risk Trend Pipeline */}
           <div className="rounded-xl border border-slate-100 bg-white p-3.5 shadow-sm">
             <div className="mb-2.5 flex items-center justify-between border-b border-slate-100 pb-2">
               <div>

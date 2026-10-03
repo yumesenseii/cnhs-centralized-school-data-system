@@ -155,7 +155,7 @@ export default function StudentProfilePage() {
                 </div>
               </div>
               <InfoCard
-                label="Weak subjects"
+                label="Areas needing attention"
                 value={
                   data.summary.weakSubjects?.length
                     ? data.summary.weakSubjects.join(", ")

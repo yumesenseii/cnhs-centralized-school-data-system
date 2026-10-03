@@ -9,7 +9,7 @@ export default function RiskAssessment({ assessment }) {
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <div className="inline-flex items-center gap-2">
-          <span className="text-[11px] font-medium text-slate-500">Weak Subject</span>
+          <span className="text-[11px] font-medium text-slate-500">Area Needing Attention</span>
           <span className="rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-semibold text-sky-700">
             {assessment.weakSubject}
           </span>

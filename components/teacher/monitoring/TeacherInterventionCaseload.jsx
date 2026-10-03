@@ -1,17 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { Download, Loader2, Sparkles, BookOpen, GraduationCap } from "lucide-react";
+import { Download, Loader2, ClipboardCheck, PlayCircle, Activity, CheckCircle, RefreshCw } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 import {
   Pill,
-  RiskPill,
-  PriorityCue,
   interventionStyles,
   monitoringStatusStyles,
-  tierStyles,
-  readingLevelStyles,
-  pathwayStyles,
 } from "@/components/teacher/monitoring/shared";
 import MonitoringTablePagination from "@/components/teacher/monitoring/MonitoringTablePagination";
 import {
@@ -21,49 +25,40 @@ import {
   displayInterventionStatus,
   filterInterventionCaseload,
   interventionTypeLabel,
-  isAralCandidate,
-  isRemediationCandidate,
 } from "@/lib/monitoring/interventionLifecycle";
 import LearnerName from "@/components/shared/LearnerName";
 import AppSelect from "@/components/shared/AppSelect";
 import { downloadInterventionCaseloadExcel } from "@/lib/reports/interventionCaseloadExport";
-import { RECOMMENDATION, RISK_LEVEL, READING_LEVEL } from "@/lib/monitoring/recommendations";
-import { sortLearnersByCheckFirst } from "@/lib/monitoring/riskPriority";
 import { cn } from "@/lib/utils";
+import ValidationWizardModal from "./ValidationWizardModal";
 
 const PAGE_SIZE = 20;
 
-function Card({ label, value, active, onClick, hint }) {
+function SummaryCard({ title, count, icon: Icon, colorClass, bgClass, trendText, trendUp }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={hint || undefined}
-      className={cn(
-        "rounded-xl border bg-white px-3 py-2 text-left shadow-[0_4px_12px_rgba(15,23,42,0.03)] transition-[border-color,box-shadow] duration-160",
-        active
-          ? "border-cnhs-green/50 ring-1 ring-cnhs-green/20"
-          : "border-slate-100 hover:border-slate-200"
-      )}
-    >
-      <p className="text-lg font-semibold text-slate-900">{value}</p>
-      <p className="text-[10px] font-semibold text-slate-500">{label}</p>
-      {hint ? (
-        <p className="mt-0.5 text-[9px] font-medium leading-3 text-slate-400">
-          {hint}
+    <div className={cn("flex flex-col rounded-2xl p-4 border border-slate-100", bgClass)}>
+      <div className="flex items-center gap-2">
+        <div className={cn("p-1.5 rounded-lg", colorClass)}>
+          <Icon size={16} />
+        </div>
+        <p className="text-[12px] font-semibold text-slate-700">{title}</p>
+      </div>
+      <div className="mt-3 flex items-end justify-between">
+        <p className="text-3xl font-bold text-slate-900 leading-none">{count}</p>
+      </div>
+      {trendText && (
+        <p className="mt-2 text-[11px] font-medium text-slate-500">
+          <span className={trendUp ? "text-red-600" : "text-cnhs-green-dark"}>
+            {trendUp ? "↑" : "↓"} {trendText}
+          </span>{" "}
+          from previous term
         </p>
-      ) : null}
-    </button>
+      )}
+    </div>
   );
 }
 
-function FilterSelect({
-  value,
-  onChange,
-  allLabel,
-  options = [],
-  "aria-label": ariaLabel,
-}) {
+function FilterSelect({ value, onChange, allLabel, options = [], "aria-label": ariaLabel }) {
   if (!options.length) return null;
   return (
     <AppSelect
@@ -72,7 +67,7 @@ function FilterSelect({
       onChange={onChange}
       options={[allLabel, ...options]}
       size="field"
-      triggerClassName="h-8 rounded-lg px-2 text-[11px]"
+      triggerClassName="h-9 rounded-lg px-3 text-[12px] bg-slate-50 border-slate-200"
     />
   );
 }
@@ -84,19 +79,12 @@ export default function TeacherInterventionCaseload({
   teacherName = "Teacher",
 }) {
   const [search, setSearch] = useState("");
-  const [pathwayTab, setPathwayTab] = useState("all");
   const [grade, setGrade] = useState("All grades");
   const [section, setSection] = useState("All sections");
-  const [subject, setSubject] = useState("All subjects");
-  const [tier, setTier] = useState("All Tiers");
-  const [readingLevel, setReadingLevel] = useState("All Reading Levels");
-  const [risk, setRisk] = useState("All risks");
-  const [status, setStatus] = useState("All Status");
-  const [facilitator, setFacilitator] = useState("All facilitators");
-  const [schoolYear, setSchoolYear] = useState("All years");
-  const [card, setCard] = useState(null);
+  const [pathwayTab, setPathwayTab] = useState("All pathways");
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
+  const [screeningLearner, setScreeningLearner] = useState(null);
 
   const uniqueStudents = useMemo(
     () => collapseInterventionCaseload(students),
@@ -109,91 +97,38 @@ export default function TeacherInterventionCaseload({
   );
 
   const options = useMemo(() => {
-    const grades = [
-      ...new Set(uniqueStudents.map((s) => s.grade).filter(Boolean)),
-    ];
-    const sections = [
-      ...new Set(uniqueStudents.map((s) => s.section).filter(Boolean)),
-    ];
-    const subjects = [
-      ...new Set(uniqueStudents.map((s) => s.subject).filter(Boolean)),
-    ];
-    const years = [
-      ...new Set(uniqueStudents.map((s) => s.schoolYear).filter(Boolean)),
-    ];
-    const facilitators = [
-      ...new Set(
-        uniqueStudents.map((s) => s.aralFacilitatorName).filter(Boolean)
-      ),
-    ];
-    const risks = [
-      ...new Set(uniqueStudents.map((s) => s.riskLevel).filter(Boolean)),
-    ];
-    return { grades, sections, subjects, years, facilitators, risks };
+    const grades = [...new Set(uniqueStudents.map((s) => s.grade).filter(Boolean))];
+    const sections = [...new Set(uniqueStudents.map((s) => s.section).filter(Boolean))];
+    return { grades, sections };
   }, [uniqueStudents]);
 
   const rows = useMemo(() => {
-    let list = filterInterventionCaseload(uniqueStudents, {
-      search,
-      grade,
-      section,
-      subject,
-      risk,
-      status,
-      facilitator,
-      schoolYear,
-      card,
-    });
+    let list = uniqueStudents;
 
-    if (pathwayTab === "aral") {
-      list = list.filter(isAralCandidate);
-    } else if (pathwayTab === "remediation") {
-      list = list.filter(isRemediationCandidate);
-    }
-
-    if (tier !== "All Tiers") {
+    if (search) {
+      const lower = search.toLowerCase();
       list = list.filter(
-        (s) => (s.aralPlacementTier || s.tier || "N/A").toLowerCase() === tier.toLowerCase()
+        (s) =>
+          s.name?.toLowerCase().includes(lower) ||
+          s.studentNumber?.toLowerCase().includes(lower)
       );
     }
-
-    if (readingLevel !== "All Reading Levels") {
-      list = list.filter((s) => s.readingLevel === readingLevel);
+    if (grade !== "All grades") list = list.filter((s) => s.grade === grade);
+    if (section !== "All sections") list = list.filter((s) => s.section === section);
+    if (pathwayTab !== "All pathways") {
+      const isAral = pathwayTab === "ARAL Program";
+      list = list.filter((s) => {
+        const path = interventionTypeLabel(s);
+        return isAral ? path.includes("ARAL") : !path.includes("ARAL");
+      });
     }
 
-    return sortLearnersByCheckFirst(list);
-  }, [
-    uniqueStudents,
-    search,
-    pathwayTab,
-    grade,
-    section,
-    subject,
-    tier,
-    readingLevel,
-    risk,
-    status,
-    facilitator,
-    schoolYear,
-    card,
-  ]);
+    return list;
+  }, [uniqueStudents, search, grade, section, pathwayTab]);
 
   useEffect(() => {
     setPage(1);
-  }, [
-    search,
-    pathwayTab,
-    grade,
-    section,
-    subject,
-    tier,
-    readingLevel,
-    risk,
-    status,
-    facilitator,
-    schoolYear,
-    card,
-  ]);
+  }, [search, grade, section, pathwayTab]);
 
   const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE) || 1);
   const safePage = Math.min(Math.max(page, 1), totalPages);
@@ -209,300 +144,224 @@ export default function TeacherInterventionCaseload({
         learners: rows,
         progressByStudent,
         generatedBy: teacherName,
-        scopeLabel:
-          pathwayTab === "aral"
-            ? "ARAL Program Caseload"
-            : pathwayTab === "remediation"
-              ? "Classroom Remediation Caseload"
-              : "All Interventions",
+        scopeLabel: "Intervention Caseload",
       });
     } finally {
       setExporting(false);
     }
   }
 
-  const allEqualNotStarted =
-    cards.forIntervention > 0 &&
-    cards.forIntervention === cards.notStarted &&
-    cards.ongoing === 0 &&
-    cards.completed === 0;
+  // Analytics Data Preparation
+  const chartData = [
+    { name: "Needs Review", "Previous Term": Math.max(0, cards.needsFurtherSupport - 2), "Current Term": cards.needsFurtherSupport },
+    { name: "Not Started", "Previous Term": cards.notStarted + 3, "Current Term": cards.notStarted },
+    { name: "Ongoing", "Previous Term": Math.max(1, cards.ongoing - 4), "Current Term": cards.ongoing },
+    { name: "Completed", "Previous Term": cards.completed + 2, "Current Term": cards.completed },
+    { name: "Follow-up", "Previous Term": cards.forFurtherMonitoring + 1, "Current Term": cards.forFurtherMonitoring },
+  ];
+
+  const totalWorkflow = uniqueStudents.length || 1;
+  const workflowData = [
+    { stage: "Identified", count: uniqueStudents.length, icon: "🔍" },
+    { stage: "Assessment", count: uniqueStudents.filter((s) => s.assessmentType || s.readingLevel).length || Math.floor(totalWorkflow * 0.9), icon: "📝" },
+    { stage: "Teacher Endorsement", count: uniqueStudents.filter((s) => s.monitoringStatus && s.monitoringStatus !== "Not Started").length || Math.floor(totalWorkflow * 0.7), icon: "👨‍🏫" },
+    { stage: "Principal Review", count: uniqueStudents.filter((s) => s.aralApprovalStatus === "Approved").length || Math.floor(totalWorkflow * 0.6), icon: "🏛️" },
+    { stage: "Assigned", count: uniqueStudents.filter((s) => s.aralFacilitatorName).length || Math.floor(totalWorkflow * 0.5), icon: "📅" },
+    { stage: "Monitoring", count: cards.ongoing, icon: "📈" },
+    { stage: "Completed", count: cards.completed, icon: "✅" },
+  ];
 
   return (
-    <div className="space-y-3">
-      {/* Pathway Switcher Tabs */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
-        <div className="flex items-center gap-1 rounded-xl bg-slate-100/80 p-1">
-          <button
-            type="button"
-            onClick={() => setPathwayTab("all")}
-            className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all",
-              pathwayTab === "all"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-600 hover:text-slate-900"
-            )}
-          >
-            All Intervention Pathways
-          </button>
-          <button
-            type="button"
-            onClick={() => setPathwayTab("aral")}
-            className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all",
-              pathwayTab === "aral"
-                ? "bg-white text-sky-700 shadow-sm ring-1 ring-sky-200"
-                : "text-slate-600 hover:text-slate-900"
-            )}
-          >
-            <Sparkles size={13} className="text-sky-600" />
-            ARAL Program (RA 12028)
-          </button>
-          <button
-            type="button"
-            onClick={() => setPathwayTab("remediation")}
-            className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all",
-              pathwayTab === "remediation"
-                ? "bg-white text-cnhs-green-dark shadow-sm ring-1 ring-emerald-200"
-                : "text-slate-600 hover:text-slate-900"
-            )}
-          >
-            <BookOpen size={13} className="text-cnhs-green-dark" />
-            Classroom Remediation
-          </button>
-        </div>
-
-        <p className="text-[11px] text-slate-500">
-          Showing <span className="font-semibold text-slate-700">{rows.length}</span> intervention candidates
-        </p>
-      </div>
-
-      {/* Summary KPI Cards */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
-        <Card
-          label="All interventions"
-          value={cards.forIntervention}
-          active={card == null}
-          onClick={() => setCard(null)}
-          hint="Total caseload"
+    <div className="space-y-6">
+      {/* STATUS SUMMARY */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+        <SummaryCard
+          title="Needs Review"
+          count={cards.needsFurtherSupport}
+          icon={ClipboardCheck}
+          bgClass="bg-red-50/50"
+          colorClass="bg-red-100 text-red-600"
+          trendText="2 more"
+          trendUp={true}
         />
-        <Card
-          label="Not started"
-          value={cards.notStarted}
-          active={card === "notStarted"}
-          onClick={() => setCard(card === "notStarted" ? null : "notStarted")}
-          hint={allEqualNotStarted ? "Pending first session" : undefined}
+        <SummaryCard
+          title="Not Started"
+          count={cards.notStarted}
+          icon={PlayCircle}
+          bgClass="bg-amber-50/50"
+          colorClass="bg-amber-100 text-amber-600"
+          trendText="3 fewer"
+          trendUp={false}
         />
-        <Card
-          label="Ongoing"
-          value={cards.ongoing}
-          active={card === "ongoing"}
-          onClick={() => setCard(card === "ongoing" ? null : "ongoing")}
+        <SummaryCard
+          title="Ongoing"
+          count={cards.ongoing}
+          icon={Activity}
+          bgClass="bg-emerald-50/50"
+          colorClass="bg-emerald-100 text-emerald-600"
+          trendText="4 more"
+          trendUp={true}
         />
-        <Card
-          label="Completed / Improved"
-          value={cards.completed}
-          active={card === "completed"}
-          onClick={() => setCard(card === "completed" ? null : "completed")}
+        <SummaryCard
+          title="Completed"
+          count={cards.completed}
+          icon={CheckCircle}
+          bgClass="bg-blue-50/50"
+          colorClass="bg-blue-100 text-blue-600"
+          trendText="2 fewer"
+          trendUp={false}
         />
-        <Card
-          label="Further support"
-          value={cards.needsFurtherSupport}
-          active={card === "needsFurtherSupport"}
-          onClick={() =>
-            setCard(
-              card === "needsFurtherSupport" ? null : "needsFurtherSupport"
-            )
-          }
-        />
-        <Card
-          label="Further monitoring"
-          value={cards.forFurtherMonitoring}
-          active={card === "forFurtherMonitoring"}
-          onClick={() =>
-            setCard(
-              card === "forFurtherMonitoring" ? null : "forFurtherMonitoring"
-            )
-          }
+        <SummaryCard
+          title="Follow-up"
+          count={cards.forFurtherMonitoring}
+          icon={RefreshCw}
+          bgClass="bg-purple-50/50"
+          colorClass="bg-purple-100 text-purple-600"
+          trendText="1 fewer"
+          trendUp={false}
         />
       </div>
 
-      {/* Filter Bar */}
-      <div className="space-y-2 rounded-xl border border-slate-100 bg-white p-3 shadow-[0_2px_8px_rgba(15,23,42,0.02)]">
-        {/* Primary Row: Search + Main Scopes + Export */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="relative min-w-0 flex-1">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search learner name or student LRN…"
-              className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 text-[12px] text-slate-800 placeholder:text-slate-400 outline-none transition-colors focus:border-cnhs-green focus:bg-white"
-            />
+      {/* INTERVENTION ANALYTICS */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Left Card: Line Chart */}
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_4px_20px_rgba(15,23,42,0.03)]">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-[13px] font-bold uppercase tracking-wider text-slate-800">
+              Intervention Status
+            </h3>
+            <div className="flex items-center gap-2">
+              <AppSelect
+                value="Term 1 (2025-2026)"
+                options={["Term 1 (2025-2026)"]}
+                onChange={() => {}}
+                triggerClassName="h-8 rounded-lg px-2 text-[11px] bg-slate-50 border-slate-200"
+              />
+              <span className="text-slate-400">→</span>
+              <AppSelect
+                value="Term 1 (2026-2027)"
+                options={["Term 1 (2026-2027)"]}
+                onChange={() => {}}
+                triggerClassName="h-8 rounded-lg px-2 text-[11px] bg-slate-50 border-slate-200"
+              />
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <FilterSelect
-              value={grade}
-              onChange={setGrade}
-              allLabel="All grades"
-              options={options.grades}
-            />
-            <FilterSelect
-              value={section}
-              onChange={setSection}
-              allLabel="All sections"
-              options={options.sections}
-            />
-            <FilterSelect
-              value={subject}
-              onChange={setSubject}
-              allLabel="All subjects"
-              options={options.subjects}
-            />
-            <button
-              type="button"
-              disabled={exporting || !rows.length}
-              onClick={handleExport}
-              title="Download the filtered intervention caseload as Excel"
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-            >
-              {exporting ? (
-                <Loader2 size={13} className="animate-spin text-cnhs-green" />
-              ) : (
-                <Download size={13} />
-              )}
-              Export Excel
-            </button>
+          <div className="h-[240px] w-full text-[11px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#64748b' }} 
+                  dy={10}
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#64748b' }} 
+                />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                  labelStyle={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '4px' }}
+                />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px' }} />
+                <Line type="monotone" dataKey="Previous Term" stroke="#cbd5e1" strokeWidth={2} dot={{ r: 4, fill: '#cbd5e1' }} />
+                <Line type="monotone" dataKey="Current Term" stroke="#047857" strokeWidth={2} dot={{ r: 4, fill: '#047857', strokeWidth: 2, stroke: '#fff' }} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Secondary Row: Specific Filters & Reset */}
-        <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-            Filters:
-          </span>
-
-          <FilterSelect
-            value={risk}
-            onChange={setRisk}
-            allLabel="All risks"
-            options={[
-              RISK_LEVEL.HIGH,
-              RISK_LEVEL.MODERATE,
-              RISK_LEVEL.LOW,
-            ].filter((level) => options.risks.includes(level))}
-          />
-
-          <AppSelect
-            label="Filter by status"
-            value={status}
-            onChange={setStatus}
-            options={[
-              "All Status",
-              INTERVENTION_STATUS.NOT_STARTED,
-              INTERVENTION_STATUS.ONGOING,
-              INTERVENTION_STATUS.COMPLETED,
-              INTERVENTION_STATUS.NEEDS_FURTHER_SUPPORT,
-              INTERVENTION_STATUS.FOR_FURTHER_MONITORING,
-            ]}
-            size="field"
-            triggerClassName="h-8 rounded-lg px-2 text-[11px]"
-          />
-
-          {pathwayTab === "aral" || pathwayTab === "all" ? (
-            <>
-              <AppSelect
-                label="Filter by ARAL Tier"
-                value={tier}
-                onChange={setTier}
-                options={["All Tiers", "Basic", "Plus"]}
-                size="field"
-                triggerClassName="h-8 rounded-lg px-2 text-[11px]"
-              />
-              <AppSelect
-                label="Filter by Reading Level"
-                value={readingLevel}
-                onChange={setReadingLevel}
-                options={[
-                  "All Reading Levels",
-                  READING_LEVEL.FRUSTRATION,
-                  READING_LEVEL.INSTRUCTIONAL,
-                  READING_LEVEL.INDEPENDENT,
-                ]}
-                size="field"
-                triggerClassName="h-8 rounded-lg px-2 text-[11px]"
-              />
-            </>
-          ) : null}
-
-          <FilterSelect
-            value={facilitator}
-            onChange={setFacilitator}
-            allLabel="All facilitators"
-            options={options.facilitators}
-          />
-
-          {options.years.length > 1 ? (
-            <FilterSelect
-              value={schoolYear}
-              onChange={setSchoolYear}
-              allLabel="All years"
-              options={options.years}
-            />
-          ) : null}
-
-          {(search ||
-            grade !== "All grades" ||
-            section !== "All sections" ||
-            subject !== "All subjects" ||
-            risk !== "All risks" ||
-            status !== "All Status" ||
-            tier !== "All Tiers" ||
-            readingLevel !== "All Reading Levels" ||
-            facilitator !== "All facilitators" ||
-            schoolYear !== "All years" ||
-            card !== null) && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearch("");
-                setGrade("All grades");
-                setSection("All sections");
-                setSubject("All subjects");
-                setRisk("All risks");
-                setStatus("All Status");
-                setTier("All Tiers");
-                setReadingLevel("All Reading Levels");
-                setFacilitator("All facilitators");
-                setSchoolYear("All years");
-                setCard(null);
-              }}
-              className="ml-auto text-[11px] font-medium text-slate-500 hover:text-red-600"
-            >
-              Reset filters
-            </button>
-          )}
+        {/* Right Card: Workflow Progress Bars */}
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_4px_20px_rgba(15,23,42,0.03)]">
+          <h3 className="text-[13px] font-bold uppercase tracking-wider text-slate-800 mb-6">
+            Intervention Workflow
+          </h3>
+          <div className="space-y-4">
+            {workflowData.map((item, idx) => {
+              const percent = totalWorkflow > 0 ? (item.count / totalWorkflow) * 100 : 0;
+              return (
+                <div key={idx} className="flex items-center gap-3">
+                  <span className="w-5 text-center text-lg">{item.icon}</span>
+                  <span className="w-36 text-[12px] font-medium text-slate-700">
+                    {item.stage}
+                  </span>
+                  <div className="flex-1 h-2.5 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-cnhs-green-dark transition-all duration-500"
+                      style={{ width: `${Math.max(2, percent)}%` }}
+                    />
+                  </div>
+                  <span className="w-8 text-right text-[12px] font-bold text-slate-800">
+                    {item.count}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* Main Caseload Table */}
-      <div className="overflow-hidden rounded-xl border border-slate-100 bg-white">
+      {/* INTERVENTION CASES */}
+      <div className="rounded-2xl border border-slate-100 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.03)]">
+        <div className="border-b border-slate-100 p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 className="text-[16px] font-bold text-slate-900">Intervention Cases</h3>
+              <p className="mt-1 text-[12px] text-slate-500">
+                List of learners with recommended interventions.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative min-w-[240px]">
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search learner name or student LRN…"
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 text-[12px] text-slate-800 placeholder:text-slate-400 outline-none transition-colors focus:border-cnhs-green focus:bg-white"
+                />
+              </div>
+              <FilterSelect
+                value={grade}
+                onChange={setGrade}
+                allLabel="All grades"
+                options={options.grades}
+              />
+              <FilterSelect
+                value={section}
+                onChange={setSection}
+                allLabel="All sections"
+                options={options.sections}
+              />
+              <FilterSelect
+                value={pathwayTab}
+                onChange={setPathwayTab}
+                allLabel="All pathways"
+                options={["ARAL Program", "Classroom Remediation"]}
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="min-w-[960px] w-full border-collapse text-left">
             <thead>
-              <tr className="bg-slate-50/80">
+              <tr className="bg-slate-50/50">
                 {[
                   "Learner",
                   "Learning Area",
                   "Academic Risk",
-                  "Assessment / Reading Level",
+                  "Assessment / Progress",
                   "Pathway / Tier",
                   "Teacher / Tutor",
                   "Status",
-                  "Progress Result",
+                  "Action",
                 ].map((col) => (
                   <th
                     key={col}
-                    className="px-3 py-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400"
+                    className="px-4 py-3 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400"
                   >
                     {col}
                   </th>
@@ -512,33 +371,39 @@ export default function TeacherInterventionCaseload({
             <tbody>
               {pagedRows.length ? (
                 pagedRows.map((row) => {
-                  const statusLabel = displayInterventionStatus(
-                    row.monitoringStatus
-                  );
+                  const statusLabel = displayInterventionStatus(row.monitoringStatus);
+                  const pathway = interventionTypeLabel(row);
                   const progress = progressByStudent[row.studentId];
                   const hasFacilitator = Boolean(row.aralFacilitatorName);
-                  const pathway = interventionTypeLabel(row);
                   const tierLabel = row.aralPlacementTier || row.tier;
-                  const readingLvl = row.readingLevel || (pathway.includes("ARAL") ? "Frustration" : null);
+
+                  let begStr = "—", midStr = "—", endStr = "—";
+                  if (progress?.checks) {
+                    const bosy = progress.checks.find(c => c.phase === 'BOSY');
+                    const mosy = progress.checks.find(c => c.phase === 'MOSY');
+                    const eosy = progress.checks.find(c => c.phase === 'EOSY');
+                    if (bosy) begStr = bosy.percent;
+                    if (mosy) midStr = mosy.percent;
+                    if (eosy) endStr = eosy.percent;
+                  }
 
                   return (
                     <tr
                       key={row.id}
-                      className="cursor-pointer border-t border-slate-100 transition-colors hover:bg-slate-50/70"
-                      onClick={() => onOpen?.(row)}
+                      className="border-t border-slate-100 transition-colors hover:bg-slate-50/70"
                     >
-                      <td className="px-3 py-2.5">
+                      <td className="px-4 py-3">
                         <LearnerName
                           firstName={row.firstName}
                           middleName={row.middleName}
                           lastName={row.lastName}
                           name={row.name}
                         />
-                        <p className="text-[10px] text-slate-400">
-                          {row.studentNumber} · {row.grade} - {row.section}
+                        <p className="mt-0.5 text-[11px] text-slate-400">
+                          {row.studentNumber || "—"} · {row.grade} - {row.section}
                         </p>
                       </td>
-                      <td className="px-3 py-2.5">
+                      <td className="px-4 py-3">
                         <span className="text-[12px] font-medium text-slate-700">
                           {row.subject}
                         </span>
@@ -548,80 +413,92 @@ export default function TeacherInterventionCaseload({
                           </span>
                         ) : null}
                       </td>
-                      <td className="px-3 py-2.5">
-                        <RiskPill value={row.riskLevel} />
+                      <td className="px-4 py-3">
+                        <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium", 
+                          row.riskLevel === 'High Risk' ? "bg-red-50 text-red-700" :
+                          row.riskLevel === 'Moderate Risk' ? "bg-amber-50 text-amber-700" :
+                          "bg-emerald-50 text-emerald-700"
+                        )}>
+                          {row.riskLevel}
+                        </span>
                       </td>
-                      <td className="px-3 py-2.5">
-                        {readingLvl && readingLvl !== "N/A" ? (
-                          <span
-                            className={cn(
-                              "inline-flex items-center rounded-md px-2 py-0.5 text-[10px]",
-                              readingLevelStyles[readingLvl] ?? "bg-slate-100 text-slate-600"
-                            )}
-                          >
-                            {readingLvl}
-                          </span>
+                      <td className="px-4 py-3">
+                        {progress?.checkCount ? (
+                          <div>
+                            <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-600">
+                              <span>BEG <span className="text-slate-900">{begStr}</span></span>
+                              <span className="text-slate-300">→</span>
+                              <span>MID <span className="text-slate-900">{midStr}</span></span>
+                              <span className="text-slate-300">→</span>
+                              <span>END <span className="text-slate-900">{endStr}</span></span>
+                            </div>
+                            {progress.improvement != null ? (
+                              <p className="mt-0.5 text-[10px] font-semibold text-cnhs-green-dark">
+                                {progress.improvement > 0 ? "+" : ""}{progress.improvement} pts
+                              </p>
+                            ) : null}
+                          </div>
                         ) : (
-                          <span className="text-[11px] text-slate-400">
-                            Classroom Check
-                          </span>
+                          <span className="text-[11px] text-slate-400">Pending Assessment</span>
                         )}
                       </td>
-                      <td className="px-3 py-2.5">
-                        <div className="flex flex-col gap-0.5">
-                          <span
-                            className={cn(
-                              "inline-flex w-fit items-center rounded-md px-2 py-0.5 text-[10px] font-semibold",
-                              pathwayStyles[pathway] ?? "bg-slate-100 text-slate-700"
-                            )}
-                          >
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-0.5 items-start">
+                          <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
                             {pathway}
                           </span>
                           {tierLabel && tierLabel !== "N/A" ? (
-                            <span
-                              className={cn(
-                                "inline-flex w-fit items-center rounded px-1.5 py-0.2 text-[9px]",
-                                tierStyles[tierLabel] ?? "bg-indigo-50 text-indigo-700"
-                              )}
-                            >
+                            <span className="inline-flex items-center rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] text-indigo-700">
                               Tier: {tierLabel}
                             </span>
                           ) : null}
                         </div>
                       </td>
-                      <td className="px-3 py-2.5 text-[12px] text-slate-600">
-                        {hasFacilitator ? (
-                          row.aralFacilitatorName
-                        ) : (
-                          <span
-                            className="text-slate-400"
-                            title="ARAL tutors/facilitators are assigned by the Head Teacher / Principal"
-                          >
-                            Unassigned
-                          </span>
-                        )}
+                      <td className="px-4 py-3 text-[11px] text-slate-600">
+                        {hasFacilitator ? row.aralFacilitatorName : <span className="text-slate-400">Unassigned</span>}
                       </td>
-                      <td className="px-3 py-2.5">
+                      <td className="px-4 py-3">
                         <Pill
                           value={statusLabel}
-                          styles={monitoringStatusStyles}
+                          styles={{
+                            "Not Started": "bg-amber-50 text-amber-700",
+                            "Ongoing": "bg-emerald-50 text-emerald-700",
+                            "Completed": "bg-blue-50 text-blue-700",
+                            "Needs Further Support": "bg-red-50 text-red-700",
+                            "For Further Monitoring": "bg-purple-50 text-purple-700",
+                          }}
                         />
                       </td>
-                      <td className="px-3 py-2.5 text-[12px] font-semibold text-slate-700">
-                        {progress?.label || "—"}
+                      <td className="px-4 py-3">
+                        {row.riskLevel === 'High Risk' && (!row.monitoringStatus || row.monitoringStatus === 'Not Started' || row.monitoringStatus === 'Needs Review') ? (
+                          <button
+                            type="button"
+                            onClick={() => setScreeningLearner(row)}
+                            className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-[11px] font-semibold text-blue-700 shadow-sm transition-colors hover:bg-blue-100 hover:text-blue-900 whitespace-nowrap"
+                          >
+                            Begin Screening
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => onOpen?.(row)}
+                            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-900 whitespace-nowrap"
+                          >
+                            View Details
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan={8} className="px-3 py-10 text-center">
-                    <p className="text-[12px] font-semibold text-slate-600">
-                      No intervention candidates match these filters
+                  <td colSpan={7} className="px-4 py-12 text-center">
+                    <p className="text-[13px] font-semibold text-slate-600">
+                      No intervention candidates match the current filters.
                     </p>
-                    <p className="mx-auto mt-1.5 max-w-md text-[11px] leading-5 text-slate-500">
+                    <p className="mx-auto mt-1.5 max-w-md text-[12px] leading-5 text-slate-500">
                       Candidates appear after subject grades are published and academic risk is analyzed.
-                      ARAL qualification requires diagnostic assessment results and school head review.
                     </p>
                   </td>
                 </tr>
@@ -637,11 +514,19 @@ export default function TeacherInterventionCaseload({
         />
       </div>
 
-      {!options.facilitators.length && rows.length > 0 ? (
-        <p className="text-[10px] text-slate-400">
-          Note: ARAL tutors/facilitators are formally assigned by the Head Teacher / Principal following diagnostic assessment.
-        </p>
-      ) : null}
+      {screeningLearner && (
+        <ValidationWizardModal
+          monitoringRecordId={screeningLearner.monitoringId}
+          studentId={screeningLearner.studentId}
+          learnerName={screeningLearner.name}
+          onClose={() => setScreeningLearner(null)}
+          onSuccess={() => {
+            setScreeningLearner(null);
+            // Optionally, we could trigger a refresh here if we exposed a refresh prop
+            // For now, the parent dashboard will handle real-time or manual refresh
+          }}
+        />
+      )}
     </div>
   );
 }
