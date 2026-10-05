@@ -359,6 +359,31 @@ export default function TeacherLessonPlanHub() {
     setLoadingUrl(false);
   }
 
+  async function handleResubmit(payload) {
+    setResubmitting(true);
+    try {
+      const result = await resubmit(payload);
+      if (result?.ok) {
+        showToast("Revised lesson plan submitted for review.");
+        if (result.plan) {
+          setSelectedPlan(result.plan);
+          setFileUrl(null);
+          setLoadingUrl(true);
+          const signed = await getLessonPlanSignedUrl(result.plan.filePath);
+          setFileUrl(signed.data);
+          setLoadingUrl(false);
+        }
+      }
+      return result;
+    } finally {
+      setResubmitting(false);
+    }
+  }
+
+  function handleUpdateRemarks(updatedRemarks) {
+    setSelectedPlan((prev) => (prev ? { ...prev, sectionRemarks: updatedRemarks } : prev));
+  }
+
   async function handleDownload(plan, e) {
     e?.stopPropagation();
     if (!plan) return;
@@ -829,12 +854,8 @@ export default function TeacherLessonPlanHub() {
         resubmitting={resubmitting}
         onClose={() => setDrawerOpen(false)}
         onDownload={handleDownload}
-        onResubmit={async () => {
-          setResubmitting(true);
-          await resubmit(selectedPlan);
-          setResubmitting(false);
-          setDrawerOpen(false);
-        }}
+        onResubmit={handleResubmit}
+        onUpdateRemarks={handleUpdateRemarks}
         onDelete={() => {
           setDrawerOpen(false);
           setDeleteConfirm(selectedPlan);

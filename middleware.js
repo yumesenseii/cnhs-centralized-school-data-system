@@ -109,109 +109,111 @@ export async function middleware(request) {
     },
   });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => {
-            request.cookies.set(name, value);
-          });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options);
-          });
-        },
-      },
-    }
-  );
-
   const { pathname } = request.nextUrl;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) => {
+              request.cookies.set(name, value);
+            });
+            response = NextResponse.next({
+              request: {
+                headers: request.headers,
+              },
+            });
+            cookiesToSet.forEach(({ name, value, options }) => {
+              response.cookies.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
 
-  if (!user) {
-    if (isPublicPath(pathname)) return response;
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    loginUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(loginUrl);
-  }
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-  const access = await resolvePortalAccess(supabase, user);
+    if (userError || !user) {
+      if (isPublicPath(pathname)) return response;
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      loginUrl.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
 
-  if (!access.isActive || !access.role) {
-    await supabase.auth.signOut();
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    loginUrl.searchParams.set("error", "inactive");
-    return NextResponse.redirect(loginUrl);
-  }
+    const access = await resolvePortalAccess(supabase, user);
 
-  const { role, needsFirstLogin } = access;
+    if (!access.isActive || !access.role) {
+      await supabase.auth.signOut().catch(() => {});
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      loginUrl.searchParams.set("error", "inactive");
+      return NextResponse.redirect(loginUrl);
+    }
 
-  if (PORTAL_ROLES.has(role)) {
-    void supabase.auth.updateUser({
-      data: {
-        portal_role: role,
-        portal_active: true,
-        must_change_password: Boolean(needsFirstLogin),
-      },
-    });
-  }
+    const { role, needsFirstLogin } = access;
 
-  if (needsFirstLogin && pathname !== FIRST_LOGIN_PATH) {
-    const firstLogin = request.nextUrl.clone();
-    firstLogin.pathname = FIRST_LOGIN_PATH;
-    firstLogin.search = "";
-    return NextResponse.redirect(firstLogin);
-  }
+    if (needsFirstLogin && pathname !== FIRST_LOGIN_PATH) {
+      const firstLogin = request.nextUrl.clone();
+      firstLogin.pathname = FIRST_LOGIN_PATH;
+      firstLogin.search = "";
+      return NextResponse.redirect(firstLogin);
+    }
 
-  if (!needsFirstLogin && pathname === FIRST_LOGIN_PATH) {
-    const home = request.nextUrl.clone();
-    home.pathname = roleHome(role);
-    home.search = "";
-    return NextResponse.redirect(home);
-  }
+    if (!needsFirstLogin && pathname === FIRST_LOGIN_PATH) {
+      const home = request.nextUrl.clone();
+      home.pathname = roleHome(role);
+      home.search = "";
+      return NextResponse.redirect(home);
+    }
 
-  if (pathname === "/login" || pathname === "/") {
-    if (pathname === "/login" && request.nextUrl.searchParams.get("reset") === "1") {
+    if (pathname === "/login" || pathname === "/") {
+      if (pathname === "/login" && request.nextUrl.searchParams.get("reset") === "1") {
+        return response;
+      }
+      const home = request.nextUrl.clone();
+      home.pathname = needsFirstLogin ? FIRST_LOGIN_PATH : roleHome(role);
+      return NextResponse.redirect(home);
+    }
+
+    if (isTeacherPath(pathname) && role !== "teacher") {
+      const home = request.nextUrl.clone();
+      home.pathname = roleHome(role);
+      return NextResponse.redirect(home);
+    }
+
+    if (isStudentPath(pathname) && role !== "student") {
+      const home = request.nextUrl.clone();
+      home.pathname = roleHome(role);
+      return NextResponse.redirect(home);
+    }
+
+    if (isAdminPath(pathname) && role !== "admin") {
+      const home = request.nextUrl.clone();
+      home.pathname = roleHome(role);
+      return NextResponse.redirect(home);
+    }
+
+    return response;
+  } catch (err) {
+    console.warn("[middleware] Non-fatal auth or network error:", err?.message || err);
+    if (isPublicPath(pathname)) {
       return response;
     }
-    const home = request.nextUrl.clone();
-    home.pathname = needsFirstLogin ? FIRST_LOGIN_PATH : roleHome(role);
-    return NextResponse.redirect(home);
+    // Fail safe to login rather than crashing the Next.js worker with 500
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    return NextResponse.redirect(loginUrl);
   }
-
-  if (isTeacherPath(pathname) && role !== "teacher") {
-    const home = request.nextUrl.clone();
-    home.pathname = roleHome(role);
-    return NextResponse.redirect(home);
-  }
-
-  if (isStudentPath(pathname) && role !== "student") {
-    const home = request.nextUrl.clone();
-    home.pathname = roleHome(role);
-    return NextResponse.redirect(home);
-  }
-
-  if (isAdminPath(pathname) && role !== "admin") {
-    const home = request.nextUrl.clone();
-    home.pathname = roleHome(role);
-    return NextResponse.redirect(home);
-  }
-
-  return response;
 }
 
 export const config = {

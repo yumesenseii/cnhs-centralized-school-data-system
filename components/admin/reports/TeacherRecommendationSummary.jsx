@@ -6,7 +6,7 @@ export default function TeacherRecommendationSummary({ recommendations }) {
     ["Continue Classroom Remediation", recommendations.continueRemediation],
     ["Learners Showing Improvement", recommendations.showingImprovement],
     [
-      "Immediate Head Teacher Attention Required",
+      "Immediate School Principal Attention Required",
       recommendations.immediateAttention,
     ],
   ];

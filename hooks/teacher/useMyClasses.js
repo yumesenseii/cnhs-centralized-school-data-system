@@ -123,6 +123,9 @@ export function useClassDetails(classId) {
     }
 
     const mappedClass = mapClassRecord(classResult.data);
+    const sectionAdviserId = classResult.data?.sections?.adviser_id;
+    mappedClass.isAdviser = Boolean(teacherId && sectionAdviserId === teacherId);
+
     const classQuarter =
       parseTermNumber(mappedClass.quarterNumber) ||
       parseTermNumber(mappedClass.quarter) ||

@@ -37,16 +37,16 @@ const EMPTY_DATA = {
   summaryCards: [
     { id: "total", label: "Total Users", count: 0, icon: "users", tone: "teal" },
     { id: "teachers", label: "Teachers", count: 0, icon: "teacher", tone: "green" },
-    { id: "head-teachers", label: "Head Teachers", count: 0, icon: "shield", tone: "purple" },
+    { id: "school-principals", label: "School Principals", count: 0, icon: "shield", tone: "purple" },
     { id: "active", label: "Active Accounts", count: 0, icon: "check", tone: "green" },
   ],
   filters: {
-    roles: ["All Roles", "Teacher", "Head Teacher"],
+    roles: ["All Roles", "Teacher", "School Principal"],
     learningAreas: ["All Learning Areas"],
     statuses: ["All Status", "Active", "Inactive"],
   },
   formOptions: {
-    roles: ["Teacher", "Head Teacher"],
+    roles: ["Teacher", "School Principal"],
     learningAreas: [
       "English",
       "Filipino",
@@ -131,15 +131,15 @@ async function resolveGeneratedBy() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user?.id) return "Head Teacher / Admin";
+    if (!user?.id) return "School Principal / Admin";
     const { data: profile } = await supabase
       .from("profiles")
       .select("full_name")
       .eq("auth_user_id", user.id)
       .maybeSingle();
-    return profile?.full_name?.trim() || user.email || "Head Teacher / Admin";
+    return profile?.full_name?.trim() || user.email || "School Principal / Admin";
   } catch {
-    return "Head Teacher / Admin";
+    return "School Principal / Admin";
   }
 }
 

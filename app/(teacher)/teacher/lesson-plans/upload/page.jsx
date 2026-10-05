@@ -3,7 +3,7 @@ import UploadLessonPlanFlow from "@/components/teacher/lesson-plans/UploadLesson
 
 export const metadata = {
   title: "Upload Lesson Plan | CNHS Learn",
-  description: "Submit a lesson plan for Head Teacher review.",
+  description: "Submit a lesson plan for School Principal review.",
 };
 
 export default function UploadLessonPlanPage() {

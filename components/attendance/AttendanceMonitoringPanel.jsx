@@ -46,7 +46,7 @@ export default function AttendanceMonitoringPanel({
   if (!compact) {
     return (
       <p className="text-sm text-slate-500">
-        Use the Teacher or Head Teacher attendance page for the full SF2
+        Use the Teacher or School Principal attendance page for the full SF2
         experience.
       </p>
     );

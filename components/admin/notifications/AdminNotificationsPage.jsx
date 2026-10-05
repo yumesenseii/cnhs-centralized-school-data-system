@@ -99,7 +99,7 @@ export default function AdminNotificationsPage() {
         controls={
           <>
             <PageHelp
-              summary="Personal alerts and school-wide lesson plan activity for Head Teachers."
+              summary="Personal alerts and school-wide lesson plan activity for School Principals."
               steps={[
                 "Inbox lists alerts addressed to your account (reviews, delete requests, recommendations).",
                 "Use search and filters, then open an item to go to the related page.",

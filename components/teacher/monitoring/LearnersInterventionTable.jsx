@@ -405,7 +405,7 @@ export default function LearnersInterventionTable({
                               type="button"
                               disabled={submitting}
                               onClick={() => onSubmitAralReview(learner)}
-                              title="Submit ARAL recommendation for Head Teacher review"
+                              title="Submit ARAL recommendation for School Principal review"
                               className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2 text-[10px] font-semibold text-amber-900 transition-colors hover:bg-amber-100 disabled:opacity-50"
                             >
                               {submitting ? (

@@ -38,26 +38,32 @@ const TONES = {
   },
 };
 
-export default function WhatNeedsAttention({ items = [] }) {
+export default function WhatNeedsAttention({ items = [], earlyWarningCount = 0 }) {
   const hasItems = items.length > 0;
 
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_4px_16px_rgba(15,23,42,0.03)]">
-      <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/50 px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-slate-100">
-            {hasItems ? (
+            {hasItems || earlyWarningCount > 0 ? (
               <AlertTriangle size={15} className="text-amber-600" />
             ) : (
               <CheckCircle2 size={15} className="text-cnhs-green-dark" />
             )}
           </span>
           <h2 className="text-sm font-semibold tracking-[-0.01em] text-slate-900">
-            What Needs Your Attention
+            Action Center
           </h2>
+          {earlyWarningCount > 0 && (
+            <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200/80 px-2.5 py-0.5 text-[11px] font-medium text-amber-800">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+              {earlyWarningCount} early warning{earlyWarningCount === 1 ? "" : "s"}
+            </span>
+          )}
         </div>
         {hasItems ? (
-          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+          <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800">
             {items.length} {items.length === 1 ? "Action Needed" : "Actions Needed"}
           </span>
         ) : null}
@@ -65,7 +71,7 @@ export default function WhatNeedsAttention({ items = [] }) {
 
       <div className="p-3 sm:p-4">
         {hasItems ? (
-          <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+          <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory lg:grid lg:grid-cols-3 lg:overflow-visible lg:pb-0">
             {items.map((item) => {
               const tone = TONES[item.tone] ?? TONES.default;
               const Icon = ICONS[item.type] ?? AlertTriangle;
@@ -74,7 +80,7 @@ export default function WhatNeedsAttention({ items = [] }) {
                 <div
                   key={item.id}
                   className={cn(
-                    "flex items-center justify-between gap-3 rounded-xl border p-2.5 sm:px-3 transition-all duration-150 hover:shadow-sm",
+                    "flex min-w-[280px] sm:min-w-[320px] lg:min-w-0 flex-1 shrink-0 snap-start items-center justify-between gap-3 rounded-xl border p-2.5 sm:px-3 transition-all duration-150 hover:shadow-sm",
                     tone.bg
                   )}
                 >
@@ -102,12 +108,12 @@ export default function WhatNeedsAttention({ items = [] }) {
                       href={item.href}
                       title={item.actionLabel || "View"}
                       className={cn(
-                        "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold shadow-sm transition-colors",
+                        "inline-flex shrink-0 items-center justify-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold shadow-sm transition-colors",
                         tone.button
                       )}
                     >
-                      <span className="hidden lg:inline-block">{item.actionLabel || "View"}</span>
-                      <ArrowRight size={14} />
+                      <span>{item.actionLabel || "View"}</span>
+                      <ArrowRight size={13} />
                     </Link>
                   ) : null}
                 </div>

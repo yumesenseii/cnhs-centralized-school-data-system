@@ -283,46 +283,46 @@ export default function LessonDrawer({
             </div>
           </header>
 
-          {/* Body: Side-by-Side Document + Google Docs-style Comments Panel */}
-          <div className="flex min-h-0 flex-1 gap-3 overflow-hidden p-4 sm:p-5">
-            {/* Left: Authentic Document Canvas */}
-            <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-              <div className="space-y-3">
-                <LessonInformation lesson={lesson} />
-                <LessonPreview
-                  lesson={lesson}
-                  fileUrl={fileUrl}
-                  remarks={sectionRemarks}
-                  selectedRemarkId={selectedRemarkId}
-                  onSelectRemark={(remIdOrObj) =>
-                    setSelectedRemarkId(
-                      typeof remIdOrObj === "object" && remIdOrObj !== null
-                        ? remIdOrObj.id
-                        : remIdOrObj
-                    )
-                  }
-                  onSelectText={handleSelectText}
-                />
-              </div>
+          {/* Body: 3-Column Desktop Structure (Left Sticky Nav + Center Scrollable Doc) + (Right Comments) */}
+          <div className="flex min-h-0 flex-1 overflow-hidden">
+            {/* Left & Center: Scrollspy Sticky Navigation + Scrollable Document Canvas */}
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <LessonPreview
+                lesson={lesson}
+                fileUrl={fileUrl}
+                remarks={sectionRemarks}
+                selectedRemarkId={selectedRemarkId}
+                onSelectRemark={(remIdOrObj) =>
+                  setSelectedRemarkId(
+                    typeof remIdOrObj === "object" && remIdOrObj !== null
+                      ? remIdOrObj.id
+                      : remIdOrObj
+                  )
+                }
+                onSelectText={handleSelectText}
+                readOnly={false}
+              />
             </div>
 
             {/* Right: Side-Along Comments & History Panel (No backdrop overlay) */}
             {sidePanelOpen ? (
-              <LessonRemarksSidePanel
-                open={sidePanelOpen}
-                onClose={() => setSidePanelOpen(false)}
-                remarks={sectionRemarks}
-                timeline={lesson?.timeline || []}
-                selectedRemarkId={selectedRemarkId}
-                onSelectRemark={(rem) => setSelectedRemarkId(rem?.id)}
-                onAddNewRemark={() => {
-                  setRemarkModalInitialText("");
-                  setAddRemarkModalOpen(true);
-                }}
-                onDeleteRemark={handleDeleteRemark}
-                onToggleResolve={handleToggleResolve}
-                reviewerName={reviewerName}
-              />
+              <div className="hidden sm:flex shrink-0 border-l border-slate-200/80 bg-slate-50/40 dark:border-white/5 dark:bg-white/[0.02]">
+                <LessonRemarksSidePanel
+                  open={sidePanelOpen}
+                  onClose={() => setSidePanelOpen(false)}
+                  remarks={sectionRemarks}
+                  timeline={lesson?.timeline || []}
+                  selectedRemarkId={selectedRemarkId}
+                  onSelectRemark={(rem) => setSelectedRemarkId(rem?.id)}
+                  onAddNewRemark={() => {
+                    setRemarkModalInitialText("");
+                    setAddRemarkModalOpen(true);
+                  }}
+                  onDeleteRemark={handleDeleteRemark}
+                  onToggleResolve={handleToggleResolve}
+                  reviewerName={reviewerName}
+                />
+              </div>
             ) : null}
           </div>
 

@@ -126,7 +126,7 @@ export default function AralSectionWorkspace({
           gradeSection={group.gradeSection}
           canPost={false}
           hideWhenEmpty
-          title="Comments from Head Teacher"
+          title="Comments from School Principal"
         />
       </section>
 

@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  AlertCircle,
+  CheckCircle2,
   Loader2,
   Maximize2,
   Minimize2,
@@ -10,6 +12,7 @@ import {
   Save,
   Send,
   Upload,
+  Users,
   X,
 } from "lucide-react";
 import { upsertGrade } from "@/lib/supabase/queries/myClasses";
@@ -50,6 +53,24 @@ function riskLabel(value) {
   const text = String(value).trim();
   if (!text || text === "—" || text.toLowerCase() === "no grade") return "—";
   return text;
+}
+
+function getLearnerEvaluationGrade(learner, draftCells, quarterNumber) {
+  const q = Number(quarterNumber) || 1;
+  const draftVal = draftCells?.[q];
+  if (draftVal !== undefined && String(draftVal).trim() !== "") {
+    const parsed = parseCellGrade(draftVal);
+    if (parsed !== undefined) return parsed;
+  }
+  if (learner.reportGrade != null && Number.isFinite(Number(learner.reportGrade))) {
+    return Number(learner.reportGrade);
+  }
+  const fromTerm = learner.termGrades?.[q] ?? learner.termGrades?.[String(q)];
+  if (fromTerm !== undefined && fromTerm !== null && String(fromTerm).trim() !== "") {
+    const num = Number(fromTerm);
+    if (Number.isFinite(num)) return num;
+  }
+  return null;
 }
 
 function termColumnClass(quarterNumber, columnQuarter) {
@@ -100,6 +121,26 @@ export default function ClassReportFileModal({
       ...(file?.ungradedLearners || []),
     ],
     [file]
+  );
+
+  const isAralSubject = useMemo(() => {
+    const subj = String(file?.subject || "").trim().toLowerCase();
+    const isLanguageCore =
+      /^(english|filipino|eng|fil)$/i.test(subj) ||
+      subj.includes("english") ||
+      subj.includes("filipino");
+    return isLanguageCore && file?.aralEligible !== false;
+  }, [file?.subject, file?.aralEligible]);
+
+  const isSimpleGradeBook = !isAralSubject;
+
+  const passingCount = useMemo(
+    () => (file?.passingCount ?? 0) + (file?.moderateCount ?? file?.atRiskCount ?? 0),
+    [file?.passingCount, file?.moderateCount, file?.atRiskCount]
+  );
+  const supportCount = useMemo(
+    () => file?.failingCount ?? 0,
+    [file?.failingCount]
   );
 
   const rows =
@@ -289,6 +330,8 @@ export default function ClassReportFileModal({
             <p className="mt-1 text-[12px] text-slate-500">
               {editing
                 ? "Edit Term 1–3 and Final cells, then Save Changes."
+                : isSimpleGradeBook
+                ? `Grade-Book View (${file.subject || "Subject"}) · Term grades classified on ${file.quarterLabel || "selected term"}. Click 'Edit File' to make changes.`
                 : `Read-only view · Risk classified on ${file.quarterLabel || "selected term"} only. Click 'Edit File' to make changes.`}
             </p>
           </div>
@@ -350,72 +393,127 @@ export default function ClassReportFileModal({
 
         {/* Snapshot Summaries */}
         {file.generated && !editing ? (
-          <div className="shrink-0 border-b border-slate-100 bg-slate-50 px-5 py-4">
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-              {/* Class Summary */}
-              <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-                <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Class Summary</h3>
-                <div className="space-y-1.5 text-[12px]">
-                  <div className="flex justify-between"><span className="text-slate-500">Total Learners</span><span className="font-semibold text-slate-700">{allLearners.length}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">High Risk</span><span className="font-semibold text-red-600">{allLearners.filter(l => l.academicRisk === "High Risk").length}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Moderate Risk</span><span className="font-semibold text-orange-600">{allLearners.filter(l => l.academicRisk === "Moderate Risk").length}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Low Risk</span><span className="font-semibold text-green-600">{allLearners.filter(l => l.academicRisk === "Low Risk").length}</span></div>
-                </div>
-              </div>
-
-              {/* Intervention Summary */}
-              <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-                <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Intervention Summary</h3>
-                <div className="space-y-1.5 text-[12px]">
-                  <div className="flex justify-between"><span className="text-slate-500">Needs Review</span><span className="font-semibold text-slate-700">{allLearners.filter(l => l.monitoringStatus === "Needs Review").length}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Not Started</span><span className="font-semibold text-slate-700">{allLearners.filter(l => l.monitoringStatus === "Not Started").length}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Ongoing</span><span className="font-semibold text-slate-700">{allLearners.filter(l => l.monitoringStatus === "Ongoing").length}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Completed</span><span className="font-semibold text-slate-700">{allLearners.filter(l => l.monitoringStatus === "Completed").length}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Needs Further Support</span><span className="font-semibold text-slate-700">{allLearners.filter(l => l.monitoringStatus === "Needs Further Support").length}</span></div>
-                </div>
-              </div>
-
-              {/* Assessment Summary */}
-              <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-                <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Assessment Summary</h3>
-                <div className="space-y-1.5 text-[12px]">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">BEG Average</span>
-                    <span className="font-semibold text-slate-700">
-                      {(() => {
-                        const valid = allLearners.map(l => l.begScore).filter(s => s != null);
-                        return valid.length ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : "—";
-                      })()}
-                    </span>
+          isSimpleGradeBook ? (
+            /* Streamlined horizontal status banner for Non-ARAL subjects */
+            <div className="shrink-0 border-b border-slate-100 bg-slate-50/70 px-5 py-3.5">
+              <div className="grid grid-cols-1 divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white shadow-sm sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                {/* Total Enrolled Learners */}
+                <div className="flex items-center gap-3.5 p-3.5">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                    <Users size={18} />
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">MID Average</span>
-                    <span className="font-semibold text-slate-700">
-                      {(() => {
-                        const valid = allLearners.map(l => l.midScore).filter(s => s != null);
-                        return valid.length ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : "—";
-                      })()}
-                    </span>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                      Total Enrolled Learners
+                    </p>
+                    <p className="text-xl font-bold tracking-tight text-slate-900 leading-none mt-1">
+                      {allLearners.length}
+                    </p>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">END Average</span>
-                    <span className="font-semibold text-slate-700">
-                      {(() => {
-                        const valid = allLearners.map(l => l.endScore).filter(s => s != null);
-                        return valid.length ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : "—";
-                      })()}
-                    </span>
+                </div>
+
+                {/* Students Passing */}
+                <div className="flex items-center gap-3.5 p-3.5">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                    <CheckCircle2 size={18} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                      Students Passing
+                    </p>
+                    <p className="text-xl font-bold tracking-tight text-emerald-700 leading-none mt-1">
+                      {passingCount}
+                      <span className="text-[11px] font-normal text-slate-400 ml-1.5">(Grade ≥ 75)</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Students Needing Quick Support */}
+                <div className="flex items-center gap-3.5 p-3.5">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+                    <AlertCircle size={18} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                      Students Needing Quick Support
+                    </p>
+                    <p className="text-xl font-bold tracking-tight text-amber-700 leading-none mt-1">
+                      {supportCount}
+                      <span className="text-[11px] font-normal text-slate-400 ml-1.5">(Grade &lt; 75)</span>
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          ) : (
+            /* Comprehensive Triple Summary Cards for English / Filipino */
+            <div className="shrink-0 border-b border-slate-100 bg-slate-50 px-5 py-4">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                {/* Class Summary */}
+                <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                  <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Class Summary</h3>
+                  <div className="space-y-1.5 text-[12px]">
+                    <div className="flex justify-between"><span className="text-slate-500">Total Learners</span><span className="font-semibold text-slate-700">{allLearners.length}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">High Risk</span><span className="font-semibold text-red-600">{allLearners.filter(l => l.academicRisk === "High Risk").length}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Moderate Risk</span><span className="font-semibold text-orange-600">{allLearners.filter(l => l.academicRisk === "Moderate Risk").length}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Low Risk</span><span className="font-semibold text-green-600">{allLearners.filter(l => l.academicRisk === "Low Risk").length}</span></div>
+                  </div>
+                </div>
+
+                {/* Intervention Summary */}
+                <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                  <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Intervention Summary</h3>
+                  <div className="space-y-1.5 text-[12px]">
+                    <div className="flex justify-between"><span className="text-slate-500">Needs Review</span><span className="font-semibold text-slate-700">{allLearners.filter(l => l.monitoringStatus === "Needs Review").length}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Not Started</span><span className="font-semibold text-slate-700">{allLearners.filter(l => l.monitoringStatus === "Not Started").length}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Ongoing</span><span className="font-semibold text-slate-700">{allLearners.filter(l => l.monitoringStatus === "Ongoing").length}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Completed</span><span className="font-semibold text-slate-700">{allLearners.filter(l => l.monitoringStatus === "Completed").length}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Needs Further Support</span><span className="font-semibold text-slate-700">{allLearners.filter(l => l.monitoringStatus === "Needs Further Support").length}</span></div>
+                  </div>
+                </div>
+
+                {/* Assessment Summary */}
+                <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                  <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Assessment Summary</h3>
+                  <div className="space-y-1.5 text-[12px]">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">BEG Average</span>
+                      <span className="font-semibold text-slate-700">
+                        {(() => {
+                          const valid = allLearners.map(l => l.begScore).filter(s => s != null);
+                          return valid.length ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : "—";
+                        })()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">MID Average</span>
+                      <span className="font-semibold text-slate-700">
+                        {(() => {
+                          const valid = allLearners.map(l => l.midScore).filter(s => s != null);
+                          return valid.length ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : "—";
+                        })()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">END Average</span>
+                      <span className="font-semibold text-slate-700">
+                        {(() => {
+                          const valid = allLearners.map(l => l.endScore).filter(s => s != null);
+                          return valid.length ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : "—";
+                        })()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
         ) : null}
 
         {/* Edge-to-edge spreadsheet */}
         <div className="relative min-h-0 flex-1 overflow-auto bg-white">
           <form id="class-report-edit-form" onSubmit={handleSave} className="h-full">
-            <table className="w-full min-w-[920px] border-collapse">
+            <table className={cn("w-full border-collapse", isSimpleGradeBook ? "min-w-[760px]" : "min-w-[920px]")}>
               <thead>
                 <tr>
                   <th className={cn(th, "w-10 text-center")}>#</th>
@@ -427,26 +525,39 @@ export default function ClassReportFileModal({
                   <th className={cn(th, "w-[76px] text-center")}>Term 2</th>
                   <th className={cn(th, "w-[76px] text-center")}>Term 3</th>
                   <th className={cn(th, "w-[76px] text-center")}>Final</th>
-                  <th className={cn(th, "min-w-[90px] text-center")}>
-                    Risk
-                    {file.quarterLabel ? (
-                      <span className="block text-[9px] font-medium normal-case tracking-normal text-slate-400">
-                        ({file.quarterLabel})
-                      </span>
-                    ) : null}
-                  </th>
-                  {!editing && (
+                  {isSimpleGradeBook ? (
+                    <th className={cn(th, "min-w-[130px] text-center border-l border-slate-200")}>
+                      Status
+                      {file.quarterLabel ? (
+                        <span className="block text-[9px] font-medium normal-case tracking-normal text-slate-400">
+                          ({file.quarterLabel})
+                        </span>
+                      ) : null}
+                    </th>
+                  ) : (
                     <>
-                      <th className={cn(th, "w-[60px] text-center border-l-2 border-slate-300")}>BEG</th>
-                      <th className={cn(th, "w-[60px] text-center")}>MID</th>
-                      <th className={cn(th, "w-[60px] text-center")}>END</th>
-                      <th className={cn(th, "min-w-[120px] text-left")}>Intervention Pathway</th>
-                      <th className={cn(th, "min-w-[100px] text-left")}>Status</th>
+                      <th className={cn(th, "min-w-[90px] text-center")}>
+                        Risk
+                        {file.quarterLabel ? (
+                          <span className="block text-[9px] font-medium normal-case tracking-normal text-slate-400">
+                            ({file.quarterLabel})
+                          </span>
+                        ) : null}
+                      </th>
+                      {!editing && (
+                        <>
+                          <th className={cn(th, "w-[60px] text-center border-l-2 border-slate-300")}>BEG</th>
+                          <th className={cn(th, "w-[60px] text-center")}>MID</th>
+                          <th className={cn(th, "w-[60px] text-center")}>END</th>
+                          <th className={cn(th, "min-w-[120px] text-left")}>Intervention Pathway</th>
+                          <th className={cn(th, "min-w-[100px] text-left")}>Status</th>
+                        </>
+                      )}
+                      <th className={cn(th, "min-w-[72px] text-center border-l-2 border-slate-300")}>
+                        Priority
+                      </th>
                     </>
                   )}
-                  <th className={cn(th, "min-w-[72px] text-center border-l-2 border-slate-300")}>
-                    Priority
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -493,31 +604,60 @@ export default function ClassReportFileModal({
                           )}
                         </td>
                       ))}
-                      <td className={cn(td, "text-center text-slate-600")}>
-                        {riskLabel(learner.riskLevel || learner.academicRisk)}
-                      </td>
-                      {!editing && (
+                      {isSimpleGradeBook ? (
+                        <td className={cn(td, "text-center border-l border-slate-200")}>
+                          {(() => {
+                            const gradeVal = getLearnerEvaluationGrade(learner, cells, file.quarterNumber);
+                            if (gradeVal === null) {
+                              return (
+                                <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-600">
+                                  Ungraded
+                                </span>
+                              );
+                            }
+                            if (gradeVal >= 75) {
+                              return (
+                                <span className="inline-flex items-center rounded-md bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200/70">
+                                  Passing
+                                </span>
+                              );
+                            }
+                            return (
+                              <span className="inline-flex items-center rounded-md bg-amber-50 px-2.5 py-0.5 text-[11px] font-medium text-amber-800 ring-1 ring-amber-200/70">
+                                Needs Grade Update
+                              </span>
+                            );
+                          })()}
+                        </td>
+                      ) : (
                         <>
-                          <td className={cn(td, "text-center text-slate-600 border-l-2 border-slate-300")}>
-                            {learner.begScore != null ? learner.begScore : <span className="text-[10px] text-slate-400">Not assessed</span>}
-                          </td>
                           <td className={cn(td, "text-center text-slate-600")}>
-                            {learner.midScore != null ? learner.midScore : <span className="text-[10px] text-slate-400">Not assessed</span>}
+                            {riskLabel(learner.riskLevel || learner.academicRisk)}
                           </td>
-                          <td className={cn(td, "text-center text-slate-600")}>
-                            {learner.endScore != null ? learner.endScore : <span className="text-[10px] text-slate-400">Not assessed</span>}
-                          </td>
-                          <td className={cn(td, "text-left text-slate-600")}>
-                            {learner.interventionPathway || "—"}
-                          </td>
-                          <td className={cn(td, "text-left text-slate-600 font-medium")}>
-                            {learner.monitoringStatus || "—"}
+                          {!editing && (
+                            <>
+                              <td className={cn(td, "text-center text-slate-600 border-l-2 border-slate-300")}>
+                                {learner.begScore != null ? learner.begScore : <span className="text-[10px] text-slate-400">Not assessed</span>}
+                              </td>
+                              <td className={cn(td, "text-center text-slate-600")}>
+                                {learner.midScore != null ? learner.midScore : <span className="text-[10px] text-slate-400">Not assessed</span>}
+                              </td>
+                              <td className={cn(td, "text-center text-slate-600")}>
+                                {learner.endScore != null ? learner.endScore : <span className="text-[10px] text-slate-400">Not assessed</span>}
+                              </td>
+                              <td className={cn(td, "text-left text-slate-600")}>
+                                {learner.interventionPathway || "—"}
+                              </td>
+                              <td className={cn(td, "text-left text-slate-600 font-medium")}>
+                                {learner.monitoringStatus || "—"}
+                              </td>
+                            </>
+                          )}
+                          <td className={cn(td, "text-center border-l-2 border-slate-300")}>
+                            <PriorityCue learner={learner} />
                           </td>
                         </>
                       )}
-                      <td className={cn(td, "text-center border-l-2 border-slate-300")}>
-                        <PriorityCue learner={learner} />
-                      </td>
                     </tr>
                   );
                 })}
@@ -533,7 +673,7 @@ export default function ClassReportFileModal({
           {showHtReview ? (
             <div className="sticky bottom-0 border-t border-slate-200 bg-white px-5 py-3">
               <p className="mb-2 text-[12px] font-semibold text-slate-800">
-                Head Teacher review
+                School Principal review
               </p>
               <textarea
                 rows={2}

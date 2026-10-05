@@ -336,17 +336,19 @@ export function useStudentMonitoringDetail(classId, studentId) {
       return;
     }
 
-    setDetail(await mapMonitoringDetail(result.data));
+    const mapped = await mapMonitoringDetail(result.data);
+    const isClassAdviser = Boolean(
+      session.data.teacherId &&
+      (mapped.adviserId === session.data.teacherId ||
+       result.data.classRow?.sections?.adviser_id === session.data.teacherId)
+    );
 
     const facilitatorCheck = await isCurrentTeacherAralFacilitator(studentId);
-    setDetail((prev) =>
-      prev
-        ? {
-            ...prev,
-            isAralFacilitator: Boolean(facilitatorCheck.data),
-          }
-        : prev
-    );
+    setDetail({
+      ...mapped,
+      isClassAdviser,
+      isAralFacilitator: Boolean(facilitatorCheck.data),
+    });
     endLoad(true);
   }, [classId, studentId, beginLoad, endLoad]);
 

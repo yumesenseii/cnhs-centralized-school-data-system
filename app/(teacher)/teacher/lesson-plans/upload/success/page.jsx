@@ -3,7 +3,7 @@ import SuccessLessonPlanFlow from "@/components/teacher/lesson-plans/SuccessLess
 
 export const metadata = {
   title: "Submission Complete | CNHS Learn",
-  description: "Lesson plan successfully submitted for Head Teacher review.",
+  description: "Lesson plan successfully submitted for School Principal review.",
 };
 
 export default function LessonPlanSuccessPage() {

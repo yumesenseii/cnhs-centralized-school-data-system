@@ -2,32 +2,22 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Bold,
-  Check,
   Download,
-  Edit3,
-  FileText,
-  Heading1,
-  Heading2,
-  Italic,
-  List,
-  ListOrdered,
   Loader2,
   MessageSquarePlus,
-  Redo2,
-  Save,
-  Sparkles,
-  Underline as UnderlineIcon,
-  Undo2,
-  X,
   ZoomIn,
   ZoomOut,
+  X,
 } from "lucide-react";
 import {
   downloadFileFromUrl,
   downloadLessonPlanDocx,
   formatLessonPlanDownloadName,
 } from "@/lib/lesson-plan/docxExport";
+import LessonPlanScrollspy, {
+  annotateLessonPlanHtml,
+} from "@/components/lesson-plan/LessonPlanScrollspy";
+import LessonInformation from "@/components/lesson-plan/LessonInformation";
 import { cn } from "@/lib/utils";
 
 function fileKind(lesson) {
@@ -46,7 +36,8 @@ function fileKind(lesson) {
 }
 
 /**
- * Clean Word & PDF Document Canvas with In-System Editing & Word Export.
+ * Official School Document Viewer with Scrollspy Navigation, DepEd Layout & Review Comments.
+ * Displays official lesson plan documents without altering their prescribed structure.
  */
 export default function LessonPreview({
   lesson,
@@ -56,56 +47,34 @@ export default function LessonPreview({
   onSelectRemark = null,
   onSelectText = null,
   onDocxParsed = null,
-  onSaveEdits = null,
-  readOnly = false,
-  allowEdit = true,
+  readOnly = true,
+  className = "",
 }) {
   const kind = fileKind(lesson);
-  const draftKey = lesson?.id ? `cnhs_lp_draft_${lesson.id}` : null;
-  const savedKey = lesson?.id ? `cnhs_lp_saved_${lesson.id}` : null;
 
   const [rawDocxHtml, setRawDocxHtml] = useState("");
-  const [editedHtml, setEditedHtml] = useState("");
   const [docxError, setDocxError] = useState("");
   const [loadingDocx, setLoadingDocx] = useState(false);
   const [selectedTextSnippet, setSelectedTextSnippet] = useState("");
   const [zoomLevel, setZoomLevel] = useState(100);
-  const [isEditing, setIsEditing] = useState(false);
-  const [hasSavedEdits, setHasSavedEdits] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [draftRestored, setDraftRestored] = useState(false);
-  const [savedToast, setSavedToast] = useState(false);
+  const [activeSectionId, setActiveSectionId] = useState("");
 
   const docxContainerRef = useRef(null);
-  const editorRef = useRef(null);
-  const draftHtmlRef = useRef("");
+  const scrollContainerRef = useRef(null);
 
-  // Load DOCX with draft and persistent saved state recovery
+  // Load official DOCX through Mammoth
   useEffect(() => {
     let cancelled = false;
 
     async function loadDocx() {
       if (kind !== "docx" || !fileUrl) {
         setRawDocxHtml("");
-        setEditedHtml("");
         setDocxError("");
         setLoadingDocx(false);
         return;
       }
       setLoadingDocx(true);
       setDocxError("");
-
-      // Check if there is an active draft or saved content in storage for this lesson
-      let savedContent = null;
-      let storedDraft = null;
-      if (typeof window !== "undefined") {
-        try {
-          if (savedKey) savedContent = localStorage.getItem(savedKey);
-          if (draftKey) storedDraft = sessionStorage.getItem(draftKey);
-        } catch (e) {
-          // ignore storage error
-        }
-      }
 
       try {
         const mammoth = await import("mammoth");
@@ -115,584 +84,355 @@ export default function LessonPreview({
         }
         const buffer = await response.arrayBuffer();
         const convertToHtml = mammoth.convertToHtml ?? mammoth.default?.convertToHtml;
-        const images = mammoth.images ?? mammoth.default?.images;
+
         const result = await convertToHtml(
           { arrayBuffer: buffer },
           {
-            convertImage: images?.imgElement(async (image) => {
-              const base64 = await image.read("base64");
-              return {
-                src: `data:${image.contentType};base64,${base64}`,
-              };
-            }),
+            styleMap: [
+              "p[style-name='Heading 1'] => h1:fresh",
+              "p[style-name='Heading 2'] => h2:fresh",
+              "p[style-name='Heading 3'] => h3:fresh",
+              "p[style-name='Title'] => h1.title:fresh",
+              "p[style-name='Subtitle'] => h2.subtitle:fresh",
+              "table => table.table.table-bordered:fresh",
+              "r[style-name='Strong'] => strong",
+              "r[style-name='Emphasis'] => em",
+            ],
+            includeDefaultStyleMap: true,
           }
         );
-        if (cancelled) return;
-        if (!String(result.value || "").trim()) {
-          setDocxError(
-            "No preview available for this document. Please download the file to view it."
-          );
-        } else {
-          setRawDocxHtml(result.value);
-          if (storedDraft && storedDraft.trim()) {
-            // Restore draft so tab switching does not reset unsaved work
-            setEditedHtml(storedDraft);
-            draftHtmlRef.current = storedDraft;
-            setHasSavedEdits(Boolean(savedContent));
-            setHasUnsavedChanges(storedDraft !== savedContent);
-            setDraftRestored(true);
-            onDocxParsed?.(storedDraft);
-          } else if (savedContent && savedContent.trim()) {
-            // Restore authoritative saved edit (e.g. Hensley Santos)
-            setEditedHtml(savedContent);
-            draftHtmlRef.current = savedContent;
-            setHasSavedEdits(true);
-            setHasUnsavedChanges(false);
-            onDocxParsed?.(savedContent);
-          } else {
-            setEditedHtml(result.value);
-            draftHtmlRef.current = result.value;
-            onDocxParsed?.(result.value);
-          }
+
+        if (!cancelled) {
+          const cleanHtml = result.value || "";
+          setRawDocxHtml(cleanHtml);
+          onDocxParsed?.(cleanHtml);
         }
       } catch (err) {
         if (!cancelled) {
-          setDocxError(
-            err?.message ||
-              "Unable to load document preview. Please download the file to view it."
-          );
+          console.error("DOCX parsing error:", err);
+          setDocxError("Could not render the Word document preview.");
         }
       } finally {
-        if (!cancelled) setLoadingDocx(false);
+        if (!cancelled) {
+          setLoadingDocx(false);
+        }
       }
     }
 
     loadDocx();
+
     return () => {
       cancelled = true;
     };
-  }, [kind, fileUrl, draftKey, savedKey, onDocxParsed]);
+  }, [kind, fileUrl]);
 
-  // Robust smooth scroll and glowing pulse when selectedRemarkId changes
-  useEffect(() => {
-    if (!selectedRemarkId) return;
-
-    let attempts = 0;
-    function triggerScrollAndPulse() {
-      const markElem =
-        document.getElementById(`remark-mark-${selectedRemarkId}`) ||
-        document.querySelector(`[data-remark-id="${selectedRemarkId}"]`);
-
-      if (markElem) {
-        markElem.scrollIntoView({ behavior: "smooth", block: "center" });
-        markElem.classList.add("ring-4", "ring-amber-400", "bg-amber-300", "shadow-lg");
-        const timer = setTimeout(() => {
-          markElem?.classList.remove("shadow-lg");
-        }, 3000);
-        return () => clearTimeout(timer);
-      } else if (attempts < 6) {
-        attempts++;
-        setTimeout(triggerScrollAndPulse, 50);
-      }
-    }
-
-    const animId = requestAnimationFrame(triggerScrollAndPulse);
-    return () => cancelAnimationFrame(animId);
-  }, [selectedRemarkId, editedHtml, rawDocxHtml, isEditing]);
-
-  // Real-time input handler on contentEditable canvas
-  function handleContentInput(e) {
-    if (!isEditing) return;
-    const currentHtml = e.currentTarget.innerHTML;
-    draftHtmlRef.current = currentHtml;
-    setHasUnsavedChanges(true);
-    if (draftKey && typeof window !== "undefined") {
-      try {
-        sessionStorage.setItem(draftKey, currentHtml);
-      } catch (err) {
-        // ignore quota errors
-      }
-    }
-  }
-
-  // Handle text selection for Principal review
+  // Handle reviewer text selection
   function handleMouseUp() {
-    if (isEditing || readOnly || !onSelectText) return;
+    if (!onSelectText) return;
     const selection = window.getSelection();
-    const text = selection?.toString()?.trim() || "";
-    if (text.length >= 2 && text.length <= 500) {
+    if (!selection || selection.isCollapsed) return;
+
+    const text = selection.toString().trim();
+    if (text.length >= 3 && text.length <= 160) {
       setSelectedTextSnippet(text);
     }
   }
 
   function handleAttachSelectionRemark() {
-    if (!selectedTextSnippet) return;
-    onSelectText?.(selectedTextSnippet);
-    setSelectedTextSnippet("");
+    if (selectedTextSnippet && onSelectText) {
+      onSelectText(selectedTextSnippet);
+      setSelectedTextSnippet("");
+    }
   }
 
-  // Handle clicking on highlighted mark inside the document
+  // Handle clicking on remarked text
   function handleDocumentClick(e) {
-    if (isEditing) return;
-    const markTarget = e.target.closest("mark[data-remark-id]");
-    if (markTarget) {
-      const remId = markTarget.getAttribute("data-remark-id");
-      if (remId) {
-        onSelectRemark?.(remId);
+    const mark = e.target.closest("mark[data-remark-id]");
+    if (mark) {
+      const remarkId = mark.getAttribute("data-remark-id");
+      if (remarkId && onSelectRemark) {
+        onSelectRemark(remarkId);
       }
     }
   }
 
-  // Highlight remarks on the active HTML with whitespace-tolerant regex
+  // Annotate remarks onto official document HTML
   const displayHtml = useMemo(() => {
-    const baseHtml = editedHtml || rawDocxHtml;
-    if (!baseHtml) return "";
+    let html = rawDocxHtml;
+    if (!html) return "";
 
-    // If currently editing, return editedHtml directly so marks don't interfere with typing
-    if (isEditing) return baseHtml;
+    const activeRemarks = remarks.filter(
+      (r) => r.quotedText && r.status !== "resolved"
+    );
 
-    let html = baseHtml;
-    if (Array.isArray(remarks) && remarks.length > 0) {
-      remarks.forEach((rem) => {
-        const textToFind = String(rem.highlightedText || "").trim();
-        if (textToFind && textToFind.length >= 2) {
-          try {
-            // Clean up regex tokens and tolerate multi-spaces / linebreaks / entities
-            const words = textToFind
-              .replace(/[\n\r\t]+/g, " ")
-              .split(/\s+/)
-              .filter(Boolean)
-              .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    if (activeRemarks.length === 0) return html;
 
-            if (words.length > 0) {
-              const pattern = words.join("(?:\\s+|&nbsp;)+");
-              const regex = new RegExp(`(${pattern})`, "gi");
+    activeRemarks.forEach((rem) => {
+      const target = rem.quotedText.trim();
+      if (!target || target.length < 3) return;
 
-              const isSelected =
-                Boolean(selectedRemarkId) &&
-                String(rem.id) === String(selectedRemarkId);
+      const isSelected =
+        Boolean(selectedRemarkId) && String(rem.id) === String(selectedRemarkId);
+      const markClass = isSelected
+        ? "bg-amber-300 text-amber-950 font-medium px-0.5 rounded-xs ring-2 ring-amber-500 cursor-pointer transition-all"
+        : "bg-amber-100/90 text-amber-950 px-0.5 rounded-xs border-b-2 border-amber-500 cursor-pointer hover:bg-amber-200 transition-colors";
 
-              const highlightClass =
-                rem.severity === "Needs Revision"
-                  ? "bg-[#fef08a] text-slate-900 border-b-2 border-[#eab308] font-bold"
-                  : rem.severity === "Suggestion"
-                  ? "bg-[#e0f2fe] text-slate-900 border-b-2 border-[#38bdf8] font-bold"
-                  : "bg-[#dcfce7] text-slate-900 border-b-2 border-[#22c55e] font-bold";
-
-              const activeClass = isSelected
-                ? "ring-4 ring-amber-400 ring-offset-2 bg-amber-300 font-extrabold shadow-md scale-105 inline-block"
-                : "";
-
-              html = html.replace(
-                regex,
-                `<mark data-remark-id="${rem.id}" id="remark-mark-${rem.id}" class="${highlightClass} ${activeClass} px-1 py-0.5 rounded-xs transition-all duration-200 cursor-pointer" title="[${rem.severity}] ${rem.comment}">$1</mark>`
-              );
-            }
-          } catch (e) {
-            console.warn("[LessonPreview] highlight match error", e);
-          }
-        }
-      });
-    }
+      const escapedTarget = target.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      try {
+        const regex = new RegExp(`(${escapedTarget})`, "i");
+        html = html.replace(regex, `<mark data-remark-id="${rem.id}" class="${markClass}">$1</mark>`);
+      } catch (e) {
+        console.warn("[LessonPreview] highlight match error", e);
+      }
+    });
 
     return html;
-  }, [editedHtml, rawDocxHtml, remarks, isEditing, selectedRemarkId]);
+  }, [rawDocxHtml, remarks, selectedRemarkId]);
 
-  // Formatting commands for the in-system editor
-  function execFormat(command, value = null) {
-    if (typeof document === "undefined") return;
-    document.execCommand(command, false, value);
-    if (editorRef.current) {
-      editorRef.current.focus();
-      handleContentInput({ currentTarget: editorRef.current });
-    }
-  }
+  // Inject official CNHS section anchors for Scrollspy navigation
+  const { annotatedHtml, availableSections } = useMemo(() => {
+    return annotateLessonPlanHtml(displayHtml);
+  }, [displayHtml]);
 
-  function handleStartEditing() {
-    setIsEditing(true);
-    setSelectedTextSnippet("");
-  }
+  // Scroll smoothly to section accounting for sticky header offset
+  function handleNavigateToSection(section) {
+    if (!section?.id) return;
+    const targetEl = document.getElementById(section.id);
+    const scrollContainer = scrollContainerRef.current;
 
-  function handleSaveEdits() {
-    if (!editorRef.current) return;
-    const newHtml = editorRef.current.innerHTML;
-    setEditedHtml(newHtml);
-    draftHtmlRef.current = newHtml;
-    setHasSavedEdits(true);
-    setHasUnsavedChanges(false);
-    setIsEditing(false);
-    onSaveEdits?.(newHtml);
+    setActiveSectionId(section.id);
 
-    if (typeof window !== "undefined") {
-      try {
-        if (savedKey) localStorage.setItem(savedKey, newHtml);
-        if (draftKey) sessionStorage.setItem(draftKey, newHtml);
-      } catch (err) {
-        // ignore storage quota errors
+    if (targetEl && scrollContainer) {
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const targetRect = targetEl.getBoundingClientRect();
+      const stickyHeaderOffset = 30;
+      const scrollPos =
+        scrollContainer.scrollTop + (targetRect.top - containerRect.top) - stickyHeaderOffset;
+
+      scrollContainer.scrollTo({
+        top: Math.max(0, scrollPos),
+        behavior: "smooth",
+      });
+
+      if (typeof window !== "undefined" && window.history?.replaceState) {
+        window.history.replaceState(null, "", `#${section.id}`);
       }
-    }
-
-    setSavedToast(true);
-    setTimeout(() => setSavedToast(false), 3500);
-  }
-
-  function handleCancelEdits() {
-    setIsEditing(false);
-    if (editorRef.current) {
-      editorRef.current.innerHTML = editedHtml || rawDocxHtml;
-      draftHtmlRef.current = editedHtml || rawDocxHtml;
+    } else if (targetEl) {
+      targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }
 
-  function handleDiscardDraft() {
-    if (typeof window !== "undefined") {
-      try {
-        if (draftKey) sessionStorage.removeItem(draftKey);
-        if (savedKey) localStorage.removeItem(savedKey);
-      } catch (e) {
-        // ignore
+  // IntersectionObserver to detect which lesson plan section is currently in view
+  useEffect(() => {
+    if (!availableSections.length) return;
+
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) return;
+
+    if (!activeSectionId && availableSections[0]?.id) {
+      setActiveSectionId(availableSections[0].id);
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const intersecting = entries.filter((e) => e.isIntersecting);
+        if (intersecting.length > 0) {
+          const topMost = intersecting.reduce((prev, curr) => {
+            return prev.boundingClientRect.top < curr.boundingClientRect.top ? prev : curr;
+          });
+          if (topMost?.target?.id) {
+            setActiveSectionId(topMost.target.id);
+          }
+        }
+      },
+      {
+        root: scrollContainer,
+        rootMargin: "-20px 0px -55% 0px",
+        threshold: [0, 0.1, 0.5],
       }
-    }
-    setEditedHtml(rawDocxHtml);
-    draftHtmlRef.current = rawDocxHtml;
-    setHasSavedEdits(false);
-    setHasUnsavedChanges(false);
-    setDraftRestored(false);
-    setIsEditing(false);
-    if (editorRef.current) {
-      editorRef.current.innerHTML = rawDocxHtml;
-    }
-    onSaveEdits?.(rawDocxHtml);
-  }
+    );
 
-  function handleClearHighlightMarks() {
-    if (!editorRef.current) return;
-    const marks = editorRef.current.querySelectorAll("mark");
-    marks.forEach((mark) => {
-      const parent = mark.parentNode;
-      while (mark.firstChild) {
-        parent.insertBefore(mark.firstChild, mark);
-      }
-      parent.removeChild(mark);
+    availableSections.forEach((sec) => {
+      const el = document.getElementById(sec.id);
+      if (el) observer.observe(el);
     });
-    handleContentInput({ currentTarget: editorRef.current });
-  }
 
+    const handleScroll = () => {
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const topThreshold = containerRect.top + 60;
+
+      let currentActive = availableSections[0]?.id || "";
+      for (const sec of availableSections) {
+        const el = document.getElementById(sec.id);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          if (rect.top <= topThreshold) {
+            currentActive = sec.id;
+          }
+        }
+      }
+      if (currentActive) {
+        setActiveSectionId(currentActive);
+      }
+    };
+
+    scrollContainer.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      observer.disconnect();
+      scrollContainer.removeEventListener("scroll", handleScroll);
+    };
+  }, [availableSections, loadingDocx]);
+
+  // Download official lesson plan document
   async function handleDownloadDocument() {
+    const filename = formatLessonPlanDownloadName(lesson, kind === "pdf" ? "pdf" : "docx");
+    if (kind === "pdf" && fileUrl) {
+      downloadFileFromUrl(fileUrl, filename);
+      return;
+    }
+
     try {
-      const fileName = formatLessonPlanDownloadName(lesson);
-
-      // If the document has in-system edits or is actively edited, export populated native DOCX
-      if (hasSavedEdits || isEditing) {
-        const activeHtml = isEditing
-          ? (editorRef.current?.innerHTML || editedHtml)
-          : (editedHtml || rawDocxHtml);
-
-        await downloadLessonPlanDocx(
-          {
-            ...lesson,
-            editedHtml: activeHtml,
-            teacher: lesson?.teacher || lesson?.teacherName || "Subject Teacher",
-            principal: lesson?.reviewedByName || "Dulce Vilma R. Galang",
-          },
-          fileName
-        );
-        return;
-      }
-
-      // If unedited and fileUrl is available, download the original file cleanly
       if (fileUrl) {
-        await downloadFileFromUrl(fileUrl, fileName);
-        return;
+        downloadFileFromUrl(fileUrl, filename);
       }
-
-      // Fallback: master template DOCX export
-      await downloadLessonPlanDocx(lesson, fileName);
     } catch (err) {
       console.error("[LessonPreview] download error", err);
-      if (fileUrl) {
-        const fileName = formatLessonPlanDownloadName(lesson);
-        await downloadFileFromUrl(fileUrl, fileName);
-      }
     }
   }
 
   return (
-    <section className="flex flex-col">
-      {/* Top Document Toolbar */}
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-slate-800">
-        <div className="flex items-center gap-2">
-          <FileText size={15} className="text-cnhs-green-dark dark:text-cnhs-green" />
-          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-            {lesson.fileName || "Lesson Plan Document"}
-          </span>
-          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-slate-600 dark:bg-white/10 dark:text-slate-300">
-            {kind.toUpperCase()}
-          </span>
-          {hasSavedEdits ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-              <Sparkles size={10} /> Edited
-            </span>
-          ) : null}
-        </div>
+    <section className={cn("flex h-full min-h-0 w-full overflow-hidden bg-slate-100/60 dark:bg-black/25", className)}>
+      {/* =========================================================================
+          LEFT: Sticky "On This Page" Navigation (Desktop lg+)
+          Remains fixed/sticky while only the center document area scrolls.
+          ========================================================================= */}
+      {availableSections.length > 0 ? (
+        <aside
+          className="hidden lg:flex w-52 xl:w-60 shrink-0 flex-col border-r border-slate-200/80 bg-white p-4 dark:border-white/5 dark:bg-[var(--card)]"
+        >
+          <LessonPlanScrollspy
+            sections={availableSections}
+            activeId={activeSectionId}
+            onSelectSection={handleNavigateToSection}
+            variant="desktop"
+          />
+        </aside>
+      ) : null}
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Zoom controls */}
-          {kind === "docx" ? (
-            <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5 dark:border-slate-800 dark:bg-[#1a202c]">
+      {/* =========================================================================
+          CENTER: Scrollable Official Lesson Plan Document
+          This is the ONLY area that scrolls vertically.
+          ========================================================================= */}
+      <div
+        ref={scrollContainerRef}
+        className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 scroll-smooth"
+      >
+        {/* Mobile: Compact Sticky 'Sections' Control (< lg) */}
+        {availableSections.length > 0 ? (
+          <div className="lg:hidden sticky top-0 z-30 mb-3">
+            <LessonPlanScrollspy
+              sections={availableSections}
+              activeId={activeSectionId}
+              onSelectSection={handleNavigateToSection}
+              variant="mobile"
+            />
+          </div>
+        ) : null}
+
+        {/* Collapsible Lesson Information Header inside document container */}
+        {lesson ? (
+          <div className="mx-auto max-w-4xl mb-3">
+            <LessonInformation lesson={lesson} />
+          </div>
+        ) : null}
+
+        {/* Floating Selection Action Banner (Principal Review) */}
+        {selectedTextSnippet && onSelectText ? (
+          <div className="sticky top-2 z-30 mx-auto max-w-4xl mb-3 flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50/95 px-3 py-2 text-xs text-emerald-950 shadow-md dark:border-emerald-800/60 dark:bg-emerald-950/90 dark:text-emerald-100 animate-in fade-in">
+            <div className="min-w-0 flex-1 truncate">
+              <span className="font-bold text-emerald-800 dark:text-emerald-300">
+                Selected:
+              </span>{" "}
+              <span className="font-semibold italic">"{selectedTextSnippet}"</span>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => setZoomLevel((z) => Math.max(z - 10, 80))}
-                className="p-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-                title="Zoom Out"
+                onClick={handleAttachSelectionRemark}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-md bg-cnhs-green-dark px-2.5 py-1 text-xs font-bold text-white shadow-xs transition hover:bg-[#246f54]"
               >
-                <ZoomOut size={13} />
+                <MessageSquarePlus size={12} />
+                Add Comment
               </button>
-              <span className="px-1 text-[10px] font-semibold text-slate-600 dark:text-slate-300">
-                {zoomLevel}%
-              </span>
               <button
                 type="button"
-                onClick={() => setZoomLevel((z) => Math.min(z + 10, 130))}
-                className="p-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-                title="Zoom In"
+                onClick={() => setSelectedTextSnippet("")}
+                className="px-1.5 py-1 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400"
               >
-                <ZoomIn size={13} />
+                Dismiss
               </button>
             </div>
-          ) : null}
-
-          {/* Edit Document Toggle Button */}
-          {kind === "docx" && allowEdit && !isEditing ? (
-            <button
-              type="button"
-              onClick={handleStartEditing}
-              className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-lg border border-cnhs-green/40 bg-cnhs-green/10 px-2.5 text-[11px] font-bold text-cnhs-green-dark transition hover:bg-cnhs-green/20 dark:border-cnhs-green/50 dark:bg-cnhs-green/20 dark:text-cnhs-green"
-            >
-              <Edit3 size={12} />
-              Edit Document
-            </button>
-          ) : null}
-
-          {/* Download Button */}
-          {(fileUrl || hasSavedEdits) && !isEditing ? (
-            <button
-              type="button"
-              onClick={handleDownloadDocument}
-              className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
-              title="Download lesson plan document"
-            >
-              <Download size={12} />
-              Download
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      {/* Clean In-System Formatting Toolbar (Active when editing) */}
-      {isEditing ? (
-        <div className="sticky top-0 z-30 mb-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-cnhs-green/30 bg-emerald-50/95 p-2 shadow-sm backdrop-blur-sm dark:border-cnhs-green/40 dark:bg-emerald-950/90 animate-in fade-in">
-          <div className="flex flex-wrap items-center gap-1">
-            <span className="mr-1 text-[11px] font-bold text-cnhs-green-dark dark:text-cnhs-green">
-              Formatting:
-            </span>
-
-            <button
-              type="button"
-              onClick={() => execFormat("bold")}
-              className="rounded p-1 text-slate-700 hover:bg-emerald-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-emerald-900"
-              title="Bold (Ctrl+B)"
-            >
-              <Bold size={13} />
-            </button>
-            <button
-              type="button"
-              onClick={() => execFormat("italic")}
-              className="rounded p-1 text-slate-700 hover:bg-emerald-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-emerald-900"
-              title="Italic (Ctrl+I)"
-            >
-              <Italic size={13} />
-            </button>
-            <button
-              type="button"
-              onClick={() => execFormat("underline")}
-              className="rounded p-1 text-slate-700 hover:bg-emerald-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-emerald-900"
-              title="Underline (Ctrl+U)"
-            >
-              <UnderlineIcon size={13} />
-            </button>
-
-            <span className="mx-1 h-4 w-px bg-slate-300 dark:bg-slate-700" />
-
-            <button
-              type="button"
-              onClick={() => execFormat("insertUnorderedList")}
-              className="rounded p-1 text-slate-700 hover:bg-emerald-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-emerald-900"
-              title="Bullet List"
-            >
-              <List size={13} />
-            </button>
-            <button
-              type="button"
-              onClick={() => execFormat("insertOrderedList")}
-              className="rounded p-1 text-slate-700 hover:bg-emerald-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-emerald-900"
-              title="Numbered List"
-            >
-              <ListOrdered size={13} />
-            </button>
-
-            <span className="mx-1 h-4 w-px bg-slate-300 dark:bg-slate-700" />
-
-            <button
-              type="button"
-              onClick={() => execFormat("formatBlock", "<h2>")}
-              className="rounded p-1 text-slate-700 hover:bg-emerald-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-emerald-900"
-              title="Heading 2"
-            >
-              <Heading1 size={13} />
-            </button>
-            <button
-              type="button"
-              onClick={() => execFormat("formatBlock", "<h3>")}
-              className="rounded p-1 text-slate-700 hover:bg-emerald-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-emerald-900"
-              title="Heading 3"
-            >
-              <Heading2 size={13} />
-            </button>
-
-            <span className="mx-1 h-4 w-px bg-slate-300 dark:bg-slate-700" />
-
-            <button
-              type="button"
-              onClick={() => execFormat("undo")}
-              className="rounded p-1 text-slate-700 hover:bg-emerald-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-emerald-900"
-              title="Undo (Ctrl+Z)"
-            >
-              <Undo2 size={13} />
-            </button>
-            <button
-              type="button"
-              onClick={() => execFormat("redo")}
-              className="rounded p-1 text-slate-700 hover:bg-emerald-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-emerald-900"
-              title="Redo (Ctrl+Y)"
-            >
-              <Redo2 size={13} />
-            </button>
-
-            <span className="mx-1 h-4 w-px bg-slate-300 dark:bg-slate-700" />
-
-            <button
-              type="button"
-              onClick={handleClearHighlightMarks}
-              className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-950"
-              title="Remove yellow review markers from edited document"
-            >
-              Clear Highlights
-            </button>
           </div>
+        ) : null}
 
-          <div className="flex items-center gap-1.5">
-            {hasUnsavedChanges ? (
-              <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900 dark:bg-amber-950 dark:text-amber-300">
-                ● Unsaved Draft
+        {/* Document Action Bar (Zoom + Download) */}
+        <div className="mx-auto max-w-4xl mb-2 flex items-center justify-between px-1 text-xs text-slate-500">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              Official Document
+            </span>
+            {lesson?.fileName ? (
+              <span className="truncate max-w-[260px] text-[11px] text-slate-500" title={lesson.fileName}>
+                · {lesson.fileName}
               </span>
             ) : null}
-            <button
-              type="button"
-              onClick={handleCancelEdits}
-              className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-white/10 dark:text-slate-300"
-            >
-              <X size={12} />
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveEdits}
-              className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-lg bg-cnhs-green-dark px-3 text-[11px] font-bold text-white shadow-xs transition hover:bg-[#246f54]"
-            >
-              <Save size={12} />
-              Save Edits
-            </button>
           </div>
-        </div>
-      ) : null}
 
-      {/* Restored Draft Banner */}
-      {draftRestored && !savedToast ? (
-        <div className="sticky top-2 z-30 mb-2 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 shadow-sm dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200 animate-in fade-in">
-          <div className="flex items-center gap-1.5">
-            <Sparkles size={14} className="text-amber-600 dark:text-amber-400" />
-            <span>Restored your unsaved edits from your session.</span>
-          </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleDiscardDraft}
-              className="rounded border border-amber-300 bg-white px-2 py-0.5 text-[10.5px] font-semibold text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900 dark:text-amber-200"
-            >
-              Discard Draft
-            </button>
-            <button
-              type="button"
-              onClick={() => setDraftRestored(false)}
-              className="text-amber-700 hover:text-amber-900 dark:text-amber-300"
-            >
-              <X size={13} />
-            </button>
+            {kind === "docx" ? (
+              <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 py-0.5 text-xs text-slate-600 shadow-2xs dark:border-slate-800 dark:bg-white/5 dark:text-slate-300">
+                <button
+                  type="button"
+                  onClick={() => setZoomLevel((z) => Math.max(z - 10, 70))}
+                  className="p-1 hover:text-slate-900 dark:hover:text-white"
+                  title="Zoom Out"
+                  aria-label="Zoom Out"
+                >
+                  <ZoomOut size={13} />
+                </button>
+                <span className="w-8 text-center text-[10.5px] font-semibold tabular-nums">
+                  {zoomLevel}%
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setZoomLevel((z) => Math.min(z + 10, 130))}
+                  className="p-1 hover:text-slate-900 dark:hover:text-white"
+                  title="Zoom In"
+                  aria-label="Zoom In"
+                >
+                  <ZoomIn size={13} />
+                </button>
+              </div>
+            ) : null}
+
+            {fileUrl ? (
+              <button
+                type="button"
+                onClick={handleDownloadDocument}
+                className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-lg border border-cnhs-green/30 bg-white px-2.5 text-[11px] font-semibold text-cnhs-green-dark hover:bg-emerald-50/50 shadow-2xs transition dark:border-cnhs-green/40 dark:bg-white/5 dark:text-cnhs-green"
+                title="Download official lesson plan document"
+              >
+                <Download size={12} />
+                <span>Download</span>
+              </button>
+            ) : null}
           </div>
         </div>
-      ) : null}
 
-      {/* Saved Notification Toast */}
-      {savedToast ? (
-        <div className="sticky top-2 z-30 mb-2 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900 shadow-sm dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 animate-in fade-in">
-          <div className="flex items-center gap-1.5">
-            <Check size={14} className="text-emerald-600 dark:text-emerald-400" />
-            <span>Changes saved! You can now download or resubmit your updated lesson plan.</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSavedToast(false)}
-            className="text-emerald-700 hover:text-emerald-900 dark:text-emerald-300"
-          >
-            <X size={13} />
-          </button>
-        </div>
-      ) : null}
-
-      {/* Floating Selection Action Banner (Principal Review) */}
-      {selectedTextSnippet && !readOnly && !isEditing ? (
-        <div className="sticky top-2 z-30 mb-2 flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50/95 px-3 py-2 text-xs text-emerald-950 shadow-md dark:border-emerald-800/60 dark:bg-emerald-950/90 dark:text-emerald-100 animate-in fade-in">
-          <div className="min-w-0 flex-1 truncate">
-            <span className="font-bold text-emerald-800 dark:text-emerald-300">
-              Selected:
-            </span>{" "}
-            <span className="font-semibold italic">"{selectedTextSnippet}"</span>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <button
-              type="button"
-              onClick={handleAttachSelectionRemark}
-              className="inline-flex cursor-pointer items-center gap-1 rounded-md bg-cnhs-green-dark px-2.5 py-1 text-xs font-bold text-white shadow-xs transition hover:bg-[#246f54]"
-            >
-              <MessageSquarePlus size={12} />
-              Add Comment
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedTextSnippet("")}
-              className="px-1.5 py-1 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400"
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {/* Document Body Area */}
-      <div className="min-h-[480px] w-full overflow-y-auto rounded-xl bg-slate-100/70 p-4 sm:p-6 dark:bg-black/30">
+        {/* Document Body Sheet */}
         {!fileUrl ? (
-          <div className="px-5 py-20 text-center text-sm text-slate-500">
+          <div className="mx-auto max-w-4xl rounded-sm border border-slate-200 bg-white p-12 text-center text-sm text-slate-500 shadow-xs">
             No file is attached to this lesson plan.
           </div>
         ) : kind === "pdf" ? (
@@ -700,26 +440,28 @@ export default function LessonPreview({
             data-document-paper="true"
             data-keep-white="true"
             data-force-light="true"
-            className="document-paper-sheet mx-auto max-w-4xl overflow-hidden rounded-xl border border-slate-300 !bg-white shadow-xl"
+            className="document-paper-sheet mx-auto max-w-4xl overflow-hidden rounded-sm border border-slate-300/80 !bg-white shadow-xs"
           >
             <iframe
               title={lesson.fileName || "Lesson plan PDF"}
               src={fileUrl}
-              className="h-[min(75vh,720px)] w-full !bg-white"
+              className="h-[min(75vh,760px)] w-full !bg-white"
             />
           </div>
         ) : kind === "docx" ? (
           loadingDocx ? (
-            <div className="flex items-center justify-center gap-2 py-24 text-sm text-slate-600 dark:text-slate-400">
-              <Loader2 size={18} className="animate-spin text-cnhs-green" />
-              Loading lesson plan…
+            <div className="mx-auto max-w-4xl rounded-sm border border-slate-200 bg-white py-24 text-center text-sm text-slate-600 shadow-xs dark:text-slate-400">
+              <div className="flex items-center justify-center gap-2">
+                <Loader2 size={18} className="animate-spin text-cnhs-green" />
+                <span>Loading official lesson plan…</span>
+              </div>
             </div>
           ) : docxError ? (
-            <p className="py-20 text-center text-sm text-slate-500">
+            <div className="mx-auto max-w-4xl rounded-sm border border-slate-200 bg-white py-20 text-center text-sm text-slate-500 shadow-xs">
               {docxError}
-            </p>
+            </div>
           ) : (
-            /* DepEd Word Document A4 Canvas */
+            /* DepEd Word Document A4 Paper Sheet */
             <div
               ref={docxContainerRef}
               onClick={handleDocumentClick}
@@ -728,19 +470,9 @@ export default function LessonPreview({
               data-keep-white="true"
               data-force-light="true"
               style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: "top center" }}
-              className={cn(
-                "document-paper-sheet mx-auto max-w-4xl rounded-xs !bg-white p-8 sm:p-12 shadow-2xl selection:bg-amber-200 selection:text-amber-950 !text-slate-900 transition-all",
-                isEditing
-                  ? "border-2 border-dashed border-cnhs-green ring-4 ring-emerald-500/10"
-                  : "border border-slate-300"
-              )}
+              className="document-paper-sheet mx-auto max-w-4xl rounded-xs border border-slate-300/80 !bg-white p-6 sm:p-10 lg:p-12 shadow-xs selection:bg-amber-200 selection:text-amber-950 !text-slate-900 transition-all"
             >
               <div
-                ref={editorRef}
-                contentEditable={isEditing}
-                suppressContentEditableWarning={true}
-                onInput={handleContentInput}
-                onBlur={handleContentInput}
                 className="lesson-plan-docx prose prose-slate max-w-none text-[13px] leading-relaxed !text-slate-900 outline-none
                   [&_h1]:text-center [&_h1]:text-base [&_h1]:font-bold [&_h1]:my-1 [&_h1]:!text-slate-900
                   [&_h2]:text-center [&_h2]:text-sm [&_h2]:font-bold [&_h2]:my-1 [&_h2]:!text-slate-900
@@ -750,12 +482,12 @@ export default function LessonPreview({
                   [&_td]:!border [&_td]:!border-slate-500 [&_td]:p-2.5 [&_td]:align-top [&_td]:text-[12.5px] [&_td]:!text-slate-900 [&_td]:!bg-white
                   [&_th]:!border [&_th]:!border-slate-500 [&_th]:!bg-slate-100 [&_th]:p-2.5 [&_th]:font-bold [&_th]:!text-slate-900
                   [&_tr:first-child_td]:!bg-slate-50 [&_tr:first-child_td]:font-semibold"
-                dangerouslySetInnerHTML={{ __html: displayHtml }}
+                dangerouslySetInnerHTML={{ __html: annotatedHtml || displayHtml }}
               />
             </div>
           )
         ) : (
-          <div className="px-5 py-20 text-center">
+          <div className="mx-auto max-w-4xl rounded-sm border border-slate-200 bg-white p-12 text-center shadow-xs">
             <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
               {kind === "doc"
                 ? "This file format does not support preview. Please download to view."

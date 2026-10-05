@@ -86,7 +86,7 @@ export default function TeacherNotificationsDashboard() {
                 "Scan unread items first, then open one to go to the related page.",
                 "Filter by type, priority, or status when the list grows.",
                 "Mark All as Read clears badges; Refresh reloads from the server.",
-                "My Lesson Plan Activity shows submit and Head Teacher review events for your plans.",
+                "My Lesson Plan Activity shows submit and School Principal review events for your plans.",
                 "Recommendations and monitoring alerts appear after ECR grades create risk flags.",
               ]}
             />
@@ -166,7 +166,7 @@ export default function TeacherNotificationsDashboard() {
               items={activity}
               loading={activityLoading}
               emptyTitle="No lesson plan activity yet"
-              emptyBody="Your submits and Head Teacher review decisions appear here after you upload a lesson plan."
+              emptyBody="Your submits and School Principal review decisions appear here after you upload a lesson plan."
               emptyNext="Next: open Lesson Plans to submit, then Refresh this page."
             />
           </div>

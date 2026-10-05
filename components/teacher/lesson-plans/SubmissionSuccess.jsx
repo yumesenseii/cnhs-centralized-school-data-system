@@ -33,7 +33,7 @@ export default function SubmissionSuccess({
         Lesson Plan Successfully Submitted
       </h2>
       <p className="mx-auto mt-2 max-w-lg text-[13px] leading-6 text-slate-500">
-        Your lesson plan has been submitted to the Head Teacher for review. You
+        Your lesson plan has been submitted to the School Principal for review. You
         will receive a notification once the review is completed.
       </p>
       <p className="mx-auto mt-2 max-w-lg text-[12px] font-medium text-cnhs-green-dark">

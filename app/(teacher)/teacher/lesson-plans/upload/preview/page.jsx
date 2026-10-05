@@ -3,7 +3,7 @@ import PreviewLessonPlanFlow from "@/components/teacher/lesson-plans/PreviewLess
 
 export const metadata = {
   title: "Preview Lesson Plan | CNHS Learn",
-  description: "Review and submit your lesson plan to the Head Teacher.",
+  description: "Review and submit your lesson plan to the School Principal.",
 };
 
 export default function PreviewLessonPlanPage() {

@@ -17,6 +17,7 @@ import AppSelect from "@/components/shared/AppSelect";
 import { Pill, gradeStatusStyles } from "@/components/student/shared";
 import { useStudentPortal } from "@/hooks/student/useStudentPortal";
 import { exportStudentGradesPdf } from "@/lib/student/gradesExport";
+import { downloadSingleStudentSf9Pdf } from "@/lib/reports/sf9PdfGenerator";
 import { termLabel } from "@/lib/academic/termLabels";
 
 const ALL = "all";
@@ -221,6 +222,51 @@ export default function StudentGradesPage() {
         </div>
       ) : (
         <>
+          {/* Official DepEd School Form 9 (SF9) Released Report Card */}
+          {data?.releasedSf9 && (
+            <div className="mb-4 rounded-2xl border border-emerald-200/90 bg-emerald-50/70 p-4 shadow-sm dark:border-emerald-800/60 dark:bg-emerald-950/30">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cnhs-green text-white shadow-xs">
+                    <FileDown size={20} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                        Official DepEd School Form 9 (SF9) Report Card
+                      </h3>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-cnhs-green-dark dark:bg-emerald-900/60 dark:text-emerald-300">
+                        <CheckCircle2 size={11} />
+                        Released
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">
+                      Official Learner Progress Report Card for {data?.releasedSf9?.school_year || "SY 2026-2027"}. Released on {new Date(data?.releasedSf9?.released_at || Date.now()).toLocaleDateString()}.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (data?.releasedSf9?.snapshot_data) {
+                        downloadSingleStudentSf9Pdf(
+                          data.releasedSf9.snapshot_data,
+                          data.releasedSf9.school_year
+                        );
+                      }
+                    }}
+                    className="inline-flex h-8.5 items-center gap-1.5 rounded-xl bg-cnhs-green px-3.5 text-xs font-semibold text-white shadow-xs hover:bg-[#115a3e] active:bg-[#0c432e] transition-colors"
+                  >
+                    <FileDown size={14} />
+                    <span>Download Official SF9 (PDF)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* 2.2 ACADEMIC SUMMARY — Unified with Admin/Teacher KPI Cards */}
           <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50/40 p-2.5 sm:p-3 dark:border-white/5 dark:bg-white/[0.03]">
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">

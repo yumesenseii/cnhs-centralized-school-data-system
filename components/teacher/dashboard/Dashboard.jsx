@@ -5,9 +5,7 @@ import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import DashboardHeader from "@/components/teacher/dashboard/DashboardHeader";
 import StatCard from "@/components/dashboard/StatCard";
-import WhatNeedsAttention from "@/components/teacher/dashboard/WhatNeedsAttention";
-import MyClassesTable from "@/components/teacher/dashboard/MyClassesTable";
-import AcademicOverviewCompact from "@/components/teacher/dashboard/AcademicOverviewCompact";
+import TeacherAcademicAnalytics from "@/components/teacher/dashboard/TeacherAcademicAnalytics";
 import GuidedTour from "@/components/shared/GuidedTour";
 import { useTeacherDashboard } from "@/hooks/teacher/useTeacherDashboard";
 
@@ -85,18 +83,19 @@ export default function Dashboard() {
             ))}
           </div>
 
-          {/* What Needs Your Attention */}
-          <WhatNeedsAttention items={data.attentionItems || []} />
-
-          <div className="mb-4">
-            <AcademicOverviewCompact
-              riskTrend={data.riskTrend}
-              earlyWarningCount={(data.stats?.find(s => s.id === "high-risk")?.value || 0) + (data.stats?.find(s => s.id === "moderate-risk")?.value || 0)}
-            />
-          </div>
-
-          {/* My Classes */}
-          <MyClassesTable classes={data.classes || []} />
+          {/* Academic Overview with Summary, Breakdown, Charts Tabs */}
+          <TeacherAcademicAnalytics
+            schoolYear={schoolYear}
+            quarter={quarter}
+            stats={data.stats || []}
+            classes={data.classes || []}
+            recentActivities={data.recentActivities || []}
+            learnersAttention={data.learnersAttention || []}
+            attentionItems={data.attentionItems || []}
+            riskTrend={data.riskTrend}
+            riskDistribution={data.riskDistribution || []}
+            weakSubjects={data.weakSubjects || []}
+          />
         </div>
       ) : (
         <div className="rounded-xl border border-slate-100 bg-white py-10 text-center text-sm text-slate-500 shadow-sm">

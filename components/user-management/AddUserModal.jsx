@@ -69,7 +69,7 @@ export default function AddUserModal({ open, options, onClose, onSubmit }) {
           Add User
         </h2>
         <p className="mt-1 text-xs text-slate-500">
-          Create a teacher or Head Teacher account. Student portal logins are
+          Create a teacher or School Principal account. Student portal logins are
           managed under the Students tab (link existing LRN + email / bulk CSV).
         </p>
       </div>

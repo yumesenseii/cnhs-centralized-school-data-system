@@ -111,7 +111,7 @@ export default function LessonPlanTable({
                             setPendingPlan(plan);
                             fileInputRef.current?.click();
                           }}
-                          className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md bg-cnhs-orange px-2.5 text-[11px] font-bold text-white shadow-xs transition-colors hover:bg-[#d47828] disabled:opacity-60"
+                          className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md bg-cnhs-green-dark px-2.5 text-[11px] font-bold text-white shadow-xs transition-colors hover:bg-[#246f54] disabled:opacity-60"
                         >
                           {isBusy ? (
                             <Loader2 size={11} className="animate-spin" />

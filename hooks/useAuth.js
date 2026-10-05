@@ -155,7 +155,7 @@ export function useAuth() {
   }
 
   /**
-   * First login for Teacher / Head Teacher / Student: new password + Terms.
+   * First login for Teacher / School Principal / Student: new password + Terms.
    */
   async function completeFirstLogin({
     currentPassword,

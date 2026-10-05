@@ -16,6 +16,8 @@ import RiskDistributionChart from "@/components/teacher/my-classes/RiskDistribut
 import SubmissionStatus from "@/components/teacher/my-classes/SubmissionStatus";
 import UpcomingTasks from "@/components/teacher/my-classes/UpcomingTasks";
 import ReportPreviewModal from "@/components/teacher/reports/ReportPreviewModal";
+import Sf9ReportCardModal from "@/components/reports/Sf9ReportCardModal";
+import { formatStudentForSf9 } from "@/lib/reports/sf9DataService";
 import {
   PageBreadcrumb,
   SummaryKpiCards,
@@ -53,6 +55,7 @@ export default function ClassOverview({ classId }) {
   } = useClassReport(classId);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [sf9ModalOpen, setSf9ModalOpen] = useState(false);
   const [teacherId, setTeacherId] = useState(null);
   const { showToast } = useAppToast();
 
@@ -79,6 +82,10 @@ export default function ClassOverview({ classId }) {
   }
 
   function handleQuickAction(action) {
+    if (action.id === "qa-sf9") {
+      setSf9ModalOpen(true);
+      return;
+    }
     if (action.id === "qa3") {
       handleGenerateReport();
       return;
@@ -333,6 +340,15 @@ export default function ClassOverview({ classId }) {
             },
           ]}
           overflow={[
+            ...(classItem?.isAdviser
+              ? [
+                  {
+                    id: "qa-sf9",
+                    label: "Section SF9 Report Cards (PDF)",
+                    icon: "report",
+                  },
+                ]
+              : []),
             {
               id: "qa2",
               label: "Upload Lesson Plan",
@@ -437,6 +453,17 @@ export default function ClassOverview({ classId }) {
         exportLabel="Export Excel"
         closeLabel="Close"
       />
+
+      {sf9ModalOpen && students.length > 0 && (
+        <Sf9ReportCardModal
+          isOpen={sf9ModalOpen}
+          onClose={() => setSf9ModalOpen(false)}
+          studentData={formatStudentForSf9(students[0])}
+          studentsList={students.map(formatStudentForSf9)}
+          sectionName={classItem?.gradeSection || "Section"}
+          schoolYear={classItem?.schoolYear || "2026-2027"}
+        />
+      )}
     </motion.div>
   );
 }

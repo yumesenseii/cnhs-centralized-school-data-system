@@ -178,7 +178,7 @@ export default function AralAssessmentComments({
             >
               <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400">
                 <span className="font-semibold text-slate-600">
-                  {comment.authorName || "Head Teacher"}
+                  {comment.authorName || "School Principal"}
                 </span>
                 <span>·</span>
                 <span>{formatWhen(comment.createdAt)}</span>

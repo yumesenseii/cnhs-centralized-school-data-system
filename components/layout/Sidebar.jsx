@@ -10,6 +10,7 @@ import {
   CalendarDays,
   ChevronRight,
   FileText,
+  GraduationCap,
   Layers3,
   LayoutDashboard,
   PanelLeftClose,
@@ -44,6 +45,12 @@ const analyticsNavigation = [
     href: "/monitoring",
     icon: Activity,
     tourId: "monitoring",
+  },
+  {
+    label: "Reading Intervention",
+    href: "/aral-monitoring",
+    icon: GraduationCap,
+    tourId: "aral-monitoring",
   },
   {
     label: "Attendance Monitoring",

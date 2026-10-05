@@ -1,8 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { CalendarDays, Layers3, Search, X } from "lucide-react";
+import {
+  CalendarDays,
+  Layers3,
+  Search,
+  X,
+} from "lucide-react";
 import AppSelect from "@/components/shared/AppSelect";
 import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
@@ -14,11 +20,14 @@ import {
   SummaryKpiCards,
 } from "@/components/teacher/my-classes/shared";
 import { useTeacherClasses } from "@/hooks/teacher/useMyClasses";
+import { useAdvisoryClass } from "@/hooks/teacher/useAdvisoryClass";
+import AdvisorySectionHub from "@/components/teacher/advisory/AdvisorySectionHub";
 import { TERM_ALL_LABEL, termLabel } from "@/lib/academic/termLabels";
 import { REPORT_TERM_ALL } from "@/lib/monitoring/classReportFiles";
 import { buildAndSaveClassReportSnapshot } from "@/lib/monitoring/classReportSnapshot";
 import { formatPersonName } from "@/lib/teacher/monitoringMappers";
 import { useAppToast } from "@/components/shared/AppToast";
+import { cn } from "@/lib/utils";
 
 export default function MyClasses() {
   const {
@@ -42,6 +51,43 @@ export default function MyClasses() {
   const [generateClass, setGenerateClass] = useState(null);
   const { showToast } = useAppToast();
   const [generatingId, setGeneratingId] = useState("");
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const advisory = useAdvisoryClass();
+  const {
+    hasAdvisory,
+    section: advisorySection,
+    publishedSubjectsCount,
+    totalSubjectsCount,
+  } = advisory;
+
+  const tabParam = searchParams?.get("tab");
+  const [activeMainTab, setActiveMainTab] = useState(
+    tabParam === "advisory" ? "advisory" : "teaching"
+  );
+
+  useEffect(() => {
+    if (tabParam === "advisory") {
+      setActiveMainTab("advisory");
+    } else if (tabParam === "teaching") {
+      setActiveMainTab("teaching");
+    }
+  }, [tabParam]);
+
+  const handleTabChange = (tab) => {
+    setActiveMainTab(tab);
+    const newParams = new URLSearchParams(searchParams?.toString() || "");
+    if (tab === "advisory") {
+      newParams.set("tab", "advisory");
+    } else {
+      newParams.delete("tab");
+    }
+    const query = newParams.toString();
+    router.replace(`/teacher/my-classes${query ? `?${query}` : ""}`, {
+      scroll: false,
+    });
+  };
 
   const teacherDisplayName = useMemo(() => {
     const named = formatPersonName(teacher);
@@ -183,13 +229,17 @@ export default function MyClasses() {
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="pb-5"
     >
-      <header className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      {/* Page Header */}
+      <header className="mb-4 sm:mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start justify-between gap-4">
           <div>
             <PageBreadcrumb
               items={[
                 { label: "Home", href: "/teacher/dashboard" },
                 { label: "My Classes" },
+                ...(activeMainTab === "advisory"
+                  ? [{ label: "My Advisory Section" }]
+                  : []),
               ]}
             />
             <h1 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-slate-800 sm:text-[22px]">
@@ -231,142 +281,208 @@ export default function MyClasses() {
         </div>
       </header>
 
-      {error ? (
-        <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-[12px] font-medium text-red-600">
-          {error}
-        </div>
-      ) : null}
+      {/* Segmented Pill Switcher Matching Dashboard UI */}
+      <div className="mb-6 flex items-center">
+        <div
+          role="tablist"
+          aria-label="My Classes views"
+          className="inline-flex w-full sm:w-auto overflow-x-auto rounded-xl border border-slate-200 bg-white p-1 shadow-sm"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeMainTab === "teaching"}
+            onClick={() => handleTabChange("teaching")}
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-4 py-1.5 text-xs sm:text-sm font-semibold transition-[color,background-color,box-shadow] duration-150 ease-out cursor-pointer",
+              activeMainTab === "teaching"
+                ? "bg-cnhs-green-soft text-cnhs-green-dark shadow-xs"
+                : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+            )}
+          >
+            <span>Teaching Classes</span>
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-xs font-bold",
+                activeMainTab === "teaching"
+                  ? "bg-white/80 text-cnhs-green-dark"
+                  : "bg-slate-100 text-slate-500"
+              )}
+            >
+              {classes.length}
+            </span>
+          </button>
 
-      {loading && classes.length === 0 ? (
-        <div className="rounded-xl border border-slate-100 bg-white px-4 py-10 text-center text-sm text-slate-400">
-          Loading assigned classes...
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeMainTab === "advisory"}
+            onClick={() => handleTabChange("advisory")}
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-4 py-1.5 text-xs sm:text-sm font-semibold transition-[color,background-color,box-shadow] duration-150 ease-out cursor-pointer",
+              activeMainTab === "advisory"
+                ? "bg-cnhs-green-soft text-cnhs-green-dark shadow-xs"
+                : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+            )}
+          >
+            <span>My Advisory Section</span>
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-xs font-bold",
+                activeMainTab === "advisory"
+                  ? "bg-white/80 text-cnhs-green-dark"
+                  : "bg-slate-100 text-slate-500"
+              )}
+            >
+              {hasAdvisory ? "1" : "0"}
+            </span>
+          </button>
         </div>
+      </div>
+
+      {activeMainTab === "advisory" ? (
+        <AdvisorySectionHub advisory={advisory} />
       ) : (
         <>
-          <SummaryKpiCards
-            kpis={
-              kpis.length
-                ? kpis
-                : [
-                    {
-                      id: "assigned",
-                      label: "Assigned Classes",
-                      value: 0,
-                      icon: "book",
-                      tone: "green",
-                    },
-                    {
-                      id: "students",
-                      label: "Students Enrolled",
-                      value: 0,
-                      icon: "users",
-                      tone: "blue",
-                    },
-                    {
-                      id: "subjects",
-                      label: "Subjects",
-                      value: 0,
-                      icon: "file",
-                      tone: "orange",
-                    },
-                    {
-                      id: "sections",
-                      label: "Grade & Sections",
-                      value: 0,
-                      icon: "clipboard",
-                      tone: "red",
-                    },
-                  ]
-            }
-          />
-
-          <section className="mt-4 rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-              <label className="relative min-w-0 flex-1">
-                <span className="sr-only">Search class or subject</span>
-                <Search
-                  size={14}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search subject, grade, or section..."
-                  className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-[12px] text-slate-700 outline-none focus:border-cnhs-green"
-                />
-              </label>
-
-              <div className="flex flex-wrap items-center gap-2">
-                {[
-                  {
-                    label: "Subject",
-                    value: subject,
-                    set: setSubject,
-                    options: filterOptions.subjects,
-                  },
-                  {
-                    label: "Grade",
-                    value: grade,
-                    set: setGrade,
-                    options: filterOptions.grades,
-                  },
-                  {
-                    label: "Section",
-                    value: section,
-                    set: setSection,
-                    options: filterOptions.sections,
-                  },
-                ].map((filter) => (
-                  <AppSelect
-                    key={filter.label}
-                    label={filter.label}
-                    value={filter.value}
-                    onChange={filter.set}
-                    options={filter.options}
-                    size="field"
-                    triggerClassName="h-9 rounded-lg text-[11px]"
-                  />
-                ))}
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-500 hover:bg-slate-50"
-                >
-                  <X size={12} />
-                  Clear
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <div
-            className={
-              filtered.length === 1
-                ? "mt-4 grid max-w-sm grid-cols-1 gap-4"
-                : "mt-4 grid grid-cols-1 gap-4 md:grid-cols-2"
-            }
-          >
-            {filtered.map((classItem) => (
-              <ClassCard
-                key={classItem.id}
-                classItem={classItem}
-                onUploadRecord={() => setUploadClass(classItem)}
-                onGenerateReport={handleGenerateReport}
-                generating={generatingId === classItem.id}
-              />
-            ))}
-          </div>
-
-          {!hasAssignedClasses ? (
-            <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
-              No classes have been assigned yet. Assignments from the school
-              administrator will appear here.
-            </div>
-          ) : hasFilterMiss ? (
-            <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
-              No assigned classes match your current filters.
+          {error ? (
+            <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-[12px] font-medium text-red-600">
+              {error}
             </div>
           ) : null}
+
+          {loading && classes.length === 0 ? (
+            <div className="rounded-xl border border-slate-100 bg-white px-4 py-10 text-center text-sm text-slate-400">
+              Loading assigned classes...
+            </div>
+          ) : (
+            <>
+              <SummaryKpiCards
+                kpis={
+                  kpis.length
+                    ? kpis
+                    : [
+                        {
+                          id: "assigned",
+                          label: "Assigned Classes",
+                          value: 0,
+                          icon: "book",
+                          tone: "green",
+                        },
+                        {
+                          id: "students",
+                          label: "Students Enrolled",
+                          value: 0,
+                          icon: "users",
+                          tone: "blue",
+                        },
+                        {
+                          id: "subjects",
+                          label: "Subjects",
+                          value: 0,
+                          icon: "file",
+                          tone: "orange",
+                        },
+                        {
+                          id: "sections",
+                          label: "Grade & Sections",
+                          value: 0,
+                          icon: "clipboard",
+                          tone: "red",
+                        },
+                      ]
+                }
+              />
+
+              {/* Search & Filter Bar */}
+              <section className="mt-4 rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                  <label className="relative min-w-0 flex-1">
+                    <span className="sr-only">Search class or subject</span>
+                    <Search
+                      size={14}
+                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    />
+                    <input
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Search subject, grade, or section..."
+                      className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-[12px] text-slate-700 outline-none focus:border-cnhs-green"
+                    />
+                  </label>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {[
+                      {
+                        label: "Subject",
+                        value: subject,
+                        set: setSubject,
+                        options: filterOptions.subjects,
+                      },
+                      {
+                        label: "Grade",
+                        value: grade,
+                        set: setGrade,
+                        options: filterOptions.grades,
+                      },
+                      {
+                        label: "Section",
+                        value: section,
+                        set: setSection,
+                        options: filterOptions.sections,
+                      },
+                    ].map((filter) => (
+                      <AppSelect
+                        key={filter.label}
+                        label={filter.label}
+                        value={filter.value}
+                        onChange={filter.set}
+                        options={filter.options}
+                        size="field"
+                        triggerClassName="h-9 rounded-lg text-[11px]"
+                      />
+                    ))}
+                    <button
+                      type="button"
+                      onClick={clearFilters}
+                      className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-500 hover:bg-slate-50"
+                    >
+                      <X size={12} />
+                      <span>Clear</span>
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              {/* 2-Column Responsive Card Grid (Original Layout) */}
+              <div
+                className={
+                  filtered.length === 1
+                    ? "mt-4 grid max-w-sm grid-cols-1 gap-4"
+                    : "mt-4 grid grid-cols-1 gap-4 md:grid-cols-2"
+                }
+              >
+                {filtered.map((classItem) => (
+                  <ClassCard
+                    key={classItem.id}
+                    classItem={classItem}
+                    onUploadRecord={() => setUploadClass(classItem)}
+                    onGenerateReport={handleGenerateReport}
+                    generating={generatingId === classItem.id}
+                  />
+                ))}
+              </div>
+
+              {!hasAssignedClasses ? (
+                <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
+                  No classes have been assigned yet. Assignments from the school administrator will appear here.
+                </div>
+              ) : hasFilterMiss ? (
+                <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
+                  No assigned classes match your current filters.
+                </div>
+              ) : null}
+            </>
+          )}
         </>
       )}
 

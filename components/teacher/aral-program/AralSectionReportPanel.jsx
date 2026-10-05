@@ -604,7 +604,7 @@ export default function AralSectionReportPanel({
               <p className="mt-2 text-[12px] font-semibold text-slate-800">
                 ________________________
               </p>
-              <p className="text-[11px] text-slate-500">Head Teacher</p>
+              <p className="text-[11px] text-slate-500">School Principal</p>
             </div>
           </div>
 

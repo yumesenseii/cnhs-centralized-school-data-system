@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Check, Copy, Eye, EyeOff, KeyRound, Loader2 } from "lucide-react";
 import ThemeSettingsCard from "@/components/settings/ThemeSettingsCard";
 import { useAuth } from "@/hooks/useAuth";
-import { getCurrentTeacherSession } from "@/lib/supabase/queries/myClasses";
+import { getCurrentTeacherSession, getTeacherClasses } from "@/lib/supabase/queries/myClasses";
 import { cn } from "@/lib/utils";
 
 function displayName(teacher, profile) {
@@ -39,6 +39,7 @@ export default function TeacherSettingsPage() {
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState("");
   const [session, setSession] = useState(null);
+  const [handledSubjects, setHandledSubjects] = useState([]);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -63,6 +64,23 @@ export default function TeacherSettingsPage() {
         setSession(null);
       } else {
         setSession(result.data);
+        if (result.data?.teacherId) {
+          try {
+            const classesRes = await getTeacherClasses(result.data.teacherId);
+            if (active && classesRes?.data) {
+              const subs = [
+                ...new Set(
+                  classesRes.data
+                    .map((c) => c.subjects?.subject_name)
+                    .filter(Boolean)
+                ),
+              ];
+              setHandledSubjects(subs);
+            }
+          } catch (err) {
+            console.warn("Could not load handled subjects", err);
+          }
+        }
       }
       setProfileLoading(false);
     }
@@ -78,13 +96,15 @@ export default function TeacherSettingsPage() {
     const name = displayName(teacher, profile);
     const tempPassword = String(profile?.temp_password ?? "").trim();
     const mustChange = Boolean(profile?.must_change_password) && Boolean(tempPassword);
+    const handledStr = handledSubjects.length > 0 ? handledSubjects.join(", ") : "None assigned";
     return {
       name,
       initials: initialsFromName(name),
       role: "Teacher",
       employeeId: teacher?.employee_number || "—",
       email: teacher?.email || "—",
-      learningArea: teacher?.learning_area || "—",
+      specialization: teacher?.learning_area || "—",
+      handledSubjects: handledStr,
       phone: teacher?.contact_number || "—",
       status: statusLabel(
         profile?.is_active === false ? "inactive" : teacher?.status
@@ -92,7 +112,7 @@ export default function TeacherSettingsPage() {
       mustChangePassword: mustChange,
       tempPassword: mustChange ? tempPassword : "",
     };
-  }, [session]);
+  }, [session, handledSubjects]);
 
   async function handleCopyTemp() {
     if (!profileView?.tempPassword) return;
@@ -168,7 +188,7 @@ export default function TeacherSettingsPage() {
             <div className="mb-3 border-b border-slate-100 pb-3">
               <h2 className="text-sm font-semibold text-slate-900">Profile</h2>
               <p className="mt-0.5 text-[11px] text-slate-500">
-                Read-only. Ask the Head Teacher to update details in User
+                Read-only. Ask the School Principal to update details in User
                 Management.
               </p>
             </div>
@@ -199,7 +219,8 @@ export default function TeacherSettingsPage() {
                   {[
                     ["Employee ID", profileView.employeeId],
                     ["Email", profileView.email],
-                    ["Learning Area", profileView.learningArea],
+                    ["Faculty Specialization", profileView.specialization],
+                    ["Current Handled Subjects", profileView.handledSubjects],
                     ["Phone", profileView.phone],
                     ["Status", profileView.status],
                   ].map(([label, value]) => (
@@ -337,7 +358,7 @@ export default function TeacherSettingsPage() {
             </li>
             <li>
               Profile corrections (name, email, contact) must be requested from
-              the Head Teacher.
+              the School Principal.
             </li>
           </ul>
         </section>

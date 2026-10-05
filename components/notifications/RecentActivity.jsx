@@ -8,7 +8,7 @@ export default function RecentActivity({
   items = [],
   loading = false,
   emptyTitle = "No lesson plan activity yet",
-  emptyBody = "Submit, approve, and revision events appear here after teachers submit lesson plans and Head Teachers review them.",
+  emptyBody = "Submit, approve, and revision events appear here after teachers submit lesson plans and School Principals review them.",
   emptyNext = "Next: open Lesson Plans to review submissions, then Refresh this page.",
 }) {
   const visible = items.slice(0, MAX_ITEMS);

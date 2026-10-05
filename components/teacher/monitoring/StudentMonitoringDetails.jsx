@@ -3,9 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft, ChevronDown, Loader2, Save } from "lucide-react";
+import { ArrowLeft, ChevronDown, FileText, Loader2, Save } from "lucide-react";
 import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
+import Sf9ReportCardModal from "@/components/reports/Sf9ReportCardModal";
+import { formatStudentForSf9 } from "@/lib/reports/sf9DataService";
 import {
   Pill,
   RiskPill,
@@ -71,6 +73,7 @@ export default function StudentMonitoringDetails({ classId, studentId }) {
   const { detail, loading, error, saving, saveRecord } =
     useStudentMonitoringDetail(classId, studentId);
   const [historyOpen, setHistoryOpen] = useState(true);
+  const [sf9ModalOpen, setSf9ModalOpen] = useState(false);
   const [formError, setFormError] = useState("");
   const { showToast } = useAppToast();
   const isAralIdentified = detail ? isAralRecommended(detail) : false;
@@ -174,9 +177,22 @@ export default function StudentMonitoringDetails({ classId, studentId }) {
             {/* Learner profile + academics in one denser panel */}
             <section className="rounded-xl border border-slate-100 bg-white p-2.5 shadow-[0_4px_12px_rgba(15,23,42,0.03)] sm:p-3">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
-                <h2 className="text-sm font-semibold text-slate-900">
-                  Student Information
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold text-slate-900">
+                    Student Information
+                  </h2>
+                  {detail.isClassAdviser && (
+                    <button
+                      type="button"
+                      onClick={() => setSf9ModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition"
+                      title="View and download official DepEd SF9 / Form 138 (Class Adviser)"
+                    >
+                      <FileText size={13} />
+                      <span>Official SF9 PDF</span>
+                    </button>
+                  )}
+                </div>
                 <div className="flex flex-wrap items-center gap-1.5">
                   <RiskPill value={detail.riskLevel} />
                   <Pill
@@ -379,7 +395,7 @@ export default function StudentMonitoringDetails({ classId, studentId }) {
                   ) : (
                     <p className="py-3 text-center text-[11px] text-slate-400">
                       {isAral
-                        ? "No weekly ARAL progress updates yet. Use ARAL Program → section files → Weekly."
+                        ? "No weekly ARAL progress updates yet. Use ARAL Monitoring → section files → Weekly."
                         : "No monitoring records yet. Use the form to add the first entry."}
                     </p>
                   )}
@@ -401,10 +417,10 @@ export default function StudentMonitoringDetails({ classId, studentId }) {
                 <div className="mt-3 rounded-lg border border-sky-100 bg-sky-50/70 px-2.5 py-2 text-[11px] text-sky-900">
                   Open{" "}
                   <Link
-                    href="/teacher/aral-program"
+                    href="/teacher/aral-monitoring"
                     className="font-semibold underline underline-offset-2 hover:text-sky-700"
                   >
-                    ARAL Program
+                    ARAL Monitoring
                   </Link>
                   {" "}as facilitator and upload the weekly Excel for this
                   section.
@@ -417,14 +433,14 @@ export default function StudentMonitoringDetails({ classId, studentId }) {
                 </h2>
                 <p className="mt-0.5 text-[10px] leading-3.5 text-slate-400">
                   {isAralIdentified
-                    ? "Identified as ARAL Learners. Weekly Summer ARAL progress is submitted by the assigned facilitator via ARAL Program section files. You may still record classroom monitoring below."
-                    : "Save observations for this learner. Entries are visible to the Head Teacher."}
+                    ? "Identified as ARAL Learners. Weekly Summer ARAL progress is submitted by the assigned facilitator via ARAL Monitoring section files. You may still record classroom monitoring below."
+                    : "Save observations for this learner. Entries are visible to the School Principal."}
                 </p>
 
                 {isAralIdentified ? (
                   <div className="mt-2 rounded-lg border border-amber-100 bg-amber-50 px-2.5 py-1.5 text-[10px] font-medium text-amber-800">
                     Weekly ARAL grid updates are available only to the assigned
-                    facilitator (Teacher → ARAL Program → Weekly).
+                    facilitator (Teacher → ARAL Monitoring → Weekly).
                   </div>
                 ) : null}
 
@@ -554,6 +570,15 @@ export default function StudentMonitoringDetails({ classId, studentId }) {
             )}
           </section>
         </div>
+      )}
+
+      {sf9ModalOpen && detail && (
+        <Sf9ReportCardModal
+          isOpen={sf9ModalOpen}
+          onClose={() => setSf9ModalOpen(false)}
+          studentData={formatStudentForSf9(detail)}
+          schoolYear={detail.schoolYear || "2026-2027"}
+        />
       )}
     </motion.div>
   );

@@ -4,7 +4,7 @@ import MonitoringDashboard from "@/components/teacher/monitoring/MonitoringDashb
 export const metadata = {
   title: "Academic Monitoring | CNHS Learn",
   description:
-    "Class report files for monitoring — generate in My Classes, review Passing/Failing tabs, and send ARAL recommendations to the Head Teacher.",
+    "Monitor learner performance and identify students who need academic support.",
 };
 
 export default function TeacherMonitoringPage() {

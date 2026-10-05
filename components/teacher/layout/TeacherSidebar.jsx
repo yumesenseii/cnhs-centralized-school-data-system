@@ -38,11 +38,16 @@ const menuNavigation = [
 const analyticsNavigation = [
   {
     label: "Academic Monitoring",
-    href: "/teacher/monitoring",
+    href: "/teacher/academic-monitoring",
     icon: Activity,
     tourId: "monitoring",
   },
-  { label: "ARAL Program", href: "/teacher/aral-program", icon: GraduationCap },
+  {
+    label: "ARAL Monitoring",
+    href: "/teacher/aral-monitoring",
+    icon: GraduationCap,
+    tourId: "aral-monitoring",
+  },
   {
     label: "Attendance Monitoring",
     href: "/teacher/attendance",
@@ -153,6 +158,18 @@ export default function TeacherSidebar({
   const showCollapseToggle = !mobile && typeof onToggleCollapse === "function";
 
   function isActive(href) {
+    if (
+      href === "/teacher/academic-monitoring" &&
+      (pathname === "/teacher/academic-monitoring" || pathname?.startsWith("/teacher/monitoring"))
+    ) {
+      return true;
+    }
+    if (
+      href === "/teacher/aral-monitoring" &&
+      (pathname === "/teacher/aral-monitoring" || pathname?.startsWith("/teacher/aral-program"))
+    ) {
+      return true;
+    }
     return pathname === href || (href !== "/teacher/dashboard" && pathname.startsWith(href));
   }
 

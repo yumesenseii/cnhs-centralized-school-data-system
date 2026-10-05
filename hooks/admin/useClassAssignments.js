@@ -225,26 +225,16 @@ export function useClassAssignments() {
     setSaving(true);
     setError("");
 
-    // Edit + All Terms: fill any missing Term 1–3 + Final for this combo
-    if (payload?.allQuarters) {
-      const result = await createMissingTermAssignments(payload);
-      setSaving(false);
-      if (!result.ok) {
-        setError(result.error);
-        return result;
-      }
-      await refresh();
-      return result;
-    }
-
-    const result = await updateClassAssignment(classId, payload);
+    const result = await updateClassAssignment(classId, payload, {
+      reassignAllTerms: Boolean(payload?.allQuarters || payload?.reassignAllTerms),
+    });
     setSaving(false);
     if (result.error) {
       setError(result.error.message);
       return { ok: false, error: result.error.message };
     }
     await refresh();
-    return { ok: true };
+    return { ok: true, message: result.message };
   }
 
   async function handleDelete(classId) {

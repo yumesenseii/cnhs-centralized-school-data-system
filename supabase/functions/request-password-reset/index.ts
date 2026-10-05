@@ -40,6 +40,8 @@ function allowedRedirectTo(redirectTo: string) {
   }
   allowed.add("http://localhost:3000/login/reset-password");
   allowed.add("http://127.0.0.1:3000/login/reset-password");
+  allowed.add("http://localhost:3002/login/reset-password");
+  allowed.add("http://127.0.0.1:3002/login/reset-password");
 
   try {
     const url = new URL(redirectTo);
@@ -97,7 +99,7 @@ Deno.serve(async (req: Request) => {
   const requestedRedirect = clean(body.redirectTo);
   const fallbackRedirect = appOriginFromEnv()
     ? `${appOriginFromEnv()}/login/reset-password`
-    : "http://localhost:3000/login/reset-password";
+    : "http://localhost:3002/login/reset-password";
   const redirectTo =
     requestedRedirect && allowedRedirectTo(requestedRedirect)
       ? requestedRedirect

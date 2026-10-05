@@ -18,10 +18,8 @@ import {
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import PageHelp from "@/components/shared/PageHelp";
+import AdminMonitoringExecutiveSummary from "@/components/admin/monitoring/AdminMonitoringExecutiveSummary";
 import AdminGradeProgressMatrix from "@/components/admin/monitoring/AdminGradeProgressMatrix";
-import AdminAralFacilitatorAssignPanel from "@/components/admin/monitoring/AdminAralFacilitatorAssignPanel";
-import AdminAralApprovalPanel from "@/components/admin/monitoring/AdminAralApprovalPanel";
-import AdminAralProgressPanel from "@/components/admin/monitoring/AdminAralProgressPanel";
 import AdminClassReportFilesPanel from "@/components/admin/monitoring/AdminClassReportFilesPanel";
 import AdminMonitoredStudentsPanel from "@/components/admin/monitoring/AdminMonitoredStudentsPanel";
 import InterventionDetailPanel from "@/components/teacher/monitoring/InterventionDetailPanel";
@@ -57,9 +55,8 @@ import AppSelect from "@/components/shared/AppSelect";
 
 const MONITORING_TABS = [
   { id: "matrix", label: "School Overview & Sections" },
-  { id: "intake", label: "Teacher Endorsements" },
-  { id: "facilitators", label: "Assign Facilitators" },
-  { id: "assessments", label: "Assessments & Learning Progress" },
+  { id: "students", label: "Monitored Students" },
+  { id: "class_reports", label: "Class Report Files" },
 ];
 
 function StatCard({ label, value, icon: Icon, tone, alert, onClick, hint }) {
@@ -336,14 +333,10 @@ export default function AdminMonitoringPage() {
       setRecommendation(normalizeRecommendationType(recommendationParam));
     }
     if (tabParam) {
-      if (tabParam === "matrix" || tabParam === "intake" || tabParam === "facilitators" || tabParam === "assessments") {
+      if (tabParam === "matrix" || tabParam === "students" || tabParam === "class_reports") {
         setActiveTab(tabParam);
-      } else if (tabParam === "approve" || tabParam === "received") {
-        setActiveTab("intake");
-      } else if (tabParam === "progress") {
-        setActiveTab("assessments");
-      } else if (tabParam === "students") {
-        setActiveTab("matrix");
+      } else if (tabParam === "received" || tabParam === "files") {
+        setActiveTab("class_reports");
       }
       didAutoLandRef.current = true;
     }
@@ -471,8 +464,8 @@ export default function AdminMonitoringPage() {
     if (didAutoLandRef.current || loading) return;
     if (!students.length && !classSummaries.length) return;
     didAutoLandRef.current = true;
-    if (actionCounts.pendingAralApprovals > 0) {
-      setActiveTab("intake");
+    if (actionCounts.pendingFiles > 0) {
+      setActiveTab("class_reports");
     } else {
       setActiveTab("matrix");
     }
@@ -520,7 +513,7 @@ export default function AdminMonitoringPage() {
       await downloadInterventionCaseloadExcel({
         learners,
         progressByStudent,
-        generatedBy: profile?.full_name || "Head Teacher / Administrator",
+        generatedBy: profile?.full_name || "School Principal / Administrator",
         scopeLabel: exportScopeLabel,
         gradeSection: exportScopeLabel,
       });
@@ -541,7 +534,7 @@ export default function AdminMonitoringPage() {
         schoolYear: activeSchoolYear,
         quarter: quarter === "All Terms" ? "All Terms" : quarter,
         scopeLabel: exportScopeLabel,
-        preparedBy: profile?.full_name || "Head Teacher / Administrator",
+        preparedBy: profile?.full_name || "School Principal / Administrator",
         includeTeacherColumn: true,
       });
       if (result.count === 0) {
@@ -845,7 +838,7 @@ export default function AdminMonitoringPage() {
           {actionCounts.pendingFiles > 0 ? (
             <button
               type="button"
-              onClick={() => goToTab("intake")}
+              onClick={() => goToTab("class_reports")}
               className="cursor-pointer rounded-full border border-cnhs-orange/40 bg-white px-2.5 py-0.5 text-[11px] font-semibold text-cnhs-orange transition-colors hover:bg-cnhs-orange/10 dark:border-cnhs-orange/20 dark:bg-cnhs-orange/10 dark:hover:bg-cnhs-orange/15"
             >
               {actionCounts.pendingFiles} file
@@ -853,62 +846,23 @@ export default function AdminMonitoringPage() {
             </button>
           ) : null}
           {actionCounts.pendingAralApprovals > 0 ? (
-            <button
-              type="button"
-              onClick={() => goToTab("intake")}
+            <a
+              href="/aral-monitoring"
               className="cursor-pointer rounded-full border border-cnhs-orange/40 bg-white px-2.5 py-0.5 text-[11px] font-semibold text-cnhs-orange transition-colors hover:bg-cnhs-orange/10 dark:border-cnhs-orange/20 dark:bg-cnhs-orange/10 dark:hover:bg-cnhs-orange/15"
             >
               {actionCounts.pendingAralApprovals} ARAL endorsement
-              {actionCounts.pendingAralApprovals === 1 ? "" : "s"} awaiting review
-            </button>
+              {actionCounts.pendingAralApprovals === 1 ? "" : "s"} awaiting review → Open ARAL Monitoring
+            </a>
           ) : null}
         </div>
       ) : null}
 
-      <div className="mb-4 rounded-2xl border border-slate-200/80 bg-slate-50/40 p-2.5 sm:p-3 dark:border-white/5 dark:bg-white/[0.03]">
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard
-            label="In ARAL Program"
-            value={kpiStats.aral}
-            icon={Clock3}
-            tone="bg-purple-50 text-purple-700"
-            alert={actionCounts.pendingAralApprovals > 0}
-            hint={
-              actionCounts.pendingAralApprovals > 0
-                ? "Open Teacher Endorsements review queue"
-                : "Open School Overview & Sections"
-            }
-            onClick={() =>
-              goToTab(actionCounts.pendingAralApprovals > 0 ? "intake" : "matrix")
-            }
-          />
-          <StatCard
-            label="Classroom Remediation"
-            value={kpiStats.classroomRemedialLearners}
-            icon={Users}
-            tone="bg-blue-50 text-blue-700"
-            hint="Open School Overview & Sections"
-            onClick={() => goToTab("matrix")}
-          />
-          <StatCard
-            label="Follow-up Needed"
-            value={kpiStats.ongoing + (htIntervention.needsFurtherSupport || 0)}
-            icon={AlertTriangle}
-            tone="bg-amber-50 text-amber-700"
-            alert={(kpiStats.ongoing + (htIntervention.needsFurtherSupport || 0)) > 0}
-            hint="Open Assessments & Learning Progress"
-            onClick={() => goToTab("assessments")}
-          />
-          <StatCard
-            label="Completed & Exited"
-            value={kpiStats.completed}
-            icon={CheckCircle2}
-            tone="bg-emerald-50 text-emerald-700"
-            hint="Open Assessments & Learning Progress"
-            onClick={() => goToTab("assessments")}
-          />
-        </div>
-      </div>
+      {/* PRINCIPAL EXECUTIVE OVERVIEW: ACADEMIC & ARAL DUAL-MODULE AND MULTI-YEAR COMPARISON */}
+      <AdminMonitoringExecutiveSummary
+        students={filtered}
+        onNavigateTab={goToTab}
+        activeSchoolYear={activeSchoolYear}
+      />
 
       <div
         className="mb-3 flex items-end gap-4 overflow-x-auto border-b border-slate-200"
@@ -953,33 +907,19 @@ export default function AdminMonitoringPage() {
           />
         ) : null}
 
-        {activeTab === "intake" ? (
-          <AdminAralApprovalPanel
+        {activeTab === "students" ? (
+          <AdminMonitoredStudentsPanel
             students={filtered}
-            onChanged={() => refreshWithCurrentFilters({ bustCache: true })}
+            classSummaries={classSummaries}
             onViewStudent={openStudent}
           />
         ) : null}
 
-        {activeTab === "facilitators" ? (
-          <AdminAralFacilitatorAssignPanel
+        {activeTab === "class_reports" ? (
+          <AdminClassReportFilesPanel
             students={students}
-            onChanged={() =>
-              refresh({
-                schoolYear: schoolYear || undefined,
-                quarterNumber:
-                  quarter !== "All Terms"
-                    ? Number(String(quarter).replace(/\D/g, "")) || null
-                    : null,
-              })
-            }
-          />
-        ) : null}
-
-        {activeTab === "assessments" ? (
-          <AdminAralProgressPanel
-            students={students}
-            onViewStudent={openStudent}
+            classSummaries={classSummaries}
+            onRefresh={() => refreshWithCurrentFilters({ bustCache: true })}
           />
         ) : null}
       </div>

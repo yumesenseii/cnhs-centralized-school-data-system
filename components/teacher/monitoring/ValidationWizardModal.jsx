@@ -57,9 +57,9 @@ export default function ValidationWizardModal({
     setLoading(false);
 
     if (error) {
-      showToast("error", error.message || "Failed to submit screening.");
+      showToast("error", error.message || "Failed to submit review.");
     } else {
-      showToast("success", "Screening submitted successfully. Pipeline updated.");
+      showToast("success", "Review completed. Student list updated.");
       onSuccess?.();
     }
   };
@@ -76,7 +76,7 @@ export default function ValidationWizardModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Initial Screening Validation</h2>
+            <h2 className="text-lg font-bold text-slate-900">Needs ARAL Review: 3-Step Check-off</h2>
             <p className="text-sm text-slate-500">{learnerName}</p>
           </div>
           <button
@@ -128,9 +128,9 @@ export default function ValidationWizardModal({
                 className="space-y-4"
               >
                 <div>
-                  <h3 className="text-lg font-bold text-slate-800">Step 1: Diagnostic Input</h3>
+                  <h3 className="text-lg font-bold text-slate-800">Step 1: Reading Diagnostic Scores</h3>
                   <p className="text-sm text-slate-500">
-                    Provide manual offline scores from the physical reading assessment booklets.
+                    Provide scores from the physical reading assessment booklets.
                     At least one score is required to proceed.
                   </p>
                 </div>
@@ -178,7 +178,7 @@ export default function ValidationWizardModal({
                 className="space-y-4"
               >
                 <div>
-                  <h3 className="text-lg font-bold text-slate-800">Step 2: Contextual Attendance Sync</h3>
+                  <h3 className="text-lg font-bold text-slate-800">Step 2: Attendance Review</h3>
                   <p className="text-sm text-slate-500">
                     Review the learner's attendance record to determine if low grades are driven by chronic absenteeism.
                   </p>
@@ -202,7 +202,7 @@ export default function ValidationWizardModal({
                   ) : (
                     <div className="text-center py-6">
                       <p className="text-sm font-medium text-slate-600">No attendance data consolidated yet.</p>
-                      <p className="text-xs text-slate-500 mt-1">You may still proceed with screening.</p>
+                      <p className="text-xs text-slate-500 mt-1">You may still proceed with review.</p>
                     </div>
                   )}
                 </div>
@@ -218,9 +218,9 @@ export default function ValidationWizardModal({
                 className="space-y-4"
               >
                 <div>
-                  <h3 className="text-lg font-bold text-slate-800">Step 3: Legal Consent Check-off</h3>
+                  <h3 className="text-lg font-bold text-slate-800">Step 3: Parental Consent Check-off</h3>
                   <p className="text-sm text-slate-500">
-                    Verify that you have obtained proper authorization before onboarding the learner into the ARAL Program.
+                    Verify that you have obtained proper authorization before onboarding the learner into ARAL Monitoring.
                   </p>
                 </div>
                 
@@ -268,7 +268,7 @@ export default function ValidationWizardModal({
               className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
             >
               {loading ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-              Submit Screening
+              Complete Check-off
             </button>
           )}
         </div>

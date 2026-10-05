@@ -261,7 +261,7 @@ export default function AdminGradeProgressMatrix({
                 <th className="px-3 py-2.5 text-center">At-Risk Learners</th>
                 <th className="px-3 py-2.5 text-center">Identified for ARAL</th>
                 <th className="px-3 py-2.5 text-center">Awaiting Approval</th>
-                <th className="px-3 py-2.5 text-center">In ARAL Program</th>
+                <th className="px-3 py-2.5 text-center">In ARAL Monitoring</th>
                 <th className="px-3 py-2.5 text-center">Classroom Remediation</th>
                 <th className="px-3.5 py-2.5">Facilitator Assigned</th>
                 <th className="px-3 py-2.5 text-right">Action</th>

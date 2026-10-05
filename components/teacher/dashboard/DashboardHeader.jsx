@@ -50,13 +50,16 @@ export default function DashboardHeader({ controls }) {
           options={(controls.quarters?.length ? controls.quarters : ["1"]).map(
             (quarter) => ({
               value: String(quarter),
-              label: `Term ${quarter}`,
+              label:
+                String(quarter) === "4"
+                  ? "Final Average"
+                  : `Term ${quarter}`,
             })
           )}
           icon={Layers3}
           size="pill"
           align="end"
-          className="w-[132px]"
+          className="w-[148px]"
         />
 
         <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 shadow-sm">

@@ -124,20 +124,21 @@ export default function TopHeader({
             handledSubjects = [t.learning_area];
           }
 
-          const primarySubject =
+          const specialization = t.learning_area || "Faculty Member";
+          const handledSummary =
             handledSubjects.length > 0
               ? handledSubjects.join(", ")
-              : (t.learning_area || "Faculty Member");
+              : specialization;
 
           setProfile({
             name: name || "Teacher",
             initials: initialsFromName(name),
             role: "Teacher / Faculty",
-            subtitle: `Faculty · ${primarySubject}`,
+            subtitle: `Faculty · ${handledSummary}`,
             email: t.email || "",
             handledSubjects,
-            detailLabel: handledSubjects.length > 1 ? "Handled Subjects" : "Handled Subject",
-            detailValue: primarySubject,
+            detailLabel: "Primary Specialization",
+            detailValue: specialization,
           });
         }
       } else if (role === "student") {

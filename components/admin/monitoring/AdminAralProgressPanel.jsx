@@ -285,7 +285,7 @@ export default function AdminAralProgressPanel({
       <section className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-xs dark:border-white/5 dark:bg-[var(--card)]">
         <Clock3 size={32} className="mx-auto text-slate-300" />
         <h3 className="mt-3 text-sm font-bold text-slate-800 dark:text-slate-200">
-          No Learners in ARAL Program Yet
+          No Learners in ARAL Monitoring Yet
         </h3>
         <p className="mt-1 text-xs text-slate-500 max-w-md mx-auto">
           Learners are placed into ARAL once English or Filipino teachers submit endorsements and the Principal approves them.
@@ -364,7 +364,7 @@ export default function AdminAralProgressPanel({
                     {activeSection.grade} — {activeSection.sectionName}
                   </h3>
                   <span className="rounded-md bg-purple-50 px-2 py-0.5 text-[11px] font-bold text-purple-700 dark:bg-purple-500/10 dark:text-purple-300">
-                    ARAL Program Class
+                    ARAL Monitoring Class
                   </span>
                 </div>
                 <p className="mt-1 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">

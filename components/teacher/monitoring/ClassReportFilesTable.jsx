@@ -171,7 +171,7 @@ export default function ClassReportFilesTable({
                           type="button"
                           disabled={submitting}
                           onClick={() => onSubmitToHt?.(file)}
-                          title="Submit ARAL recommendations in this file for Head Teacher review"
+                          title="Submit ARAL recommendations in this file for School Principal review"
                           className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 text-[10px] font-semibold text-amber-900 transition-colors hover:bg-amber-100 disabled:opacity-50"
                         >
                           {submitting ? (

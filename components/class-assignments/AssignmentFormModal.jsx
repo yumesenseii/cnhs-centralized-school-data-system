@@ -30,6 +30,7 @@ export default function AssignmentFormModal({
   const [sectionId, setSectionId] = useState("");
   const [schoolYear, setSchoolYear] = useState(defaultSchoolYear || "");
   const [quarter, setQuarter] = useState("1");
+  const [reassignAllTerms, setReassignAllTerms] = useState(true);
   const [formError, setFormError] = useState("");
 
   const activeSections = useMemo(() => {
@@ -51,6 +52,7 @@ export default function AssignmentFormModal({
       setSectionId(assignment.sectionId ?? "");
       setSchoolYear(assignment.schoolYear ?? defaultSchoolYear ?? "");
       setQuarter(String(assignment.quarter ?? 1));
+      setReassignAllTerms(true);
     } else {
       setTeacherId("");
       setSubjectId("");
@@ -58,6 +60,7 @@ export default function AssignmentFormModal({
       setSectionId("");
       setSchoolYear(defaultSchoolYear || schoolYears[0] || "");
       setQuarter("1");
+      setReassignAllTerms(true);
     }
     setFormError("");
   }, [open, mode, assignment, defaultSchoolYear, schoolYears]);
@@ -73,7 +76,7 @@ export default function AssignmentFormModal({
     mode === "edit" ? "Edit Class Assignment" : "Assign Teacher to Class";
   const description =
     mode === "edit"
-      ? "Update this assignment, or choose All Terms to create any missing Term 1–3 + Final rows for this teacher, subject, section, and school year."
+      ? "Update this assignment or reassign all related terms so the new teacher handles the complete school year."
       : "Assign a teacher to a subject and section for a school year and term. Choose All Terms to create Term 1–3 + Final Grade in one step.";
 
   async function handleSubmit(event) {
@@ -100,8 +103,12 @@ export default function AssignmentFormModal({
 
     const payload =
       quarter === TERM_ALL_VALUE
-        ? { ...base, allQuarters: true }
-        : { ...base, quarter: Number(quarter) };
+        ? { ...base, allQuarters: true, reassignAllTerms: true }
+        : {
+            ...base,
+            quarter: Number(quarter),
+            reassignAllTerms: mode === "edit" ? reassignAllTerms : false,
+          };
 
     const result = await onSubmit?.(payload);
     if (result && !result.ok) {
@@ -251,6 +258,25 @@ export default function AssignmentFormModal({
               ) : null}
             </div>
           </div>
+
+          {mode === "edit" ? (
+            <label className="flex items-start gap-2.5 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={reassignAllTerms}
+                onChange={(event) => setReassignAllTerms(event.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-cnhs-green focus:ring-cnhs-green"
+              />
+              <div className="text-left">
+                <span className="block text-xs font-semibold text-slate-800">
+                  Reassign all terms (Terms 1–4) for this class
+                </span>
+                <span className="block text-[11px] text-slate-500">
+                  Updates all quarter assignments for this subject and section so the new teacher handles the complete school year and both teachers' cached rosters are updated.
+                </span>
+              </div>
+            </label>
+          ) : null}
 
           <AnimatedBanner
             message={formError}
