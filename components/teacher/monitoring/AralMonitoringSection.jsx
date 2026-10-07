@@ -16,7 +16,7 @@ import MonitoringTablePagination from "@/components/teacher/monitoring/Monitorin
 import PhilIriImportModal from "@/components/teacher/monitoring/PhilIriImportModal";
 import PhilIriDocumentsModal from "@/components/teacher/monitoring/PhilIriDocumentsModal";
 import PhilIriEnterResultModal from "@/components/teacher/monitoring/PhilIriEnterResultModal";
-import AralLearnerProfileModal from "@/components/teacher/monitoring/AralLearnerProfileModal";
+import StudentMonitoringSidePanel from "@/components/teacher/monitoring/StudentMonitoringSidePanel";
 import { aggregateAralLearners, filterAralLearners } from "@/lib/monitoring/aralLearnerAggregation";
 import { cn } from "@/lib/utils";
 
@@ -39,8 +39,8 @@ export default function AralMonitoringSection({
   onRefresh,
   onViewLearner,
 }) {
-  // 6 Action-Focused Tabs
-  const [activeWorkflowTab, setActiveWorkflowTab] = useState("needs_review");
+  // 4 Primary Workflow Tabs
+  const [activeWorkflowTab, setActiveWorkflowTab] = useState("for_assessment");
 
   // Contextual dropdown filters
   const [assessmentStatus, setAssessmentStatus] = useState("All assessment statuses");
@@ -63,53 +63,32 @@ export default function AralMonitoringSection({
 
   // 2. Metrics calculation
   const metrics = useMemo(() => {
-    const total = languageLearners.length;
-    const withBosyScore = languageLearners.filter((s) => s.philIriScore != null).length;
+    let forAssessmentCount = 0;
+    let forReviewCount = 0;
+    let activeCount = 0;
+    let assessmentDueCount = 0;
 
-    const needsReviewCount = languageLearners.filter((s) => {
+    languageLearners.forEach((s) => {
       const st = s.interventionStatus || s.monitoringStatus || "Needs Review";
-      return (
-        st === "Needs Review" ||
-        st === "For Review" ||
-        st === "ARAL Candidate" ||
-        (!st.includes("Active") && !st.includes("Completed") && !st.includes("Summer"))
-      );
-    }).length;
+      const hasScore = s.philIriScore != null;
 
-    const activeCount = languageLearners.filter((s) => {
-      const st = s.interventionStatus || s.monitoringStatus || "";
-      return st === "Active Intervention" || st === "Progressing" || st === "In Progress" || st === "Assigned";
-    }).length;
-
-    const midlinePendingCount = languageLearners.filter((s) => {
-      const st = s.interventionStatus || s.monitoringStatus || "";
-      return st === "For Midline Assessment" || (st === "Active Intervention" && !s.midlineScore);
-    }).length;
-
-    const eosyPendingCount = languageLearners.filter((s) => {
-      const st = s.interventionStatus || s.monitoringStatus || "";
-      return st === "For EOSY Assessment" || (st === "Active Intervention" && !s.eosyScore);
-    }).length;
-
-    const summerReferralCount = languageLearners.filter((s) => {
-      const st = s.interventionStatus || s.monitoringStatus || "";
-      return st === "ARAL Summer Referral" || s.summerStatus != null || s.eosyDecision === "ARAL Summer Referral";
-    }).length;
-
-    const completedCount = languageLearners.filter((s) => {
-      const st = s.interventionStatus || s.monitoringStatus || "";
-      return st === "Completed" || st === "Program Completed";
-    }).length;
+      if (!hasScore && (st === "Needs Review" || st === "ARAL Candidate" || st === "For Review")) {
+        forAssessmentCount++;
+      } else if (hasScore && (st === "Needs Review" || st === "For Review" || st === "ARAL Candidate")) {
+        forReviewCount++;
+      } else if (st === "Active Intervention" || st === "Progressing" || st === "In Progress" || st === "Assigned") {
+        activeCount++;
+      } else if (st === "For Midline Assessment" || st === "For EOSY Assessment") {
+        assessmentDueCount++;
+      }
+    });
 
     return {
-      withBosyScore,
-      total,
-      needsReviewCount,
+      total: languageLearners.length,
+      forAssessmentCount,
+      forReviewCount,
       activeCount,
-      midlinePendingCount,
-      eosyPendingCount,
-      summerReferralCount,
-      completedCount,
+      assessmentDueCount,
     };
   }, [languageLearners]);
 
@@ -118,49 +97,19 @@ export default function AralMonitoringSection({
     return languageLearners.filter((row) => {
       const status = row.interventionStatus || row.monitoringStatus || "Needs Review";
       const hasScore = row.philIriScore != null;
-      const score = hasScore ? Number(row.philIriScore) : null;
 
       switch (activeWorkflowTab) {
-        case "needs_review":
-          return (
-            status === "Needs Review" ||
-            status === "For Review" ||
-            status === "ARAL Candidate" ||
-            (!status.includes("Active") && !status.includes("Completed") && !status.includes("Summer") && (hasScore && score <= 27))
-          );
+        case "for_assessment":
+          return !hasScore && (status === "Needs Review" || status === "ARAL Candidate" || status === "For Review");
+        
+        case "for_review":
+          return hasScore && (status === "Needs Review" || status === "For Review" || status === "ARAL Candidate");
 
         case "active":
-          return (
-            status === "Active Intervention" ||
-            status === "Progressing" ||
-            status === "In Progress" ||
-            status === "Assigned" ||
-            status === "Qualified"
-          );
+          return status === "Active Intervention" || status === "Progressing" || status === "In Progress" || status === "Assigned";
 
-        case "midline":
-          return (
-            status === "For Midline Assessment" ||
-            row.midlineScore != null ||
-            status === "Active Intervention"
-          );
-
-        case "eosy":
-          return (
-            status === "For EOSY Assessment" ||
-            row.eosyScore != null ||
-            status === "Active Intervention"
-          );
-
-        case "summer_referral":
-          return (
-            status === "ARAL Summer Referral" ||
-            row.summerStatus != null ||
-            row.eosyDecision === "ARAL Summer Referral"
-          );
-
-        case "completed":
-          return status === "Completed" || status === "Program Completed";
+        case "assessment_due":
+          return status === "For Midline Assessment" || status === "For EOSY Assessment";
 
         default:
           return true;
@@ -194,12 +143,10 @@ export default function AralMonitoringSection({
 
   // Tab empty states text
   const emptyStateTextMap = {
-    needs_review: "No learners currently require ARAL intake review.",
-    active: "No active ARAL intervention records found for the selected filter.",
-    midline: "No learners are currently due for Midline assessment.",
-    eosy: "No learners are currently due for EOSY assessment.",
-    summer_referral: "No learners referred for ARAL Summer Eligibility.",
-    completed: "No completed ARAL intervention records for the selected period.",
+    for_assessment: "No learners are currently waiting for baseline assessment.",
+    for_review: "No learners are currently waiting for review after assessment.",
+    active: "No active intervention records found for the selected filter.",
+    assessment_due: "No learners are currently due for midline or EOSY assessment.",
   };
 
   return (
@@ -247,86 +194,56 @@ export default function AralMonitoringSection({
         </div>
       </div>
 
-      {/* 2. COMPACT OVERVIEW SUMMARY BAR */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs shadow-xs">
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Screening:</span>
-          <span className="font-bold text-slate-900">
-            {metrics.withBosyScore} / {metrics.total}
-          </span>
-          <span className="text-[11px] text-slate-400">screened</span>
-        </div>
-
-        <span className="text-slate-200 hidden sm:inline">|</span>
-
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Needs Review:</span>
-          <span className="font-bold text-amber-800">{metrics.needsReviewCount}</span>
-        </div>
-
-        <span className="text-slate-200 hidden sm:inline">|</span>
-
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Active:</span>
-          <span className="font-bold text-slate-900">{metrics.activeCount}</span>
-        </div>
-
-        <span className="text-slate-200 hidden sm:inline">|</span>
-
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Assessment Due:</span>
-          <span className="font-semibold text-slate-700">
-            Midline ({metrics.midlinePendingCount}) · EOSY ({metrics.eosyPendingCount})
-          </span>
-        </div>
-
-        <span className="text-slate-200 hidden sm:inline">|</span>
-
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Summer Referral:</span>
-          <span className="font-bold text-amber-800">{metrics.summerReferralCount}</span>
-        </div>
-
-        <span className="text-slate-200 hidden sm:inline">|</span>
-
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Completed:</span>
-          <span className="font-bold text-cnhs-green-dark">{metrics.completedCount}</span>
-        </div>
+      {/* 2. DIAGNOSTIC PIPELINE / PROCESS STEPPER */}
+      <div className="flex items-center gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 shadow-xs text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        <span className="flex items-center gap-1.5"><span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-[9px] text-slate-500">1</span> Candidate</span>
+        <ChevronRight size={14} className="text-slate-300 mx-1 shrink-0" />
+        <span className="flex items-center gap-1.5"><span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-[9px] text-slate-500">2</span> Assessment</span>
+        <ChevronRight size={14} className="text-slate-300 mx-1 shrink-0" />
+        <span className="flex items-center gap-1.5"><span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-[9px] text-slate-500">3</span> Review</span>
+        <ChevronRight size={14} className="text-slate-300 mx-1 shrink-0" />
+        <span className="flex items-center gap-1.5"><span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-[9px] text-slate-500">4</span> Intervention</span>
+        <ChevronRight size={14} className="text-slate-300 mx-1 shrink-0" />
+        <span className="flex items-center gap-1.5"><span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-[9px] text-slate-500">5</span> Progress</span>
+        <ChevronRight size={14} className="text-slate-300 mx-1 shrink-0" />
+        <span className="flex items-center gap-1.5"><span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-[9px] text-slate-500">6</span> Completed</span>
       </div>
 
-      {/* 3. WORKFLOW STATUS SEGMENTED TABS */}
-      <div className="flex items-center gap-1.5 overflow-x-auto border-b border-slate-200 bg-transparent pb-1">
+      {/* 3. PRIMARY SUMMARY CARDS (Clickable Tabs) */}
+      <div className="grid grid-cols-2 rounded-xl border border-slate-200 bg-white shadow-xs divide-y sm:divide-y-0 sm:divide-x divide-slate-100 sm:grid-cols-4 overflow-hidden">
         {[
-          { id: "needs_review", label: "Needs Review", count: metrics.needsReviewCount },
-          { id: "active", label: "Active Intervention", count: metrics.activeCount },
-          { id: "midline", label: "Midline", count: metrics.midlinePendingCount },
-          { id: "eosy", label: "EOSY", count: metrics.eosyPendingCount },
-          { id: "summer_referral", label: "Summer Referral", count: metrics.summerReferralCount },
-          { id: "completed", label: "Completed", count: metrics.completedCount },
+          { id: "for_assessment", label: "For Assessment", count: metrics.forAssessmentCount, desc: "Awaiting baseline" },
+          { id: "for_review", label: "For Review", count: metrics.forReviewCount, desc: "Screened candidates" },
+          { id: "active", label: "Active Intervention", count: metrics.activeCount, desc: "Currently in progress" },
+          { id: "assessment_due", label: "Assessment Due", count: metrics.assessmentDueCount, desc: "Midline or EOSY" },
         ].map((tab) => (
-          <button
+          <div
             key={tab.id}
-            type="button"
             onClick={() => {
               setActiveWorkflowTab(tab.id);
               setPage(1);
             }}
             className={cn(
-              "flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-colors shrink-0 cursor-pointer",
+              "cursor-pointer px-5 py-3.5 transition-colors",
               activeWorkflowTab === tab.id
-                ? "bg-cnhs-green-dark text-white shadow-xs"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60 bg-white"
+                ? "bg-cnhs-green-dark/5 shadow-inner"
+                : "hover:bg-slate-50"
             )}
           >
-            <span>{tab.label}</span>
-            <span className={cn(
-              "rounded-full px-1.5 py-0.2 text-[10px] font-bold",
-              activeWorkflowTab === tab.id ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+            <p className={cn(
+              "text-[11px] font-semibold uppercase tracking-wider",
+              activeWorkflowTab === tab.id ? "text-cnhs-green-dark" : "text-slate-500"
             )}>
-              {tab.id === activeWorkflowTab ? filteredRows.length : tab.count}
-            </span>
-          </button>
+              {tab.label}
+            </p>
+            <p className={cn(
+              "mt-1 text-2xl font-bold tracking-tight leading-none",
+              activeWorkflowTab === tab.id ? "text-slate-900" : "text-slate-700"
+            )}>
+              {tab.count}
+            </p>
+            <p className="mt-1 text-[11px] text-slate-400">{tab.desc}</p>
+          </div>
         ))}
       </div>
 
@@ -394,14 +311,12 @@ export default function AralMonitoringSection({
             <thead className="border-b border-slate-100 bg-slate-50/80 font-bold uppercase tracking-wider text-[10px] text-slate-400">
               <tr>
                 <th className="px-4 py-3">Learner</th>
-                <th className="px-4 py-3">LRN</th>
                 <th className="px-4 py-3">Grade & Section</th>
-                <th className="px-4 py-3">Subject</th>
-                <th className="px-4 py-3">Academic Trigger</th>
-                <th className="px-4 py-3">Phil-IRI Status</th>
-                <th className="px-4 py-3">Reading Level</th>
-                <th className="px-4 py-3">ARAL Status</th>
-                <th className="px-4 py-3 text-right">Action</th>
+                <th className="px-4 py-3">Current Stage</th>
+                <th className="px-4 py-3">Referral / Evidence</th>
+                <th className="px-4 py-3">Assessment Result</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3 text-right">Next Action</th>
               </tr>
             </thead>
 
@@ -410,8 +325,16 @@ export default function AralMonitoringSection({
                 pagedRows.map((row) => {
                   const gradeVal = row.classSubjectGrade ?? row.academicGrade;
                   const academicTrigger = gradeVal != null
-                    ? `${row.subject || 'Subject'} · Grade ${gradeVal}`
-                    : "Academic Need Flagged";
+                    ? `${row.subject || 'Subject'} (Grade ${gradeVal})`
+                    : row.subject || "English / Filipino";
+
+                  const st = row.interventionStatus || row.aralStatus || "Needs Review";
+                  let stage = "Review";
+                  if (row.philIriScore == null) stage = "Assessment";
+                  else if (st === "Needs Review" || st === "For Review") stage = "Review";
+                  else if (st === "Active Intervention") stage = "Intervention";
+                  else if (st === "For Midline Assessment" || st === "For EOSY Assessment") stage = "Progress";
+                  else if (st.includes("Completed")) stage = "Completed";
 
                   return (
                     <tr
@@ -419,36 +342,53 @@ export default function AralMonitoringSection({
                       className="hover:bg-slate-50/60 transition-colors"
                     >
                       <td className="px-4 py-3">
-                        <LearnerName
-                          firstName={row.firstName}
-                          lastName={row.lastName}
-                          name={row.name}
-                        />
-                      </td>
-
-                      <td className="px-4 py-3 text-slate-500 font-mono text-[11px]">
-                        {row.lrn || row.studentNumber || "—"}
+                        <div className="font-semibold text-slate-900">
+                          <LearnerName
+                            firstName={row.firstName}
+                            lastName={row.lastName}
+                            name={row.name}
+                          />
+                        </div>
+                        <div className="mt-0.5 font-mono text-[10px] text-slate-500">
+                          {row.lrn || row.studentNumber || "—"}
+                        </div>
                       </td>
 
                       <td className="px-4 py-3 text-slate-700 font-medium">
                         {row.grade ? `Grade ${row.grade}` : "Grade"} · {row.section || "Section"}
                       </td>
 
-                      <td className="px-4 py-3 font-semibold text-slate-800">
-                        {row.displaySubject || row.subject || "English / Filipino"}
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1 rounded bg-blue-50 border border-blue-200/60 px-2 py-0.5 text-[10px] font-bold text-blue-700 uppercase tracking-wide">
+                          {stage}
+                        </span>
                       </td>
 
                       <td className="px-4 py-3">
-                        <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                        <span className="text-[11px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
                           {academicTrigger}
                         </span>
                       </td>
 
                       <td className="px-4 py-3">
                         {row.philIriScore != null ? (
-                          <span className="font-bold text-slate-900">
-                            Form 1B ({row.philIriScore}/20)
-                          </span>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-bold text-slate-900 text-[11px]">
+                              {row.philIriScore}/20
+                            </span>
+                            <span className={cn(
+                              "text-[10px] font-semibold",
+                              row.readingLevel === "Frustration"
+                                ? "text-rose-600"
+                                : row.readingLevel === "Instructional"
+                                ? "text-amber-600"
+                                : row.readingLevel === "Independent"
+                                ? "text-cnhs-green-dark"
+                                : "text-slate-500"
+                            )}>
+                              {row.readingLevel || "Not Set"}
+                            </span>
+                          </div>
                         ) : (
                           <span className="text-slate-500 bg-slate-100 px-2 py-0.5 rounded text-[10px] font-medium">
                             Not Screened
@@ -457,27 +397,25 @@ export default function AralMonitoringSection({
                       </td>
 
                       <td className="px-4 py-3">
-                        <span className={cn(
-                          "rounded px-2 py-0.5 text-[10px] font-bold",
-                          row.readingLevel === "Frustration"
-                            ? "bg-rose-50 text-rose-700"
-                            : row.readingLevel === "Instructional"
-                            ? "bg-amber-50 text-amber-800"
-                            : row.readingLevel === "Independent"
-                            ? "bg-emerald-50 text-cnhs-green-dark"
-                            : "bg-slate-100 text-slate-500"
-                        )}>
-                          {row.readingLevel || "Not Screened"}
-                        </span>
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-cnhs-green-dark">
-                          {row.interventionStatus || row.aralStatus || "Needs Review"}
+                        <span className="rounded-full bg-emerald-50 border border-emerald-200/50 px-2.5 py-0.5 text-[10px] font-bold text-cnhs-green-dark">
+                          {st}
                         </span>
                       </td>
 
                       <td className="px-4 py-3 text-right">
+                        {activeWorkflowTab === "needs_review" && (row.interventionStatus === "Approved" || row.candidateStatus === "Approved") ? (
+                           <button
+                             type="button"
+                             onClick={(e) => { 
+                               e.stopPropagation();
+                               setSelectedStudentForResult(row); 
+                               setIsEnterResultOpen(true); 
+                             }}
+                             className="inline-flex items-center gap-1 rounded-lg bg-cnhs-green-dark px-2 py-1 text-[10px] font-semibold text-white shadow-xs hover:bg-[#246f54] transition-colors cursor-pointer mr-2"
+                           >
+                             📝 Enter GST/Phil-IRI Result
+                           </button>
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => handleViewLearner(row)}
@@ -516,13 +454,15 @@ export default function AralMonitoringSection({
       </div>
 
       {/* MODALS */}
-      {/* 1. ARAL Learner Profile Modal */}
-      <AralLearnerProfileModal
+      {/* 1. Unified Learner Support Profile Panel */}
+      <StudentMonitoringSidePanel
         isOpen={Boolean(selectedLearnerForProfile)}
         onClose={() => setSelectedLearnerForProfile(null)}
-        learner={selectedLearnerForProfile}
+        learner={selectedLearnerForProfile || {}}
         schoolYear={schoolYear}
-        onUpdated={onRefresh}
+        onRefresh={onRefresh}
+        currentQuarterNumber={quarter}
+        isLanguageTeacher={true}
       />
 
       {/* 2. Phil-IRI Import Modal */}

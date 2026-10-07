@@ -45,42 +45,38 @@ function TrendIndicator({ trend }) {
 
 import { ArrowUpRight } from "lucide-react";
 
-function SupportBadge({ support, onClick }) {
-  if (support === "Class Remedial") {
+function StatusBadge({ row }) {
+  if (row?.monitoringStatus === "Ongoing" || row?.inAralProgram || row?.recommendedSupport === "Class Remedial") {
     return (
-      <span className="inline-flex items-center rounded-md border border-amber-200/80 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
-        Class Remedial
+      <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-800">
+        Under Support
       </span>
     );
   }
-  if (support === "ARAL Screening") {
-    return onClick ? (
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick();
-        }}
-        title="Open reading-related intervention in ARAL Monitoring"
-        className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-blue-200/80 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-800 transition hover:bg-blue-100"
-      >
-        <span>ARAL Screening</span>
-        <ArrowUpRight size={11} />
-      </button>
-    ) : (
-      <span className="inline-flex items-center rounded-md border border-blue-200/80 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-800">
-        ARAL Screening
-      </span>
-    );
-  }
-  if (support === "Review") {
+  if (row?.performanceTrend === "Improving") {
     return (
-      <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-        Review
+      <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+        Improving
       </span>
     );
   }
-  return <span className="text-[11px] font-medium text-slate-500">None</span>;
+  if (
+    row?.monitoringStatus === "Needs Review" ||
+    row?.monitoringStatus === "For Review" ||
+    row?.recommendedSupport === "Review" ||
+    row?.recommendedSupport === "ARAL Screening"
+  ) {
+    return (
+      <span className="inline-flex items-center rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+        For Review
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+      Monitoring
+    </span>
+  );
 }
 
 export default function ClassRemedialsSection({
@@ -96,33 +92,32 @@ export default function ClassRemedialsSection({
   const [supportFilter, setSupportFilter] = useState("All support");
   const [page, setPage] = useState(1);
 
-  // 4 Restrained Summary Metrics (Section 2)
-  const totalLearners = students.length;
-
-  const academicSupportNeeded = useMemo(() => {
+  // 4 Primary Summary Cards (Academic Focus)
+  const forReviewCount = useMemo(() => {
     return students.filter((s) => {
-      const cur = s.classSubjectGrade ?? s.currentGrade;
+      return s.monitoringStatus === "Needs Review" || s.monitoringStatus === "For Review" || s.recommendedSupport === "Review";
+    }).length;
+  }, [students]);
+
+  const highPriorityCount = useMemo(() => {
+    return students.filter((s) => {
+      const risk = s.riskLevel || s.academicRisk || "";
+      return risk === "High Risk" || risk === "High";
+    }).length;
+  }, [students]);
+
+  const underSupportCount = useMemo(() => {
+    return students.filter((s) => {
       return (
+        s.monitoringStatus === "Ongoing" ||
         s.recommendedSupport === "Class Remedial" ||
-        s.recommendedSupport === "ARAL Screening" ||
-        (cur != null && Number(cur) < 75)
+        s.inAralProgram
       );
     }).length;
   }, [students]);
 
   const improvingCount = useMemo(() => {
     return students.filter((s) => s.performanceTrend === "Improving").length;
-  }, [students]);
-
-  const needsAttentionCount = useMemo(() => {
-    return students.filter((s) => {
-      const cur = s.classSubjectGrade ?? s.currentGrade;
-      return (
-        s.performanceTrend === "Declining" ||
-        s.recommendedSupport === "Review" ||
-        (cur != null && Number(cur) < 75)
-      );
-    }).length;
   }, [students]);
 
   // Extract filter options
@@ -177,26 +172,36 @@ export default function ClassRemedialsSection({
 
   return (
     <div className="space-y-4">
-      {/* 4 COMPACT RESTRAINED METRICS (Strong typography with simple dividers) */}
+      {/* 4 PRIMARY CARDS: FOR REVIEW, HIGH PRIORITY, UNDER SUPPORT, IMPROVING */}
       <div className="grid grid-cols-2 rounded-xl border border-slate-200 bg-white shadow-xs divide-y sm:divide-y-0 sm:divide-x divide-slate-100 sm:grid-cols-4 overflow-hidden">
         <div className="px-5 py-3.5">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-            Learners
+            For Review
           </p>
           <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900 leading-none">
-            {totalLearners}
+            {forReviewCount}
           </p>
-          <p className="mt-1 text-[11px] text-slate-400">Total active records</p>
+          <p className="mt-1 text-[11px] text-slate-400">Requires teacher review</p>
         </div>
 
         <div className="px-5 py-3.5">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-            Academic Support Needed
+            High Priority
           </p>
-          <p className="mt-1 text-2xl font-bold tracking-tight text-amber-800 leading-none">
-            {academicSupportNeeded}
+          <p className="mt-1 text-2xl font-bold tracking-tight text-red-700 leading-none">
+            {highPriorityCount}
           </p>
-          <p className="mt-1 text-[11px] text-amber-700/80">Remedial or ARAL pathway</p>
+          <p className="mt-1 text-[11px] text-red-600/80">Immediate attention needed</p>
+        </div>
+
+        <div className="px-5 py-3.5">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            Under Support
+          </p>
+          <p className="mt-1 text-2xl font-bold tracking-tight text-blue-700 leading-none">
+            {underSupportCount}
+          </p>
+          <p className="mt-1 text-[11px] text-blue-600/80">Active remediation / intervention</p>
         </div>
 
         <div className="px-5 py-3.5">
@@ -207,16 +212,6 @@ export default function ClassRemedialsSection({
             {improvingCount}
           </p>
           <p className="mt-1 text-[11px] text-emerald-600">Positive performance trend</p>
-        </div>
-
-        <div className="px-5 py-3.5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-            Needs Attention
-          </p>
-          <p className="mt-1 text-2xl font-bold tracking-tight text-slate-800 leading-none">
-            {needsAttentionCount}
-          </p>
-          <p className="mt-1 text-[11px] text-slate-400">Declining or near threshold</p>
         </div>
       </div>
 
@@ -309,12 +304,12 @@ export default function ClassRemedialsSection({
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-[10.5px] font-bold uppercase tracking-wider text-slate-600">
                 <th className="py-2.5 px-4">Learner</th>
-                <th className="py-2.5 px-3 text-center">Current Grade</th>
-                <th className="py-2.5 px-3 text-center">Previous Grade</th>
-                <th className="py-2.5 px-3">Performance Trend</th>
-                <th className="py-2.5 px-3 text-center">Attendance</th>
-                <th className="py-2.5 px-3">Assessment</th>
-                <th className="py-2.5 px-3">Support</th>
+                <th className="py-2.5 px-3">Subject</th>
+                <th className="py-2.5 px-3 text-center">Grade</th>
+                <th className="py-2.5 px-3">Trend</th>
+                <th className="py-2.5 px-3 text-center">Risk</th>
+                <th className="py-2.5 px-3 text-center">Priority</th>
+                <th className="py-2.5 px-3 text-center">Status</th>
                 <th className="py-2.5 px-4 text-right">Action</th>
               </tr>
             </thead>
@@ -384,36 +379,34 @@ export default function ClassRemedialsSection({
                         </span>
                       </td>
 
-                      {/* Previous Grade */}
-                      <td className="py-2.5 px-3 text-center text-slate-600 font-medium">
-                        {prevGrade != null ? prevGrade : "—"}
-                      </td>
-
                       {/* Performance Trend */}
                       <td className="py-2.5 px-3">
                         <TrendIndicator trend={trendVal} />
                       </td>
 
-                      {/* Attendance */}
-                      <td className="py-2.5 px-3 text-center text-slate-700 font-medium font-mono text-[11px]">
-                        {attVal}
+                      {/* Risk */}
+                      <td className="py-2.5 px-3 text-center">
+                        <span className={cn("text-[11px] font-semibold", 
+                          riskDisplay === "High" ? "text-red-700" : 
+                          riskDisplay === "Moderate" ? "text-orange-600" : "text-green-600"
+                        )}>
+                          {riskDisplay.toUpperCase()}
+                        </span>
                       </td>
 
-                      {/* Assessment (Phil-IRI reading assessment evidence) */}
-                      <td className="py-2.5 px-3 text-slate-700 font-medium">
-                        {assessmentCell}
+                      {/* Priority */}
+                      <td className="py-2.5 px-3 text-center">
+                         <span className={cn("text-[11px] font-medium",
+                           priority === "Immediate" ? "text-red-600" :
+                           priority === "Review Soon" ? "text-amber-700" : "text-slate-500"
+                         )}>
+                           {priority}
+                         </span>
                       </td>
 
-                      {/* Support (Recommended Intervention) */}
-                      <td className="py-2.5 px-3">
-                        <SupportBadge
-                          support={supportVal}
-                          onClick={
-                            supportVal === "ARAL Screening" && onNavigateToAral
-                              ? () => onNavigateToAral(row)
-                              : null
-                          }
-                        />
+                      {/* Status */}
+                      <td className="py-2.5 px-3 text-center">
+                        <StatusBadge row={row} />
                       </td>
 
                       {/* Action */}
@@ -426,7 +419,7 @@ export default function ClassRemedialsSection({
                           }}
                           className="inline-flex items-center rounded border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-xs transition hover:border-cnhs-green/40 hover:bg-slate-50 hover:text-cnhs-green-dark"
                         >
-                          View
+                          Review
                         </button>
                       </td>
                     </tr>

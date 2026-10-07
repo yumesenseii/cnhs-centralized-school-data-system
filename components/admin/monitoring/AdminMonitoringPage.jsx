@@ -22,7 +22,7 @@ import AdminMonitoringExecutiveSummary from "@/components/admin/monitoring/Admin
 import AdminGradeProgressMatrix from "@/components/admin/monitoring/AdminGradeProgressMatrix";
 import AdminClassReportFilesPanel from "@/components/admin/monitoring/AdminClassReportFilesPanel";
 import AdminMonitoredStudentsPanel from "@/components/admin/monitoring/AdminMonitoredStudentsPanel";
-import InterventionDetailPanel from "@/components/teacher/monitoring/InterventionDetailPanel";
+
 import { buildHtInterventionSummary } from "@/lib/monitoring/interventionLifecycle";
 import { downloadInterventionCaseloadExcel } from "@/lib/reports/interventionCaseloadExport";
 import { isInterventionCandidate, buildRecordedProgress } from "@/lib/monitoring/interventionLifecycle";
@@ -607,8 +607,8 @@ export default function AdminMonitoringPage() {
       className="pb-5"
     >
       <Header
-        breadcrumb="Home > Academic Monitoring"
-        title="Academic Monitoring"
+        breadcrumb="Home > School Academic Overview"
+        title="School Academic Overview"
         description="Track at-risk learners, ARAL teacher endorsements, and remediation across classes."
         controls={
           <>

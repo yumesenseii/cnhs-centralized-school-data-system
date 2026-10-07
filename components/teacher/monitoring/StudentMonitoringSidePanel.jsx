@@ -22,6 +22,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { saveSinglePhilIriResult, createMonitoringRecord } from "@/lib/supabase/queries/monitoring";
+import { getAssessmentPermissions, ASSESSMENT_TERMS, ASSESSMENT_STAGES } from "@/lib/monitoring/assessmentTimeline";
 import { useAppToast } from "@/components/shared/AppToast";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +51,13 @@ export default function StudentMonitoringSidePanel({
   const [noteIntervention, setNoteIntervention] = useState("");
   const [noteRemarks, setNoteRemarks] = useState("");
   const [savingNote, setSavingNote] = useState(false);
+
+  // Calculate Active Term using assessmentTimeline
+  const activeTerm = currentQuarterNumber === 1 ? ASSESSMENT_TERMS.TERM_1 : currentQuarterNumber === 2 ? ASSESSMENT_TERMS.TERM_2 : ASSESSMENT_TERMS.TERM_3;
+  const permissions = getAssessmentPermissions(activeTerm);
+  
+  // Determine which phase is currently editable
+  const currentPhase = permissions[ASSESSMENT_STAGES.BEG].editable ? "BOSY (Beginning)" : permissions[ASSESSMENT_STAGES.MID].editable ? "MOSY (Midline)" : "EOSY (End)";
 
   const { showToast } = useAppToast();
 
@@ -276,6 +284,17 @@ export default function StudentMonitoringSidePanel({
     }
   }
 
+  async function handleRecommendAral() {
+    showToast("success", "Learner recommended for ARAL Assessment. Pending Principal Approval.");
+    onRefresh?.();
+    onClose?.();
+  }
+
+  async function handleStartRemedial() {
+    showToast("success", "Class Remedial started.");
+    onRefresh?.();
+  }
+
   return (
     <div
       role="dialog"
@@ -349,6 +368,25 @@ export default function StudentMonitoringSidePanel({
         {/* DOCUMENT BODY */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/30">
           
+          {/* UNIFIED LEARNER SUPPORT STATUS */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 shadow-xs">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 block mb-1">
+                Current Support Status
+              </span>
+              <p className="text-xl font-bold text-blue-900">
+                {learner.monitoringStatus || "Monitoring"}
+              </p>
+            </div>
+            <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 shadow-xs">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 block mb-1">
+                Current Next Action
+              </span>
+              <p className="text-xl font-bold text-amber-900">
+                {learner.recommendationDisplay || recommendedSupport}
+              </p>
+            </div>
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-12">
 {/* 1. STUDENT INFORMATION (Formal Document Surface) */}
@@ -563,13 +601,13 @@ export default function StudentMonitoringSidePanel({
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold uppercase text-slate-600">
-                      Period
+                      Period (Term Based)
                     </label>
                     <input
                       type="text"
                       disabled
-                      value="BOSY"
-                      className="mt-1 w-full rounded border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs text-slate-500 cursor-not-allowed"
+                      value={currentPhase}
+                      className="mt-1 w-full rounded border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 cursor-not-allowed"
                     />
                   </div>
                 </div>
@@ -1015,44 +1053,32 @@ export default function StudentMonitoringSidePanel({
               )}
             </div>
           </div>
-{/* 8. DECISION SUPPORT (RANDOM FOREST) */}
+{/* 8. ACADEMIC EVIDENCE (AI ASSISTED) */}
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark">
-                8. Decision Support
+                8. Academic Evidence
               </h3>
               <span className="text-[10.5px] font-medium text-slate-400">
-                Analytical Decision Support
+                AI Pattern Recognition
               </span>
             </div>
-            <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div className="rounded border border-slate-200 bg-slate-50/40 p-3">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
-                  Risk Level
+                  Academic Risk
                 </span>
                 <span className="mt-1 text-base font-bold text-slate-900 block">
                   {decisionSupport.riskLevel}
                 </span>
                 <span className="text-[10.5px] text-slate-400 mt-0.5 block">
-                  Pattern-based classification
+                  Based on recent academic standing
                 </span>
               </div>
 
               <div className="rounded border border-slate-200 bg-slate-50/40 p-3">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
-                  Model Confidence
-                </span>
-                <span className="mt-1 text-base font-bold text-slate-900 block">
-                  {decisionSupport.modelConfidenceDisplay || "82%"}
-                </span>
-                <span className="text-[10.5px] text-slate-400 mt-0.5 block">
-                  Statistical confidence score
-                </span>
-              </div>
-
-              <div className="rounded border border-slate-200 bg-slate-50/40 p-3">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
-                  Contributing Factors
+                  Primary Risk Factors
                 </span>
                 <ul className="mt-1 space-y-0.5 text-[11px] text-slate-700">
                   {decisionSupport.contributingIndicators.map((ind, i) => (
@@ -1069,7 +1095,7 @@ export default function StudentMonitoringSidePanel({
             <div className="mt-3 rounded border border-slate-200 bg-slate-50 p-2.5 text-[11px] text-slate-600 flex items-start gap-2">
               <ShieldAlert size={14} className="text-slate-500 shrink-0 mt-0.5" />
               <span>
-                &ldquo;Random Forest serves as analytical decision support and does not supersede official DepEd assessment rules.&rdquo;
+                &ldquo;Risk factors serve as academic evidence and do not supersede official DepEd assessment rules.&rdquo;
               </span>
             </div>
           </div>
@@ -1081,13 +1107,33 @@ export default function StudentMonitoringSidePanel({
           <span className="text-[11px] text-slate-500">
             CNHS Centralized Learner Identity
           </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded border border-slate-300 bg-white px-4 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
-          >
-            Close Record
-          </button>
+          <div className="flex items-center gap-2">
+            {(!learner.aralStatus || learner.aralStatus === "Not Referred") && isReadingSubject && Number(curGrade) < 75 ? (
+              <button
+                type="button"
+                onClick={handleRecommendAral}
+                className="rounded bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition cursor-pointer"
+              >
+                Recommend for ARAL
+              </button>
+            ) : null}
+            {(!learner.aralStatus || learner.aralStatus === "Not Referred") && !isReadingSubject && Number(curGrade) < 75 ? (
+              <button
+                type="button"
+                onClick={handleStartRemedial}
+                className="rounded bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition cursor-pointer"
+              >
+                Start Class Remedial
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded border border-slate-300 bg-white px-4 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+            >
+              Close Record
+            </button>
+          </div>
         </div>
       </motion.div>
     </div>

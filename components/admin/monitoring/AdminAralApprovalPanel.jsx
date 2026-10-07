@@ -958,7 +958,7 @@ export default function AdminAralApprovalPanel({
                                         ) : (
                                           <CheckCircle2 size={11} />
                                         )}
-                                        Approve
+                                        Evaluate Escalation
                                       </button>
                                       <button
                                         type="button"

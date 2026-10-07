@@ -145,7 +145,7 @@ export default function MonitoringDashboard() {
                 "Identified academic difficulties connect directly to Class Remedial recommendations.",
                 "Reading intervention screening connects eligible candidates to ARAL Monitoring.",
                 "Click on any learner to open their formal document-style Learner Profile and PLP direction.",
-                "Random Forest provides secondary analytical decision support without overriding official DepEd assessment rules.",
+                "AI Pattern Recognition provides secondary academic evidence without overriding official DepEd assessment rules.",
               ]}
             />
 

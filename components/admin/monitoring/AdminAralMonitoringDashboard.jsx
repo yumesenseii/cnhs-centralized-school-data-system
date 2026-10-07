@@ -26,7 +26,7 @@ import AdminAralApprovalPanel from "@/components/admin/monitoring/AdminAralAppro
 import AdminAralFacilitatorAssignPanel from "@/components/admin/monitoring/AdminAralFacilitatorAssignPanel";
 import AdminAralProgressPanel from "@/components/admin/monitoring/AdminAralProgressPanel";
 import AdminAralSummerEligibilityPanel from "@/components/admin/monitoring/AdminAralSummerEligibilityPanel";
-import InterventionDetailPanel from "@/components/teacher/monitoring/InterventionDetailPanel";
+
 import { useAdminMonitoring } from "@/hooks/teacher/useMonitoring";
 import { exportAralRecommendedPdf } from "@/lib/reports/aralRecommendedPdfExport";
 import { aggregateAralLearners } from "@/lib/monitoring/aralLearnerAggregation";
