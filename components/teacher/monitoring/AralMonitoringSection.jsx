@@ -22,6 +22,11 @@ import PhilIriDocumentsModal from "@/components/teacher/monitoring/PhilIriDocume
 import PhilIriEnterResultModal from "@/components/teacher/monitoring/PhilIriEnterResultModal";
 import StudentMonitoringSidePanel from "@/components/teacher/monitoring/StudentMonitoringSidePanel";
 import { aggregateAralLearners, filterAralLearners } from "@/lib/monitoring/aralLearnerAggregation";
+import {
+  aralPeriodLabel,
+  getAralPeriodPermissions,
+  normalizeAralPeriod,
+} from "@/lib/monitoring/assessmentTimeline";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
@@ -40,9 +45,15 @@ export default function AralMonitoringSection({
   teacherId = null,
   schoolYear = "SY 2026-2027",
   quarter = 1,
+  // Authoritative ARAL assessment period (BOSY/MOSY/EOSY), owned by system
+  // configuration — never inferred from the academic term here.
+  aralPeriod = null,
   onRefresh,
   onViewLearner,
 }) {
+  const effectivePeriod = normalizeAralPeriod(aralPeriod) || "BOSY";
+  const periodPermissions = getAralPeriodPermissions(effectivePeriod);
+  const bosyEditable = periodPermissions.BOSY.editable === true;
   // 4 Primary Workflow Tabs
   const [activeWorkflowTab, setActiveWorkflowTab] = useState("all");
 
@@ -65,6 +76,17 @@ export default function AralMonitoringSection({
     return aggregateAralLearners(students);
   }, [students]);
 
+  // Principal-approved referrals enter the assessment queue WITHOUT
+  // requiring a BEG result first (approved → pending assessment).
+  function isApprovedAwaitingAssessment(row) {
+    const approval = String(row.aralApprovalStatus || "");
+    if (!/approved/i.test(approval)) return false;
+    if (row.philIriScore != null) return false;
+    const st = row.interventionStatus || row.monitoringStatus || "";
+    if (/Active Intervention|Progressing|In Progress|Assigned|Completed/i.test(st)) return false;
+    return true;
+  }
+
   // 2. Metrics calculation
   const metrics = useMemo(() => {
     let forAssessmentCount = 0;
@@ -76,7 +98,9 @@ export default function AralMonitoringSection({
       const st = s.interventionStatus || s.monitoringStatus || "Needs Review";
       const hasScore = s.philIriScore != null;
 
-      if (!hasScore && (st === "Needs Review" || st === "ARAL Candidate" || st === "For Review")) {
+      if (isApprovedAwaitingAssessment(s)) {
+        forAssessmentCount++;
+      } else if (!hasScore && (st === "Needs Review" || st === "ARAL Candidate" || st === "For Review")) {
         forAssessmentCount++;
       } else if (hasScore && (st === "Needs Review" || st === "For Review" || st === "ARAL Candidate")) {
         forReviewCount++;
@@ -104,7 +128,10 @@ export default function AralMonitoringSection({
 
       switch (activeWorkflowTab) {
         case "for_assessment":
-          return !hasScore && (status === "Needs Review" || status === "ARAL Candidate" || status === "For Review");
+          return (
+            isApprovedAwaitingAssessment(row) ||
+            (!hasScore && (status === "Needs Review" || status === "ARAL Candidate" || status === "For Review"))
+          );
         
         case "for_review":
           return hasScore && (status === "Needs Review" || status === "For Review" || status === "ARAL Candidate");
@@ -161,7 +188,13 @@ export default function AralMonitoringSection({
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 border border-slate-200/70">
             <BookOpen size={13} className="text-cnhs-green" />
-            Reading Intervention · English & Filipino · Phil-IRI
+            ARAL Monitoring · English & Filipino · Phil-IRI
+          </span>
+          <span
+            title="Authoritative ARAL assessment period (system configuration)"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-cnhs-green-soft px-2.5 py-1 text-xs font-semibold text-cnhs-green-dark border border-emerald-200/70"
+          >
+            {aralPeriodLabel(effectivePeriod)}
           </span>
         </div>
 
@@ -182,7 +215,13 @@ export default function AralMonitoringSection({
               setSelectedStudentForResult(null);
               setIsEnterResultOpen(true);
             }}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-cnhs-green-dark shadow-xs hover:bg-emerald-100 transition-colors"
+            disabled={!bosyEditable}
+            title={
+              bosyEditable
+                ? "Record Phil-IRI baseline screening (Beginning Assessment)"
+                : "Baseline screening is only available during the Beginning Assessment (BOSY) period"
+            }
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-cnhs-green-dark shadow-xs hover:bg-emerald-100 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Pencil size={12} />
             <span>Enter Assessment Result</span>
@@ -191,7 +230,13 @@ export default function AralMonitoringSection({
           <button
             type="button"
             onClick={() => setIsImportOpen(true)}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3.5 text-xs font-semibold text-white shadow-xs hover:bg-[#246f54] transition-colors"
+            disabled={!bosyEditable}
+            title={
+              bosyEditable
+                ? "Import Phil-IRI baseline screening"
+                : "Baseline screening import is only available during the Beginning Assessment (BOSY) period"
+            }
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3.5 text-xs font-semibold text-white shadow-xs hover:bg-[#246f54] transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
             <FileSpreadsheet size={13} />
             <span>Import Form 1B</span>
@@ -330,11 +375,15 @@ export default function AralMonitoringSection({
                     : row.subject || "English / Filipino";
 
                   const st = row.interventionStatus || row.aralStatus || "Needs Review";
+                  // BOSY is screening (GST → further assessment), never an
+                  // automatic placement: no score yet means awaiting screening.
                   let stage = "Review";
-                  if (row.philIriScore == null) stage = "Assessment";
+                  if (isApprovedAwaitingAssessment(row)) stage = "Waiting for Reading Assessment";
+                  else if (row.philIriScore == null) stage = "Beginning Assessment";
                   else if (st === "Needs Review" || st === "For Review") stage = "Review";
-                  else if (st === "Active Intervention") stage = "Intervention";
-                  else if (st === "For Midline Assessment" || st === "For EOSY Assessment") stage = "Progress";
+                  else if (st === "Active Intervention") stage = "Under ARAL Intervention";
+                  else if (st === "For Midline Assessment") stage = "Mid-Year Assessment";
+                  else if (st === "For EOSY Assessment") stage = "End-of-Year Assessment";
                   else if (st.includes("Completed")) stage = "Completed";
 
                   return (
@@ -455,13 +504,15 @@ export default function AralMonitoringSection({
       </div>
 
       {/* MODALS */}
-      {/* 1. Unified Learner Support Profile Panel */}
+      {/* 1. Unified Learner Support Profile Panel (ARAL context) */}
       <StudentMonitoringSidePanel
         isOpen={Boolean(selectedLearnerForProfile)}
         onClose={() => setSelectedLearnerForProfile(null)}
         learner={selectedLearnerForProfile || {}}
         schoolYear={schoolYear}
         onRefresh={onRefresh}
+        context="aral"
+        aralPeriod={effectivePeriod}
         currentQuarterNumber={quarter}
         isLanguageTeacher={true}
       />
@@ -486,7 +537,7 @@ export default function AralMonitoringSection({
         quarter={quarter}
       />
 
-      {/* 4. Individual Enter Score Modal */}
+      {/* 4. Individual Enter Score Modal (BOSY baseline screening) */}
       <PhilIriEnterResultModal
         isOpen={isEnterResultOpen}
         onClose={() => {
@@ -498,6 +549,7 @@ export default function AralMonitoringSection({
         teacherId={teacherId}
         schoolYear={schoolYear}
         quarter={quarter}
+        aralPeriod={effectivePeriod}
         onSuccess={onRefresh}
       />
     </div>

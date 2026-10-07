@@ -18,6 +18,11 @@ import ClassRemedialsSection from "@/components/teacher/monitoring/ClassRemedial
 import StudentMonitoringSidePanel from "@/components/teacher/monitoring/StudentMonitoringSidePanel";
 import { useTeacherMonitoring } from "@/hooks/teacher/useMonitoring";
 import { buildClassReportFiles } from "@/lib/monitoring/classReportFiles";
+import {
+  aggregateAcademicLearners,
+  filterRosterContext,
+} from "@/lib/monitoring/academicLearnerAggregation";
+import { parseTermNumber, termLabel } from "@/lib/academic/termLabels";
 import { formatPersonName } from "@/lib/teacher/monitoringMappers";
 import PageHelp from "@/components/shared/PageHelp";
 import { useAppToast } from "@/components/shared/AppToast";
@@ -51,6 +56,65 @@ export default function MonitoringDashboard() {
     if (named && named !== "—") return named;
     return profile?.email || "Teacher";
   }, [teacher, profile]);
+
+  // Filter-first context (BEFORE aggregation): active school year +
+  // selected quarter. The table never aggregates — it renders these rows.
+  const activeSchoolYear = useMemo(() => {
+    const years = [
+      ...new Set(
+        [
+          ...students.map((s) => s.schoolYear),
+          ...classSummaries.map((c) => c.schoolYear),
+        ].filter(Boolean)
+      ),
+    ].sort().reverse();
+    return years[0] || "SY 2026-2027";
+  }, [students, classSummaries]);
+
+  const availableQuarters = useMemo(() => {
+    const labels = new Map();
+    for (const s of students) {
+      if (s.schoolYear && s.schoolYear !== activeSchoolYear) continue;
+      const n = parseTermNumber(s.quarterNumber ?? s.quarter);
+      if (n == null) continue;
+      if (!labels.has(n)) labels.set(n, termLabel(n));
+    }
+    return [...labels.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([, label]) => label);
+  }, [students, activeSchoolYear]);
+
+  const activeQuarterNumber = useMemo(() => {
+    let max = 0;
+    for (const s of students) {
+      if (s.schoolYear && s.schoolYear !== activeSchoolYear) continue;
+      const n = parseTermNumber(s.quarterNumber ?? s.quarter);
+      if (n != null && n > max) max = n;
+    }
+    return max || 1;
+  }, [students, activeSchoolYear]);
+
+  const [quarterFilter, setQuarterFilter] = useState("All quarters");
+  const [quarterInit, setQuarterInit] = useState(false);
+  useEffect(() => {
+    if (!quarterInit && !loading && students.length) {
+      setQuarterFilter(termLabel(activeQuarterNumber));
+      setQuarterInit(true);
+    }
+  }, [quarterInit, loading, students.length, activeQuarterNumber]);
+
+  const viewQuarterNumber = parseTermNumber(quarterFilter) ?? activeQuarterNumber;
+
+  // Single aggregation layer: one learner row per section per quarter.
+  const aggregatedStudents = useMemo(() => {
+    const scoped = filterRosterContext(students, {
+      schoolYear: activeSchoolYear,
+      quarter: quarterFilter,
+    });
+    return aggregateAcademicLearners(scoped, {
+      includeQuarterInKey: quarterFilter === "All quarters",
+    });
+  }, [students, activeSchoolYear, quarterFilter]);
 
   const files = useMemo(() => {
     void metaTick;
@@ -203,27 +267,32 @@ export default function MonitoringDashboard() {
         </div>
       ) : (
         <ClassRemedialsSection
-          students={students}
-          currentQuarterNumber={controls.quarterNumber || 1}
+          students={aggregatedStudents}
+          currentQuarterNumber={viewQuarterNumber}
+          quarterFilter={quarterFilter}
+          onQuarterFilterChange={setQuarterFilter}
+          availableQuarters={availableQuarters}
           onViewLearner={setSelectedLearner}
+          onRefresh={refresh}
           onNavigateToAral={(learner) => {
             router.push(`/teacher/aral-monitoring?studentId=${learner.studentId || learner.id}`);
           }}
         />
       )}
 
-      {/* Continuous Learner Profile Side Panel */}
+      {/* Continuous Learner Profile Side Panel (academic context) */}
       <StudentMonitoringSidePanel
         learner={selectedLearner}
         isOpen={Boolean(selectedLearner)}
         onClose={() => setSelectedLearner(null)}
         onRefresh={refresh}
+        context="academic"
         onNavigateToAral={(learner) => {
           setSelectedLearner(null);
           router.push(`/teacher/aral-monitoring?studentId=${learner.studentId || learner.id}`);
         }}
         isLanguageTeacher={Boolean(filterOptions.hasAralClass)}
-        currentQuarterNumber={controls.quarterNumber || 1}
+        currentQuarterNumber={viewQuarterNumber}
       />
 
       {/* Class Report File Modal (from deep-links / My Classes integration) */}

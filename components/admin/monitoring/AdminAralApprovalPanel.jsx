@@ -717,7 +717,7 @@ export default function AdminAralApprovalPanel({
                           ) : (
                             <CheckCircle2 size={12} />
                           )}
-                          Approve selected ({selectedInSection})
+                          Approve for Assessment ({selectedInSection})
                         </button>
                         <button
                           type="button"
@@ -728,7 +728,7 @@ export default function AdminAralApprovalPanel({
                           className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-cnhs-orange/35 bg-cnhs-orange-soft px-3 text-[11px] font-semibold text-cnhs-orange hover:bg-cnhs-orange/15 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <RotateCcw size={12} />
-                          Return selected
+                          Return to Teacher
                         </button>
                       </div>
 
@@ -972,7 +972,7 @@ export default function AdminAralApprovalPanel({
                                         className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-cnhs-orange/35 bg-cnhs-orange-soft px-2.5 text-[10px] font-semibold text-cnhs-orange hover:bg-cnhs-orange/15 disabled:opacity-50"
                                       >
                                         <RotateCcw size={11} />
-                                        Return
+                                        Return to Teacher
                                       </button>
                                     </div>
                                     )}

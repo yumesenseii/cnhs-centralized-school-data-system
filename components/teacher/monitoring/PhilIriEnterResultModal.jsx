@@ -27,6 +27,8 @@ export default function PhilIriEnterResultModal({
   teacherId = null,
   schoolYear = "SY 2026-2027",
   quarter = 1,
+  // Authoritative ARAL period; baseline saves are BOSY-gated in the backend.
+  aralPeriod = null,
   onSuccess,
 }) {
   const [selectedStudentId, setSelectedStudentId] = useState("");
@@ -126,6 +128,7 @@ export default function PhilIriEnterResultModal({
         readingLevel,
         screeningInterpretation: interpretation,
         documents,
+        assessmentPeriod: aralPeriod,
       });
 
       if (res.error) {

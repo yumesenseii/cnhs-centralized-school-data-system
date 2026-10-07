@@ -15,13 +15,24 @@ import {
   CheckCircle2,
   AlertCircle,
   HelpCircle,
-  ShieldAlert,
   GraduationCap,
   ArrowUpRight,
   BookOpen,
   Calendar,
 } from "lucide-react";
-import { saveSinglePhilIriResult, createMonitoringRecord } from "@/lib/supabase/queries/monitoring";
+import { saveSinglePhilIriResult, createMonitoringRecord, referLearnerToAral } from "@/lib/supabase/queries/monitoring";
+import { submitAralRecommendationForReview } from "@/lib/supabase/queries/aralApprovals";
+import AppSelect from "@/components/shared/AppSelect";
+import {
+  READING_CONCERN_OPTIONS,
+  deriveLearnerReviewReasons,
+  isReadingReviewCandidate,
+  reviewReasonLabel,
+} from "@/lib/monitoring/readingReviewSummary";
+import {
+  aralPeriodLabel,
+  normalizeAralPeriod,
+} from "@/lib/monitoring/assessmentTimeline";
 import { RiskPill } from "@/components/teacher/monitoring/shared";
 import { getAssessmentPermissions, ASSESSMENT_TERMS, ASSESSMENT_STAGES } from "@/lib/monitoring/assessmentTimeline";
 import { useAppToast } from "@/components/shared/AppToast";
@@ -35,6 +46,12 @@ export default function StudentMonitoringSidePanel({
   onNavigateToAral,
   isLanguageTeacher = false,
   currentQuarterNumber = 1,
+  // Workflow context: "academic" (risk detection, remedial, referral) or
+  // "aral" (approved reading cases, assessment, intervention progress).
+  context = "academic",
+  // Authoritative ARAL assessment period (BOSY/MOSY/EOSY). Baseline saves
+  // are BOSY-gated in the backend; null preserves legacy behavior.
+  aralPeriod = null,
 }) {
   const pathname = usePathname();
   const [isEditingPhilIri, setIsEditingPhilIri] = useState(false);
@@ -53,12 +70,41 @@ export default function StudentMonitoringSidePanel({
   const [noteRemarks, setNoteRemarks] = useState("");
   const [savingNote, setSavingNote] = useState(false);
 
+  // Teacher Review state (academic context, subject-dependent)
+  const [reviewDecision, setReviewDecision] = useState(null);
+  const [reviewConcern, setReviewConcern] = useState("");
+  const [reviewNote, setReviewNote] = useState("");
+  const [continuingMonitoring, setContinuingMonitoring] = useState(false);
+
+  // ARAL referral submission state (single-flight + pending visibility)
+  const [recommendingAral, setRecommendingAral] = useState(false);
+
   // Calculate Active Term using assessmentTimeline
   const activeTerm = currentQuarterNumber === 1 ? ASSESSMENT_TERMS.TERM_1 : currentQuarterNumber === 2 ? ASSESSMENT_TERMS.TERM_2 : ASSESSMENT_TERMS.TERM_3;
   const permissions = getAssessmentPermissions(activeTerm);
   
   // Determine which phase is currently editable
   const currentPhase = permissions[ASSESSMENT_STAGES.BEG].editable ? "BOSY (Beginning)" : permissions[ASSESSMENT_STAGES.MID].editable ? "MOSY (Midline)" : "EOSY (End)";
+
+  // Strict module separation: academic hides ARAL assessment workflow and
+  // ARAL-specific editing; ARAL hides academic referral/remedial controls.
+  const isAralContext = context === "aral";
+
+  // Single source of truth for assessment edit permission (unknown term →
+  // every phase hidden → no editing anywhere).
+  const canEditAssessment =
+    permissions[ASSESSMENT_STAGES.BEG]?.editable === true ||
+    permissions[ASSESSMENT_STAGES.MID]?.editable === true ||
+    permissions[ASSESSMENT_STAGES.END]?.editable === true;
+
+  // Baseline screening belongs to BOSY. Once the authoritative period
+  // advances, the baseline is historical and read-only here.
+  const baselineEditable =
+    canEditAssessment &&
+    (!aralPeriod || normalizeAralPeriod(aralPeriod) === "BOSY");
+  const assessmentPeriodLabel = aralPeriod
+    ? aralPeriodLabel(aralPeriod)
+    : currentPhase;
 
   const { showToast } = useAppToast();
 
@@ -79,6 +125,8 @@ export default function StudentMonitoringSidePanel({
   useEffect(() => {
     setIsEditingPhilIri(false);
     setIsAddingNote(false);
+    setReviewConcern("");
+    setReviewNote("");
     if (learner) {
       setRemedialStatus(
         learner.remedialStatus ||
@@ -86,23 +134,33 @@ export default function StudentMonitoringSidePanel({
           learner.monitoringStatus ||
           "Recommended"
       );
+      // A learner already in the referral pipeline opens as confirmed.
+      const alreadyInPipeline =
+        learner.candidateStatus === "Referred to ARAL" ||
+        /submitted|approved|for your review|pending principal review|approved for assessment/i.test(
+          String(learner.aralApprovalStatus || "")
+        );
+      setReviewDecision(alreadyInPipeline ? "confirmed" : null);
+    } else {
+      setReviewDecision(null);
     }
   }, [learner?.id, learner?.studentId, isOpen, learner]);
 
   if (!isOpen || !learner) return null;
 
-  async function handleUpdateRemedialStatus(newStatus) {
+  async function handleUpdateRemedialStatus(newStatus, extraRemarks = "") {
     if (updatingRemedial) return;
     setUpdatingRemedial(true);
     try {
       const studentId = learner.studentId || learner.id;
       const classId = learner.classId || null;
+      const remarks = `Class Remedial status confirmed as ${newStatus}.${extraRemarks ? ` Teacher note: ${extraRemarks}` : ""}`;
       await createMonitoringRecord({
         student_id: studentId,
         class_id: classId,
         observation_date: new Date().toISOString().split("T")[0],
         intervention_given: "Class Remedial",
-        teacher_remarks: `Class Remedial status confirmed as ${newStatus}.`,
+        teacher_remarks: remarks,
         student_progress: newStatus === "Completed" ? "Improving" : "Ongoing",
         follow_up_needed: newStatus === "Needs Continued Support",
         monitoring_status: newStatus,
@@ -110,6 +168,7 @@ export default function StudentMonitoringSidePanel({
         quarter: currentQuarterNumber,
       });
       setRemedialStatus(newStatus);
+      setReviewNote("");
       showToast("success", `Class Remedial status updated to ${newStatus}.`);
       onRefresh?.();
     } catch (err) {
@@ -183,15 +242,6 @@ export default function StudentMonitoringSidePanel({
       "Random Forest serves as analytical decision support and does not supersede official DepEd assessment rules.",
   };
 
-  // PLP Recommendation
-  const plp = learner.plp || {
-    learningNeed: `${learner.subject || "Subject"} core competencies reinforcement`,
-    evidence: `Current grade ${curGrade || "—"}, Phil-IRI: ${readingLevelDisplay}, ${perfTrend.toLowerCase()} recent performance`,
-    targetArea: `Essential learning competencies in ${learner.subject || "Subject"}`,
-    recommendedIntervention: recommendedSupport,
-    progressMonitoring: "Continue monitoring academic performance and intervention progress.",
-  };
-
   function handleStartEdit() {
     setEditGstScore(hasGstScore ? String(gstScore) : "");
     setEditReadingLevel(readingLevelDisplay);
@@ -229,6 +279,7 @@ export default function StudentMonitoringSidePanel({
         individualAssessmentRequired: numericScore !== null && numericScore <= 27,
         readingLevel: editReadingLevel,
         screeningInterpretation: interpretation,
+        assessmentPeriod: aralPeriod,
       });
 
       if (res?.error) {
@@ -285,15 +336,127 @@ export default function StudentMonitoringSidePanel({
     }
   }
 
+  // Existing Principal-queue state for this learner (DB = submitted,
+  // UI label = Pending Principal Review). Guards duplicate referrals.
+  const aralApprovalRaw = String(learner.aralApprovalStatus || "");
+  const aralReferralPending =
+    learner.candidateStatus === "Referred to ARAL" ||
+    /submitted|for your review|pending principal review/i.test(aralApprovalRaw);
+  const aralReferralApproved =
+    /approved|approved for assessment/i.test(aralApprovalRaw);
+
+  // Subject-context pathway: English/Filipino learners meeting reading-review
+  // conditions get the reading-review pathway; all others get class remedial.
+  const isReadingPath =
+    isReadingSubject && isReadingReviewCandidate(learner);
+
+  // Compact Reading Intervention status (teacher-friendly labels only).
+  const readingStatusLabel = learner.inAralProgram
+    ? "Under Reading Intervention"
+    : aralReferralApproved
+      ? hasGstScore
+        ? "Approved for Assessment"
+        : "Waiting for Reading Assessment"
+      : aralReferralPending
+        ? "Pending Principal Review"
+        : "Not yet referred";
+
+  // Friendly reasons derived from existing roster outputs (never hardcoded).
+  const reviewReasons = deriveLearnerReviewReasons(learner);
+
+  // Referral requires an explicit confirmed reading concern in academic flow.
+  const referralEligible =
+    (!learner.aralStatus || learner.aralStatus === "Not Referred") &&
+    isReadingSubject &&
+    Number(curGrade) < 75;
+  const canRecommendAral =
+    referralEligible &&
+    !aralReferralPending &&
+    !aralReferralApproved &&
+    reviewDecision === "confirmed";
+
   async function handleRecommendAral() {
-    showToast("success", "Learner recommended for ARAL Assessment. Pending Principal Approval.");
-    onRefresh?.();
-    onClose?.();
+    if (recommendingAral) return;
+    const studentId = learner.studentId || learner.id;
+    const classId = learner.classId || null;
+    if (!studentId || !classId) {
+      showToast("error", "Missing learner or class record. Cannot submit referral.");
+      return;
+    }
+    if (aralReferralPending || aralReferralApproved) {
+      showToast("success", "ARAL referral already submitted. Pending Principal review.");
+      return;
+    }
+    setRecommendingAral(true);
+    try {
+      const referralNote = [
+        `Teacher-confirmed reading concern${reviewConcern ? `: ${reviewConcern}` : ""}.`,
+        reviewNote.trim() ? `Teacher note: ${reviewNote.trim()}` : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      // Legacy triage trail (monitoring record + candidate status).
+      await referLearnerToAral({
+        studentId,
+        classId,
+        notes: referralNote,
+      });
+      // Principal queue record (duplicate-guarded by upsert + approved check).
+      const submitResult = await submitAralRecommendationForReview({
+        studentId,
+        classId,
+        schoolYear: learner.schoolYear || "SY 2026-2027",
+        quarter: learner.quarterNumber ?? currentQuarterNumber,
+      });
+      if (submitResult?.error) {
+        showToast("error", submitResult.error.message || "Failed to submit ARAL referral.");
+        return;
+      }
+      showToast("success", "ARAL referral submitted. Pending Principal review.");
+      setReviewNote("");
+      onRefresh?.();
+      onClose?.();
+    } catch (err) {
+      console.error(err);
+      showToast("error", "Failed to submit ARAL referral.");
+    } finally {
+      setRecommendingAral(false);
+    }
   }
 
-  async function handleStartRemedial() {
-    showToast("success", "Class Remedial started.");
-    onRefresh?.();
+  async function handleContinueMonitoring() {
+    if (continuingMonitoring) return;
+    const studentId = learner.studentId || learner.id;
+    const classId = learner.classId || null;
+    if (!studentId) {
+      showToast("error", "Missing learner record. Cannot continue monitoring.");
+      return;
+    }
+    setContinuingMonitoring(true);
+    try {
+      await createMonitoringRecord({
+        student_id: studentId,
+        class_id: classId,
+        observation_date: new Date().toISOString().split("T")[0],
+        intervention_given: recommendedSupport || "Classroom Monitoring",
+        teacher_remarks:
+          reviewNote.trim() ||
+          "Teacher continued monitoring with no change in intervention.",
+        student_progress: "Ongoing",
+        follow_up_needed: false,
+        monitoring_status: "Ongoing",
+        school_year: learner.schoolYear || "SY 2026-2027",
+        quarter: currentQuarterNumber,
+      });
+      showToast("success", "Monitoring continued for this learner.");
+      setReviewNote("");
+      onRefresh?.();
+    } catch (err) {
+      console.error(err);
+      showToast("error", "Failed to continue monitoring.");
+    } finally {
+      setContinuingMonitoring(false);
+    }
   }
 
   return (
@@ -374,13 +537,16 @@ export default function StudentMonitoringSidePanel({
                   <ArrowUpRight size={13} className="text-slate-500" />
                 </Link>
               ) : (
-                (hasGstScore || learner?.interventionStatus === "ARAL Candidate") && (
+                (hasGstScore ||
+                  learner?.interventionStatus === "ARAL Candidate" ||
+                  aralReferralApproved ||
+                  learner.inAralProgram) && (
                   <Link
                     href={`/teacher/aral-monitoring?studentId=${learner?.studentId || learner?.id || ""}`}
-                    title="View in Reading Intervention workspace"
+                    title="View in ARAL Monitoring workspace"
                     className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-cnhs-green-dark shadow-2xs hover:bg-emerald-100 transition"
                   >
-                    <span>View in Reading Intervention</span>
+                    <span>View in ARAL Monitoring</span>
                     <ArrowUpRight size={13} className="text-cnhs-green-dark" />
                   </Link>
                 )
@@ -399,39 +565,9 @@ export default function StudentMonitoringSidePanel({
           </div>
 
         {/* DOCUMENT BODY */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5 bg-slate-100/60">
-
-          {/* UNIFIED LEARNER SUPPORT STATUS */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-            <div className="flex items-start gap-3 rounded-xl border border-blue-200/80 bg-blue-50/60 p-4 sm:p-5 shadow-xs">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
-                <BookOpen size={16} strokeWidth={1.9} />
-              </span>
-              <div className="min-w-0">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 block">
-                  Current Support Status
-                </span>
-                <p className="mt-1 text-lg font-bold tracking-tight text-blue-900">
-                  {learner.monitoringStatus || "Monitoring"}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 rounded-xl border border-amber-200/80 bg-amber-50/60 p-4 sm:p-5 shadow-xs">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
-                <ArrowUpRight size={16} strokeWidth={1.9} />
-              </span>
-              <div className="min-w-0">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 block">
-                  Current Next Action
-                </span>
-                <p className="mt-1 text-lg font-bold tracking-tight text-amber-900">
-                  {learner.recommendationDisplay || recommendedSupport}
-                </p>
-              </div>
-            </div>
-          </div>
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-6 sm:pb-8 space-y-4 sm:space-y-5 bg-slate-100/60">
           <div className="flex flex-col gap-4 sm:gap-5">
-            <div>
+            <div className={cn(!isAralContext && "hidden")}>
 {/* 1. STUDENT INFORMATION (Formal Document Surface) */}
           <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark border-b border-slate-100 pb-2">
@@ -483,17 +619,122 @@ export default function StudentMonitoringSidePanel({
             ) : null}
           </div>
             </div>
+
+            {/* 2. CURRENT ACADEMIC SITUATION (academic context only) */}
+            <div className={cn(!isAralContext && "contents", isAralContext && "hidden")}>
+              <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+                <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark border-b border-slate-100 pb-2">
+                  Current Academic Situation
+                </h3>
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5 text-xs">
+                  <div>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                      Subject
+                    </span>
+                    <span className="mt-1 block text-sm font-bold text-slate-900">
+                      {learner.subject || "—"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                      Current Grade
+                    </span>
+                    <span className={cn(
+                      "mt-1 block text-sm font-bold",
+                      curGrade != null && Number(curGrade) < 75 ? "text-amber-800" : "text-slate-900"
+                    )}>
+                      {curGrade != null ? curGrade : "—"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                      Previous Grade
+                    </span>
+                    <span className="mt-1 block text-sm font-bold text-slate-700">
+                      {prevGrade != null ? prevGrade : "—"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                      Trend
+                    </span>
+                    <span className="mt-1 flex items-center gap-1 text-sm font-bold text-slate-800">
+                      {perfTrend === "Improving" ? (
+                        <TrendingUp size={14} className="text-emerald-600" />
+                      ) : perfTrend === "Declining" ? (
+                        <TrendingDown size={14} className="text-amber-700" />
+                      ) : (
+                        <Minus size={14} className="text-slate-400" />
+                      )}
+                      {perfTrend}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                      Academic Risk
+                    </span>
+                    <span className="mt-1 block">
+                      <RiskPill value={learner.riskLevel || "—"} />
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. WHY THIS LEARNER NEEDS REVIEW (academic context only) */}
+              <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+                <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark border-b border-slate-100 pb-2">
+                  Why This Learner Needs Review
+                </h3>
+                {reviewReasons.length ? (
+                  <ul className="mt-3 space-y-1.5">
+                    {reviewReasons.map((code) => (
+                      <li key={code} className="flex items-start gap-2 text-[12px] text-slate-700">
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                        <span className="font-medium">{reviewReasonLabel(code)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-3 text-[12px] text-slate-500">
+                    No specific concerns flagged. Continue regular monitoring.
+                  </p>
+                )}
+                {supportReason ? (
+                  <p className="mt-2.5 rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2 text-[12px] leading-5 text-slate-600">
+                    {supportReason}
+                  </p>
+                ) : null}
+                {decisionSupport?.contributingIndicators?.length ? (
+                  <div className="mt-3">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Recent Academic Evidence
+                    </span>
+                    <ul className="mt-1.5 space-y-1">
+                      {decisionSupport.contributingIndicators.map((ind, i) => (
+                        <li key={i} className="flex items-start gap-1.5 text-[11px] text-slate-600">
+                          <span className="text-slate-300">•</span>
+                          <span>{ind}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-2 text-[10.5px] leading-4 text-slate-400">
+                      Risk factors serve as academic evidence and do not supersede official DepEd assessment rules.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </div>
             
             <div className="contents">
-{/* 2. ACADEMIC PERFORMANCE */}
-          <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+{/* 4. ACADEMIC PERFORMANCE — subject grids (academic context only) */}
+          <div className={cn("rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm", isAralContext && "hidden")}>
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark">
-                2. Academic Performance
+                {isAralContext ? "2. Academic Performance" : "4. Academic Performance"}
               </h3>
               <span className="text-[10.5px] text-slate-400">Quarterly & Subject Standing</span>
             </div>
-            <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 text-xs">
+            <div className={cn("mt-3 grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 text-xs", !isAralContext && "hidden")}>
               <div className="pr-4 py-1">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
                   Current Grade {learner.subject ? `(${learner.subject})` : ""}
@@ -592,14 +833,49 @@ export default function StudentMonitoringSidePanel({
                 </div>
               </div>
             ) : null}
+
+            {/* Per-subject risk/trend/status preserved after roster aggregation */}
+            {Array.isArray(learner.subjectStandings) && learner.subjectStandings.length > 1 ? (
+              <div className="mt-3 pt-3 border-t border-slate-100">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-2">
+                  Per-Subject Standing
+                </span>
+                <div className="space-y-1.5">
+                  {learner.subjectStandings.map((st, i) => (
+                    <div
+                      key={`${st.subject}-${st.classId || i}`}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50/50 px-2.5 py-1.5 text-[11px]"
+                    >
+                      <span className="font-semibold text-slate-800">{st.subject}</span>
+                      <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-slate-500">
+                        <span>Grade <strong className="font-mono text-slate-800">{st.grade ?? "—"}</strong></span>
+                        <span className="text-slate-300">•</span>
+                        <span className={cn(
+                          "font-semibold",
+                          /high/i.test(st.riskLevel || "") ? "text-red-700"
+                          : /moderate/i.test(st.riskLevel || "") ? "text-amber-700"
+                          : "text-emerald-700"
+                        )}>
+                          {st.riskLevel || "—"}
+                        </span>
+                        <span className="text-slate-300">•</span>
+                        <span>{st.trend || "—"}</span>
+                        <span className="text-slate-300">•</span>
+                        <span>{st.monitoringStatus || "—"}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
-{/* 4. ASSESSMENT EVIDENCE (PHIL-IRI) */}
-          <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+{/* 4. ASSESSMENT EVIDENCE (PHIL-IRI) — ARAL context only; academic uses the compact status in Teacher Review */}
+          <div className={cn("rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm", !isAralContext && "hidden")}>
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark">
-                4. Assessment Evidence (Phil-IRI)
+                4. Beginning Assessment (BOSY Screening)
               </h3>
-              {canManageReading && !isEditingPhilIri ? (
+              {isAralContext && canManageReading && baselineEditable && !isEditingPhilIri ? (
                 <button
                   type="button"
                   onClick={handleStartEdit}
@@ -611,7 +887,7 @@ export default function StudentMonitoringSidePanel({
               ) : null}
             </div>
 
-            {isEditingPhilIri ? (
+            {isEditingPhilIri && isAralContext ? (
               <form onSubmit={handleSaveEdit} className="mt-3 rounded border border-slate-200 bg-slate-50 p-3 text-xs space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
@@ -642,17 +918,17 @@ export default function StudentMonitoringSidePanel({
                       <option value="Independent">Independent</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase text-slate-600">
-                      Period (Term Based)
-                    </label>
-                    <input
-                      type="text"
-                      disabled
-                      value={currentPhase}
-                      className="mt-1 w-full rounded border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 cursor-not-allowed"
-                    />
-                  </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-slate-600">
+                        Assessment Period
+                      </label>
+                      <input
+                        type="text"
+                        disabled
+                        value={assessmentPeriodLabel}
+                        className="mt-1 w-full rounded border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 cursor-not-allowed"
+                      />
+                    </div>
                 </div>
                 <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
                   <button
@@ -714,7 +990,7 @@ export default function StudentMonitoringSidePanel({
                     href={`/teacher/aral-monitoring?studentId=${learner?.studentId || learner?.id || ""}`}
                     className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-cnhs-green-dark hover:underline"
                   >
-                    View in Reading Intervention <ArrowUpRight size={11} />
+                    View in ARAL Monitoring <ArrowUpRight size={11} />
                   </Link>
                 </div>
               </div>
@@ -729,11 +1005,56 @@ export default function StudentMonitoringSidePanel({
               </span>
             </div>
           </div>
-{/* 9. PROGRESS HISTORY & OBSERVATIONS */}
+{/* 6. CURRENT SUPPORT & RECENT ACTIVITY (academic context only) */}
+          <div className={cn("rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm", isAralContext && "hidden")}>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark border-b border-slate-100 pb-2">
+              6. Current Support & Recent Activity
+            </h3>
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3 text-xs">
+              <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Monitoring Status
+                </span>
+                <span className="mt-0.5 block text-sm font-bold text-slate-900">
+                  {learner.monitoringStatus || "Monitoring"}
+                </span>
+              </div>
+              <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Class Remedial
+                </span>
+                <span className="mt-0.5 flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-bold text-slate-900">{remedialStatus}</span>
+                  <select
+                    value={remedialStatus}
+                    onChange={(e) => handleUpdateRemedialStatus(e.target.value, reviewNote.trim())}
+                    disabled={updatingRemedial}
+                    aria-label="Update class remedial status"
+                    className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-700"
+                  >
+                    <option value="Recommended">Recommended</option>
+                    <option value="Active">Active</option>
+                    <option value="Progressing">Progressing</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Needs Continued Support">Needs Continued Support</option>
+                  </select>
+                </span>
+              </div>
+              <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  {isReadingPath ? "Reading Referral" : "Support Pathway"}
+                </span>
+                <span className="mt-0.5 block text-sm font-bold text-slate-900">
+                  {isReadingPath ? readingStatusLabel : (recommendedSupport || "—")}
+                </span>
+              </div>
+            </div>
+          </div>
+{/* 9. PROGRESS HISTORY & OBSERVATIONS (Recent Activity in academic) */}
           <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark">
-                9. Progress History & Teacher Observations
+                {isAralContext ? "9. Progress History & Teacher Observations" : "Recent Activity"}
               </h3>
               {!isAddingNote ? (
                 <button
@@ -844,8 +1165,8 @@ export default function StudentMonitoringSidePanel({
             </div>
 
             <div className="contents">
-{/* 3. ATTENDANCE */}
-          <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+{/* 3. ATTENDANCE — ARAL context only; academic uses Additional Information below */}
+          <div className={cn("rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm", !isAralContext && "hidden")}>
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark">
                 3. Attendance Records
@@ -895,62 +1216,159 @@ export default function StudentMonitoringSidePanel({
               </div>
             </div>
           </div>
-{/* 5. IDENTIFIED LEARNING NEED */}
-          <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+{/* ADDITIONAL INFORMATION (academic context only; attendance lives here) */}
+          {!isAralContext ? (
+            <details className="rounded-xl border border-slate-200/80 bg-white px-5 py-3 shadow-sm">
+              <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark">
+                Additional Information
+              </summary>
+              <div className="mt-2.5 grid grid-cols-2 gap-3 border-t border-slate-100 pt-2.5 text-xs sm:grid-cols-3">
+                <div>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                    Attendance Rate
+                  </span>
+                  <span className="mt-0.5 block text-sm font-bold text-slate-900">{attRate}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                    Attendance Status
+                  </span>
+                  <span className="mt-0.5 block text-sm font-bold text-slate-800">
+                    {parseInt(attRate, 10) >= 90 ? "Satisfactory" : "At-Risk (Absences)"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                    Observation Period
+                  </span>
+                  <span className="mt-0.5 block text-sm font-semibold text-slate-800">
+                    {learner.schoolYear || "SY 2026-2027"}
+                  </span>
+                </div>
+              </div>
+            </details>
+          ) : null}
+{/* 5. TEACHER REVIEW (academic context only; subject-dependent) */}
+          <div className={cn("rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm", isAralContext && "hidden")}>
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark border-b border-slate-100 pb-2">
-              5. Identified Learning Need
+              5. Teacher Review
             </h3>
-            <div className="mt-3 rounded border border-slate-200 bg-slate-50/50 p-3 text-xs">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
-                Primary Academic Concern
-              </span>
-              <p className="mt-1 text-sm font-bold text-slate-900">
-                {plp.learningNeed}
-              </p>
-              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-slate-600">
-                <span>
-                  <strong>Evidence:</strong> {plp.evidence}
-                </span>
-                <span>•</span>
-                <span>
-                  <strong>Target Competency:</strong> {plp.targetArea}
-                </span>
+            {isReadingPath ? (
+              <div className="mt-3">
+                <p className="text-[12px] text-slate-600">
+                  Does this learner show a reading-related concern?
+                </p>
+                <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2" role="radiogroup" aria-label="Reading concern decision">
+                  {[
+                    { id: "confirmed", label: "Reading concern confirmed" },
+                    { id: "not_reading", label: "Not related to reading" },
+                  ].map((option) => {
+                    const active = reviewDecision === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => setReviewDecision(option.id)}
+                        className={cn(
+                          "flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-left text-[12px] font-semibold transition",
+                          active
+                            ? "border-cnhs-green-dark/60 bg-cnhs-green-soft/30 text-cnhs-green-dark"
+                            : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                        )}
+                      >
+                        <span className={cn(
+                          "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2",
+                          active ? "border-cnhs-green-dark" : "border-slate-300"
+                        )}>
+                          {active ? <span className="h-2 w-2 rounded-full bg-cnhs-green-dark" /> : null}
+                        </span>
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {reviewDecision === "confirmed" ? (
+                  <div className="mt-3 space-y-2.5 border-t border-slate-100 pt-3">
+                    <div className="block">
+                      <span className="mb-1 block text-[11px] font-semibold text-slate-600">
+                        Main concern
+                      </span>
+                      <AppSelect
+                        label="Main concern"
+                        value={reviewConcern}
+                        onChange={setReviewConcern}
+                        placeholder="Select concern"
+                        options={[
+                          { value: "", label: "Select concern" },
+                          ...READING_CONCERN_OPTIONS.map((item) => ({ value: item, label: item })),
+                        ]}
+                        triggerClassName="h-9 text-[12px]"
+                      />
+                    </div>
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] font-semibold text-slate-600">
+                        Teacher note <span className="font-normal text-slate-400">(optional)</span>
+                      </span>
+                      <textarea
+                        value={reviewNote}
+                        onChange={(e) => setReviewNote(e.target.value)}
+                        rows={2}
+                        placeholder="Optional note saved with referrals and updates…"
+                        className="w-full resize-none rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[12px] text-slate-700 outline-none placeholder:text-slate-400 focus:border-cnhs-green"
+                      />
+                    </label>
+                  </div>
+                ) : null}
+
+                {(aralReferralPending || aralReferralApproved || canRecommendAral || !reviewDecision) ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+                    {aralReferralPending || aralReferralApproved ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2 text-[12px] font-semibold text-amber-800">
+                        {aralReferralApproved ? "ARAL Referral Approved" : "Pending Principal Review"}
+                      </span>
+                    ) : canRecommendAral ? (
+                      <button
+                        type="button"
+                        onClick={handleRecommendAral}
+                        disabled={recommendingAral}
+                        className="inline-flex h-9 cursor-pointer items-center rounded-lg bg-blue-600 px-3.5 text-[12px] font-semibold text-white shadow-xs transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {recommendingAral ? "Submitting…" : "Recommend for ARAL Assessment"}
+                      </button>
+                    ) : !reviewDecision ? (
+                      <span className="text-[11px] text-slate-400">
+                        Confirm a reading concern above to enable referral.
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
-            </div>
+            ) : (
+              <div className="mt-3">
+                <p className="text-[12px] text-slate-600">
+                  Recommended support:{" "}
+                  <strong className="text-slate-900">{recommendedSupport}</strong>
+                </p>
+                <label className="mt-2.5 block">
+                  <span className="mb-1 block text-[11px] font-semibold text-slate-600">
+                    Teacher note <span className="font-normal text-slate-400">(optional)</span>
+                  </span>
+                  <textarea
+                    value={reviewNote}
+                    onChange={(e) => setReviewNote(e.target.value)}
+                    rows={2}
+                    placeholder="Optional note saved with updates…"
+                    className="w-full resize-none rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[12px] text-slate-700 outline-none placeholder:text-slate-400 focus:border-cnhs-green"
+                  />
+                </label>
+              </div>
+            )}
           </div>
-{/* 6. PLP-ORIENTED RECOMMENDATION */}
-          <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark">
-                6. Personalized Learning Plan (PLP) Direction
-              </h3>
-              <span className="text-[10.5px] text-slate-400">Target & Monitoring Plan</span>
-            </div>
-            <div className="mt-3 space-y-2.5 text-xs text-slate-700">
-              <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 border-b border-slate-100 pb-2">
-                <span className="w-44 font-bold text-slate-600 shrink-0">Learner Need:</span>
-                <span className="text-slate-900 font-medium">{plp.learningNeed}</span>
-              </div>
-              <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 border-b border-slate-100 pb-2">
-                <span className="w-44 font-bold text-slate-600 shrink-0">Supporting Evidence:</span>
-                <span className="text-slate-800">{plp.evidence}</span>
-              </div>
-              <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 border-b border-slate-100 pb-2">
-                <span className="w-44 font-bold text-slate-600 shrink-0">Target Competency Area:</span>
-                <span className="text-slate-800">{plp.targetArea}</span>
-              </div>
-              <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 border-b border-slate-100 pb-2">
-                <span className="w-44 font-bold text-slate-600 shrink-0">Recommended Intervention:</span>
-                <span className="font-bold text-cnhs-green-dark">{plp.recommendedIntervention}</span>
-              </div>
-              <div className="flex flex-col sm:flex-row sm:items-baseline gap-1">
-                <span className="w-44 font-bold text-slate-600 shrink-0">Progress Monitoring:</span>
-                <span className="text-slate-700">{plp.progressMonitoring}</span>
-              </div>
-            </div>
-          </div>
-{/* 7. RECOMMENDED INTERVENTION (CLASS REMEDIAL & ARAL PATHWAYS) */}
-          <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+{/* 7. RECOMMENDED INTERVENTION (ARAL context only; academic uses Teacher Review above) */}
+          <div className={cn("rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm", !isAralContext && "hidden")}>
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark border-b border-slate-100 pb-2">
               7. Recommended Intervention & Pathways
             </h3>
@@ -988,7 +1406,8 @@ export default function StudentMonitoringSidePanel({
                   </div>
                 </div>
 
-                {/* Status transition controls */}
+                {/* Status transition controls (academic context; read-only in ARAL) */}
+                {!isAralContext ? (
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] font-medium text-slate-600">Update Status:</span>
@@ -1018,6 +1437,11 @@ export default function StudentMonitoringSidePanel({
                     </button>
                   ) : null}
                 </div>
+                ) : (
+                <p className="mt-3 text-[11px] text-slate-400">
+                  Class remedial status is managed from Academic Monitoring.
+                </p>
+                )}
 
                 {/* Important System Boundary Disclaimer */}
                 <div className="mt-3 rounded border border-slate-200 bg-white p-2.5 text-[11px] text-slate-500">
@@ -1055,7 +1479,7 @@ export default function StudentMonitoringSidePanel({
                         }}
                         className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-800 shadow-xs hover:bg-blue-50 transition"
                       >
-                        <span>View in Phil-IRI Intake</span>
+                        <span>View in ARAL Monitoring</span>
                         <ArrowUpRight size={13} />
                       </button>
                     ) : null}
@@ -1096,88 +1520,66 @@ export default function StudentMonitoringSidePanel({
               )}
             </div>
           </div>
-{/* 8. ACADEMIC EVIDENCE (AI ASSISTED) */}
-          <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark">
-                8. Academic Evidence
-              </h3>
-              <span className="text-[10.5px] font-medium text-slate-400">
-                AI Pattern Recognition
-              </span>
-            </div>
-            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="rounded border border-slate-200 bg-slate-50/40 p-3">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
-                  Academic Risk
-                </span>
-                <span className="mt-1 text-base font-bold text-slate-900 block">
-                  {decisionSupport.riskLevel}
-                </span>
-                <span className="text-[10.5px] text-slate-400 mt-0.5 block">
-                  Based on recent academic standing
-                </span>
-              </div>
-
-              <div className="rounded border border-slate-200 bg-slate-50/40 p-3">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
-                  Primary Risk Factors
-                </span>
-                <ul className="mt-1 space-y-0.5 text-[11px] text-slate-700">
-                  {decisionSupport.contributingIndicators.map((ind, i) => (
-                    <li key={i} className="flex items-start gap-1.5">
-                      <span className="text-slate-400">•</span>
-                      <span>{ind}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            {/* EXACT MANDATORY DEPED DISCLAIMER */}
-            <div className="mt-3 rounded border border-slate-200 bg-slate-50 p-2.5 text-[11px] text-slate-600 flex items-start gap-2">
-              <ShieldAlert size={14} className="text-slate-500 shrink-0 mt-0.5" />
-              <span>
-                &ldquo;Risk factors serve as academic evidence and do not supersede official DepEd assessment rules.&rdquo;
-              </span>
-            </div>
-          </div>
           </div>
         </div>
 
-{/* FOOTER */}
-        <div className="border-t border-slate-200 bg-slate-50/80 px-5 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
-          <span className="text-[11px] font-medium text-slate-500">
-            CNHS Learn · Learner Academic & Intervention Record
-          </span>
-          <div className="flex flex-wrap items-center gap-2">
-            {(!learner.aralStatus || learner.aralStatus === "Not Referred") && isReadingSubject && Number(curGrade) < 75 ? (
+{/* FOOTER — primary actions live here. The X icon is the only close
+    control for reading-subject review; non-reading keeps Close Record. */}
+        {!isAralContext ? (
+          <div className="border-t border-slate-200 bg-slate-50/80 px-5 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+            <span className="text-[11px] font-medium text-slate-500">
+              CNHS Learn · Learner Academic & Intervention Record
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={handleRecommendAral}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition cursor-pointer"
+                onClick={handleContinueMonitoring}
+                disabled={continuingMonitoring}
+                className="inline-flex h-9 cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-3.5 text-[12px] font-semibold text-slate-600 shadow-xs transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Recommend for ARAL
+                {continuingMonitoring ? "Continuing…" : "Continue Monitoring"}
               </button>
-            ) : null}
-            {(!learner.aralStatus || learner.aralStatus === "Not Referred") && !isReadingSubject && Number(curGrade) < 75 ? (
-              <button
-                type="button"
-                onClick={handleStartRemedial}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition cursor-pointer"
-              >
-                Start Class Remedial
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-100 transition cursor-pointer"
-            >
-              Close Record
-            </button>
+              {isReadingPath ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateRemedialStatus("Active", reviewNote.trim())}
+                    disabled={updatingRemedial}
+                    className="inline-flex h-9 cursor-pointer items-center rounded-lg bg-emerald-600 px-3.5 text-[12px] font-semibold text-white shadow-xs transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Start Class Remedial
+                  </button>
+                  {(aralReferralApproved || learner.inAralProgram) && (
+                    <span className="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-[12px] font-semibold text-emerald-800">
+                      {aralReferralApproved ? "ARAL Referral Approved" : "Under Reading Intervention"}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateRemedialStatus(
+                      remedialStatus === "Recommended" ? "Active" : remedialStatus,
+                      reviewNote.trim()
+                    )}
+                    disabled={updatingRemedial}
+                    className="inline-flex h-9 cursor-pointer items-center rounded-lg bg-emerald-600 px-3.5 text-[12px] font-semibold text-white shadow-xs transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {remedialStatus === "Recommended" ? "Start Class Remedial" : "Continue Class Remedial"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-100 transition cursor-pointer"
+                  >
+                    Close Record
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        ) : null}
       </motion.div>
     </div>
   );

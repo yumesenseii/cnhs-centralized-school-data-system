@@ -131,9 +131,9 @@ export default function AralAssessmentComments({
               onChange={setScopePhase}
               options={[
                 { value: "", label: "Whole section" },
-                { value: "pre", label: "Pre-Test" },
-                { value: "mid", label: "Mid-Test" },
-                { value: "post", label: "Post-Test" },
+                { value: "pre", label: "Beginning Assessment" },
+                { value: "mid", label: "Mid-Year Assessment" },
+                { value: "post", label: "End-of-Year Assessment" },
               ]}
               className="mt-1 w-full max-w-xs"
               triggerClassName="h-8 rounded-lg px-2 text-[12px]"
@@ -143,7 +143,7 @@ export default function AralAssessmentComments({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             rows={2}
-            placeholder="e.g. Please recheck Pre-Test scores for Mabini…"
+            placeholder="e.g. Please recheck Beginning Assessment scores for Mabini…"
             className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[12px] text-slate-800 outline-none focus:border-cnhs-green"
           />
           <button

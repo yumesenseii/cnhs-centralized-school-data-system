@@ -6,13 +6,11 @@ import {
   Search,
   CheckCircle2,
   Clock,
-  ArrowRight,
   Loader2,
   Eye,
   FileText,
   AlertCircle,
   Download,
-  Info,
 } from "lucide-react";
 import { listAralSummerRegistry } from "@/lib/supabase/queries/monitoring";
 import { useAppToast } from "@/components/shared/AppToast";
@@ -77,66 +75,27 @@ export default function AdminAralSummerEligibilityPanel({
   }, [registry]);
 
   return (
-    <div className="space-y-5">
-      {/* 1. HORIZONTAL PIPELINE TRACKER */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 tracking-[-0.02em]">
-              ARAL Reading Intervention Lifecycle
-            </h3>
-            <p className="text-[11px] text-slate-500">
-              DepEd Official Assessment & Intervention Pathway (RA 12028)
-            </p>
-          </div>
-          <span className="rounded-md bg-cnhs-green-soft px-2.5 py-1 text-[11px] font-bold text-cnhs-green-dark">
-            Official Assessment Outcome
-          </span>
-        </div>
-
-        {/* Pipeline Steps */}
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 overflow-x-auto text-xs py-2">
-          {[
-            { step: "BOSY Screening", desc: "Phil-IRI Form 1B", tone: "bg-slate-100 text-slate-700" },
-            { step: "Needs Review", desc: "Endorsement Intake", tone: "bg-blue-50 text-blue-800" },
-            { step: "Active ARAL", desc: "Targeted Sessions", tone: "bg-emerald-50 text-emerald-800" },
-            { step: "Midline Assessment", desc: "Interim Checkpoint", tone: "bg-cyan-50 text-cyan-800" },
-            { step: "EOSY Assessment", desc: "Post-Test Evaluation", tone: "bg-amber-50 text-amber-800" },
-            { step: "Summer Eligibility", desc: "Final Outcome / Referral", tone: "bg-purple-100 text-purple-900 font-bold ring-1 ring-purple-300" },
-          ].map((item, idx, arr) => (
-            <div key={item.step} className="flex items-center gap-2">
-              <div className={cn("rounded-lg px-3 py-2 text-left min-w-[125px]", item.tone)}>
-                <p className="font-bold text-[11px]">{item.step}</p>
-                <p className="text-[9.5px] opacity-75 mt-0.5">{item.desc}</p>
-              </div>
-              {idx < arr.length - 1 && (
-                <ArrowRight size={14} className="text-slate-300 shrink-0" />
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 2. OFFICIAL SYSTEM BOUNDARY DISCLAIMER NOTICE */}
-      <div className="rounded-xl border border-purple-200 bg-purple-50/70 p-4 text-xs text-purple-900">
-        <div className="flex items-start gap-2.5">
-          <Info size={16} className="text-purple-700 shrink-0 mt-0.5" />
-          <div>
-            <h4 className="font-bold text-purple-950">
-              DepEd ARAL System Boundary Notice
-            </h4>
-            <p className="mt-1 text-[11.5px] text-purple-900 leading-relaxed">
-              CNHS Learn determines, records, and displays <strong>ARAL Summer Eligibility</strong> and official <strong>Summer Referrals</strong> based on End-of-School-Year (EOSY) assessment outcomes. The actual summer reading camp instruction, session scheduling, tutor attendance, and lesson delivery are conducted outside CNHS Learn by authorized school and division facilitators.
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="space-y-4">
+      {/* 1. ABOUT THIS ROSTER (collapsed guidance, not a permanent diagram) */}
+      <details className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 shadow-xs">
+        <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-wider text-slate-500">
+          About summer eligibility
+        </summary>
+        <p className="mt-2 text-[11.5px] leading-relaxed text-slate-600">
+          CNHS Learn records <strong>ARAL Summer Eligibility</strong> and
+          official <strong>Summer Referrals</strong> from End-of-Year (EOSY)
+          assessment outcomes: BOSY Screening → Endorsement Intake → Active
+          ARAL → Mid-Year Checkpoint → EOSY → Summer Eligibility. The actual
+          summer reading camp instruction, scheduling, and attendance are
+          conducted outside CNHS Learn by authorized facilitators.
+        </p>
+      </details>
 
       {/* 3. ELIGIBILITY REGISTRY HEADER & CONTROLS */}
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-purple-100 p-2.5 text-purple-800">
+            <div className="rounded-xl bg-slate-100 p-2.5 text-slate-600">
               <Sun size={20} />
             </div>
             <div>
@@ -144,7 +103,7 @@ export default function AdminAralSummerEligibilityPanel({
                 <h2 className="text-base font-bold text-slate-900 tracking-[-0.02em]">
                   ARAL Summer Eligibility & Referral Roster
                 </h2>
-                <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-800">
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700">
                   {eligibleCount} Eligible
                 </span>
               </div>
@@ -276,7 +235,7 @@ export default function AdminAralSummerEligibilityPanel({
                         <span className={cn(
                           "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold border",
                           isEligible
-                            ? "border-purple-300 bg-purple-50 text-purple-800"
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-800"
                             : "border-slate-200 bg-slate-100 text-slate-700"
                         )}>
                           {isEligible ? "Summer Eligible" : "Not Eligible"}

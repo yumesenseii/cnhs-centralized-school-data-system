@@ -16,7 +16,6 @@ import {
   removeAralFacilitatorAssignment,
   upsertAralFacilitatorAssignment,
 } from "@/lib/supabase/queries/aralProgram";
-import { isAralRecommended } from "@/lib/monitoring/aralProgress";
 import { getAdminSession } from "@/lib/supabase/queries/adminAuth";
 import { confirmDelete } from "@/lib/ui/confirmAction";
 import { AnimatedBanner } from "@/components/shared/AnimatedFeedback";
@@ -175,7 +174,12 @@ export default function AdminAralFacilitatorAssignPanel({
   onChanged,
 }) {
   const aralRows = useMemo(
-    () => students.filter(isAralRecommended),
+    () =>
+      students.filter(
+        (s) =>
+          /approved/i.test(String(s.aralApprovalStatus || "")) ||
+          Boolean(s.aralFacilitatorTeacherId)
+      ),
     [students]
   );
 

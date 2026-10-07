@@ -47,7 +47,7 @@ const analyticsNavigation = [
     tourId: "monitoring",
   },
   {
-    label: "Reading Intervention",
+    label: "ARAL Monitoring",
     href: "/aral-monitoring",
     icon: GraduationCap,
     tourId: "aral-monitoring",

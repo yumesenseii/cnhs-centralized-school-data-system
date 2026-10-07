@@ -114,20 +114,39 @@ function buildSectionGroups(aralRows = []) {
 
 const DETAIL_TABS = [
   { id: "all", label: "Progress Summary Tracker" },
-  { id: "pre", label: "Pre-Test (Baseline)" },
-  { id: "mid", label: "Mid-Test" },
-  { id: "post", label: "Post-Test (Exit)" },
+  { id: "pre", label: "Beginning Assessment" },
+  { id: "mid", label: "Mid-Year Assessment" },
+  { id: "post", label: "End-of-Year Assessment" },
 ];
 
 export default function AdminAralProgressPanel({
   students = [],
   onViewStudent,
   onNavigateTab,
+  // Optional pre-filter for the principal Outcomes tab:
+  // "all" | "completed" | "continued" (Needs Continued Support).
+  outcomeFilter = "all",
 }) {
-  const aralLearners = useMemo(
-    () => students.filter(isAralProgramLearner),
-    [students]
-  );
+  const aralLearners = useMemo(() => {
+    const base = students.filter(isAralProgramLearner);
+    if (outcomeFilter === "completed") {
+      return base.filter(
+        (s) =>
+          s.monitoringStatus === "Completed" ||
+          s.aralStatus === "Completed" ||
+          s.movementOutcome === "Promoted"
+      );
+    }
+    if (outcomeFilter === "continued") {
+      return base.filter(
+        (s) =>
+          s.monitoringStatus === "Needs Further Support" ||
+          s.monitoringStatus === "For Further Monitoring" ||
+          s.monitoringStatus === "Referred"
+      );
+    }
+    return base;
+  }, [students, outcomeFilter]);
 
   const sectionGroups = useMemo(
     () => buildSectionGroups(aralLearners),
@@ -380,7 +399,7 @@ export default function AdminAralProgressPanel({
               <div className="flex flex-wrap items-center gap-2">
                 <div className="rounded-lg border border-slate-200/80 bg-white px-3 py-1.5 text-center shadow-xs dark:border-white/10 dark:bg-white/5">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Pre-Test Done
+                    Beginning Done
                   </p>
                   <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
                     {sectionSummary.preCount} / {uniqueLearnersList.length}
@@ -388,7 +407,7 @@ export default function AdminAralProgressPanel({
                 </div>
                 <div className="rounded-lg border border-slate-200/80 bg-white px-3 py-1.5 text-center shadow-xs dark:border-white/10 dark:bg-white/5">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Mid-Test Done
+                    Mid-Year Done
                   </p>
                   <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
                     {sectionSummary.midCount} / {uniqueLearnersList.length}
@@ -396,7 +415,7 @@ export default function AdminAralProgressPanel({
                 </div>
                 <div className="rounded-lg border border-slate-200/80 bg-white px-3 py-1.5 text-center shadow-xs dark:border-white/10 dark:bg-white/5">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Post-Test (Exit)
+                    End-of-Year
                   </p>
                   <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
                     {sectionSummary.postCount} / {uniqueLearnersList.length}
@@ -503,9 +522,9 @@ export default function AdminAralProgressPanel({
                       <tr className="border-b border-slate-100 bg-slate-50/80 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-white/5 dark:bg-white/[0.03] dark:text-slate-400">
                         <th className="px-3 py-2.5">Learner</th>
                         <th className="px-3 py-2.5">Target Subject</th>
-                        <th className="px-3 py-2.5 text-center">Pre-Test (Baseline)</th>
-                        <th className="px-3 py-2.5 text-center">Mid-Test</th>
-                        <th className="px-3 py-2.5 text-center">Post-Test (Exit)</th>
+                        <th className="px-3 py-2.5 text-center">Beginning (Baseline)</th>
+                        <th className="px-3 py-2.5 text-center">Mid-Year</th>
+                        <th className="px-3 py-2.5 text-center">End-of-Year (Exit)</th>
                         <th className="px-3 py-2.5 text-center">Learning Progress</th>
                         <th className="px-3 py-2.5 text-center">Intervention Status</th>
                         <th className="px-3 py-2.5 text-right">Action</th>

@@ -25,6 +25,8 @@ import {
   filterAralRecommendedLearners,
 } from "@/lib/reports/aralRecommendedExport";
 import { useAppToast } from "@/components/shared/AppToast";
+import { useAralAssessmentPeriod } from "@/hooks/useAralAssessmentPeriod";
+import { aralPeriodLabel } from "@/lib/monitoring/assessmentTimeline";
 import { cn } from "@/lib/utils";
 
 export default function TeacherAralMonitoringPage() {
@@ -45,6 +47,7 @@ export default function TeacherAralMonitoringPage() {
   const [selectedLearner, setSelectedLearner] = useState(null);
   const [exportingAral, setExportingAral] = useState(false);
   const { showToast } = useAppToast();
+  const { period: aralPeriod } = useAralAssessmentPeriod();
 
   const teacherDisplayName = useMemo(() => {
     const named = formatPersonName(teacher);
@@ -129,6 +132,10 @@ export default function TeacherAralMonitoringPage() {
                 </p>
                 <p className="mt-0.5 text-[11px] text-slate-400">
                   {controls.schoolYear} · Term {controls.quarterNumber || 1}
+                  <span className="mx-1.5 text-slate-300">•</span>
+                  <span className="font-semibold text-cnhs-green-dark">
+                    {aralPeriodLabel(aralPeriod)}
+                  </span>
                 </p>
               </div>
 
@@ -213,17 +220,20 @@ export default function TeacherAralMonitoringPage() {
           teacherId={teacherId}
           schoolYear={controls.schoolYear}
           quarter={controls.quarter}
+          aralPeriod={aralPeriod}
           onRefresh={refresh}
           onViewLearner={setSelectedLearner}
         />
       )}
 
-      {/* Continuous Learner Profile Side Panel */}
+      {/* Continuous Learner Profile Side Panel (ARAL context) */}
       <StudentMonitoringSidePanel
         learner={selectedLearner}
         isOpen={Boolean(selectedLearner)}
         onClose={() => setSelectedLearner(null)}
         onRefresh={refresh}
+        context="aral"
+        aralPeriod={aralPeriod}
         isLanguageTeacher={true}
         currentQuarterNumber={controls.quarterNumber || 1}
       />
