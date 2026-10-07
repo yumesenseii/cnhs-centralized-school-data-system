@@ -16,6 +16,7 @@ import {
   mapSectionRow,
   suggestCurrentSchoolYear,
 } from "@/lib/admin/sectionMappers";
+import { ASSIGNMENT_BLOCKED_CODE } from "@/lib/admin/assignmentEditGuard";
 import { useSoftLoadState } from "@/hooks/useSoftLoadState";
 
 export function useSectionManagement() {
@@ -126,8 +127,17 @@ export function useSectionManagement() {
     const result = await updateSection(sectionId, payload);
     setSaving(false);
     if (result.error) {
-      setError(result.error.message);
-      return { ok: false, error: result.error.message };
+      // Blocked-by-rule edits surface through the dedicated error modal,
+      // not the page banner.
+      if (result.error?.code !== ASSIGNMENT_BLOCKED_CODE) {
+        setError(result.error.message);
+      }
+      return {
+        ok: false,
+        error: result.error.message,
+        code: result.error?.code,
+        details: result.error?.details ?? [],
+      };
     }
     await refresh();
     return { ok: true };

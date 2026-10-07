@@ -5,6 +5,8 @@ import AnimatedModal from "@/components/shared/AnimatedModal";
 import AppSelect from "@/components/shared/AppSelect";
 import { AnimatedBanner } from "@/components/shared/AnimatedFeedback";
 import { formatTeacherName } from "@/lib/admin/sectionMappers";
+import { ASSIGNMENT_BLOCKED_CODE } from "@/lib/admin/assignmentEditGuard";
+import AssignmentBlockedModal from "@/components/shared/AssignmentBlockedModal";
 import { GRADE_OPTIONS } from "@/lib/academic/gradeLevels";
 
 export default function SectionFormModal({
@@ -23,6 +25,7 @@ export default function SectionFormModal({
   const [schoolYear, setSchoolYear] = useState(defaultSchoolYear || "");
   const [adviserId, setAdviserId] = useState("");
   const [formError, setFormError] = useState("");
+  const [blockedInfo, setBlockedInfo] = useState(null);
 
   useEffect(() => {
     if (!open) return;
@@ -50,6 +53,7 @@ export default function SectionFormModal({
   async function handleSubmit(event) {
     event.preventDefault();
     setFormError("");
+    setBlockedInfo(null);
 
     const payload = {
       grade_level: Number(gradeLevel),
@@ -65,11 +69,17 @@ export default function SectionFormModal({
 
     const result = await onSubmit?.(payload);
     if (result && !result.ok) {
+      // Assignment Edit Rule block → dedicated error modal, form stays open.
+      if (result.code === ASSIGNMENT_BLOCKED_CODE) {
+        setBlockedInfo({ message: result.error, details: result.details });
+        return;
+      }
       setFormError(result.error || "Unable to save section.");
     }
   }
 
   return (
+    <>
     <AnimatedModal
       open={open}
       onClose={saving ? undefined : onClose}
@@ -190,5 +200,12 @@ export default function SectionFormModal({
           </div>
         </form>
     </AnimatedModal>
+      <AssignmentBlockedModal
+        open={Boolean(blockedInfo)}
+        message={blockedInfo?.message}
+        details={blockedInfo?.details}
+        onClose={() => setBlockedInfo(null)}
+      />
+    </>
   );
 }

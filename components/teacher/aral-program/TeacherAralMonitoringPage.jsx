@@ -184,7 +184,7 @@ export default function TeacherAralMonitoringPage() {
             </button>
 
             <Link
-              href="/teacher/academic-monitoring"
+              href="/teacher/monitoring"
               title="Return to general Academic Monitoring across subjects"
               className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
             >

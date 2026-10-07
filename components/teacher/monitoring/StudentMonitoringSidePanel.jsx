@@ -22,6 +22,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { saveSinglePhilIriResult, createMonitoringRecord } from "@/lib/supabase/queries/monitoring";
+import { RiskPill } from "@/components/teacher/monitoring/shared";
 import { getAssessmentPermissions, ASSESSMENT_TERMS, ASSESSMENT_STAGES } from "@/lib/monitoring/assessmentTimeline";
 import { useAppToast } from "@/components/shared/AppToast";
 import { cn } from "@/lib/utils";
@@ -307,28 +308,60 @@ export default function StudentMonitoringSidePanel({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98 }}
         transition={{ duration: 0.16, ease: "easeOut" }}
-        className="relative w-full max-w-[880px] max-h-[92vh] bg-white rounded-xl border border-slate-300 shadow-2xl flex flex-col overflow-hidden m-auto"
+        className="relative w-full max-w-[920px] max-h-[90vh] bg-white rounded-2xl border border-slate-200 shadow-[0_24px_64px_-12px_rgba(15,23,42,0.35)] flex flex-col overflow-hidden m-auto"
       >
-        {/* FORMAL SCHOOL RECORD HEADER */}
-        <div className="border-b border-slate-200 bg-white px-6 py-4 shrink-0">
+        {/* ENTERPRISE RECORD HEADER — learner identity + workflow context */}
+        <div className="border-b border-slate-200 bg-white px-5 sm:px-6 pt-4 sm:pt-5 pb-4 shrink-0">
           <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wider text-cnhs-green-dark border border-emerald-200/80">
-                  <GraduationCap size={12} />
-                  CNHS Learn Record
-                </span>
-                <span className="text-[11px] font-medium text-slate-400">•</span>
-                <span className="text-[11px] text-slate-500 font-mono">
-                  {learner.schoolYear || "SY 2026-2027"} · Term {currentQuarterNumber}
-                </span>
-              </div>
-              <h2
-                id="learner-profile-title"
-                className="mt-1 text-xl font-bold tracking-tight text-slate-900"
+            <div className="flex min-w-0 items-start gap-3.5">
+              <span
+                aria-hidden="true"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-cnhs-green-soft text-[13px] font-bold text-cnhs-green-dark ring-1 ring-emerald-200/60"
               >
-                Learner Academic & Intervention Record
-              </h2>
+                {String(studentFullName || "?")
+                  .split(/[\s,]+/)
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((w) => w[0])
+                  .join("")
+                  .toUpperCase()}
+              </span>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-cnhs-green-dark border border-emerald-200/80">
+                    <GraduationCap size={12} />
+                    CNHS Learn Record
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {learner.schoolYear || "SY 2026-2027"} · Term {currentQuarterNumber}
+                  </span>
+                </div>
+                <h2
+                  id="learner-profile-title"
+                  className="mt-1 truncate text-lg sm:text-xl font-bold tracking-tight text-slate-900"
+                >
+                  {studentFullName}
+                </h2>
+                <p className="mt-0.5 truncate text-[12px] text-slate-500">
+                  LRN <span className="font-mono font-medium text-slate-600">{studentLrn}</span>
+                  <span className="mx-1.5 text-slate-300">•</span>
+                  {studentGrade} · {studentSection}
+                  {learner.subject ? (
+                    <>
+                      <span className="mx-1.5 text-slate-300">•</span>
+                      {learner.subject}
+                    </>
+                  ) : null}
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <RiskPill value={learner.riskLevel || "—"} />
+                  {learner.monitoringStatus ? (
+                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600">
+                      {learner.monitoringStatus}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               {pathname?.includes("aral-monitoring") ? (
@@ -356,41 +389,51 @@ export default function StudentMonitoringSidePanel({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition cursor-pointer"
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition cursor-pointer"
                 aria-label="Close dialog"
               >
                 <X size={18} />
               </button>
+              </div>
             </div>
           </div>
-        </div>
 
         {/* DOCUMENT BODY */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/30">
-          
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5 bg-slate-100/60">
+
           {/* UNIFIED LEARNER SUPPORT STATUS */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 shadow-xs">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 block mb-1">
-                Current Support Status
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+            <div className="flex items-start gap-3 rounded-xl border border-blue-200/80 bg-blue-50/60 p-4 sm:p-5 shadow-xs">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
+                <BookOpen size={16} strokeWidth={1.9} />
               </span>
-              <p className="text-xl font-bold text-blue-900">
-                {learner.monitoringStatus || "Monitoring"}
-              </p>
+              <div className="min-w-0">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 block">
+                  Current Support Status
+                </span>
+                <p className="mt-1 text-lg font-bold tracking-tight text-blue-900">
+                  {learner.monitoringStatus || "Monitoring"}
+                </p>
+              </div>
             </div>
-            <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 shadow-xs">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 block mb-1">
-                Current Next Action
+            <div className="flex items-start gap-3 rounded-xl border border-amber-200/80 bg-amber-50/60 p-4 sm:p-5 shadow-xs">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+                <ArrowUpRight size={16} strokeWidth={1.9} />
               </span>
-              <p className="text-xl font-bold text-amber-900">
-                {learner.recommendationDisplay || recommendedSupport}
-              </p>
+              <div className="min-w-0">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 block">
+                  Current Next Action
+                </span>
+                <p className="mt-1 text-lg font-bold tracking-tight text-amber-900">
+                  {learner.recommendationDisplay || recommendedSupport}
+                </p>
+              </div>
             </div>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-12">
+          <div className="flex flex-col gap-4 sm:gap-5">
+            <div>
 {/* 1. STUDENT INFORMATION (Formal Document Surface) */}
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs">
+          <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark border-b border-slate-100 pb-2">
               1. Student Information
             </h3>
@@ -441,9 +484,9 @@ export default function StudentMonitoringSidePanel({
           </div>
             </div>
             
-            <div className="lg:col-span-7 flex flex-col gap-6">
+            <div className="contents">
 {/* 2. ACADEMIC PERFORMANCE */}
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs">
+          <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark">
                 2. Academic Performance
@@ -551,7 +594,7 @@ export default function StudentMonitoringSidePanel({
             ) : null}
           </div>
 {/* 4. ASSESSMENT EVIDENCE (PHIL-IRI) */}
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs">
+          <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark">
                 4. Assessment Evidence (Phil-IRI)
@@ -687,7 +730,7 @@ export default function StudentMonitoringSidePanel({
             </div>
           </div>
 {/* 9. PROGRESS HISTORY & OBSERVATIONS */}
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs">
+          <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark">
                 9. Progress History & Teacher Observations
@@ -800,9 +843,9 @@ export default function StudentMonitoringSidePanel({
         </div>
             </div>
 
-            <div className="lg:col-span-5 flex flex-col gap-6">
+            <div className="contents">
 {/* 3. ATTENDANCE */}
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs">
+          <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark">
                 3. Attendance Records
@@ -853,7 +896,7 @@ export default function StudentMonitoringSidePanel({
             </div>
           </div>
 {/* 5. IDENTIFIED LEARNING NEED */}
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs">
+          <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark border-b border-slate-100 pb-2">
               5. Identified Learning Need
             </h3>
@@ -876,7 +919,7 @@ export default function StudentMonitoringSidePanel({
             </div>
           </div>
 {/* 6. PLP-ORIENTED RECOMMENDATION */}
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs">
+          <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark">
                 6. Personalized Learning Plan (PLP) Direction
@@ -907,7 +950,7 @@ export default function StudentMonitoringSidePanel({
             </div>
           </div>
 {/* 7. RECOMMENDED INTERVENTION (CLASS REMEDIAL & ARAL PATHWAYS) */}
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs">
+          <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark border-b border-slate-100 pb-2">
               7. Recommended Intervention & Pathways
             </h3>
@@ -1054,7 +1097,7 @@ export default function StudentMonitoringSidePanel({
             </div>
           </div>
 {/* 8. ACADEMIC EVIDENCE (AI ASSISTED) */}
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs">
+          <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark">
                 8. Academic Evidence
@@ -1103,16 +1146,16 @@ export default function StudentMonitoringSidePanel({
         </div>
 
 {/* FOOTER */}
-        <div className="border-t border-slate-200 bg-white px-6 py-3.5 flex items-center justify-between gap-3 shrink-0">
-          <span className="text-[11px] text-slate-500">
-            CNHS Centralized Learner Identity
+        <div className="border-t border-slate-200 bg-slate-50/80 px-5 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+          <span className="text-[11px] font-medium text-slate-500">
+            CNHS Learn · Learner Academic & Intervention Record
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {(!learner.aralStatus || learner.aralStatus === "Not Referred") && isReadingSubject && Number(curGrade) < 75 ? (
               <button
                 type="button"
                 onClick={handleRecommendAral}
-                className="rounded bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition cursor-pointer"
+                className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition cursor-pointer"
               >
                 Recommend for ARAL
               </button>
@@ -1121,7 +1164,7 @@ export default function StudentMonitoringSidePanel({
               <button
                 type="button"
                 onClick={handleStartRemedial}
-                className="rounded bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition cursor-pointer"
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition cursor-pointer"
               >
                 Start Class Remedial
               </button>
@@ -1129,7 +1172,7 @@ export default function StudentMonitoringSidePanel({
             <button
               type="button"
               onClick={onClose}
-              className="rounded border border-slate-300 bg-white px-4 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-100 transition cursor-pointer"
             >
               Close Record
             </button>

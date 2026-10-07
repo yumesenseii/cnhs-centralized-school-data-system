@@ -5,6 +5,8 @@ import AnimatedModal from "@/components/shared/AnimatedModal";
 import AppSelect from "@/components/shared/AppSelect";
 import { AnimatedBanner } from "@/components/shared/AnimatedFeedback";
 import { formatPersonName } from "@/lib/admin/classAssignmentMappers";
+import { ASSIGNMENT_BLOCKED_CODE } from "@/lib/admin/assignmentEditGuard";
+import AssignmentBlockedModal from "@/components/shared/AssignmentBlockedModal";
 import {
   TERM_ALL_VALUE,
   TERM_FORM_OPTIONS,
@@ -32,6 +34,7 @@ export default function AssignmentFormModal({
   const [quarter, setQuarter] = useState("1");
   const [reassignAllTerms, setReassignAllTerms] = useState(true);
   const [formError, setFormError] = useState("");
+  const [blockedInfo, setBlockedInfo] = useState(null);
 
   const activeSections = useMemo(() => {
     return (sections ?? []).filter((section) => {
@@ -82,6 +85,7 @@ export default function AssignmentFormModal({
   async function handleSubmit(event) {
     event.preventDefault();
     setFormError("");
+    setBlockedInfo(null);
 
     if (
       !teacherId ||
@@ -112,11 +116,17 @@ export default function AssignmentFormModal({
 
     const result = await onSubmit?.(payload);
     if (result && !result.ok) {
+      // Assignment Edit Rule block → dedicated error modal, form stays open.
+      if (result.code === ASSIGNMENT_BLOCKED_CODE) {
+        setBlockedInfo({ message: result.error, details: result.details });
+        return;
+      }
       setFormError(result.error || "Unable to save assignment.");
     }
   }
 
   return (
+    <>
     <AnimatedModal
       open={open}
       onClose={saving ? undefined : onClose}
@@ -307,5 +317,12 @@ export default function AssignmentFormModal({
           </div>
         </form>
     </AnimatedModal>
+      <AssignmentBlockedModal
+        open={Boolean(blockedInfo)}
+        message={blockedInfo?.message}
+        details={blockedInfo?.details}
+        onClose={() => setBlockedInfo(null)}
+      />
+    </>
   );
 }

@@ -62,7 +62,7 @@ export default function MonitoringDashboard() {
     });
   }, [students, classSummaries, teacherDisplayName, metaTick]);
 
-  // Deep link support: /teacher/academic-monitoring?classId=...
+  // Deep link support: /teacher/monitoring?classId=...
   useEffect(() => {
     const classId = searchParams?.get("classId");
     if (!classId || loading) return;
@@ -236,7 +236,7 @@ export default function MonitoringDashboard() {
             setModalFile(null);
             setModalMode("view");
             if (searchParams?.get("classId")) {
-              router.replace("/teacher/academic-monitoring");
+              router.replace("/teacher/monitoring");
             }
           }}
           teacherId={teacherId}

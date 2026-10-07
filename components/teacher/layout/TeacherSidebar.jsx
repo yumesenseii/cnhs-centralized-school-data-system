@@ -38,7 +38,7 @@ const menuNavigation = [
 const analyticsNavigation = [
   {
     label: "Academic Monitoring",
-    href: "/teacher/academic-monitoring",
+    href: "/teacher/monitoring",
     icon: Activity,
     tourId: "monitoring",
   },
@@ -159,8 +159,8 @@ export default function TeacherSidebar({
 
   function isActive(href) {
     if (
-      href === "/teacher/academic-monitoring" &&
-      (pathname === "/teacher/academic-monitoring" || pathname?.startsWith("/teacher/monitoring"))
+      href === "/teacher/monitoring" &&
+      (pathname === "/teacher/monitoring" || pathname?.startsWith("/teacher/monitoring"))
     ) {
       return true;
     }

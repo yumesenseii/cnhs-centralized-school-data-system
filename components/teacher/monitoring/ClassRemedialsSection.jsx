@@ -7,10 +7,15 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  ClipboardList,
+  Siren,
+  LifeBuoy,
+  Eye,
 } from "lucide-react";
 import LearnerName from "@/components/shared/LearnerName";
 import AppSelect from "@/components/shared/AppSelect";
 import MonitoringTablePagination from "@/components/teacher/monitoring/MonitoringTablePagination";
+import { RiskPill, PriorityCue } from "@/components/teacher/monitoring/shared";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
@@ -173,45 +178,65 @@ export default function ClassRemedialsSection({
   return (
     <div className="space-y-4">
       {/* 4 PRIMARY CARDS: FOR REVIEW, HIGH PRIORITY, UNDER SUPPORT, IMPROVING */}
-      <div className="grid grid-cols-2 rounded-xl border border-slate-200 bg-white shadow-xs divide-y sm:divide-y-0 sm:divide-x divide-slate-100 sm:grid-cols-4 overflow-hidden">
-        <div className="px-5 py-3.5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-            For Review
-          </p>
-          <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900 leading-none">
-            {forReviewCount}
-          </p>
-          <p className="mt-1 text-[11px] text-slate-400">Requires teacher review</p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
+        <div className="flex items-start gap-3.5 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-700 ring-1 ring-amber-200/60">
+            <ClipboardList size={18} strokeWidth={1.9} />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              For Review
+            </p>
+            <p className="mt-1 text-[26px] font-bold leading-none tracking-tight text-slate-900">
+              {forReviewCount}
+            </p>
+            <p className="mt-1.5 text-[11px] leading-4 text-slate-400">Requires teacher review</p>
+          </div>
         </div>
 
-        <div className="px-5 py-3.5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-            High Priority
-          </p>
-          <p className="mt-1 text-2xl font-bold tracking-tight text-red-700 leading-none">
-            {highPriorityCount}
-          </p>
-          <p className="mt-1 text-[11px] text-red-600/80">Immediate attention needed</p>
+        <div className="flex items-start gap-3.5 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-700 ring-1 ring-red-200/60">
+            <Siren size={18} strokeWidth={1.9} />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              High Priority
+            </p>
+            <p className="mt-1 text-[26px] font-bold leading-none tracking-tight text-red-700">
+              {highPriorityCount}
+            </p>
+            <p className="mt-1.5 text-[11px] leading-4 text-red-600/80">Immediate attention needed</p>
+          </div>
         </div>
 
-        <div className="px-5 py-3.5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-            Under Support
-          </p>
-          <p className="mt-1 text-2xl font-bold tracking-tight text-blue-700 leading-none">
-            {underSupportCount}
-          </p>
-          <p className="mt-1 text-[11px] text-blue-600/80">Active remediation / intervention</p>
+        <div className="flex items-start gap-3.5 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 ring-1 ring-blue-200/60">
+            <LifeBuoy size={18} strokeWidth={1.9} />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              Under Support
+            </p>
+            <p className="mt-1 text-[26px] font-bold leading-none tracking-tight text-blue-700">
+              {underSupportCount}
+            </p>
+            <p className="mt-1.5 text-[11px] leading-4 text-blue-600/80">Active remediation / intervention</p>
+          </div>
         </div>
 
-        <div className="px-5 py-3.5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-            Improving
-          </p>
-          <p className="mt-1 text-2xl font-bold tracking-tight text-emerald-700 leading-none">
-            {improvingCount}
-          </p>
-          <p className="mt-1 text-[11px] text-emerald-600">Positive performance trend</p>
+        <div className="flex items-start gap-3.5 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60">
+            <TrendingUp size={18} strokeWidth={1.9} />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              Improving
+            </p>
+            <p className="mt-1 text-[26px] font-bold leading-none tracking-tight text-emerald-700">
+              {improvingCount}
+            </p>
+            <p className="mt-1.5 text-[11px] leading-4 text-emerald-600/80">Positive performance trend</p>
+          </div>
         </div>
       </div>
 
@@ -354,13 +379,14 @@ export default function ClassRemedialsSection({
                           <span>LRN {row.studentNumber || "—"}</span>
                           <span>•</span>
                           <span className="font-sans text-slate-600">{row.grade} · {row.section}</span>
-                          {row.subject ? (
-                            <>
-                              <span>•</span>
-                              <span className="font-sans text-slate-600">{row.subject}</span>
-                            </>
-                          ) : null}
                         </div>
+                      </td>
+
+                      {/* Subject */}
+                      <td className="py-2.5 px-3">
+                        <span className="text-[12px] font-medium text-slate-700">
+                          {row.subject || "—"}
+                        </span>
                       </td>
 
                       {/* Current Grade */}
@@ -386,22 +412,12 @@ export default function ClassRemedialsSection({
 
                       {/* Risk */}
                       <td className="py-2.5 px-3 text-center">
-                        <span className={cn("text-[11px] font-semibold", 
-                          riskDisplay === "High" ? "text-red-700" : 
-                          riskDisplay === "Moderate" ? "text-orange-600" : "text-green-600"
-                        )}>
-                          {riskDisplay.toUpperCase()}
-                        </span>
+                        <RiskPill value={row.riskLevel || row.academicRisk || "—"} />
                       </td>
 
                       {/* Priority */}
                       <td className="py-2.5 px-3 text-center">
-                         <span className={cn("text-[11px] font-medium",
-                           priority === "Immediate" ? "text-red-600" :
-                           priority === "Review Soon" ? "text-amber-700" : "text-slate-500"
-                         )}>
-                           {priority}
-                         </span>
+                        <PriorityCue learner={row} />
                       </td>
 
                       {/* Status */}
@@ -417,8 +433,9 @@ export default function ClassRemedialsSection({
                             e.stopPropagation();
                             onViewLearner?.(row);
                           }}
-                          className="inline-flex items-center rounded border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-xs transition hover:border-cnhs-green/40 hover:bg-slate-50 hover:text-cnhs-green-dark"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 shadow-xs transition hover:border-cnhs-green/50 hover:bg-cnhs-green-soft/40 hover:text-cnhs-green-dark"
                         >
+                          <Eye size={13} strokeWidth={1.9} />
                           Review
                         </button>
                       </td>
