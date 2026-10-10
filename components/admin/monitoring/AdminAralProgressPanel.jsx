@@ -126,6 +126,9 @@ export default function AdminAralProgressPanel({
   // Optional pre-filter for the principal Outcomes tab:
   // "all" | "completed" | "continued" (Needs Continued Support).
   outcomeFilter = "all",
+  // Authoritative ARAL period (BOSY/MOSY/EOSY). Future phases stay hidden;
+  // past phases remain visible read-only.
+  activePeriod = "BOSY",
 }) {
   const aralLearners = useMemo(() => {
     const base = students.filter(isAralProgramLearner);
@@ -162,11 +165,33 @@ export default function AdminAralProgressPanel({
   const [activeSectionKey, setActiveSectionKey] = useState(null);
   const [detailTab, setDetailTab] = useState("all");
   const [batchId, setBatchId] = useState(null);
-  const [batchLoading, setBatchLoading] = useState(false);
   const [profileId, setProfileId] = useState(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [showNotesDrawer, setShowNotesDrawer] = useState(false);
+
+  // Period gating: BOSY=0, MOSY=1, EOSY=2. Future phases are hidden;
+  // current and past phases stay visible read-only.
+  const periodIndex =
+    activePeriod === "MOSY" ? 1 : activePeriod === "EOSY" ? 2 : 0;
+  const showMidPhase = periodIndex >= 1;
+  const showPostPhase = periodIndex >= 2;
+  const visibleDetailTabs = useMemo(
+    () =>
+      DETAIL_TABS.filter(
+        (tab) =>
+          tab.id === "all" ||
+          tab.id === "pre" ||
+          (tab.id === "mid" && showMidPhase) ||
+          (tab.id === "post" && showPostPhase)
+      ),
+    [showMidPhase, showPostPhase]
+  );
+  const effectiveDetailTab = visibleDetailTabs.some(
+    (tab) => tab.id === detailTab
+  )
+    ? detailTab
+    : "all";
 
   // Assessment scores state
   const [scoresMap, setScoresMap] = useState(new Map());
@@ -304,10 +329,16 @@ export default function AdminAralProgressPanel({
       <section className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-xs dark:border-white/5 dark:bg-[var(--card)]">
         <Clock3 size={32} className="mx-auto text-slate-300" />
         <h3 className="mt-3 text-sm font-bold text-slate-800 dark:text-slate-200">
-          No Learners in ARAL Monitoring Yet
+          {outcomeFilter === "completed"
+            ? "No completed learners yet."
+            : outcomeFilter === "continued"
+              ? "No learners needing continued support."
+              : "No Learners in ARAL Monitoring Yet"}
         </h3>
         <p className="mt-1 text-xs text-slate-500 max-w-md mx-auto">
-          Learners are placed into ARAL once English or Filipino teachers submit endorsements and the Principal approves them.
+          {outcomeFilter === "completed" || outcomeFilter === "continued"
+            ? "Outcomes appear here once learners finish their assessments."
+            : "Learners are placed into ARAL once English or Filipino teachers submit endorsements and the Principal approves them."}
         </p>
       </section>
     );
@@ -465,8 +496,8 @@ export default function AdminAralProgressPanel({
               role="tablist"
               aria-label="ARAL Assessment view tabs"
             >
-              {DETAIL_TABS.map((tab) => {
-                const selected = detailTab === tab.id;
+              {visibleDetailTabs.map((tab) => {
+                const selected = effectiveDetailTab === tab.id;
                 return (
                   <button
                     key={tab.id}
@@ -490,7 +521,7 @@ export default function AdminAralProgressPanel({
               })}
             </div>
 
-            {detailTab === "all" ? (
+            {effectiveDetailTab === "all" ? (
               <div className="relative pb-2 sm:pb-0">
                 <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
@@ -523,21 +554,29 @@ export default function AdminAralProgressPanel({
                         <th className="px-3 py-2.5">Learner</th>
                         <th className="px-3 py-2.5">Target Subject</th>
                         <th className="px-3 py-2.5 text-center">Beginning (Baseline)</th>
-                        <th className="px-3 py-2.5 text-center">Mid-Year</th>
-                        <th className="px-3 py-2.5 text-center">End-of-Year (Exit)</th>
+                        {showMidPhase ? (
+                          <th className="px-3 py-2.5 text-center">Mid-Year</th>
+                        ) : null}
+                        {showPostPhase ? (
+                          <th className="px-3 py-2.5 text-center">End-of-Year (Exit)</th>
+                        ) : null}
                         <th className="px-3 py-2.5 text-center">Learning Progress</th>
                         <th className="px-3 py-2.5 text-center">Intervention Status</th>
                         <th className="px-3 py-2.5 text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                      {pagedLearners.length === 0 ? (
-                        <tr>
-                          <td colSpan={8} className="py-10 text-center text-slate-400">
-                            No learners match your search.
-                          </td>
-                        </tr>
-                      ) : (
+              {pagedLearners.length === 0 ? (
+                <tr>
+                  <td colSpan={5 + (showMidPhase ? 1 : 0) + (showPostPhase ? 1 : 0)} className="py-10 text-center text-slate-400">
+                    {outcomeFilter === "completed"
+                      ? "No completed learners yet."
+                      : outcomeFilter === "continued"
+                        ? "No learners needing continued support."
+                        : "No learners match your search."}
+                  </td>
+                </tr>
+              ) : (
                         pagedLearners.map((learner) => {
                           const sid = learner.studentId || learner.id;
                           const s = scoresMap.get(sid) || {};
@@ -586,37 +625,41 @@ export default function AdminAralProgressPanel({
                                 )}
                               </td>
 
-                              <td className="px-3 py-2.5 text-center">
-                                {hasMidScore ? (
-                                  <div>
-                                    <span className="font-bold text-slate-800 dark:text-slate-200">
-                                      {mid.score} / {mid.maxScore || 20}
-                                    </span>
-                                    {mid.result ? (
-                                      <p className="text-[10px] text-slate-500">{mid.result}</p>
-                                    ) : null}
-                                  </div>
-                                ) : (
-                                  <span className="text-[11px] text-slate-400">—</span>
-                                )}
-                              </td>
+                      {showMidPhase ? (
+                        <td className="px-3 py-2.5 text-center">
+                          {hasMidScore ? (
+                            <div>
+                              <span className="font-bold text-slate-800 dark:text-slate-200">
+                                {mid.score} / {mid.maxScore || 20}
+                              </span>
+                              {mid.result ? (
+                                <p className="text-[10px] text-slate-500">{mid.result}</p>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-slate-400">Pending</span>
+                          )}
+                        </td>
+                      ) : null}
 
-                              <td className="px-3 py-2.5 text-center">
-                                {hasPostScore ? (
-                                  <div>
-                                    <span className="font-bold text-emerald-700 dark:text-emerald-400">
-                                      {post.score} / {post.maxScore || 20}
-                                    </span>
-                                    {post.result ? (
-                                      <p className="text-[10px] font-semibold text-emerald-600">
-                                        {post.result}
-                                      </p>
-                                    ) : null}
-                                  </div>
-                                ) : (
-                                  <span className="text-[11px] text-slate-400">Pending</span>
-                                )}
-                              </td>
+                      {showPostPhase ? (
+                        <td className="px-3 py-2.5 text-center">
+                          {hasPostScore ? (
+                            <div>
+                              <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                                {post.score} / {post.maxScore || 20}
+                              </span>
+                              {post.result ? (
+                                <p className="text-[10px] font-semibold text-emerald-600">
+                                  {post.result}
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-slate-400">Pending</span>
+                          )}
+                        </td>
+                      ) : null}
 
                               <td className="px-3 py-2.5 text-center">
                                 {improvement != null ? (
@@ -693,9 +736,9 @@ export default function AdminAralProgressPanel({
                   batchId={batchId}
                   gradeSection={activeSection.gradeSection}
                   phase={
-                    detailTab === "mid"
+                    effectiveDetailTab === "mid"
                       ? ARAL_ASSESSMENT_PHASE.MID
-                      : detailTab === "post"
+                      : effectiveDetailTab === "post"
                         ? ARAL_ASSESSMENT_PHASE.POST
                         : ARAL_ASSESSMENT_PHASE.PRE
                   }

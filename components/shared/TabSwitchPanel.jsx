@@ -31,7 +31,7 @@ export default function TabSwitchPanel({
         transition={
           reduceMotion
             ? { duration: 0 }
-            : { duration: 0.18, ease: "easeOut" }
+            : { duration: 0.22, ease: "easeOut" }
         }
       >
         {children}

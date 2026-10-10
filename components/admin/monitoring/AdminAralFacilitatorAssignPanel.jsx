@@ -47,6 +47,29 @@ function gradeSortKey(grade) {
   return Number.isFinite(n) ? n : 999;
 }
 
+/**
+ * Principal-facing support status, derived from existing row fields.
+ * Order matters: facilitator → baseline → absence → IRA → support.
+ */
+function supportStatusFor(learner = {}, absentIds = new Set()) {
+  const row = learner.sourceRows?.[0] ?? learner;
+  if (!learner.aralFacilitatorTeacherId) return "Needs Facilitator";
+  if (row.philIriScore == null) return "Waiting for Assessment";
+  if (absentIds.has(learner.studentId)) return "Absent — Needs Rescheduling";
+  if (/individualized assessment/i.test(row.screeningInterpretation ?? "")) {
+    return "Needs Individual Assessment";
+  }
+  return "Under ARAL Support";
+}
+
+const SUPPORT_STATUS_TONES = {
+  "Needs Facilitator": "bg-cnhs-orange-soft text-cnhs-orange ring-cnhs-orange/30",
+  "Waiting for Assessment": "bg-slate-100 text-slate-600 ring-slate-200",
+  "Needs Individual Assessment": "bg-sky-50 text-sky-700 ring-sky-200",
+  "Absent — Needs Rescheduling": "bg-amber-50 text-amber-800 ring-amber-200",
+  "Under ARAL Support": "bg-emerald-50 text-emerald-700 ring-emerald-200",
+};
+
 function summarizeSectionFacilitator(learners = []) {
   const assigned = learners.filter((l) => l.aralFacilitatorTeacherId);
   if (!assigned.length) {
@@ -172,6 +195,7 @@ function buildGradeFolders(sectionGroups = []) {
 export default function AdminAralFacilitatorAssignPanel({
   students = [],
   onChanged,
+  absentIds = new Set(),
 }) {
   const aralRows = useMemo(
     () =>
@@ -669,6 +693,7 @@ export default function AdminAralFacilitatorAssignPanel({
                                 "Identified in",
                                 "Subject Teacher",
                                 "Facilitator",
+                                "Status",
                                 "Action",
                               ].map((column) => (
                                 <th
@@ -761,6 +786,18 @@ export default function AdminAralFacilitatorAssignPanel({
                                         Unassigned
                                       </p>
                                     )}
+                                  </td>
+                                  <td className="px-2.5 py-2">
+                                    {(() => {
+                                      const status = supportStatusFor(learner, absentIds);
+                                      return (
+                                        <span
+                                          className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${SUPPORT_STATUS_TONES[status] ?? "bg-slate-100 text-slate-600 ring-slate-200"}`}
+                                        >
+                                          {status}
+                                        </span>
+                                      );
+                                    })()}
                                   </td>
                                   <td className="px-2.5 py-2">
                                     <div className="flex flex-wrap gap-1">

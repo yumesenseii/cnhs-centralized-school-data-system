@@ -7,6 +7,8 @@ import { motion } from "framer-motion";
 import { ArrowRight, Menu, Search } from "lucide-react";
 import { loginContent, LOGIN_COLORS } from "@/lib/constants/loginContent";
 import { cn } from "@/lib/utils";
+import { Dashboard1, gradeEntriesFrom } from "@/components/ui/dashboard-1";
+import EnrollmentByGradeChart from "@/components/landing/EnrollmentByGradeChart";
 
 function PortalLoginButton({ scrolled, className = "" }) {
   return (
@@ -96,7 +98,7 @@ function BrandLogo({ scrolled = false, size = "md" }) {
   );
 }
 
-export default function PortalLanding() {
+export default function PortalLanding({ demographics }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -317,6 +319,62 @@ export default function PortalLanding() {
             </svg>
           </div>
         </section>
+
+        {demographics && (
+          <section className="bg-white py-16 sm:py-24">
+            <div className="mx-auto max-w-6xl px-5 sm:px-8">
+              <div className="mb-10 text-center">
+                <h2 className="text-3xl font-bold tracking-tight text-[#123d2c] sm:text-4xl">
+                  CNHS at a Glance
+                </h2>
+                <p className="mt-3 text-[15px] text-slate-500">
+                  A quick look at Cambaog National High School for the current school year.
+                </p>
+              </div>
+              <Dashboard1 data={demographics} />
+              <div className="mt-4 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+                <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 className="text-[13px] font-semibold tracking-tight text-slate-600">
+                    Enrollment by Grade Level
+                  </h3>
+                  <div className="mt-3">
+                    <EnrollmentByGradeChart data={demographics} />
+                  </div>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 className="text-[13px] font-semibold tracking-tight text-slate-600">
+                    Grade Breakdown
+                  </h3>
+                  <ul className="mt-3 space-y-2.5">
+                    {gradeEntriesFrom(demographics).map((entry) => (
+                      <li
+                        key={entry.grade}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-[#f7faf7] px-3.5 py-2.5"
+                      >
+                        <span className="text-[12px] font-bold text-[#123d2c]">
+                          Grade {entry.grade}
+                        </span>
+                        <span className="text-right text-[11px] leading-5 text-slate-600">
+                          <span className="block text-[13px] font-bold text-slate-900">
+                            {entry.total == null ? "Not available" : entry.total.toLocaleString()}
+                          </span>
+                          {entry.male != null || entry.female != null ? (
+                            <span>
+                              M: {entry.male == null ? "Not available" : entry.male.toLocaleString()} · F:{" "}
+                              {entry.female == null ? "Not available" : entry.female.toLocaleString()}
+                            </span>
+                          ) : (
+                            <span>Not available</span>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         <section
           id="about"

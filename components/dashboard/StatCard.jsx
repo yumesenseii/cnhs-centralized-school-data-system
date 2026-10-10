@@ -64,10 +64,29 @@ export default function StatCard({ stat }) {
             aria-hidden="true"
           />
         ) : (
-          stat.value
+          <>
+            {stat.value}
+            {stat.unit ? (
+              <span className="ml-1.5 text-[13px] font-medium text-slate-500">
+                {stat.unit}
+              </span>
+            ) : null}
+          </>
         )}
       </p>
       <p className={cn("mt-1 text-[10px] font-medium", variant.subtext)}>{stat.subtext}</p>
+      {stat.delta ? (
+        <p className="mt-1 text-[10px] font-semibold text-slate-500">
+          {stat.delta.direction === "down" ? "↓ " : stat.delta.direction === "up" ? "↑ " : "→ "}
+          {stat.delta.text}
+        </p>
+      ) : null}
+      {interactive && stat.actionLabel ? (
+        <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-cnhs-green-dark">
+          {stat.actionLabel}
+          <span aria-hidden="true">→</span>
+        </span>
+      ) : null}
     </>
   );
 

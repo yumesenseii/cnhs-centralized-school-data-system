@@ -6,9 +6,9 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Eye,
   Folder,
   Loader2,
-  RotateCcw,
 } from "lucide-react";
 import {
   ARAL_APPROVAL_DB,
@@ -18,13 +18,13 @@ import {
   isAralHtTrackedLearner,
 } from "@/lib/monitoring/aralApproval";
 import {
-  batchReviewAralRecommendations,
   reviewAralRecommendation,
 } from "@/lib/supabase/queries/aralApprovals";
 import { getAdminSession } from "@/lib/supabase/queries/adminAuth";
 import { parseRecordedGrade } from "@/lib/ecr/computeGrades";
 import { normalizeSubjectName } from "@/lib/services/recommendation/subjectCapabilities";
 import { Pill } from "@/components/teacher/monitoring/shared";
+import AdminAralReviewModal from "@/components/admin/monitoring/AdminAralReviewModal";
 import { cn } from "@/lib/utils";
 
 const SECTIONS_PAGE_SIZE = 10;
@@ -310,9 +310,28 @@ export default function AdminAralApprovalPanel({
     [aralRows]
   );
 
+  const [statusFilter, setStatusFilter] = useState("pending");
+
+  const visibleGroups = useMemo(() => {
+    if (statusFilter !== "pending") return sectionGroups;
+    return sectionGroups
+      .map((group) => {
+        const learners = group.learners.filter((l) =>
+          isPendingPrincipal(l.displayStatus)
+        );
+        return {
+          ...group,
+          learners,
+          count: learners.length,
+          pending: learners.length,
+        };
+      })
+      .filter((group) => group.learners.length > 0);
+  }, [sectionGroups, statusFilter]);
+
   const gradeFolders = useMemo(
-    () => buildGradeFolders(sectionGroups),
-    [sectionGroups]
+    () => buildGradeFolders(visibleGroups),
+    [visibleGroups]
   );
 
   const [selectedGrade, setSelectedGrade] = useState(null);
@@ -324,6 +343,8 @@ export default function AdminAralApprovalPanel({
   const [noteDrafts, setNoteDrafts] = useState({});
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
+  const [reviewKey, setReviewKey] = useState(null);
+  const [decisions, setDecisions] = useState({});
 
   const activeFolder = useMemo(
     () => gradeFolders.find((f) => f.grade === selectedGrade) ?? null,
@@ -336,7 +357,7 @@ export default function AdminAralApprovalPanel({
     setPage(1);
     setSelected(new Set());
     setOpenSections({});
-  }, [sectionGroups]);
+  }, [visibleGroups]);
 
   useEffect(() => {
     setPage(1);
@@ -373,11 +394,11 @@ export default function AdminAralApprovalPanel({
 
   const uniqueLearnerCount = useMemo(() => {
     const ids = new Set();
-    for (const group of sectionGroups) {
+    for (const group of visibleGroups) {
       for (const learner of group.learners) ids.add(learner.studentId);
     }
     return ids.size;
-  }, [sectionGroups]);
+  }, [visibleGroups]);
 
   function openGrade(grade) {
     setSelectedGrade(grade);
@@ -418,23 +439,6 @@ export default function AdminAralApprovalPanel({
     });
   }
 
-  function expandSelectedToSourceRows(scopeLearners) {
-    const rows = [];
-    for (const learner of scopeLearners) {
-      if (isApprovedLocked(learner)) continue;
-      if (!selected.has(learner.selectKey)) continue;
-      for (const row of learner.sourceRows) {
-        rows.push({
-          ...row,
-          // Per-learner note draft for this approval row
-          _reviewNote:
-            noteDrafts[learner.selectKey] || learner.note || null,
-        });
-      }
-    }
-    return rows;
-  }
-
   async function runReviewLearner(learner, status) {
     if (isApprovedLocked(learner)) return;
     setBusyKey(learner.selectKey);
@@ -465,7 +469,7 @@ export default function AdminAralApprovalPanel({
     if (failed) {
       setError(failed);
       onChanged?.();
-      return;
+      return false;
     }
     setToast(
       status === ARAL_APPROVAL_DB.APPROVED
@@ -473,44 +477,93 @@ export default function AdminAralApprovalPanel({
         : `Returned ARAL recommendation for ${learner.name}.`
     );
     onChanged?.();
+    return true;
   }
 
-  async function runBatchForSection(group, status) {
-    const sourceRows = expandSelectedToSourceRows(group.learners);
-    if (!sourceRows.length) {
+  const reviewLearner = useMemo(() => {
+    if (!reviewKey) return null;
+    for (const group of sectionGroups) {
+      const found = group.learners.find((l) => l.selectKey === reviewKey);
+      if (found) return found;
+    }
+    return null;
+  }, [reviewKey, sectionGroups]);
+
+  function selectAllInSection(group) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const learner of group.learners) {
+        if (!isApprovedLocked(learner)) next.add(learner.selectKey);
+      }
+      return next;
+    });
+  }
+
+  function setDecision(selectKey, status) {
+    setDecisions((prev) => ({ ...prev, [selectKey]: status }));
+  }
+
+  /**
+   * Apply mixed per-learner decisions in one section. Returns require a
+   * short note (draft or existing); the apply aborts listing offenders.
+   */
+  async function applyDecisions(group) {
+    const targets = group.learners.filter(
+      (l) => !isApprovedLocked(l) && selected.has(l.selectKey)
+    );
+    if (!targets.length) {
       setError("Select at least one learner in this section.");
+      return;
+    }
+    const undecided = targets.filter((l) => !decisions[l.selectKey]);
+    if (undecided.length) {
+      setError(
+        `Choose Approve or Return for: ${undecided.map((l) => l.name).join(", ")}.`
+      );
+      return;
+    }
+    const missingNotes = targets.filter(
+      (l) =>
+        decisions[l.selectKey] === ARAL_APPROVAL_DB.RETURNED &&
+        !String(noteDrafts[l.selectKey] ?? l.note ?? "").trim()
+    );
+    if (missingNotes.length) {
+      setError(
+        `A short note is required to return: ${missingNotes.map((l) => l.name).join(", ")}.`
+      );
       return;
     }
     setBatchBusy(true);
     setError("");
     setToast("");
-    const session = await getAdminSession();
-    const result = await batchReviewAralRecommendations({
-      learners: sourceRows.map((row) => ({
-        studentId: row.studentId,
-        classId: row.classId,
-        schoolYear: row.schoolYear,
-        quarterNumber: row.quarterNumber ?? row.quarter,
-        quarter: row.quarter,
-      })),
-      status,
-      reviewNote: null,
-      profileId: session.data?.id ?? null,
-    });
-    setBatchBusy(false);
-    if (result.error) {
-      setError(result.error.message);
-      return;
+    let approved = 0;
+    let returned = 0;
+    let failed = null;
+    for (const learner of targets) {
+      const ok = await runReviewLearner(learner, decisions[learner.selectKey]);
+      if (!ok) {
+        failed = learner.name;
+        break;
+      }
+      if (decisions[learner.selectKey] === ARAL_APPROVAL_DB.APPROVED) {
+        approved += 1;
+      } else {
+        returned += 1;
+      }
     }
-    const n = group.learners.filter((l) => selected.has(l.selectKey)).length;
+    setBatchBusy(false);
+    if (failed) return;
     setToast(
-      status === ARAL_APPROVAL_DB.APPROVED
-        ? `Approved ${n} learner(s) in ${group.gradeSection}.`
-        : `Returned ${n} learner(s) in ${group.gradeSection}.`
+      `Decisions applied in ${group.gradeSection}: ${approved} approved, ${returned} returned.`
     );
     setSelected((prev) => {
       const next = new Set(prev);
-      for (const l of group.learners) next.delete(l.selectKey);
+      for (const l of targets) next.delete(l.selectKey);
+      return next;
+    });
+    setDecisions((prev) => {
+      const next = { ...prev };
+      for (const l of targets) delete next[l.selectKey];
       return next;
     });
     onChanged?.();
@@ -519,8 +572,43 @@ export default function AdminAralApprovalPanel({
   if (!sectionGroups.length) {
     return (
       <section className="rounded-xl border border-slate-100 bg-white px-3 py-3 text-[12px] text-slate-500 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:px-4">
-        No ARAL-recommended learners to approve yet. Recommendations appear after
-        English / Filipino ECR grades trigger ARAL Learners.
+        No ARAL-recommended learners to approve yet. Recommendations appear
+        after English / Filipino class grades flag learners for ARAL support.
+      </section>
+    );
+  }
+
+  if (!visibleGroups.length) {
+    return (
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)] dark:border-white/5 dark:bg-[var(--card)] dark:shadow-none">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2.5 sm:px-4 dark:border-white/5">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              Approve ARAL Recommendations
+            </h2>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {["pending", "all"].map((filter) => (
+              <button
+                key={filter}
+                type="button"
+                onClick={() => setStatusFilter(filter)}
+                aria-pressed={statusFilter === filter}
+                className={cn(
+                  "h-7 cursor-pointer rounded-full px-2.5 text-[11px] font-semibold transition-colors",
+                  statusFilter === filter
+                    ? "bg-cnhs-green-dark text-white"
+                    : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                )}
+              >
+                {filter === "pending" ? "Needs review" : "All"}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="px-3 py-8 text-center text-[12px] text-slate-500 sm:px-4">
+          No referrals are waiting for review right now.
+        </p>
       </section>
     );
   }
@@ -533,12 +621,32 @@ export default function AdminAralApprovalPanel({
             Approve ARAL Recommendations
           </h2>
         </div>
-        <span className="inline-flex rounded-full bg-cnhs-green-soft px-2.5 py-0.5 text-[10px] font-semibold text-cnhs-green-dark">
-          {uniqueLearnerCount} learner
-          {uniqueLearnerCount === 1 ? "" : "s"} · {sectionGroups.length}{" "}
-          section{sectionGroups.length === 1 ? "" : "s"} · {gradeFolders.length}{" "}
-          grade{gradeFolders.length === 1 ? "" : "s"}
-        </span>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            {["pending", "all"].map((filter) => (
+              <button
+                key={filter}
+                type="button"
+                onClick={() => setStatusFilter(filter)}
+                aria-pressed={statusFilter === filter}
+                className={cn(
+                  "h-7 cursor-pointer rounded-full px-2.5 text-[11px] font-semibold transition-colors",
+                  statusFilter === filter
+                    ? "bg-cnhs-green-dark text-white"
+                    : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                )}
+              >
+                {filter === "pending" ? "Needs review" : "All"}
+              </button>
+            ))}
+          </div>
+          <span className="inline-flex rounded-full bg-cnhs-green-soft px-2.5 py-0.5 text-[10px] font-semibold text-cnhs-green-dark">
+            {uniqueLearnerCount} learner
+            {uniqueLearnerCount === 1 ? "" : "s"} · {visibleGroups.length}{" "}
+            section{visibleGroups.length === 1 ? "" : "s"} · {gradeFolders.length}{" "}
+            grade{gradeFolders.length === 1 ? "" : "s"}
+          </span>
+        </div>
       </div>
 
       {(error || toast) && (
@@ -706,9 +814,16 @@ export default function AdminAralApprovalPanel({
                       <div className="mb-3 flex flex-wrap items-center gap-2">
                         <button
                           type="button"
-                          onClick={() =>
-                            runBatchForSection(group, ARAL_APPROVAL_DB.APPROVED)
-                          }
+                          onClick={() => selectAllInSection(group)}
+                          disabled={batchBusy || selectedInSection === sectionKeys.length}
+                          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                        >
+                          Select All
+                          {selectedInSection > 0 ? ` (${selectedInSection})` : ""}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => applyDecisions(group)}
                           disabled={batchBusy || selectedInSection === 0}
                           className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white hover:bg-[#246f54] disabled:cursor-not-allowed disabled:opacity-50"
                         >
@@ -717,18 +832,7 @@ export default function AdminAralApprovalPanel({
                           ) : (
                             <CheckCircle2 size={12} />
                           )}
-                          Approve for Assessment ({selectedInSection})
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            runBatchForSection(group, ARAL_APPROVAL_DB.RETURNED)
-                          }
-                          disabled={batchBusy || selectedInSection === 0}
-                          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-cnhs-orange/35 bg-cnhs-orange-soft px-3 text-[11px] font-semibold text-cnhs-orange hover:bg-cnhs-orange/15 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <RotateCcw size={12} />
-                          Return to Teacher
+                          Apply Decisions ({selectedInSection})
                         </button>
                       </div>
 
@@ -751,7 +855,8 @@ export default function AdminAralApprovalPanel({
                                 "Identified in",
                                 "Approval",
                                 "Principal note",
-                                "Actions",
+                                "Decision",
+                                "Details",
                               ].map((h) => (
                                 <th
                                   key={h}
@@ -864,17 +969,6 @@ export default function AdminAralApprovalPanel({
                                           {learner.reasonLine}
                                         </p>
                                       ) : null}
-                                      {learner.sourceRows?.[0]?.rfPredictedRisk ? (
-                                        <div className="flex items-center gap-1 text-[10px] text-purple-700 dark:text-purple-300">
-                                          <span className="font-semibold">RF Pattern:</span>
-                                          <span>{learner.sourceRows[0].rfPredictedRisk}</span>
-                                          {learner.sourceRows[0].recommendationConfidence ? (
-                                            <span className="text-slate-400">
-                                              ({Math.round(learner.sourceRows[0].recommendationConfidence * 100)}%)
-                                            </span>
-                                          ) : null}
-                                        </div>
-                                      ) : null}
                                     </div>
                                   </td>
                                   <td className="px-2.5 py-2">
@@ -938,44 +1032,70 @@ export default function AdminAralApprovalPanel({
                                         Reviewed
                                       </span>
                                     ) : (
-                                    <div className="flex flex-wrap gap-1">
-                                      <button
-                                        type="button"
-                                        disabled={busy}
-                                        onClick={() =>
-                                          runReviewLearner(
-                                            learner,
+                                      <div
+                                        role="group"
+                                        aria-label={`Decision for ${learner.name}`}
+                                        className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-0.5 dark:border-white/10 dark:bg-white/5"
+                                      >
+                                        <button
+                                          type="button"
+                                          disabled={busy}
+                                          aria-pressed={
+                                            decisions[learner.selectKey] ===
                                             ARAL_APPROVAL_DB.APPROVED
-                                          )
-                                        }
-                                        className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full bg-cnhs-green-dark px-2.5 text-[10px] font-semibold text-white hover:bg-[#246f54] disabled:opacity-50"
-                                      >
-                                        {busy ? (
-                                          <Loader2
-                                            size={11}
-                                            className="animate-spin"
-                                          />
-                                        ) : (
-                                          <CheckCircle2 size={11} />
-                                        )}
-                                        Evaluate Escalation
-                                      </button>
-                                      <button
-                                        type="button"
-                                        disabled={busy}
-                                        onClick={() =>
-                                          runReviewLearner(
-                                            learner,
+                                          }
+                                          onClick={() =>
+                                            setDecision(
+                                              learner.selectKey,
+                                              ARAL_APPROVAL_DB.APPROVED
+                                            )
+                                          }
+                                          className={cn(
+                                            "h-7 cursor-pointer rounded-full px-2.5 text-[10px] font-semibold transition-colors disabled:opacity-50",
+                                            decisions[learner.selectKey] ===
+                                              ARAL_APPROVAL_DB.APPROVED
+                                              ? "bg-cnhs-green-dark text-white"
+                                              : "text-slate-500 hover:text-cnhs-green-dark"
+                                          )}
+                                        >
+                                          Approve
+                                        </button>
+                                        <button
+                                          type="button"
+                                          disabled={busy}
+                                          aria-pressed={
+                                            decisions[learner.selectKey] ===
                                             ARAL_APPROVAL_DB.RETURNED
-                                          )
-                                        }
-                                        className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-cnhs-orange/35 bg-cnhs-orange-soft px-2.5 text-[10px] font-semibold text-cnhs-orange hover:bg-cnhs-orange/15 disabled:opacity-50"
-                                      >
-                                        <RotateCcw size={11} />
-                                        Return to Teacher
-                                      </button>
-                                    </div>
+                                          }
+                                          onClick={() =>
+                                            setDecision(
+                                              learner.selectKey,
+                                              ARAL_APPROVAL_DB.RETURNED
+                                            )
+                                          }
+                                          className={cn(
+                                            "h-7 cursor-pointer rounded-full px-2.5 text-[10px] font-semibold transition-colors disabled:opacity-50",
+                                            decisions[learner.selectKey] ===
+                                              ARAL_APPROVAL_DB.RETURNED
+                                              ? "bg-cnhs-orange text-white"
+                                              : "text-slate-500 hover:text-cnhs-orange"
+                                          )}
+                                        >
+                                          Return
+                                        </button>
+                                      </div>
                                     )}
+                                  </td>
+                                  <td className="px-2.5 py-2">
+                                    <button
+                                      type="button"
+                                      disabled={busy}
+                                      onClick={() => setReviewKey(learner.selectKey)}
+                                      className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                                    >
+                                      <Eye size={11} />
+                                      Details
+                                    </button>
                                   </td>
                                 </tr>
                               );
@@ -1030,6 +1150,38 @@ export default function AdminAralApprovalPanel({
           ) : null}
         </>
       )}
+      <AdminAralReviewModal
+        learner={reviewLearner}
+        locked={reviewLearner ? isApprovedLocked(reviewLearner) : false}
+        busy={reviewLearner ? busyKey === reviewLearner.selectKey : false}
+        note={
+          reviewLearner
+            ? (noteDrafts[reviewLearner.selectKey] ?? reviewLearner.note ?? "")
+            : ""
+        }
+        onNoteChange={(value) => {
+          if (!reviewLearner) return;
+          const key = reviewLearner.selectKey;
+          setNoteDrafts((prev) => ({ ...prev, [key]: value }));
+        }}
+        onApprove={async () => {
+          if (!reviewLearner) return;
+          const ok = await runReviewLearner(
+            reviewLearner,
+            ARAL_APPROVAL_DB.APPROVED
+          );
+          if (ok) setReviewKey(null);
+        }}
+        onReturn={async () => {
+          if (!reviewLearner) return;
+          const ok = await runReviewLearner(
+            reviewLearner,
+            ARAL_APPROVAL_DB.RETURNED
+          );
+          if (ok) setReviewKey(null);
+        }}
+        onClose={() => setReviewKey(null)}
+      />
     </section>
   );
 }

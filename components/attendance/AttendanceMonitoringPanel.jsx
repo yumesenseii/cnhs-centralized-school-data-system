@@ -21,9 +21,14 @@ export default function AttendanceMonitoringPanel({
   onRefreshingChange,
   linkHref = "/teacher/attendance",
   linkLabel = "My section →",
+  labels = {},
 }) {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const labelAverage = labels.average ?? "Avg ADA";
+  const labelRate = labels.rate ?? "Avg PA";
+  const labelAbsences = labels.absences ?? "Absences";
+  const labelFlagged = labels.flagged ?? "Flagged";
 
   useEffect(() => {
     let cancelled = false;
@@ -105,22 +110,22 @@ export default function AttendanceMonitoringPanel({
       </div>
       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
         <DenseKpi
-          label="Avg ADA"
+          label={labelAverage}
           value={fmtAttendance(analytics.avgAda)}
           tone="bg-green-50"
         />
         <DenseKpi
-          label="Avg PA"
+          label={labelRate}
           value={fmtAttendance(analytics.avgPa, "%")}
           tone="bg-sky-50"
         />
         <DenseKpi
-          label="Absences"
+          label={labelAbsences}
           value={fmtAttendance(analytics.totalAbsences)}
           tone="bg-orange-50"
         />
         <DenseKpi
-          label="Flagged"
+          label={labelFlagged}
           value={analytics.flaggedSections.length}
           tone="bg-red-50"
         />

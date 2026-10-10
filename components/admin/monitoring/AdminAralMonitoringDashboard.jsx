@@ -5,11 +5,8 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   FileSpreadsheet,
-  FileText,
-  Loader2,
   RefreshCw,
   GraduationCap,
-  Download,
   ChevronDown,
   X,
   BookOpen,
@@ -28,7 +25,6 @@ import AdminAralProgressPanel from "@/components/admin/monitoring/AdminAralProgr
 import AdminAralSummerEligibilityPanel from "@/components/admin/monitoring/AdminAralSummerEligibilityPanel";
 
 import { useAdminMonitoring } from "@/hooks/teacher/useMonitoring";
-import { exportAralRecommendedPdf } from "@/lib/reports/aralRecommendedPdfExport";
 import { aggregateAralLearners } from "@/lib/monitoring/aralLearnerAggregation";
 import { listAralBenchmarks } from "@/lib/supabase/queries/aralProgram";
 import { listAralApprovals } from "@/lib/supabase/queries/aralApprovals";
@@ -38,6 +34,7 @@ import {
   getCachedMonitoringRosterShell,
 } from "@/lib/admin/adminRosterCache";
 import { attachAralApprovals } from "@/lib/monitoring/aralApproval";
+import { listRecentAralAbsenceIds } from "@/lib/supabase/queries/monitoring";
 import { useAralAssessmentPeriod } from "@/hooks/useAralAssessmentPeriod";
 import {
   aralPeriodLabel,
@@ -47,13 +44,11 @@ import { cn } from "@/lib/utils";
 
 const ARAL_ADMIN_TABS = [
   { id: "intake", label: "ARAL Referrals" },
-  { id: "facilitators", label: "Facilitator Assignment" },
-  { id: "assessments", label: "Intervention Progress" },
+  { id: "assessment", label: "Assessment & Support" },
   { id: "outcomes", label: "Outcomes" },
 ];
 
 const OUTCOME_FILTERS = [
-  { id: "all", label: "All Outcomes" },
   { id: "completed", label: "Completed" },
   { id: "continued", label: "Needs Continued Support" },
   { id: "summer", label: "Summer Eligible" },
@@ -156,7 +151,6 @@ export default function AdminAralMonitoringDashboard() {
     classSummaries,
     filterOptions,
     teachers,
-    profile,
     loading,
     refreshing,
     error,
@@ -164,13 +158,12 @@ export default function AdminAralMonitoringDashboard() {
   } = useAdminMonitoring();
 
   const [activeTab, setActiveTab] = useState("intake");
-  const [outcomeFilter, setOutcomeFilter] = useState("all");
+  const [outcomeFilter, setOutcomeFilter] = useState("completed");
   const [schoolYear, setSchoolYear] = useState("");
   const [grade, setGrade] = useState("All Grades");
   const [section, setSection] = useState("All Sections");
   const [search, setSearch] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [exportingPdf, setExportingPdf] = useState(false);
   const [benchmarks, setBenchmarks] = useState([]);
   const [prevHistory, setPrevHistory] = useState(null);
   const {
@@ -241,6 +234,37 @@ export default function AdminAralMonitoringDashboard() {
   const deduplicatedStudents = useMemo(() => {
     return aggregateAralLearners(students);
   }, [students]);
+
+  // Recent ARAL session absences (rescheduling follow-up). Fetched once
+  // when the Assessment & Support tab opens; failures hide the status.
+  const [absentIds, setAbsentIds] = useState(() => new Set());
+  useEffect(() => {
+    if (activeTab !== "assessment") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const approvedIds = [
+          ...new Set(
+            (students ?? [])
+              .filter((s) => approvalIs(s.aralApprovalStatus, "approved"))
+              .map((s) => s.studentId)
+              .filter(Boolean)
+          ),
+        ];
+        if (!approvedIds.length) {
+          if (!cancelled) setAbsentIds(new Set());
+          return;
+        }
+        const result = await listRecentAralAbsenceIds(approvedIds, 30);
+        if (!cancelled) setAbsentIds(result.data ?? new Set());
+      } catch {
+        if (!cancelled) setAbsentIds(new Set());
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, students]);
 
   // Filter students to language/reading & selected filters
   const filteredStudents = useMemo(() => {
@@ -441,26 +465,6 @@ export default function AdminAralMonitoringDashboard() {
     return { current, prev, keys, labels, sentences, eosy };
   }, [students, prevHistory, benchmarks, activeSchoolYear, aralPeriod]);
 
-  async function handleExportPdf() {
-    if (exportingPdf) return;
-    setExportingPdf(true);
-    try {
-      exportAralRecommendedPdf({
-        learners: filteredStudents,
-        schoolYear: activeSchoolYear,
-        quarter: "All Terms",
-        scopeLabel: "School-Wide ARAL",
-        preparedBy: profile?.full_name || "Principal / Administrator",
-        includeTeacherColumn: true,
-      });
-    } catch (err) {
-      console.error(err);
-      window.alert("Failed to export ARAL Endorsement Roster.");
-    } finally {
-      setExportingPdf(false);
-    }
-  }
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -471,7 +475,7 @@ export default function AdminAralMonitoringDashboard() {
       <Header
         breadcrumb="Home > ARAL Monitoring"
         title="ARAL Monitoring"
-        description="Principal oversight of ARAL referrals, reading facilitator assignments, assessment progress by period, and summer eligibility."
+        description="Review ARAL referrals and monitor learner assessment and support progress."
         controls={
           <>
             <PageHelp
@@ -484,20 +488,6 @@ export default function AdminAralMonitoringDashboard() {
                 "Multi-year comparison tracks longitudinal reading intervention outcomes across consecutive school years.",
               ]}
             />
-
-            <button
-              type="button"
-              onClick={handleExportPdf}
-              disabled={loading || exportingPdf}
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 text-[12px] font-semibold text-blue-800 transition-colors hover:bg-blue-100 disabled:opacity-60"
-            >
-              {exportingPdf ? (
-                <Loader2 size={13} className="animate-spin text-blue-800" />
-              ) : (
-                <FileText size={13} className="text-blue-800" />
-              )}
-              <span>Export Endorsement PDF</span>
-            </button>
 
             <button
               type="button"
@@ -601,12 +591,12 @@ export default function AdminAralMonitoringDashboard() {
           {
             label: "approved learner(s) without assigned facilitator",
             count: aralKpi.unassignedFacilitator,
-            tab: "facilitators",
+            tab: "assessment",
           },
           {
             label: `assessment(s) due — ${aralPeriodShortLabel(aralPeriod)}`,
             count: aralKpi.assessmentDue,
-            tab: "assessments",
+            tab: "assessment",
           },
           ...(aralPeriod === "EOSY" || aralKpi.summerEligible > 0
             ? [
@@ -660,13 +650,13 @@ export default function AdminAralMonitoringDashboard() {
         );
       })()}
 
-      {/* 5 ARAL EXECUTIVE KPIS — Assessment Due follows the current period */}
+      {/* CURRENT STATUS — 4 actionable summary cards */}
       <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
         <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
           <div className="flex items-center gap-2">
             <GraduationCap size={16} className="text-blue-800" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-              ARAL Monitoring Summary
+              Current Status
             </h3>
           </div>
           <span className="text-[11px] font-semibold text-cnhs-green-dark">
@@ -674,56 +664,82 @@ export default function AdminAralMonitoringDashboard() {
           </span>
         </div>
 
-        <div className="mt-3 grid grid-cols-2 sm:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 text-center">
-          <div className="p-2">
-            <span className="block text-[10px] font-semibold uppercase text-slate-500">
-              Pending Review
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <button
+            type="button"
+            onClick={() => setActiveTab("intake")}
+            className="cursor-pointer rounded-xl border border-slate-200 bg-white p-3 text-left shadow-xs transition-colors hover:border-cnhs-green/40 hover:bg-cnhs-green-soft/20"
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              Waiting for Your Review
+            </p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-amber-800">
+              {aralKpi.awaitingReview}
+            </p>
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              Teacher referrals needing a Principal decision
+            </p>
+            <span className="mt-2 inline-flex items-center gap-1 rounded-lg bg-cnhs-green-dark px-2.5 py-1 text-[11px] font-semibold text-white">
+              Review
             </span>
-            <span className="mt-1 block text-lg font-bold text-amber-800">
-              {aralKpi.needsReview}
-            </span>
-            <span className="text-[10px] text-slate-400 mt-0.5 block">Referrals</span>
-          </div>
+          </button>
 
-          <div className="p-2">
-            <span className="block text-[10px] font-semibold uppercase text-slate-500">
-              Active ARAL
+          <button
+            type="button"
+            onClick={() => setActiveTab("assessment")}
+            className="cursor-pointer rounded-xl border border-slate-200 bg-white p-3 text-left shadow-xs transition-colors hover:border-cnhs-green/40 hover:bg-cnhs-green-soft/20"
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              Need Facilitator
+            </p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-slate-800">
+              {aralKpi.unassignedFacilitator}
+            </p>
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              Approved learners without an assigned facilitator
+            </p>
+            <span className="mt-2 inline-flex items-center gap-1 rounded-lg bg-cnhs-green-dark px-2.5 py-1 text-[11px] font-semibold text-white">
+              Assign
             </span>
-            <span className="mt-1 block text-lg font-bold text-blue-800">
-              {aralKpi.activeIntervention}
-            </span>
-            <span className="text-[10px] text-slate-400 mt-0.5 block">In Sessions</span>
-          </div>
+          </button>
 
-          <div className="p-2">
-            <span className="block text-[10px] font-semibold uppercase text-slate-500">
-              {aralKpi.assessmentDueLabel}
-            </span>
-            <span className="mt-1 block text-lg font-bold text-slate-800">
+          <button
+            type="button"
+            onClick={() => setActiveTab("assessment")}
+            className="cursor-pointer rounded-xl border border-slate-200 bg-white p-3 text-left shadow-xs transition-colors hover:border-cnhs-green/40 hover:bg-cnhs-green-soft/20"
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              Waiting for Assessment
+            </p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-slate-800">
               {aralKpi.assessmentDue}
+            </p>
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              Learners waiting for the current assessment
+            </p>
+            <span className="mt-2 inline-flex items-center gap-1 rounded-lg bg-cnhs-green-dark px-2.5 py-1 text-[11px] font-semibold text-white">
+              View
             </span>
-            <span className="text-[10px] text-slate-400 mt-0.5 block">{aralPeriodShortLabel(aralPeriod)}</span>
-          </div>
+          </button>
 
-          <div className="p-2">
-            <span className="block text-[10px] font-semibold uppercase text-slate-500">
-              Completed
+          <button
+            type="button"
+            onClick={() => setActiveTab("assessment")}
+            className="cursor-pointer rounded-xl border border-slate-200 bg-white p-3 text-left shadow-xs transition-colors hover:border-cnhs-green/40 hover:bg-cnhs-green-soft/20"
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              Under ARAL Support
+            </p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-blue-800">
+              {aralKpi.activeIntervention}
+            </p>
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              Learners currently receiving ARAL support
+            </p>
+            <span className="mt-2 inline-flex items-center gap-1 rounded-lg bg-cnhs-green-dark px-2.5 py-1 text-[11px] font-semibold text-white transition-colors">
+              View Progress
             </span>
-            <span className="mt-1 block text-lg font-bold text-emerald-700">
-              {aralKpi.completed}
-            </span>
-            <span className="text-[10px] text-slate-400 mt-0.5 block">Exited / Promoted</span>
-          </div>
-
-          <div className="p-2">
-            <span className="block text-[10px] font-semibold uppercase text-slate-500">
-              Summer Eligible
-            </span>
-            <span className="mt-1 block text-lg font-bold text-slate-800">
-              {aralKpi.summerEligible}
-            </span>
-            <span className="text-[10px] text-slate-400 mt-0.5 block">Referred Roster</span>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -765,18 +781,19 @@ export default function AdminAralMonitoringDashboard() {
           />
         ) : null}
 
-        {activeTab === "facilitators" ? (
-          <AdminAralFacilitatorAssignPanel
-            students={deduplicatedStudents}
-            onChanged={() => refresh()}
-          />
-        ) : null}
-
-        {activeTab === "assessments" ? (
-          <AdminAralProgressPanel
-            students={deduplicatedStudents}
-            onViewStudent={setSelectedStudent}
-          />
+        {activeTab === "assessment" ? (
+          <div className="space-y-4">
+            <AdminAralFacilitatorAssignPanel
+              students={deduplicatedStudents}
+              onChanged={() => refresh()}
+              absentIds={absentIds}
+            />
+            <AdminAralProgressPanel
+              students={deduplicatedStudents}
+              onViewStudent={setSelectedStudent}
+              activePeriod={aralPeriod}
+            />
+          </div>
         ) : null}
 
         {activeTab === "outcomes" ? (
@@ -820,6 +837,7 @@ export default function AdminAralMonitoringDashboard() {
                 students={deduplicatedStudents}
                 onViewStudent={setSelectedStudent}
                 outcomeFilter={outcomeFilter}
+                activePeriod={aralPeriod}
               />
             )}
           </div>

@@ -4,8 +4,6 @@ import { motion } from "framer-motion";
 import AdminAcademicAnalytics from "@/components/dashboard/AdminAcademicAnalytics";
 import Header from "@/components/dashboard/Header";
 import LoadingSkeleton from "@/components/dashboard/LoadingSkeleton";
-import AttendanceMonitoringPanel from "@/components/attendance/AttendanceMonitoringPanel";
-import DeferredMount from "@/components/shared/DeferredMount";
 import PageHelp from "@/components/shared/PageHelp";
 import GuidedTour from "@/components/shared/GuidedTour";
 import { AlertCircle, RefreshCw } from "lucide-react";
@@ -79,11 +77,25 @@ export default function DashboardPage() {
   }
 
   const stats = data?.stats ?? [];
-  const academicPerformance = data?.academicPerformance ?? [];
-  const riskDistribution = data?.riskDistribution ?? [];
   const weakSubjects = data?.weakSubjects ?? [];
   const recentActivity = data?.recentActivity ?? [];
-  const priorityLearners = data?.priorityLearners ?? [];
+  const supportByGrade = data?.supportByGrade ?? [];
+  const subjectBands = data?.subjectBands ?? [];
+  const subjectUnassignedCount = data?.subjectUnassignedCount ?? 0;
+  const gradeSectionTree = data?.gradeSectionTree ?? [];
+  const termTrends = data?.termTrends ?? [];
+  const watchSections = data?.watchSections ?? [];
+  const pendingAralReferrals = data?.pendingAralReferrals ?? 0;
+  const pendingLessonPlans = data?.pendingLessonPlans ?? 0;
+  const aralPipeline = data?.aralPipeline ?? {
+    pending: 0,
+    waiting: 0,
+    active: 0,
+    completed: 0,
+  };
+  const aralAttention = data?.aralAttention ?? {
+    unassignedFacilitator: 0,
+  };
 
   return (
     <motion.div
@@ -93,16 +105,16 @@ export default function DashboardPage() {
       className="pb-5"
     >
       <Header
-        description={data?.welcomeDescription}
+        description="Here is what needs your attention today."
         controls={
           <PageHelp
-            summary="School overview of academic risk and attendance (separate modules)."
+            summary="School overview of learners needing support (ECR grades only)."
             steps={[
-              "Review the four summary cards for learner counts and risk.",
-              "Use Summary / Charts / By Level / Breakdown tabs for details.",
+              "Start with Needs Your Attention for items requiring action.",
+              "Use Academic Overview / ARAL Overview / Progress Over Time for the school picture.",
               "Risk and recommendations use ECR grades only — not attendance.",
               "Attendance snapshot below is from SF2 archive or daily records; open Attendance Monitoring for full tools.",
-              "Click a risk card or filter to open the learner breakdown.",
+              "Click a card action to open learners, sections, or reviews.",
             ]}
           />
         }
@@ -113,40 +125,19 @@ export default function DashboardPage() {
       <AdminAcademicAnalytics
         schoolYear={data?.schoolYear}
         stats={stats}
-        academicPerformance={academicPerformance}
-        riskDistribution={riskDistribution}
         weakSubjects={weakSubjects}
         recentActivity={recentActivity}
-        priorityLearners={priorityLearners}
+        supportByGrade={supportByGrade}
+        subjectBands={subjectBands}
+        subjectUnassignedCount={subjectUnassignedCount}
+        gradeSectionTree={gradeSectionTree}
+        termTrends={termTrends}
+        watchSections={watchSections}
+        pendingAralReferrals={pendingAralReferrals}
+        pendingLessonPlans={pendingLessonPlans}
+        aralPipeline={aralPipeline}
+        aralAttention={aralAttention}
       />
-
-      <div className="mt-2 border-t border-slate-100 pt-2">
-        <DeferredMount
-          delayMs={100}
-          fallback={
-            <p className="py-3 text-center text-[12px] text-slate-400">
-              Loading attendance analytics…
-            </p>
-          }
-        >
-          <AttendanceMonitoringPanel
-            showUpload={false}
-            compact
-            linkHref="/attendance"
-            linkLabel="Attendance →"
-          />
-        </DeferredMount>
-        <p className="mt-1.5 text-[10px] text-slate-400">
-          Upload SF2 files and manage monthly reports on{" "}
-          <a
-            href="/attendance"
-            className="font-semibold text-cnhs-green-dark hover:underline"
-          >
-            Attendance Monitoring
-          </a>
-          .
-        </p>
-      </div>
     </motion.div>
   );
 }

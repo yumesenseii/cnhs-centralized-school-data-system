@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { User } from "lucide-react";
+import { ArrowLeft, User } from "lucide-react";
 import ForgotPasswordModal from "@/components/auth/ForgotPasswordModal";
 import HelpFooter from "@/components/auth/HelpFooter";
 import LoginButton from "@/components/auth/LoginButton";
@@ -137,6 +138,14 @@ export default function LoginForm() {
         className="form-card mx-auto w-full max-w-[360px] rounded-2xl border border-slate-100 bg-white p-6 shadow-[0_18px_40px_rgba(15,23,42,0.08)] sm:p-7"
       >
         <header className="portal-form__header mb-6">
+          <Link
+            href="/"
+            aria-label="Back to Home"
+            className="mb-5 inline-flex items-center gap-1.5 text-[12px] font-semibold text-cnhs-green-dark/80 transition-colors hover:text-cnhs-green-dark hover:underline"
+          >
+            <ArrowLeft size={13} aria-hidden="true" />
+            Back to Home
+          </Link>
           <h2 className="text-[28px] font-bold tracking-[-0.03em] text-[#174D37]">
             {form.title}
           </h2>
