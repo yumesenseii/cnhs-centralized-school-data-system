@@ -1,54 +1,33 @@
 "use client";
 
 import { motion } from "framer-motion";
-import {
-  Archive,
-  CalendarDays,
-  CheckCircle2,
-  Layers3,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const icons = {
-  layers: Layers3,
-  check: CheckCircle2,
-  archive: Archive,
-  calendar: CalendarDays,
-};
-
+// Reference style: AdminMonitoringExecutiveSummary — white card, colored
+// value text only (no icon tiles).
 const tones = {
-  green: "bg-green-50 text-cnhs-green-dark",
-  teal: "bg-teal-50 text-teal-600",
-  slate: "bg-slate-100 text-slate-600",
-  blue: "bg-sky-50 text-sky-600",
+  green: "text-emerald-700",
+  teal: "text-teal-700",
+  slate: "text-slate-900",
+  blue: "text-blue-700",
 };
 
 export default function SectionSummaryCards({ cards }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {cards.map((card) => {
-        const Icon = icons[card.icon] ?? Layers3;
-
         return (
           <motion.section
             key={card.id}
             whileHover={{ y: -2 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
-            className="flex min-h-[72px] items-center gap-4 rounded-xl border border-slate-100 bg-white p-3 shadow-[0_6px_16px_rgba(15,23,42,0.04)] transition-shadow hover:shadow-[0_12px_30px_rgba(15,23,42,0.08)]"
+            className="flex min-h-[72px] items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-xs transition-shadow hover:shadow-[0_12px_30px_rgba(15,23,42,0.08)]"
           >
-            <span
-              className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-full",
-                tones[card.tone] ?? tones.green
-              )}
-            >
-              <Icon size={18} strokeWidth={1.8} />
-            </span>
             <span>
-              <span className="block text-2xl font-semibold leading-none tracking-[-0.03em] text-slate-900">
+              <span className={cn("block text-2xl font-bold leading-none tracking-tight", tones[card.tone] ?? tones.green)}>
                 {card.count}
               </span>
-              <span className="mt-1.5 block text-[11px] font-medium text-slate-500">
+              <span className="mt-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
                 {card.label}
               </span>
             </span>

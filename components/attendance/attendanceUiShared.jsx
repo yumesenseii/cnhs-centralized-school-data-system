@@ -2,6 +2,20 @@
 
 import { cn } from "@/lib/utils";
 
+// Reference style: AdminMonitoringExecutiveSummary — white card, colored
+// value text only. Call-site `tone` bg classes map to value text colors,
+// so existing callers need no changes.
+const TONE_VALUE = {
+  "bg-green-50": "text-emerald-700",
+  "bg-sky-50": "text-blue-700",
+  "bg-orange-50": "text-amber-800",
+  "bg-red-50": "text-red-700",
+  "bg-amber-50": "text-amber-800",
+  "bg-violet-50": "text-violet-700",
+  "bg-slate-100": "text-slate-900",
+  "bg-slate-50": "text-slate-900",
+};
+
 export function fmtAttendance(n, suffix = "") {
   if (n === null || n === undefined || Number.isNaN(Number(n))) return "—";
   const v = Number(n);
@@ -13,26 +27,19 @@ export function AttendanceKpi({
   label,
   value,
   hint,
-  tone = "bg-slate-50 text-slate-500",
+  tone = "bg-slate-50",
 }) {
   return (
-    <div className="relative min-w-0 rounded-xl border border-slate-100 bg-white px-3 py-2.5 shadow-[0_4px_12px_rgba(15,23,42,0.03)]">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-slate-400">
+    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
         {label}
       </p>
-      <p className="mt-1 text-xl font-semibold tracking-[-0.03em] text-slate-900">
+      <p className={cn("mt-1 text-2xl font-bold leading-none tracking-tight", TONE_VALUE[tone] ?? TONE_VALUE["bg-slate-50"])}>
         {value ?? "—"}
       </p>
       {hint ? (
-        <p className="mt-0.5 truncate text-[10px] text-slate-400">{hint}</p>
+        <p className="mt-1 truncate text-[11px] text-slate-400">{hint}</p>
       ) : null}
-      <span
-        className={cn(
-          "absolute right-2 top-2 h-6 w-6 rounded-md opacity-80",
-          tone
-        )}
-        aria-hidden
-      />
     </div>
   );
 }

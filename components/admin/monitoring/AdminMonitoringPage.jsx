@@ -59,7 +59,17 @@ const MONITORING_TABS = [
   { id: "class_reports", label: "Class Report Files" },
 ];
 
-function StatCard({ label, value, icon: Icon, tone, alert, onClick, hint }) {
+// Reference style: AdminMonitoringExecutiveSummary — white card, colored
+// value text only (no icon tiles).
+const STAT_VALUE_TONES = {
+  red: "text-red-700",
+  amber: "text-amber-800",
+  blue: "text-blue-700",
+  green: "text-emerald-700",
+  slate: "text-slate-900",
+};
+
+function StatCard({ label, value, tone, alert, onClick, hint }) {
   const clickable = typeof onClick === "function";
   const Comp = clickable ? "button" : "div";
   return (
@@ -68,7 +78,7 @@ function StatCard({ label, value, icon: Icon, tone, alert, onClick, hint }) {
       onClick={onClick}
       title={hint}
       className={cn(
-        "relative flex min-w-0 w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2.5 text-left shadow-[0_4px_12px_rgba(15,23,42,0.03)] dark:border-white/5 dark:bg-[var(--card)] dark:shadow-none",
+        "relative block min-w-0 w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-xs dark:border-white/5 dark:bg-[var(--card)] dark:shadow-none",
         clickable &&
           "cursor-pointer transition-colors hover:border-cnhs-green/40 hover:bg-cnhs-green-soft/30 dark:hover:border-cnhs-green/25 dark:hover:bg-white/[0.04]"
       )}
@@ -76,20 +86,12 @@ function StatCard({ label, value, icon: Icon, tone, alert, onClick, hint }) {
       {alert ? (
         <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
       ) : null}
-      <span
-        className={cn(
-          "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
-          tone
-        )}
-      >
-        <Icon size={13} strokeWidth={1.8} />
-      </span>
       <div className="min-w-0">
-        <p className="text-base font-semibold leading-none tracking-[-0.03em] text-slate-900 sm:text-lg">
-          {value}
-        </p>
-        <p className="mt-0.5 truncate text-[10px] font-semibold text-slate-600">
+        <p className="truncate text-[10px] font-bold uppercase tracking-wider text-slate-500">
           {label}
+        </p>
+        <p className={cn("mt-1 text-2xl font-bold leading-none tracking-tight", STAT_VALUE_TONES[tone] ?? STAT_VALUE_TONES.slate)}>
+          {value}
         </p>
       </div>
     </Comp>

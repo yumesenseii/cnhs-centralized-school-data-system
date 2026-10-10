@@ -676,10 +676,10 @@ export default function AdminAralMonitoringDashboard() {
             <p className="mt-1 text-2xl font-bold tabular-nums text-amber-800">
               {aralKpi.awaitingReview}
             </p>
-            <p className="mt-0.5 text-[11px] text-slate-500">
+            <p className="mt-0.5 text-[11px] text-slate-400">
               Teacher referrals needing a Principal decision
             </p>
-            <span className="mt-2 inline-flex items-center gap-1 rounded-lg bg-cnhs-green-dark px-2.5 py-1 text-[11px] font-semibold text-white">
+            <span className="mt-2 inline-flex items-center gap-1 rounded-lg border border-cnhs-green/40 px-2.5 py-1 text-[11px] font-semibold text-cnhs-green-dark">
               Review
             </span>
           </button>
@@ -695,10 +695,10 @@ export default function AdminAralMonitoringDashboard() {
             <p className="mt-1 text-2xl font-bold tabular-nums text-slate-800">
               {aralKpi.unassignedFacilitator}
             </p>
-            <p className="mt-0.5 text-[11px] text-slate-500">
+            <p className="mt-0.5 text-[11px] text-slate-400">
               Approved learners without an assigned facilitator
             </p>
-            <span className="mt-2 inline-flex items-center gap-1 rounded-lg bg-cnhs-green-dark px-2.5 py-1 text-[11px] font-semibold text-white">
+            <span className="mt-2 inline-flex items-center gap-1 rounded-lg border border-cnhs-green/40 px-2.5 py-1 text-[11px] font-semibold text-cnhs-green-dark">
               Assign
             </span>
           </button>
@@ -714,10 +714,10 @@ export default function AdminAralMonitoringDashboard() {
             <p className="mt-1 text-2xl font-bold tabular-nums text-slate-800">
               {aralKpi.assessmentDue}
             </p>
-            <p className="mt-0.5 text-[11px] text-slate-500">
+            <p className="mt-0.5 text-[11px] text-slate-400">
               Learners waiting for the current assessment
             </p>
-            <span className="mt-2 inline-flex items-center gap-1 rounded-lg bg-cnhs-green-dark px-2.5 py-1 text-[11px] font-semibold text-white">
+            <span className="mt-2 inline-flex items-center gap-1 rounded-lg border border-cnhs-green/40 px-2.5 py-1 text-[11px] font-semibold text-cnhs-green-dark">
               View
             </span>
           </button>
@@ -733,7 +733,7 @@ export default function AdminAralMonitoringDashboard() {
             <p className="mt-1 text-2xl font-bold tabular-nums text-blue-800">
               {aralKpi.activeIntervention}
             </p>
-            <p className="mt-0.5 text-[11px] text-slate-500">
+            <p className="mt-0.5 text-[11px] text-slate-400">
               Learners currently receiving ARAL support
             </p>
             <span className="mt-2 inline-flex items-center gap-1 rounded-lg bg-cnhs-green-dark px-2.5 py-1 text-[11px] font-semibold text-white transition-colors">

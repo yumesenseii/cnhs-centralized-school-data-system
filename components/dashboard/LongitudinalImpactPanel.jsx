@@ -2,17 +2,12 @@
 
 import { useEffect, useState } from "react";
 import {
-  TrendingDown,
-  TrendingUp,
-  Award,
-  Users,
   BookOpen,
   ArrowRight,
   ShieldCheck,
   BarChart2,
   Calendar,
   CheckCircle2,
-  Layers,
 } from "lucide-react";
 import {
   CNHS_POPULATION_BASELINE,
@@ -70,17 +65,14 @@ export default function LongitudinalImpactPanel({ schoolYear = "SY 2026-2027" })
   return (
     <div className="mt-3 space-y-3">
       {/* 1. Header Banner */}
-      <div className="rounded-xl border border-cnhs-green/20 bg-gradient-to-r from-cnhs-green-soft/50 via-white to-emerald-50/40 p-3.5 shadow-sm">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-cnhs-green-dark text-white shadow-sm">
-              <Layers size={18} />
-            </span>
             <div>
               <h3 className="text-[13px] font-bold text-slate-900">
                 Academic Intervention Pathways & Longitudinal Tracking
               </h3>
-              <p className="text-[11px] text-slate-600">
+              <p className="text-[11px] text-slate-500">
                 Tracking academic risk monitoring, ARAL Program (RA 12028), and Classroom Remediation progress over time.
               </p>
             </div>
@@ -95,67 +87,55 @@ export default function LongitudinalImpactPanel({ schoolYear = "SY 2026-2027" })
       {/* 2. Top Summary KPI Row */}
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
         {/* Total School Population Baseline */}
-        <div className="rounded-xl border border-slate-100 bg-white p-3 shadow-sm">
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-              Verified Population
-            </p>
-            <Users size={14} className="text-slate-400" />
-          </div>
-          <p className="mt-1 text-xl font-bold text-slate-900">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            Verified Population
+          </p>
+          <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
             {baseline.totalEnrollment}{" "}
             <span className="text-[11px] font-medium text-slate-500">Learners</span>
           </p>
-          <p className="mt-1 text-[10px] text-slate-500">
+          <p className="mt-1 text-[11px] text-slate-400">
             {baseline.totalMale} Male · {baseline.totalFemale} Female across Grades 7–10
           </p>
         </div>
 
         {/* ARAL Official Benchmark Outcome */}
-        <div className="rounded-xl border border-slate-100 bg-white p-3 shadow-sm">
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-              ARAL Overall Promotion
-            </p>
-            <Award size={14} className="text-purple-600" />
-          </div>
-          <p className="mt-1 text-xl font-bold text-purple-800">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            ARAL Overall Promotion
+          </p>
+          <p className="mt-1 text-2xl font-bold tracking-tight text-emerald-700">
             {benchmark.totalPercentage}%
           </p>
-          <p className="mt-1 text-[10px] text-slate-500">
+          <p className="mt-1 text-[11px] text-slate-400">
             {benchmark.totalPromoted} of {benchmark.totalEnd} completed learners promoted
           </p>
         </div>
 
         {/* Post-Intervention Recovery Rate */}
-        <div className="rounded-xl border border-slate-100 bg-white p-3 shadow-sm">
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-              Intervention Recovery Rate
-            </p>
-            <TrendingUp size={14} className="text-emerald-600" />
-          </div>
-          <p className="mt-1 text-xl font-bold text-slate-900">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            Intervention Recovery Rate
+          </p>
+          <p className="mt-1 text-2xl font-bold tracking-tight text-emerald-700">
             {trimesterData?.recoveryRate ?? 82}%
           </p>
-          <p className="mt-1 text-[10px] text-emerald-600">
+          <p className="mt-1 text-[11px] text-slate-400">
             Transitioned from High/Moderate to Low Risk post-intervention
           </p>
         </div>
 
         {/* Multi-Year Caseload Reduction */}
-        <div className="rounded-xl border border-slate-100 bg-white p-3 shadow-sm">
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-              Intervention Caseload Trend
-            </p>
-            <TrendingDown size={14} className="text-emerald-600" />
-          </div>
-          <p className="mt-1 text-xl font-bold text-emerald-700">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            Intervention Caseload Trend
+          </p>
+          <p className="mt-1 text-2xl font-bold tracking-tight text-emerald-700">
             -41.8%{" "}
             <span className="text-[11px] font-medium text-slate-500">over 3 SYs</span>
           </p>
-          <p className="mt-1 text-[10px] text-slate-500">
+          <p className="mt-1 text-[11px] text-slate-400">
             Caseload reduced from 148 (SY 24-25) to 86 (SY 26-27)
           </p>
         </div>
@@ -185,8 +165,8 @@ export default function LongitudinalImpactPanel({ schoolYear = "SY 2026-2027" })
 
       {/* Subtab 1: ARAL Cohort Benchmarks */}
       {activeSubtab === "cohort" ? (
-        <div className="rounded-xl border border-purple-100 bg-gradient-to-br from-purple-50/40 via-white to-slate-50/50 p-4 shadow-sm">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between border-b border-purple-100/70 pb-2.5">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-2.5">
             <div>
               <span className="inline-flex items-center gap-1 rounded-md bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-900">
                 Verified CNHS Sample Data Benchmark
@@ -383,20 +363,20 @@ export default function LongitudinalImpactPanel({ schoolYear = "SY 2026-2027" })
             </div>
 
             <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-lg border border-red-100 bg-red-50/60 p-2">
+              <div className="rounded-lg border border-slate-200 bg-white p-2 shadow-xs">
                 <p className="text-[10px] font-bold uppercase text-red-700">Term 1</p>
                 <p className="mt-1 text-sm font-bold text-slate-800">Early Warning</p>
-                <p className="text-[10px] text-slate-500">ECR Risk Baseline</p>
+                <p className="text-[10px] text-slate-400">ECR Risk Baseline</p>
               </div>
-              <div className="rounded-lg border border-amber-100 bg-amber-50/60 p-2">
+              <div className="rounded-lg border border-slate-200 bg-white p-2 shadow-xs">
                 <p className="text-[10px] font-bold uppercase text-amber-700">Term 2</p>
                 <p className="mt-1 text-sm font-bold text-slate-800">Mid-Cycle Review</p>
-                <p className="text-[10px] text-slate-500">Interventions Active</p>
+                <p className="text-[10px] text-slate-400">Interventions Active</p>
               </div>
-              <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-2">
+              <div className="rounded-lg border border-slate-200 bg-white p-2 shadow-xs">
                 <p className="text-[10px] font-bold uppercase text-emerald-700">Term 3</p>
                 <p className="mt-1 text-sm font-bold text-slate-800">End Assessment</p>
-                <p className="text-[10px] text-slate-500">Movement & Promotion</p>
+                <p className="text-[10px] text-slate-400">Movement & Promotion</p>
               </div>
             </div>
 

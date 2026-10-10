@@ -106,7 +106,7 @@ export default function LoginForm() {
         return;
       }
 
-      queueWelcomeToast(result.data.full_name);
+      queueWelcomeToast(result.data.full_name, result.data.role);
       router.replace(destination);
       router.refresh();
     } catch {

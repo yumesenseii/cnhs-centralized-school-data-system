@@ -9,10 +9,6 @@ import {
   Pencil,
   ChevronRight,
   Eye,
-  ClipboardList,
-  FileSearch,
-  LifeBuoy,
-  CalendarClock,
 } from "lucide-react";
 import LearnerName from "@/components/shared/LearnerName";
 import AppSelect from "@/components/shared/AppSelect";
@@ -262,20 +258,16 @@ export default function AralMonitoringSection({
       {/* 3. PRIMARY SUMMARY CARDS (Display only) */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
         {[
-          { id: "for_assessment", label: "For Assessment", count: metrics.forAssessmentCount, desc: "Awaiting baseline", icon: ClipboardList, tile: "bg-amber-50 text-amber-700 ring-amber-200/60", countText: "text-slate-900", descText: "text-slate-400" },
-          { id: "for_review", label: "For Review", count: metrics.forReviewCount, desc: "Screened candidates", icon: FileSearch, tile: "bg-sky-50 text-sky-700 ring-sky-200/60", countText: "text-slate-900", descText: "text-slate-400" },
-          { id: "active", label: "Active Intervention", count: metrics.activeCount, desc: "Currently in progress", icon: LifeBuoy, tile: "bg-blue-50 text-blue-700 ring-blue-200/60", countText: "text-blue-700", descText: "text-blue-600/80" },
-          { id: "assessment_due", label: "Assessment Due", count: metrics.assessmentDueCount, desc: "Midline or EOSY", icon: CalendarClock, tile: "bg-red-50 text-red-700 ring-red-200/60", countText: "text-red-700", descText: "text-red-600/80" },
+          { id: "for_assessment", label: "For Assessment", count: metrics.forAssessmentCount, desc: "Awaiting baseline", countText: "text-slate-900" },
+          { id: "for_review", label: "For Review", count: metrics.forReviewCount, desc: "Screened candidates", countText: "text-slate-900" },
+          { id: "active", label: "Active Intervention", count: metrics.activeCount, desc: "Currently in progress", countText: "text-blue-700" },
+          { id: "assessment_due", label: "Assessment Due", count: metrics.assessmentDueCount, desc: "Midline or EOSY", countText: "text-red-700" },
         ].map((tab) => {
-          const Icon = tab.icon;
           return (
           <div
             key={tab.id}
-            className="flex items-start gap-3.5 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5"
+            className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5"
           >
-            <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ring-1", tab.tile)}>
-              <Icon size={18} strokeWidth={1.9} />
-            </span>
             <span className="block min-w-0">
               <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 {tab.label}
@@ -286,7 +278,7 @@ export default function AralMonitoringSection({
               )}>
                 {tab.count}
               </span>
-              <span className={cn("mt-1.5 block text-[11px] leading-4", tab.descText)}>{tab.desc}</span>
+              <span className="mt-1.5 block text-[11px] leading-4 text-slate-400">{tab.desc}</span>
             </span>
           </div>
           );

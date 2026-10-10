@@ -70,7 +70,7 @@ export default function FirstLoginForm() {
         return;
       }
 
-      queueWelcomeToast(result.data?.full_name);
+      queueWelcomeToast(result.data?.full_name, result.data?.role);
       router.replace(resolveHome(result.data?.role));
       router.refresh();
     } catch {

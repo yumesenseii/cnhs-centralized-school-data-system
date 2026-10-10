@@ -112,22 +112,22 @@ export default function AttendanceMonitoringPanel({
         <DenseKpi
           label={labelAverage}
           value={fmtAttendance(analytics.avgAda)}
-          tone="bg-green-50"
+          tone="text-emerald-700"
         />
         <DenseKpi
           label={labelRate}
           value={fmtAttendance(analytics.avgPa, "%")}
-          tone="bg-sky-50"
+          tone="text-blue-700"
         />
         <DenseKpi
           label={labelAbsences}
           value={fmtAttendance(analytics.totalAbsences)}
-          tone="bg-orange-50"
+          tone="text-amber-800"
         />
         <DenseKpi
           label={labelFlagged}
           value={analytics.flaggedSections.length}
-          tone="bg-red-50"
+          tone="text-red-700"
         />
       </div>
     </section>
@@ -136,16 +136,11 @@ export default function AttendanceMonitoringPanel({
 
 function DenseKpi({ label, value, tone }) {
   return (
-    <div
-      className={cn(
-        "flex min-w-0 items-center justify-between gap-2 rounded-lg border border-slate-100 px-2.5 py-1.5",
-        tone
-      )}
-    >
-      <p className="truncate text-[9px] font-semibold uppercase tracking-[0.06em] text-slate-500">
+    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+      <p className="truncate text-[10px] font-bold uppercase tracking-wider text-slate-500">
         {label}
       </p>
-      <p className="text-[15px] font-semibold tabular-nums tracking-tight text-slate-900">
+      <p className={cn("mt-1 text-2xl font-bold leading-none tracking-tight tabular-nums", tone ?? "text-slate-900")}>
         {value ?? "—"}
       </p>
     </div>

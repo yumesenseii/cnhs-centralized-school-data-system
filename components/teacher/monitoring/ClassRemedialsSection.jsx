@@ -8,8 +8,6 @@ import {
   TrendingDown,
   Minus,
   ClipboardList,
-  Siren,
-  LifeBuoy,
   Eye,
   Check,
 } from "lucide-react";
@@ -403,10 +401,7 @@ export default function ClassRemedialsSection({
     <div className="space-y-4">
       {/* 4 PRIMARY CARDS: FOR REVIEW, HIGH PRIORITY, UNDER SUPPORT, IMPROVING */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
-        <div className="flex items-start gap-3.5 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-700 ring-1 ring-amber-200/60">
-            <ClipboardList size={18} strokeWidth={1.9} />
-          </span>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               For Review
@@ -418,10 +413,7 @@ export default function ClassRemedialsSection({
           </div>
         </div>
 
-        <div className="flex items-start gap-3.5 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-700 ring-1 ring-red-200/60">
-            <Siren size={18} strokeWidth={1.9} />
-          </span>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               High Priority
@@ -429,14 +421,11 @@ export default function ClassRemedialsSection({
             <p className="mt-1 text-[26px] font-bold leading-none tracking-tight text-red-700">
               {highPriorityCount}
             </p>
-            <p className="mt-1.5 text-[11px] leading-4 text-red-600/80">Immediate attention needed</p>
+            <p className="mt-1.5 text-[11px] leading-4 text-slate-400">Immediate attention needed</p>
           </div>
         </div>
 
-        <div className="flex items-start gap-3.5 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 ring-1 ring-blue-200/60">
-            <LifeBuoy size={18} strokeWidth={1.9} />
-          </span>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               Under Support
@@ -444,14 +433,11 @@ export default function ClassRemedialsSection({
             <p className="mt-1 text-[26px] font-bold leading-none tracking-tight text-blue-700">
               {underSupportCount}
             </p>
-            <p className="mt-1.5 text-[11px] leading-4 text-blue-600/80">Active remediation / intervention</p>
+            <p className="mt-1.5 text-[11px] leading-4 text-slate-400">Active remediation / intervention</p>
           </div>
         </div>
 
-        <div className="flex items-start gap-3.5 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60">
-            <TrendingUp size={18} strokeWidth={1.9} />
-          </span>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               Improving
@@ -459,7 +445,7 @@ export default function ClassRemedialsSection({
             <p className="mt-1 text-[26px] font-bold leading-none tracking-tight text-emerald-700">
               {improvingCount}
             </p>
-            <p className="mt-1.5 text-[11px] leading-4 text-emerald-600/80">Positive performance trend</p>
+            <p className="mt-1.5 text-[11px] leading-4 text-slate-400">Positive performance trend</p>
           </div>
         </div>
       </div>

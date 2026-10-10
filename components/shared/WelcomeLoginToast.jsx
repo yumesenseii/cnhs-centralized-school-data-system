@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, X } from "lucide-react";
 import { consumeWelcomeToast } from "@/lib/auth/welcomeToast";
@@ -8,25 +8,55 @@ import { cn } from "@/lib/utils";
 
 const DURATION_MS = 5_000;
 
+// Roles greeted as the school principal (admin office accounts).
+const PRINCIPAL_ROLES = new Set([
+  "admin",
+  "administrator",
+  "principal",
+  "school principal",
+  "head teacher",
+  "head_teacher",
+]);
+
+function greetingFor(role, name) {
+  if (PRINCIPAL_ROLES.has(String(role ?? "").trim().toLowerCase())) {
+    return "Welcome, Principal!";
+  }
+  return `Welcome, ${name}!`;
+}
+
 /**
- * Top-right welcome toast after login. Shows once for ~5 seconds.
- * Same copy for all roles; follows light/dark theme.
+ * Top-right welcome toast after login. Shows once and auto-closes
+ * after 5 seconds unless dismissed manually.
+ * Admin accounts are greeted as Principal; follows light/dark theme.
  */
 export default function WelcomeLoginToast() {
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
+  const [title, setTitle] = useState("");
   const [mounted, setMounted] = useState(false);
+  // StrictMode runs mount effects twice in dev; consume the one-shot
+  // payload only on the first pass.
+  const consumedRef = useRef(false);
 
   useEffect(() => {
     setMounted(true);
+    if (consumedRef.current) return;
+    consumedRef.current = true;
     const payload = consumeWelcomeToast();
-    if (!payload?.name) return undefined;
+    if (!payload?.name) return;
 
-    setName(payload.name);
+    setTitle(greetingFor(payload.role, payload.name));
     setOpen(true);
+  }, []);
+
+  // Auto-close 5 seconds after the toast opens. Kept separate from the
+  // consume effect so a StrictMode cleanup can never leave the toast
+  // open with no live timer (cleanup clears, re-run re-schedules).
+  useEffect(() => {
+    if (!open) return undefined;
     const timer = window.setTimeout(() => setOpen(false), DURATION_MS);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [open ]);
 
   if (!mounted || !open) return null;
 
@@ -45,7 +75,7 @@ export default function WelcomeLoginToast() {
       </span>
       <div className="min-w-0 flex-1 pt-0.5">
         <p className="text-[13px] font-semibold tracking-tight text-slate-900 dark:text-card-foreground">
-          Welcome, {name}!
+          {title}
         </p>
         <p className="mt-0.5 text-[11px] leading-snug text-slate-500 dark:text-muted-foreground">
           You&apos;ve successfully logged in.

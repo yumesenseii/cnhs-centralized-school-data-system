@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   AlertCircle,
-  AlertTriangle,
   ArrowRight,
   Award,
   Bell,
@@ -243,15 +242,12 @@ export default function StudentDashboard() {
           <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50/40 p-2.5 sm:p-3 dark:border-white/5 dark:bg-white/[0.03]">
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
               {/* CARD 1: OVERALL AVERAGE */}
-              <div className="flex items-center gap-3 rounded-xl border border-slate-200/90 bg-white p-3 shadow-[0_4px_12px_rgba(15,23,42,0.03)] sm:p-3.5 dark:border-white/10 dark:bg-card">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-cnhs-green-dark dark:bg-emerald-950/40 dark:text-emerald-300">
-                  <Award size={18} strokeWidth={1.8} />
-                </span>
+              <div className="block rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-card">
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
                     Overall Average
                   </p>
-                  <p className="mt-0.5 text-xl font-bold tracking-tight text-cnhs-green-dark dark:text-emerald-300 sm:text-2xl">
+                  <p className="mt-0.5 text-xl font-bold tracking-tight text-emerald-700 dark:text-emerald-300 sm:text-2xl">
                     {average !== null ? average : "—"}
                   </p>
                   <p className="mt-0.5 truncate text-[10px] font-medium text-slate-400 dark:text-slate-500">
@@ -263,10 +259,7 @@ export default function StudentDashboard() {
               </div>
 
               {/* CARD 2: RECORDED SUBJECTS */}
-              <div className="flex items-center gap-3 rounded-xl border border-slate-200/90 bg-white p-3 shadow-[0_4px_12px_rgba(15,23,42,0.03)] sm:p-3.5 dark:border-white/10 dark:bg-card">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
-                  <BookOpen size={18} strokeWidth={1.8} />
-                </span>
+              <div className="block rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-card">
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
                     Recorded Subjects
@@ -283,16 +276,7 @@ export default function StudentDashboard() {
               </div>
 
               {/* CARD 3: SUBJECTS BELOW 75 */}
-              <div className="flex items-center gap-3 rounded-xl border border-slate-200/90 bg-white p-3 shadow-[0_4px_12px_rgba(15,23,42,0.03)] sm:p-3.5 dark:border-white/10 dark:bg-card">
-                <span
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                    below75Count !== null && below75Count > 0
-                      ? "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300"
-                      : "bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"
-                  }`}
-                >
-                  <AlertTriangle size={18} strokeWidth={1.8} />
-                </span>
+              <div className="block rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-card">
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
                     Subjects Below 75
@@ -300,7 +284,7 @@ export default function StudentDashboard() {
                   <p
                     className={`mt-0.5 text-xl font-bold tracking-tight sm:text-2xl ${
                       below75Count !== null && below75Count > 0
-                        ? "text-red-600 dark:text-red-400"
+                        ? "text-red-700 dark:text-red-400"
                         : "text-slate-900 dark:text-white"
                     }`}
                   >
@@ -315,10 +299,7 @@ export default function StudentDashboard() {
               </div>
 
               {/* CARD 4: ATTENDANCE RATE */}
-              <div className="flex items-center gap-3 rounded-xl border border-slate-200/90 bg-white p-3 shadow-[0_4px_12px_rgba(15,23,42,0.03)] sm:p-3.5 dark:border-white/10 dark:bg-card">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-cnhs-green-dark dark:bg-emerald-950/40 dark:text-emerald-300">
-                  <CalendarCheck size={18} strokeWidth={1.8} />
-                </span>
+              <div className="block rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-card">
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
                     Attendance Rate

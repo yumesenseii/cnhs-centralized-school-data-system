@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, CalendarCheck, Clock, TrendingUp, Users } from "lucide-react";
+import { ArrowRight, CalendarCheck } from "lucide-react";
 
 export default function AttendanceOverview({ summary }) {
   const avgPa = summary?.avgPa ?? "—";
@@ -32,52 +32,43 @@ export default function AttendanceOverview({ summary }) {
       </div>
 
       <div className="grid grid-cols-1 divide-y divide-slate-100 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-        <div className="flex items-center gap-3.5 p-4 sm:p-5">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cnhs-green-soft text-cnhs-green-dark">
-            <TrendingUp size={18} strokeWidth={2} />
-          </span>
+        <div className="p-4 sm:p-5">
           <div>
-            <p className="text-[11px] font-medium text-slate-500">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
               Average Attendance
             </p>
-            <p className="text-xl font-semibold tracking-tight text-slate-900">
+            <p className="mt-1 text-2xl font-bold tracking-tight text-emerald-700">
               {avgPa}
             </p>
-            <p className="text-[10px] text-slate-400">
+            <p className="mt-1 text-[11px] text-slate-400">
               Overall percentage
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3.5 p-4 sm:p-5">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
-            <Users size={18} strokeWidth={2} />
-          </span>
+        <div className="p-4 sm:p-5">
           <div>
-            <p className="text-[11px] font-medium text-slate-500">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
               Learners With Attendance Issues
             </p>
-            <p className="text-xl font-semibold tracking-tight text-slate-900">
+            <p className="mt-1 text-2xl font-bold tracking-tight text-amber-800">
               {issuesCount}
             </p>
-            <p className="text-[10px] text-slate-400">
+            <p className="mt-1 text-[11px] text-slate-400">
               Flagged for consecutive absences
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3.5 p-4 sm:p-5">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-700">
-            <Clock size={18} strokeWidth={2} />
-          </span>
+        <div className="p-4 sm:p-5">
           <div>
-            <p className="text-[11px] font-medium text-slate-500">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
               Average Daily Attendance
             </p>
-            <p className="text-xl font-semibold tracking-tight text-slate-900">
+            <p className="mt-1 text-2xl font-bold tracking-tight text-blue-700">
               {avgAda}
             </p>
-            <p className="text-[10px] text-slate-400">
+            <p className="mt-1 text-[11px] text-slate-400">
               Mean learners present per day
             </p>
           </div>
