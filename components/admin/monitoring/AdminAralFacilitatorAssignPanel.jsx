@@ -42,6 +42,16 @@ function sectionDisplayName(gradeSection, grade) {
   return stripped || gradeSection || grade || "Section";
 }
 
+function formatFullSectionName(grade, rawSection) {
+  const stripped = String(rawSection || "")
+    .replace(/^Grade\s+\d+\s*[—–-]?\s*/i, "")
+    .trim();
+  const cleanSection = stripped || rawSection || "Section";
+  return grade && !cleanSection.toLowerCase().startsWith(grade.toLowerCase())
+    ? `${grade} – ${cleanSection}`
+    : cleanSection;
+}
+
 function gradeSortKey(grade) {
   const n = Number(String(grade).replace(/\D/g, ""));
   return Number.isFinite(n) ? n : 999;
@@ -151,7 +161,10 @@ function buildSectionGroups(aralRows = []) {
       return {
         gradeSection,
         grade,
-        sectionName: sectionDisplayName(gradeSection, grade),
+        sectionName: formatFullSectionName(
+          grade,
+          sectionDisplayName(gradeSection, grade)
+        ),
         learners,
         unassigned,
         count: learners.length,
@@ -196,6 +209,7 @@ export default function AdminAralFacilitatorAssignPanel({
   students = [],
   onChanged,
   absentIds = new Set(),
+  onViewStudent,
 }) {
   const aralRows = useMemo(
     () =>
@@ -719,12 +733,33 @@ export default function AdminAralFacilitatorAssignPanel({
                                   className="border-t border-slate-100 bg-white hover:bg-slate-50/70"
                                 >
                                   <td className="px-2.5 py-2">
-                                    <p className="text-[12px] font-semibold text-slate-800">
-                                      {learner.name}
-                                    </p>
-                                    <p className="text-[10px] text-slate-400">
-                                      {learner.studentNumber}
-                                    </p>
+                                    {typeof onViewStudent === "function" ? (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          onViewStudent(
+                                            learner.sourceRows?.[0] || learner
+                                          )
+                                        }
+                                        className="cursor-pointer text-left transition hover:text-cnhs-green-dark"
+                                      >
+                                        <p className="text-[12px] font-semibold text-slate-800 hover:text-cnhs-green-dark">
+                                          {learner.name}
+                                        </p>
+                                        <p className="text-[10px] text-slate-400">
+                                          {learner.studentNumber}
+                                        </p>
+                                      </button>
+                                    ) : (
+                                      <>
+                                        <p className="text-[12px] font-semibold text-slate-800">
+                                          {learner.name}
+                                        </p>
+                                        <p className="text-[10px] text-slate-400">
+                                          {learner.studentNumber}
+                                        </p>
+                                      </>
+                                    )}
                                   </td>
                                   <td className="px-2.5 py-2">
                                     <div className="flex flex-wrap gap-1">

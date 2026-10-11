@@ -60,8 +60,13 @@ export default function AppSelect({
   const triggerRef = useRef(null);
   const listRef = useRef(null);
   const reactId = useId();
-  const listId = `${reactId}-list`;
-  const triggerId = id || `${reactId}-trigger`;
+  const baseId =
+    id ||
+    (label
+      ? `app-select-${String(label).toLowerCase().replace(/[^a-z0-9]+/g, "-")}`
+      : reactId);
+  const listId = `${baseId}-list`;
+  const triggerId = `${baseId}-trigger`;
   const selectedLabel = findLabel(items, selectedValue, placeholder);
   const selectedIndex = items.findIndex((item) => item.value === selectedValue);
   const pill = size === "pill";
@@ -253,7 +258,11 @@ export default function AppSelect({
   return (
     <div ref={rootRef} className={cn("relative min-w-0", className)}>
       {label ? (
-        <label htmlFor={triggerId} className="sr-only">
+        <label
+          htmlFor={triggerId}
+          className="sr-only"
+          suppressHydrationWarning
+        >
           {label}
         </label>
       ) : null}
@@ -268,6 +277,7 @@ export default function AppSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
+        suppressHydrationWarning
         onClick={() => {
           if (disabled) return;
           if (!open) {

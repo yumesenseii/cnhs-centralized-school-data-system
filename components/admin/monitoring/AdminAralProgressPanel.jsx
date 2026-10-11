@@ -166,6 +166,7 @@ export default function AdminAralProgressPanel({
   const [detailTab, setDetailTab] = useState("all");
   const [batchId, setBatchId] = useState(null);
   const [profileId, setProfileId] = useState(null);
+  const [batchLoading, setBatchLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [showNotesDrawer, setShowNotesDrawer] = useState(false);
@@ -381,7 +382,7 @@ export default function AdminAralProgressPanel({
                   >
                     {gradeNum || "G"}
                   </span>
-                  {group.sectionName}
+                  <span>{group.grade} – {group.sectionName}</span>
                   <span
                     className={cn(
                       "rounded-full px-1.5 py-0.2 text-[10px]",
@@ -411,7 +412,7 @@ export default function AdminAralProgressPanel({
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                    {activeSection.grade} — {activeSection.sectionName}
+                    {activeSection.grade} – {activeSection.sectionName}
                   </h3>
                   <span className="rounded-md bg-purple-50 px-2 py-0.5 text-[11px] font-bold text-purple-700 dark:bg-purple-500/10 dark:text-purple-300">
                     ARAL Monitoring Class
@@ -436,22 +437,26 @@ export default function AdminAralProgressPanel({
                     {sectionSummary.preCount} / {uniqueLearnersList.length}
                   </p>
                 </div>
-                <div className="rounded-lg border border-slate-200/80 bg-white px-3 py-1.5 text-center shadow-xs dark:border-white/10 dark:bg-white/5">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Mid-Year Done
-                  </p>
-                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    {sectionSummary.midCount} / {uniqueLearnersList.length}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-slate-200/80 bg-white px-3 py-1.5 text-center shadow-xs dark:border-white/10 dark:bg-white/5">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    End-of-Year
-                  </p>
-                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                    {sectionSummary.postCount} / {uniqueLearnersList.length}
-                  </p>
-                </div>
+                {showMidPhase ? (
+                  <div className="rounded-lg border border-slate-200/80 bg-white px-3 py-1.5 text-center shadow-xs dark:border-white/10 dark:bg-white/5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Mid-Year Done
+                    </p>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      {sectionSummary.midCount} / {uniqueLearnersList.length}
+                    </p>
+                  </div>
+                ) : null}
+                {showPostPhase ? (
+                  <div className="rounded-lg border border-slate-200/80 bg-white px-3 py-1.5 text-center shadow-xs dark:border-white/10 dark:bg-white/5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      End-of-Year
+                    </p>
+                    <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                      {sectionSummary.postCount} / {uniqueLearnersList.length}
+                    </p>
+                  </div>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => setShowNotesDrawer((prev) => !prev)}
@@ -553,15 +558,15 @@ export default function AdminAralProgressPanel({
                       <tr className="border-b border-slate-100 bg-slate-50/80 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-white/5 dark:bg-white/[0.03] dark:text-slate-400">
                         <th className="px-3 py-2.5">Learner</th>
                         <th className="px-3 py-2.5">Target Subject</th>
-                        <th className="px-3 py-2.5 text-center">Beginning (Baseline)</th>
+                        <th className="px-3 py-2.5 text-center">Beginning Assessment</th>
                         {showMidPhase ? (
                           <th className="px-3 py-2.5 text-center">Mid-Year</th>
                         ) : null}
                         {showPostPhase ? (
-                          <th className="px-3 py-2.5 text-center">End-of-Year (Exit)</th>
+                          <th className="px-3 py-2.5 text-center">End-of-Year</th>
                         ) : null}
                         <th className="px-3 py-2.5 text-center">Learning Progress</th>
-                        <th className="px-3 py-2.5 text-center">Intervention Status</th>
+                        <th className="px-3 py-2.5 text-center">ARAL Status</th>
                         <th className="px-3 py-2.5 text-right">Action</th>
                       </tr>
                     </thead>
@@ -600,8 +605,21 @@ export default function AdminAralProgressPanel({
                               className="transition-colors hover:bg-slate-50/70 dark:hover:bg-white/[0.02]"
                             >
                               <td className="px-3 py-2.5 font-medium text-slate-900 dark:text-slate-100">
-                                <p className="font-semibold">{learner.name}</p>
-                                <p className="text-[10px] text-slate-400">{learner.studentNumber}</p>
+                                {typeof onViewStudent === "function" ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => onViewStudent(learner)}
+                                    className="cursor-pointer text-left transition hover:text-cnhs-green-dark"
+                                  >
+                                    <p className="font-semibold">{learner.name}</p>
+                                    <p className="text-[10px] text-slate-400">{learner.studentNumber}</p>
+                                  </button>
+                                ) : (
+                                  <>
+                                    <p className="font-semibold">{learner.name}</p>
+                                    <p className="text-[10px] text-slate-400">{learner.studentNumber}</p>
+                                  </>
+                                )}
                               </td>
 
                               <td className="px-3 py-2.5">
@@ -621,7 +639,7 @@ export default function AdminAralProgressPanel({
                                     ) : null}
                                   </div>
                                 ) : (
-                                  <span className="text-[11px] text-slate-400">Pending</span>
+                                  <span className="text-[11px] text-slate-400">Waiting</span>
                                 )}
                               </td>
 
@@ -637,7 +655,7 @@ export default function AdminAralProgressPanel({
                               ) : null}
                             </div>
                           ) : (
-                            <span className="text-[11px] text-slate-400">Pending</span>
+                            <span className="text-[11px] text-slate-400">Waiting</span>
                           )}
                         </td>
                       ) : null}
@@ -656,7 +674,7 @@ export default function AdminAralProgressPanel({
                               ) : null}
                             </div>
                           ) : (
-                            <span className="text-[11px] text-slate-400">Pending</span>
+                            <span className="text-[11px] text-slate-400">Waiting</span>
                           )}
                         </td>
                       ) : null}
@@ -703,7 +721,7 @@ export default function AdminAralProgressPanel({
                                 <button
                                   type="button"
                                   onClick={() => onViewStudent?.(learner)}
-                                  className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                                  className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50 active:scale-95 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
                                 >
                                   <Eye size={12} />
                                   View
@@ -723,7 +741,7 @@ export default function AdminAralProgressPanel({
                       page={page}
                       totalPages={totalPages}
                       onPageChange={setPage}
-                      totalItems={filteredLearners.length}
+                      total={filteredLearners.length}
                       pageSize={PAGE_SIZE}
                     />
                   </div>

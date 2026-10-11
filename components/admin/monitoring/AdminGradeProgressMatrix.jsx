@@ -4,24 +4,23 @@ import { useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
-  BookOpen,
-  CheckCircle2,
-  ChevronRight,
-  Clock3,
-  GraduationCap,
+  ChevronLeft,
   Layers,
   Search,
-  UserCheck,
-  UserPlus,
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ARAL_APPROVAL_STATUS } from "@/lib/monitoring/aralApproval";
-import { isAralRecommended, isAralProgramLearner } from "@/lib/monitoring/aralProgress";
-import { RECOMMENDATION, RISK_LEVEL } from "@/lib/monitoring/recommendations";
+import { isAralRecommended } from "@/lib/monitoring/aralProgress";
+import {
+  MONITORING_STATUS,
+  RECOMMENDATION,
+  RISK_LEVEL,
+  normalizeRiskLevel,
+} from "@/lib/monitoring/recommendations";
 import TablePagination from "@/components/academic-records/TablePagination";
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 10;
 
 function parseGradeLevel(gradeSection, gradeLevel) {
   if (gradeLevel != null && gradeLevel !== "") {
@@ -47,25 +46,35 @@ function parseGradeSortKey(gradeStr) {
 
 export default function AdminGradeProgressMatrix({
   students = [],
+  dedupedStudents = [],
   classSummaries = [],
-  onNavigateTab,
   onViewStudent,
   schoolYear = "SY 2026-2027",
   quarter = "All Terms",
 }) {
   const [search, setSearch] = useState("");
-  const [selectedGradeFilter, setSelectedGradeFilter] = useState("All Grades");
+  const [selectedGradeFilter, setSelectedGradeFilter] = useState("All Sections");
   const [page, setPage] = useState(1);
+
+  // Drill-down section state
+  const [openedSectionKey, setOpenedSectionKey] = useState(null);
+  const [openedSectionSearch, setOpenedSectionSearch] = useState("");
+  const [openedSectionPage, setOpenedSectionPage] = useState(1);
+
+  // Use deduplicated learners to guarantee unique learner totals per section
+  const sourceLearners = dedupedStudents.length ? dedupedStudents : students;
 
   // Build matrix rows by Section
   const matrixData = useMemo(() => {
     const sectionsMap = new Map();
 
-    // Group students by section key
-    for (const student of students) {
+    for (const student of sourceLearners) {
       const rawSection = student.section || student.gradeSection || "Unassigned";
       const sectionName = parseCleanSectionName(rawSection);
-      const gradeLabel = parseGradeLevel(student.gradeSection, student.gradeLevel || student.grade);
+      const gradeLabel = parseGradeLevel(
+        student.gradeSection,
+        student.gradeLevel || student.grade
+      );
       const sectionKey = `${gradeLabel} — ${sectionName}`;
 
       if (!sectionsMap.has(sectionKey)) {
@@ -74,7 +83,6 @@ export default function AdminGradeProgressMatrix({
           grade: gradeLabel,
           sectionName,
           students: new Map(),
-          facilitatorNames: new Set(),
         });
       }
 
@@ -82,16 +90,6 @@ export default function AdminGradeProgressMatrix({
       const studentId = student.studentId || student.id;
       if (!sec.students.has(studentId)) {
         sec.students.set(studentId, student);
-      } else {
-        // Merge records for multiple subject enrollments
-        const existing = sec.students.get(studentId);
-        if (student.aralApprovalStatus) existing.aralApprovalStatus = student.aralApprovalStatus;
-        if (student.aralFacilitatorName) existing.aralFacilitatorName = student.aralFacilitatorName;
-        if (student.atRisk) existing.atRisk = true;
-      }
-
-      if (student.aralFacilitatorName && student.aralFacilitatorName !== "—") {
-        sec.facilitatorNames.add(student.aralFacilitatorName);
       }
     }
 
@@ -99,34 +97,51 @@ export default function AdminGradeProgressMatrix({
     for (const [sectionKey, sec] of sectionsMap.entries()) {
       const learnerList = Array.from(sec.students.values());
       const totalEnrolled = learnerList.length;
-      
-      const atRiskList = learnerList.filter((s) => s.atRisk || s.riskLevel === RISK_LEVEL.HIGH);
-      const aralCandidates = learnerList.filter((s) => isAralRecommended(s) || (s.aralEligible && s.belowPassing));
-      const pendingReview = learnerList.filter(
+
+      const immediateReviewList = learnerList.filter(
         (s) =>
-          s.aralApprovalStatus === ARAL_APPROVAL_STATUS.SUBMITTED ||
-          s.aralApprovalStatus === ARAL_APPROVAL_STATUS.SUGGESTED
+          normalizeRiskLevel(s.riskLevel) === RISK_LEVEL.HIGH ||
+          s.riskPriority === true
       );
-      const aralApproved = learnerList.filter((s) => s.aralApprovalStatus === ARAL_APPROVAL_STATUS.APPROVED || s.inAralProgram);
-      const classroomRemedial = learnerList.filter(
-        (s) => s.atRisk && !isAralRecommended(s) && s.recommendation !== RECOMMENDATION.ARAL
+      const needsMonitoringList = learnerList.filter(
+        (s) =>
+          normalizeRiskLevel(s.riskLevel) === RISK_LEVEL.MODERATE &&
+          !(
+            normalizeRiskLevel(s.riskLevel) === RISK_LEVEL.HIGH ||
+            s.riskPriority === true
+          )
+      );
+      const underSupportList = learnerList.filter(
+        (s) =>
+          s.recommendation === RECOMMENDATION.REMEDIATION ||
+          s.classroomRemedialRecommended ||
+          s.monitoringStatus === MONITORING_STATUS.ONGOING
       );
 
-      const facilitators = Array.from(sec.facilitatorNames);
-      const hasUnassignedFacilitator = aralApproved.some((s) => !s.aralFacilitatorTeacherId && !s.aralFacilitatorName);
+      const needingReviewCount =
+        immediateReviewList.length + needsMonitoringList.length;
+
+      let status = "On Track";
+      let statusTone = "green";
+      if (immediateReviewList.length > 0) {
+        status = "Needs Review";
+        statusTone = "amber";
+      } else if (underSupportList.length > 0 || needsMonitoringList.length > 0) {
+        status = "Under Support";
+        statusTone = "blue";
+      }
 
       rows.push({
         sectionKey,
         grade: sec.grade,
         sectionName: sec.sectionName,
         totalEnrolled,
-        atRiskCount: atRiskList.length,
-        aralCandidateCount: aralCandidates.length,
-        pendingReviewCount: pendingReview.length,
-        aralApprovedCount: aralApproved.length,
-        classroomRemedialCount: classroomRemedial.length,
-        facilitators,
-        hasUnassignedFacilitator,
+        immediateReviewCount: immediateReviewList.length,
+        needsMonitoringCount: needsMonitoringList.length,
+        needingReviewCount,
+        underSupportCount: underSupportList.length,
+        status,
+        statusTone,
         learners: learnerList,
       });
     }
@@ -139,67 +154,317 @@ export default function AdminGradeProgressMatrix({
     });
 
     return rows;
-  }, [students]);
+  }, [sourceLearners]);
 
-  // Distinct grades for filter pill
+  // Distinct grades for filter pills with section counts
   const availableGrades = useMemo(() => {
-    const set = new Set(matrixData.map((r) => r.grade));
-    return ["All Grades", ...Array.from(set).sort((a, b) => parseGradeSortKey(a) - parseGradeSortKey(b))];
+    const gradeCounts = new Map();
+    for (const r of matrixData) {
+      gradeCounts.set(r.grade, (gradeCounts.get(r.grade) || 0) + 1);
+    }
+
+    const distinct = Array.from(gradeCounts.keys()).sort(
+      (a, b) => parseGradeSortKey(a) - parseGradeSortKey(b)
+    );
+
+    return [
+      { label: "All Sections", count: matrixData.length },
+      ...distinct.map((g) => ({
+        label: g,
+        count: gradeCounts.get(g) || 0,
+      })),
+    ];
   }, [matrixData]);
 
-  // Filter rows
-  const filteredRows = useMemo(() => {
+  // Filter rows for the main sections table
+  const filteredSections = useMemo(() => {
     return matrixData.filter((row) => {
-      const matchesGrade = selectedGradeFilter === "All Grades" || row.grade === selectedGradeFilter;
+      const matchesGrade =
+        selectedGradeFilter === "All Sections" ||
+        row.grade === selectedGradeFilter;
       const q = search.trim().toLowerCase();
       const matchesSearch =
         !q ||
         row.sectionKey.toLowerCase().includes(q) ||
         row.sectionName.toLowerCase().includes(q) ||
-        row.grade.toLowerCase().includes(q) ||
-        row.facilitators.some((f) => f.toLowerCase().includes(q));
+        row.grade.toLowerCase().includes(q);
       return matchesGrade && matchesSearch;
     });
   }, [matrixData, selectedGradeFilter, search]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
-  const pagedRows = useMemo(() => {
+  const totalPages = Math.max(1, Math.ceil(filteredSections.length / PAGE_SIZE));
+  const pagedSections = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
-    return filteredRows.slice(start, start + PAGE_SIZE);
-  }, [filteredRows, page]);
+    return filteredSections.slice(start, start + PAGE_SIZE);
+  }, [filteredSections, page]);
 
-  // Summary statistics across whole school
-  const schoolSummary = useMemo(() => {
-    let totalLearners = 0;
-    let totalAtRisk = 0;
-    let totalPendingReview = 0;
-    let totalAralApproved = 0;
-    let totalClassroomRemedial = 0;
+  // Find currently opened section if any
+  const openedSection = useMemo(() => {
+    if (!openedSectionKey) return null;
+    return matrixData.find((r) => r.sectionKey === openedSectionKey) || null;
+  }, [matrixData, openedSectionKey]);
 
-    for (const r of matrixData) {
-      totalLearners += r.totalEnrolled;
-      totalAtRisk += r.atRiskCount;
-      totalPendingReview += r.pendingReviewCount;
-      totalAralApproved += r.aralApprovedCount;
-      totalClassroomRemedial += r.classroomRemedialCount;
-    }
+  // Filter learners inside the opened section
+  const openedSectionFilteredLearners = useMemo(() => {
+    if (!openedSection) return [];
+    const q = openedSectionSearch.trim().toLowerCase();
+    if (!q) return openedSection.learners;
+    return openedSection.learners.filter(
+      (l) =>
+        l.name?.toLowerCase().includes(q) ||
+        (Array.isArray(l.subjects)
+          ? l.subjects.some((sub) => sub.toLowerCase().includes(q))
+          : l.subject?.toLowerCase().includes(q))
+    );
+  }, [openedSection, openedSectionSearch]);
 
-    return {
-      totalLearners,
-      totalAtRisk,
-      totalPendingReview,
-      totalAralApproved,
-      totalClassroomRemedial,
-      totalSections: matrixData.length,
-    };
-  }, [matrixData]);
+  const openedSectionTotalPages = Math.max(
+    1,
+    Math.ceil(openedSectionFilteredLearners.length / PAGE_SIZE)
+  );
+  const openedSectionPagedLearners = useMemo(() => {
+    const start = (openedSectionPage - 1) * PAGE_SIZE;
+    return openedSectionFilteredLearners.slice(start, start + PAGE_SIZE);
+  }, [openedSectionFilteredLearners, openedSectionPage]);
 
+  // If a section is opened, show section drill-down view
+  if (openedSection) {
+    return (
+      <div className="space-y-3">
+        {/* Section Header & Navigation */}
+        <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between dark:border-white/5 dark:bg-[var(--card)]">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setOpenedSectionKey(null);
+                setOpenedSectionSearch("");
+              }}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
+            >
+              <ChevronLeft size={15} />
+              Back to all sections
+            </button>
+            <div className="min-w-0">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                {openedSection.grade} — {openedSection.sectionName}
+              </h3>
+              <p className="text-xs text-slate-500">
+                {openedSection.totalEnrolled} enrolled learners · {schoolYear} · {quarter}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-300">
+              {openedSection.totalEnrolled} Enrolled
+            </span>
+            {openedSection.immediateReviewCount > 0 ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
+                <AlertTriangle size={12} />
+                {openedSection.immediateReviewCount} Needs Immediate Review
+              </span>
+            ) : null}
+            {openedSection.needsMonitoringCount > 0 ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-300">
+                {openedSection.needsMonitoringCount} Needs Monitoring
+              </span>
+            ) : null}
+            {openedSection.underSupportCount > 0 ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
+                {openedSection.underSupportCount} Under Support
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Section Learner Filter & Search */}
+        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-xs dark:border-white/5 dark:bg-[var(--card)]">
+          <div className="relative min-w-0 flex-1">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            <input
+              type="text"
+              value={openedSectionSearch}
+              onChange={(e) => {
+                setOpenedSectionSearch(e.target.value);
+                setOpenedSectionPage(1);
+              }}
+              placeholder="Search learner name or subject in this section…"
+              className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/50 pl-9 pr-3 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-cnhs-green focus:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+            />
+          </div>
+        </div>
+
+        {/* Section Learners Table */}
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs dark:border-white/5 dark:bg-[var(--card)]">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] border-collapse text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/80 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-white/5 dark:bg-white/[0.03] dark:text-slate-400">
+                  <th className="px-4 py-3">Learner</th>
+                  <th className="px-3 py-3">Subject</th>
+                  <th className="px-3 py-3 text-center">Current Grade</th>
+                  <th className="px-3 py-3 text-center">Status</th>
+                  <th className="px-3.5 py-3">Current Support</th>
+                  <th className="px-4 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                {openedSectionPagedLearners.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-slate-400">
+                      No learners match your search in this section.
+                    </td>
+                  </tr>
+                ) : (
+                  openedSectionPagedLearners.map((learner) => {
+                    const isHigh =
+                      normalizeRiskLevel(learner.riskLevel) === RISK_LEVEL.HIGH ||
+                      learner.riskPriority === true;
+                    const isMod =
+                      normalizeRiskLevel(learner.riskLevel) ===
+                      RISK_LEVEL.MODERATE;
+                    const isRemedial =
+                      learner.recommendation === RECOMMENDATION.REMEDIATION ||
+                      learner.classroomRemedialRecommended;
+                    const isImproving =
+                      learner.monitoringStatus === MONITORING_STATUS.IMPROVED ||
+                      learner.performanceTrend === "Improving";
+
+                    let statusLabel = "On Track";
+                    let statusClass =
+                      "bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400";
+
+                    if (isHigh) {
+                      statusLabel = "Needs Immediate Review";
+                      statusClass =
+                        "bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-400 font-bold";
+                    } else if (isImproving) {
+                      statusLabel = "Improving";
+                      statusClass =
+                        "bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400";
+                    } else if (isRemedial) {
+                      statusLabel = "Under Class Remedial";
+                      statusClass =
+                        "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400";
+                    } else if (isMod) {
+                      statusLabel = "Needs Monitoring";
+                      statusClass =
+                        "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300";
+                    }
+
+                    const subjectsDisplay =
+                      Array.isArray(learner.subjects) && learner.subjects.length
+                        ? learner.subjects.join(", ")
+                        : learner.subject || "Enrolled Subjects";
+
+                    const gradeDisplay =
+                      learner.classSubjectGrade ??
+                      learner.generalAverage ??
+                      "—";
+
+                    const hasAralReferral =
+                      isAralRecommended(learner) ||
+                      learner.aralApprovalStatus === ARAL_APPROVAL_STATUS.SUBMITTED ||
+                      learner.aralApprovalStatus === ARAL_APPROVAL_STATUS.SUGGESTED;
+                    const inAralProgram =
+                      learner.aralApprovalStatus === ARAL_APPROVAL_STATUS.APPROVED ||
+                      learner.inAralProgram;
+
+                    return (
+                      <tr
+                        key={learner.id || learner.studentId}
+                        className="transition-colors hover:bg-slate-50/70 dark:hover:bg-white/[0.02]"
+                      >
+                        <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">
+                          {learner.name}
+                        </td>
+                        <td className="px-3 py-3 text-slate-600 dark:text-slate-300">
+                          {subjectsDisplay}
+                        </td>
+                        <td className="px-3 py-3 text-center font-bold text-slate-800 dark:text-slate-200">
+                          {gradeDisplay}
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          <span
+                            className={cn(
+                              "inline-flex rounded-full px-2.5 py-0.5 text-[11px]",
+                              statusClass
+                            )}
+                          >
+                            {statusLabel}
+                          </span>
+                        </td>
+                        <td className="px-3.5 py-3">
+                          {inAralProgram ? (
+                            <span className="text-[11px] font-medium text-purple-700 dark:text-purple-400">
+                              In ARAL Program
+                            </span>
+                          ) : hasAralReferral ? (
+                            <span className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                              ARAL Referral: Pending Principal Review
+                            </span>
+                          ) : isRemedial ? (
+                            <span className="text-[11px] font-medium text-blue-700 dark:text-blue-400">
+                              Class Remedial
+                            </span>
+                          ) : learner.monitoringStatus ===
+                            MONITORING_STATUS.ONGOING ? (
+                            <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                              Ongoing Monitoring
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                              Classroom Monitoring
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => onViewStudent?.(learner)}
+                            className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-cnhs-green px-3 py-1 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-cnhs-green-dark"
+                          >
+                            View Record
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {openedSectionFilteredLearners.length > PAGE_SIZE ? (
+            <div className="border-t border-slate-100 p-2.5 dark:border-white/5">
+              <TablePagination
+                page={openedSectionPage}
+                totalPages={openedSectionTotalPages}
+                onPageChange={setOpenedSectionPage}
+                totalItems={openedSectionFilteredLearners.length}
+                pageSize={PAGE_SIZE}
+              />
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  // Section List View
   return (
-    <div className="space-y-4">
-      {/* Matrix Controls & Search */}
+    <div className="space-y-3">
+      {/* Search & Grade Quick-Filters */}
       <div className="flex flex-col gap-2.5 rounded-xl border border-slate-200 bg-white p-3 shadow-xs sm:flex-row sm:items-center sm:justify-between dark:border-white/5 dark:bg-[var(--card)]">
         <div className="relative min-w-0 flex-1">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+          />
           <input
             type="text"
             value={search}
@@ -207,202 +472,154 @@ export default function AdminGradeProgressMatrix({
               setSearch(e.target.value);
               setPage(1);
             }}
-            placeholder="Search grade, section, or facilitator name…"
+            placeholder="Search grade or section name…"
             className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/50 pl-9 pr-3 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-cnhs-green focus:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
           />
         </div>
 
-        {/* Grade Filters */}
+        {/* Visible Grade Filter Buttons */}
         <div className="flex flex-wrap items-center gap-1.5">
-          {availableGrades.map((grade) => {
-            const isSelected = selectedGradeFilter === grade;
+          {availableGrades.map(({ label, count }) => {
+            const isSelected = selectedGradeFilter === label;
             return (
               <button
-                key={grade}
+                key={label}
                 type="button"
                 onClick={() => {
-                  setSelectedGradeFilter(grade);
+                  setSelectedGradeFilter(label);
                   setPage(1);
                 }}
                 className={cn(
-                  "rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                  "inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors",
                   isSelected
                     ? "bg-cnhs-green-dark text-white shadow-xs"
                     : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
                 )}
               >
-                {grade}
+                {label}
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.2 text-[10px] font-bold",
+                    isSelected
+                      ? "bg-white/20 text-white"
+                      : "bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"
+                  )}
+                >
+                  {count}
+                </span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Progress Table */}
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-white/5 dark:bg-[var(--card)]">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/60 px-4 py-2.5 dark:border-white/5 dark:bg-white/[0.02]">
+      {/* Sections Table */}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs dark:border-white/5 dark:bg-[var(--card)]">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/60 px-4 py-3 dark:border-white/5 dark:bg-white/[0.02]">
           <div className="flex items-center gap-2">
-            <Layers size={15} className="text-cnhs-green-dark" />
+            <Layers size={16} className="text-cnhs-green-dark" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-              Grade & Section Learning Support Summary
+              Sections Academic Overview
             </h3>
           </div>
-          <p className="text-[11px] font-medium text-slate-500">
-            {schoolSummary.totalSections} sections · {schoolSummary.totalLearners} learners enrolled
+          <p className="text-xs font-medium text-slate-500">
+            {filteredSections.length} section{filteredSections.length === 1 ? "" : "s"} shown
           </p>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[920px] border-collapse text-left text-xs">
+          <table className="w-full min-w-[760px] border-collapse text-left text-xs">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/80 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-white/5 dark:bg-white/[0.03] dark:text-slate-400">
-                <th className="px-3.5 py-2.5">Grade & Section</th>
-                <th className="px-3 py-2.5 text-center">Enrolled</th>
-                <th className="px-3 py-2.5 text-center">At-Risk Learners</th>
-                <th className="px-3 py-2.5 text-center">Identified for ARAL</th>
-                <th className="px-3 py-2.5 text-center">Awaiting Approval</th>
-                <th className="px-3 py-2.5 text-center">In ARAL Monitoring</th>
-                <th className="px-3 py-2.5 text-center">Classroom Remediation</th>
-                <th className="px-3.5 py-2.5">Facilitator Assigned</th>
-                <th className="px-3 py-2.5 text-right">Action</th>
+                <th className="px-4 py-3">Grade & Section</th>
+                <th className="px-3.5 py-3 text-center">Total Learners</th>
+                <th className="px-3.5 py-3 text-center">Learners Needing Review</th>
+                <th className="px-3.5 py-3 text-center">Status</th>
+                <th className="px-4 py-3 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-              {pagedRows.length === 0 ? (
+              {pagedSections.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-400">
-                    No grade sections match your search or filter criteria.
+                  <td colSpan={5} className="py-12 text-center text-slate-400">
+                    No sections match your search or filter criteria.
                   </td>
                 </tr>
               ) : (
-                pagedRows.map((row) => {
+                pagedSections.map((row) => {
                   const gradeNum = String(row.grade).replace(/\D/g, "");
                   const badgeLabel = gradeNum ? `G${gradeNum}` : "G";
+
                   return (
                     <tr
                       key={row.sectionKey}
                       className="transition-colors hover:bg-slate-50/70 dark:hover:bg-white/[0.02]"
                     >
-                      <td className="px-3.5 py-2.5 font-medium text-slate-900 dark:text-slate-100">
+                      <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
                         <div className="flex items-center gap-2.5">
-                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-cnhs-green-soft text-[11px] font-bold text-cnhs-green-dark dark:bg-cnhs-green-dark/20 dark:text-cnhs-green">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-cnhs-green-soft text-xs font-bold text-cnhs-green-dark dark:bg-cnhs-green-dark/20 dark:text-cnhs-green">
                             {badgeLabel}
                           </span>
                           <div className="min-w-0">
-                            <p className="font-semibold text-slate-900 dark:text-slate-100">{row.sectionName}</p>
-                            <p className="text-[10px] text-slate-400 dark:text-slate-500">{row.grade}</p>
+                            <p className="font-semibold text-slate-900 dark:text-slate-100">
+                              {row.sectionName}
+                            </p>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                              {row.grade}
+                            </p>
                           </div>
                         </div>
                       </td>
 
-                      <td className="px-3 py-2.5 text-center font-semibold text-slate-700 dark:text-slate-300">
+                      <td className="px-3.5 py-3 text-center font-bold text-slate-800 dark:text-slate-200">
                         {row.totalEnrolled}
                       </td>
 
-                      <td className="px-3 py-2.5 text-center">
-                        {row.atRiskCount > 0 ? (
-                          <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-[10px] font-bold text-red-600 dark:bg-red-500/10 dark:text-red-400">
-                            {row.atRiskCount}
+                      <td className="px-3.5 py-3 text-center">
+                        {row.immediateReviewCount > 0 ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
+                            <AlertTriangle size={11} />
+                            {row.immediateReviewCount} Immediate
+                            {row.needsMonitoringCount > 0 ? ` + ${row.needsMonitoringCount} Monitoring` : ""}
+                          </span>
+                        ) : row.needsMonitoringCount > 0 ? (
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-300">
+                            {row.needsMonitoringCount} Monitoring
                           </span>
                         ) : (
-                          <span className="text-[11px] text-slate-400">—</span>
+                          <span className="text-xs text-slate-400">—</span>
                         )}
                       </td>
 
-                      <td className="px-3 py-2.5 text-center">
-                        {row.aralCandidateCount > 0 ? (
-                          <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
-                            {row.aralCandidateCount}
+                      <td className="px-3.5 py-3 text-center">
+                        {row.statusTone === "amber" ? (
+                          <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
+                            Needs Review
+                          </span>
+                        ) : row.statusTone === "blue" ? (
+                          <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700 dark:bg-blue-500/10 dark:text-blue-400">
+                            Under Support
                           </span>
                         ) : (
-                          <span className="text-[11px] text-slate-400">—</span>
-                        )}
-                      </td>
-
-                      <td className="px-3 py-2.5 text-center">
-                        {row.pendingReviewCount > 0 ? (
-                          <button
-                            type="button"
-                            onClick={() => onNavigateTab?.("intake")}
-                            className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-cnhs-orange-soft px-2.5 py-0.5 text-[10px] font-bold text-cnhs-orange hover:ring-1 hover:ring-cnhs-orange"
-                            title="Click to review pending endorsements"
-                          >
-                            <AlertTriangle size={10} />
-                            {row.pendingReviewCount} pending
-                          </button>
-                        ) : (
-                          <span className="text-[11px] text-slate-400">—</span>
-                        )}
-                      </td>
-
-                      <td className="px-3 py-2.5 text-center">
-                        {row.aralApprovedCount > 0 ? (
-                          <span className="inline-flex items-center rounded-full bg-purple-50 px-2.5 py-0.5 text-[10px] font-bold text-purple-700 dark:bg-purple-500/10 dark:text-purple-400">
-                            {row.aralApprovedCount} in ARAL
+                          <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400">
+                            On Track
                           </span>
-                        ) : (
-                          <span className="text-[11px] text-slate-400">—</span>
                         )}
                       </td>
 
-                      <td className="px-3 py-2.5 text-center">
-                        {row.classroomRemedialCount > 0 ? (
-                          <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-500/10 dark:text-blue-400">
-                            {row.classroomRemedialCount}
-                          </span>
-                        ) : (
-                          <span className="text-[11px] text-slate-400">—</span>
-                        )}
-                      </td>
-
-                      <td className="px-3.5 py-2.5">
-                        {row.facilitators.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {row.facilitators.map((name) => (
-                              <span
-                                key={name}
-                                className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300"
-                              >
-                                <UserCheck size={10} />
-                                {name}
-                              </span>
-                            ))}
-                          </div>
-                        ) : row.aralApprovedCount > 0 ? (
-                          <button
-                            type="button"
-                            onClick={() => onNavigateTab?.("facilitators")}
-                            className="inline-flex cursor-pointer items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-300"
-                          >
-                            <UserPlus size={10} />
-                            Assign facilitator
-                          </button>
-                        ) : (
-                          <span className="text-[11px] text-slate-400">—</span>
-                        )}
-                      </td>
-
-                      <td className="px-3 py-2.5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {row.pendingReviewCount > 0 ? (
-                            <button
-                              type="button"
-                              onClick={() => onNavigateTab?.("intake")}
-                              className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-cnhs-green px-2.5 py-1 text-[11px] font-bold text-white shadow-xs hover:bg-cnhs-green-dark"
-                            >
-                              Review ({row.pendingReviewCount})
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => onNavigateTab?.("assessments")}
-                              className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
-                            >
-                              Progress
-                              <ArrowRight size={10} />
-                            </button>
-                          )}
-                        </div>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenedSectionKey(row.sectionKey);
+                            setOpenedSectionPage(1);
+                            setOpenedSectionSearch("");
+                          }}
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-cnhs-green-dark/90"
+                        >
+                          Open
+                          <ArrowRight size={13} />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -412,14 +629,14 @@ export default function AdminGradeProgressMatrix({
           </table>
         </div>
 
-        {/* Table Pagination */}
-        {filteredRows.length > PAGE_SIZE ? (
+        {/* Section List Pagination */}
+        {filteredSections.length > PAGE_SIZE ? (
           <div className="border-t border-slate-100 p-2.5 dark:border-white/5">
             <TablePagination
               page={page}
               totalPages={totalPages}
               onPageChange={setPage}
-              totalItems={filteredRows.length}
+              totalItems={filteredSections.length}
               pageSize={PAGE_SIZE}
             />
           </div>
@@ -428,4 +645,3 @@ export default function AdminGradeProgressMatrix({
     </div>
   );
 }
-

@@ -18,18 +18,19 @@ export default function AdminAttendancePage() {
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="pb-5"
     >
-          <Header
+      <Header
         breadcrumb="Home > Attendance Monitoring"
         title="Attendance Monitoring"
         controls={
           <>
             <PageHelp
-              summary="School-wide attendance from teachers’ daily Morning and Afternoon marks."
+              summary="School-wide attendance monitoring from teachers’ daily Morning and Afternoon records."
               steps={[
-                "Filter by school year, month, and grade, then Apply.",
-                "Present and absent counts are Morning plus Afternoon marks, not unique students.",
-                "PDF / Excel open a preview first, then download. Working report only — not the official SF2.",
-                "Advisers record daily marks on the teacher attendance page.",
+                "Select school year, month, and grade level to monitor daily attendance.",
+                "Review section submission status and attendance rates across the school.",
+                "Click View on any section to inspect learners needing attendance follow-up.",
+                "Formal attendance reports and printable summaries are available under Reports → Attendance.",
+                "Attendance Monitoring does not replace the official SF2.",
               ]}
             />
             <button
@@ -47,6 +48,11 @@ export default function AdminAttendancePage() {
           </>
         }
       />
+      <div className="mb-3 px-0.5">
+        <p className="text-[12px] font-medium text-slate-500">
+          For attendance monitoring only. This does not replace the official SF2.
+        </p>
+      </div>
       <AdminAttendancePanel
         refreshToken={refreshToken}
         onRefreshingChange={setRefreshing}

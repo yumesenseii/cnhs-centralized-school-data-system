@@ -169,6 +169,13 @@ export function useAdminReports() {
       ongoing: 0,
       notStarted: 0,
     },
+    aralSummary: model?.aralSummary ?? {
+      waitingForReview: 0,
+      waitingForAssessment: 0,
+      underAralSupport: 0,
+      outcomes: 0,
+    },
+    doingWell: model?.doingWell ?? 0,
     setSchoolYear,
     setQuarter,
     refresh: () => refresh({ bustCache: true }),

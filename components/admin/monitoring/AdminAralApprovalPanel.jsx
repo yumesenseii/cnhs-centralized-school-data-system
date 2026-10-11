@@ -165,6 +165,16 @@ function sectionDisplayName(gradeSection, grade) {
   return stripped || gradeSection || grade || "Section";
 }
 
+function formatFullSectionName(grade, rawSection) {
+  const stripped = String(rawSection || "")
+    .replace(/^Grade\s+\d+\s*[—–-]?\s*/i, "")
+    .trim();
+  const cleanSection = stripped || rawSection || "Section";
+  return grade && !cleanSection.toLowerCase().startsWith(grade.toLowerCase())
+    ? `${grade} – ${cleanSection}`
+    : cleanSection;
+}
+
 function gradeSortKey(grade) {
   const n = Number(String(grade).replace(/\D/g, ""));
   return Number.isFinite(n) ? n : 999;
@@ -280,7 +290,7 @@ function buildApprovalSectionGroups(aralRows = []) {
       return {
         gradeSection,
         grade,
-        sectionName: sectionDisplayName(gradeSection, grade),
+        sectionName: formatFullSectionName(grade, sectionDisplayName(gradeSection, grade)),
         learners,
         count: learners.length,
         pending,
@@ -891,9 +901,7 @@ export default function AdminAralApprovalPanel({
                                     />
                                   </td>
                                   <td className="px-2.5 py-2">
-                                    {typeof onViewStudent === "function" &&
-                                    (learner.classId ||
-                                      learner.sourceRows?.[0]?.classId) ? (
+                                    {typeof onViewStudent === "function" ? (
                                       <button
                                         type="button"
                                         onClick={() =>
@@ -901,7 +909,7 @@ export default function AdminAralApprovalPanel({
                                             learner.sourceRows?.[0] || learner
                                           )
                                         }
-                                        className="text-left"
+                                        className="cursor-pointer text-left transition hover:text-cnhs-green-dark"
                                       >
                                         <p className="text-[12px] font-semibold text-slate-800 hover:text-cnhs-green-dark dark:text-slate-100 dark:hover:text-cnhs-green">
                                           {learner.name}
@@ -1090,8 +1098,14 @@ export default function AdminAralApprovalPanel({
                                     <button
                                       type="button"
                                       disabled={busy}
-                                      onClick={() => setReviewKey(learner.selectKey)}
-                                      className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                                      onClick={() => {
+                                        if (typeof onViewStudent === "function") {
+                                          onViewStudent(learner.sourceRows?.[0] || learner);
+                                        } else {
+                                          setReviewKey(learner.selectKey);
+                                        }
+                                      }}
+                                      className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-600 transition hover:bg-slate-50 active:scale-95 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
                                     >
                                       <Eye size={11} />
                                       Details

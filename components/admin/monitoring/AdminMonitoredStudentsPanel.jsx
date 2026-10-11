@@ -1,167 +1,341 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
-import LearnersInterventionTable from "@/components/teacher/monitoring/LearnersInterventionTable";
-import {
-  filterAralMonitoredStudents,
-  filterNonAralAtRiskMonitoredStudents,
-} from "@/lib/teacher/monitoringMappers";
+import { useMemo, useState } from "react";
+import { AlertTriangle, Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ARAL_APPROVAL_STATUS } from "@/lib/monitoring/aralApproval";
+import { isAralRecommended } from "@/lib/monitoring/aralProgress";
+import {
+  MONITORING_STATUS,
+  RECOMMENDATION,
+  RISK_LEVEL,
+  normalizeRiskLevel,
+} from "@/lib/monitoring/recommendations";
+import TablePagination from "@/components/academic-records/TablePagination";
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 15;
 
-const SUBVIEWS = [
-  { id: "aral", label: "ARAL Learners" },
-  { id: "nonAral", label: "Classroom remedial" },
+const STATUS_FILTERS = [
+  { id: "all", label: "All Needing Review" },
+  { id: "immediate", label: "Needs Immediate Review" },
+  { id: "monitoring", label: "Needs Monitoring" },
+  { id: "remedial", label: "Under Class Remedial" },
+  { id: "improving", label: "Improving" },
 ];
 
 export default function AdminMonitoredStudentsPanel({
   learners = [],
-  schoolYear = "",
+  schoolYear = "SY 2026-2027",
   quarter = "All Terms",
-  onViewMonitoring,
+  onViewStudent,
   loading = false,
-  /** Controlled subview from parent KPI clicks */
-  subview: controlledSubview,
-  onSubviewChange,
 }) {
-  const aralLearners = useMemo(
-    () => filterAralMonitoredStudents(learners),
-    [learners]
-  );
-  const nonAralLearners = useMemo(
-    () => filterNonAralAtRiskMonitoredStudents(learners),
-    [learners]
-  );
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
 
-  const [internalSubview, setInternalSubview] = useState(() => {
-    if (controlledSubview) return controlledSubview;
-    if (aralLearners.length === 0 && nonAralLearners.length > 0) {
-      return "nonAral";
-    }
-    return "aral";
-  });
+  // Filter only learners who need academic attention or are monitored
+  const reviewLearners = useMemo(() => {
+    return learners.filter((learner) => {
+      const isHigh =
+        normalizeRiskLevel(learner.riskLevel) === RISK_LEVEL.HIGH ||
+        learner.riskPriority === true;
+      const isMod =
+        normalizeRiskLevel(learner.riskLevel) === RISK_LEVEL.MODERATE;
+      const isRemedial =
+        learner.recommendation === RECOMMENDATION.REMEDIATION ||
+        learner.classroomRemedialRecommended;
+      const isAral =
+        isAralRecommended(learner) ||
+        learner.recommendation === RECOMMENDATION.ARAL ||
+        learner.aralApprovalStatus === ARAL_APPROVAL_STATUS.SUBMITTED ||
+        learner.aralApprovalStatus === ARAL_APPROVAL_STATUS.SUGGESTED;
+      const isOngoing =
+        learner.monitoringStatus === MONITORING_STATUS.ONGOING;
+      const isImproving =
+        learner.monitoringStatus === MONITORING_STATUS.IMPROVED ||
+        learner.performanceTrend === "Improving";
 
-  const subview = controlledSubview ?? internalSubview;
+      return (
+        isHigh ||
+        isMod ||
+        isRemedial ||
+        isAral ||
+        isOngoing ||
+        isImproving ||
+        learner.atRisk
+      );
+    });
+  }, [learners]);
 
-  function setSubview(next) {
-    if (onSubviewChange) onSubviewChange(next);
-    else setInternalSubview(next);
-  }
+  // Apply user search and status filter
+  const filteredLearners = useMemo(() => {
+    return reviewLearners.filter((learner) => {
+      const q = search.trim().toLowerCase();
+      const matchesSearch =
+        !q ||
+        learner.name?.toLowerCase().includes(q) ||
+        learner.gradeSection?.toLowerCase().includes(q) ||
+        learner.section?.toLowerCase().includes(q) ||
+        (Array.isArray(learner.subjects)
+          ? learner.subjects.some((s) => s.toLowerCase().includes(q))
+          : learner.subject?.toLowerCase().includes(q));
 
-  const [aralPage, setAralPage] = useState(1);
-  const [nonAralPage, setNonAralPage] = useState(1);
+      if (!matchesSearch) return false;
 
-  const activeLearners = subview === "aral" ? aralLearners : nonAralLearners;
-  const activePage = subview === "aral" ? aralPage : nonAralPage;
-  const setActivePage = subview === "aral" ? setAralPage : setNonAralPage;
+      const isHigh =
+        normalizeRiskLevel(learner.riskLevel) === RISK_LEVEL.HIGH ||
+        learner.riskPriority === true;
+      const isMod =
+        normalizeRiskLevel(learner.riskLevel) === RISK_LEVEL.MODERATE;
+      const isRemedial =
+        learner.recommendation === RECOMMENDATION.REMEDIATION ||
+        learner.classroomRemedialRecommended;
+      const isImproving =
+        learner.monitoringStatus === MONITORING_STATUS.IMPROVED ||
+        learner.performanceTrend === "Improving";
 
+      if (statusFilter === "immediate") return isHigh;
+      if (statusFilter === "monitoring") return isMod && !isHigh;
+      if (statusFilter === "remedial") return isRemedial;
+      if (statusFilter === "improving") return isImproving;
+
+      return true;
+    });
+  }, [reviewLearners, search, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredLearners.length / PAGE_SIZE));
   const pagedLearners = useMemo(() => {
-    const start = (activePage - 1) * PAGE_SIZE;
-    return activeLearners.slice(start, activePage * PAGE_SIZE);
-  }, [activeLearners, activePage]);
-
-  const atRiskCount = useMemo(
-    () => activeLearners.filter((learner) => learner.atRisk).length,
-    [activeLearners]
-  );
-
-  useEffect(() => {
-    setAralPage(1);
-    setNonAralPage(1);
-  }, [learners.length, schoolYear, quarter]);
-
-  // When uncontrolled and ARAL empty but Non-ARAL has rows, prefer Non-ARAL once.
-  useEffect(() => {
-    if (controlledSubview) return;
-    if (aralLearners.length === 0 && nonAralLearners.length > 0) {
-      setInternalSubview("nonAral");
-    }
-  }, [aralLearners.length, nonAralLearners.length, controlledSubview]);
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredLearners.slice(start, start + PAGE_SIZE);
+  }, [filteredLearners, page]);
 
   if (loading && learners.length === 0) {
     return (
-      <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-100 bg-white py-10 text-sm text-slate-500">
-        <Loader2 size={16} className="animate-spin" />
-        Loading monitoring data…
+      <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-12 text-sm text-slate-500 shadow-xs dark:border-white/5 dark:bg-[var(--card)]">
+        <Loader2 size={16} className="animate-spin text-cnhs-green-dark" />
+        Loading learners needing academic review…
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      <div
-        className="flex flex-wrap gap-1.5"
-        role="tablist"
-        aria-label="Monitored students views"
-      >
-        {SUBVIEWS.map((item) => {
-          const selected = subview === item.id;
-          const count =
-            item.id === "aral" ? aralLearners.length : nonAralLearners.length;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              onClick={() => {
-                setSubview(item.id);
-                if (item.id === "aral") setAralPage(1);
-                else setNonAralPage(1);
-              }}
-              className={cn(
-                "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-3 text-[11px] font-semibold transition-colors",
-                selected
-                  ? "bg-cnhs-green-dark text-white"
-                  : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
-              )}
-            >
-              {item.label}
-              <span
+      {/* Search and Status Filters */}
+      <div className="flex flex-col gap-2.5 rounded-xl border border-slate-200 bg-white p-3 shadow-xs sm:flex-row sm:items-center sm:justify-between dark:border-white/5 dark:bg-[var(--card)]">
+        <div className="relative min-w-0 flex-1">
+          <Search
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+          />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            placeholder="Search learner name, section, or subject…"
+            className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/50 pl-9 pr-3 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-cnhs-green focus:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+          />
+        </div>
+
+        {/* Status Filter Chips */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {STATUS_FILTERS.map((item) => {
+            const isSelected = statusFilter === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setStatusFilter(item.id);
+                  setPage(1);
+                }}
                 className={cn(
-                  "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
-                  selected
-                    ? "bg-white/20 text-white"
-                    : "bg-slate-100 text-slate-500"
+                  "inline-flex cursor-pointer items-center rounded-full px-3 py-1 text-xs font-semibold transition-colors",
+                  isSelected
+                    ? "bg-cnhs-green-dark text-white shadow-xs"
+                    : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
                 )}
               >
-                {count}
-              </span>
-            </button>
-          );
-        })}
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <LearnersInterventionTable
-        learners={pagedLearners}
-        totalCount={activeLearners.length}
-        atRiskCount={atRiskCount}
-        page={activePage}
-        pageSize={PAGE_SIZE}
-        onPageChange={setActivePage}
-        schoolYear={schoolYear}
-        quarter={quarter}
-        onViewMonitoring={onViewMonitoring}
-        title={
-          subview === "aral" ? "ARAL Learners" : "Classroom remedial"
-        }
-        layout={subview === "aral" ? "htAral" : "htNonAral"}
-        showAralApproval={subview === "aral"}
-        emptyMessage={
-          subview === "aral"
-            ? "No ARAL-recommended learners under the current filters."
-            : "No classroom-remedial learners under the current filters."
-        }
-        emptyHint={
-          subview === "aral" && nonAralLearners.length > 0
-            ? `See Classroom remedial (${nonAralLearners.length}) for other learners who need support.`
-            : subview === "nonAral" && aralLearners.length > 0
-              ? `ARAL Learners (${aralLearners.length}) are listed in the other view.`
-              : ""
-        }
-      />
+      {/* Strictly Academic Learners Table */}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs dark:border-white/5 dark:bg-[var(--card)]">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/60 px-4 py-3 dark:border-white/5 dark:bg-white/[0.02]">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+            Learners Needing Academic Attention
+          </h3>
+          <p className="text-xs font-medium text-slate-500">
+            {filteredLearners.length} learner{filteredLearners.length === 1 ? "" : "s"} found
+          </p>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[840px] border-collapse text-left text-xs">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50/80 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-white/5 dark:bg-white/[0.03] dark:text-slate-400">
+                <th className="px-4 py-3">Learner</th>
+                <th className="px-3.5 py-3">Section</th>
+                <th className="px-3 py-3">Subject</th>
+                <th className="px-3 py-3 text-center">Current Grade</th>
+                <th className="px-3.5 py-3 text-center">Risk</th>
+                <th className="px-3.5 py-3">Current Support</th>
+                <th className="px-4 py-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+              {pagedLearners.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                    No learners currently require academic review under this selection.
+                  </td>
+                </tr>
+              ) : (
+                pagedLearners.map((learner) => {
+                  const isHigh =
+                    normalizeRiskLevel(learner.riskLevel) === RISK_LEVEL.HIGH ||
+                    learner.riskPriority === true;
+                  const isMod =
+                    normalizeRiskLevel(learner.riskLevel) ===
+                    RISK_LEVEL.MODERATE;
+                  const isRemedial =
+                    learner.recommendation === RECOMMENDATION.REMEDIATION ||
+                    learner.classroomRemedialRecommended;
+                  const isImproving =
+                    learner.monitoringStatus === MONITORING_STATUS.IMPROVED ||
+                    learner.performanceTrend === "Improving";
+
+                  let riskBadgeLabel = "Needs Monitoring";
+                  let riskBadgeClass =
+                    "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300";
+
+                  if (isHigh) {
+                    riskBadgeLabel = "Needs Immediate Review";
+                    riskBadgeClass =
+                      "bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-400 font-bold";
+                  } else if (isImproving) {
+                    riskBadgeLabel = "Improving";
+                    riskBadgeClass =
+                      "bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400";
+                  } else if (isRemedial) {
+                    riskBadgeLabel = "Under Class Remedial";
+                    riskBadgeClass =
+                      "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400";
+                  } else if (isMod) {
+                    riskBadgeLabel = "Needs Monitoring";
+                    riskBadgeClass =
+                      "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300";
+                  }
+
+                  const subjectsDisplay =
+                    Array.isArray(learner.subjects) && learner.subjects.length
+                      ? learner.subjects.join(", ")
+                      : learner.subject || "Enrolled Subjects";
+
+                  const sectionDisplay =
+                    learner.gradeSection || learner.section || "—";
+
+                  const gradeDisplay =
+                    learner.classSubjectGrade ??
+                    learner.generalAverage ??
+                    "—";
+
+                  const hasAralReferral =
+                    isAralRecommended(learner) ||
+                    learner.aralApprovalStatus === ARAL_APPROVAL_STATUS.SUBMITTED ||
+                    learner.aralApprovalStatus === ARAL_APPROVAL_STATUS.SUGGESTED;
+                  const inAralProgram =
+                    learner.aralApprovalStatus === ARAL_APPROVAL_STATUS.APPROVED ||
+                    learner.inAralProgram;
+
+                  return (
+                    <tr
+                      key={learner.id || learner.studentId}
+                      className="transition-colors hover:bg-slate-50/70 dark:hover:bg-white/[0.02]"
+                    >
+                      <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">
+                        {learner.name}
+                      </td>
+                      <td className="px-3.5 py-3 font-medium text-slate-700 dark:text-slate-300">
+                        {sectionDisplay}
+                      </td>
+                      <td className="px-3 py-3 text-slate-600 dark:text-slate-300">
+                        {subjectsDisplay}
+                      </td>
+                      <td className="px-3 py-3 text-center font-bold text-slate-800 dark:text-slate-200">
+                        {gradeDisplay}
+                      </td>
+                      <td className="px-3.5 py-3 text-center">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full px-2.5 py-0.5 text-[11px]",
+                            riskBadgeClass
+                          )}
+                        >
+                          {riskBadgeLabel}
+                        </span>
+                      </td>
+                      <td className="px-3.5 py-3">
+                        {inAralProgram ? (
+                          <span className="text-[11px] font-medium text-purple-700 dark:text-purple-400">
+                            In ARAL Program
+                          </span>
+                        ) : hasAralReferral ? (
+                          <span className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                            ARAL Referral: Pending Principal Review
+                          </span>
+                        ) : isRemedial ? (
+                          <span className="text-[11px] font-medium text-blue-700 dark:text-blue-400">
+                            Class Remedial
+                          </span>
+                        ) : learner.monitoringStatus ===
+                          MONITORING_STATUS.ONGOING ? (
+                          <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                            Ongoing Monitoring
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                            Classroom Monitoring
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => onViewStudent?.(learner)}
+                          className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-cnhs-green px-3 py-1 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-cnhs-green-dark"
+                        >
+                          View Record
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {filteredLearners.length > PAGE_SIZE ? (
+          <div className="border-t border-slate-100 p-2.5 dark:border-white/5">
+            <TablePagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              totalItems={filteredLearners.length}
+              pageSize={PAGE_SIZE}
+            />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

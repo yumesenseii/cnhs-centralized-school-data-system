@@ -5,7 +5,6 @@ import {
   sessionRatePercent,
 } from "@/lib/attendance/dailyAnalytics";
 import { monthLabel } from "@/lib/attendance/constants";
-import MultiYearCaseloadTrendCard from "@/components/admin/reports/MultiYearCaseloadTrendCard";
 import { cn } from "@/lib/utils";
 
 function hasDailyRecords(row = {}) {
@@ -76,9 +75,6 @@ export default function AdminReportsOverviewExtras({
 
   return (
     <div className="space-y-4">
-      {/* Year-over-Year Intervention Progress & Caseload Comparison */}
-      <MultiYearCaseloadTrendCard />
-
       {/* Intervention Progress Summary */}
       <section className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm dark:border-white/5 dark:bg-[var(--card)]">
         <SectionHeader
