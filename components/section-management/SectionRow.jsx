@@ -14,26 +14,26 @@ export default function SectionRow({
 
   return (
     <tr className="border-t border-slate-100 transition-colors hover:bg-slate-50/70">
-      <td className="px-3 py-2 pl-4 text-[12px] font-medium text-slate-800">
+      <td className="px-4 py-3 pl-5 text-[13px] font-medium text-slate-800">
         {section.gradeLabel}
       </td>
-      <td className="px-3 py-2 text-[12px] font-semibold text-slate-800">
+      <td className="px-4 py-3 text-[13px] font-semibold text-slate-900">
         {section.sectionName}
       </td>
-      <td className="px-3 py-2 text-[12px] text-slate-600">{section.schoolYear}</td>
-      <td className="px-3 py-2 text-[12px] text-slate-600">{section.adviserName}</td>
-      <td className="px-3 py-2">
+      <td className="px-4 py-3 text-[13px] text-slate-600">{section.schoolYear}</td>
+      <td className="px-4 py-3 text-[13px] text-slate-600">{section.adviserName}</td>
+      <td className="px-4 py-3">
         <SectionStatusBadge value={section.status} />
       </td>
-      <td className="px-3 py-2 pr-4">
-        <div className="flex items-center gap-1.5">
+      <td className="px-4 py-3 pr-5">
+        <div className="flex items-center justify-end gap-2">
           <button
             type="button"
             disabled={busy || isArchived}
             onClick={() => onEdit?.(section)}
-            className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <Pencil size={11} />
+            <Pencil size={12} />
             Edit
           </button>
           {isArchived ? (
@@ -41,9 +41,9 @@ export default function SectionRow({
               type="button"
               disabled={busy}
               onClick={() => onRestore?.(section)}
-              className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-cnhs-green-dark/30 bg-green-50 px-2.5 text-[10px] font-semibold text-cnhs-green-dark transition-colors hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-cnhs-green-dark/30 bg-green-50 px-3 text-[12px] font-semibold text-cnhs-green-dark transition-colors hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <ArchiveRestore size={11} />
+              <ArchiveRestore size={12} />
               Restore
             </button>
           ) : (
@@ -51,9 +51,9 @@ export default function SectionRow({
               type="button"
               disabled={busy}
               onClick={() => onArchive?.(section)}
-              className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-500 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-500 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <Archive size={11} />
+              <Archive size={12} />
               Archive
             </button>
           )}

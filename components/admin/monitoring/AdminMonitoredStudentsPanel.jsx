@@ -11,9 +11,9 @@ import {
   RISK_LEVEL,
   normalizeRiskLevel,
 } from "@/lib/monitoring/recommendations";
-import TablePagination from "@/components/academic-records/TablePagination";
+import AdminTablePagination from "@/components/shared/AdminTablePagination";
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 10;
 
 const STATUS_FILTERS = [
   { id: "all", label: "All Needing Review" },
@@ -105,10 +105,11 @@ export default function AdminMonitoredStudentsPanel({
   }, [reviewLearners, search, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredLearners.length / PAGE_SIZE));
+  const safePage = Math.min(Math.max(page, 1), totalPages);
   const pagedLearners = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
+    const start = (safePage - 1) * PAGE_SIZE;
     return filteredLearners.slice(start, start + PAGE_SIZE);
-  }, [filteredLearners, page]);
+  }, [filteredLearners, safePage]);
 
   if (loading && learners.length === 0) {
     return (
@@ -167,33 +168,33 @@ export default function AdminMonitoredStudentsPanel({
       </div>
 
       {/* Strictly Academic Learners Table */}
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs dark:border-white/5 dark:bg-[var(--card)]">
+      <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xs dark:border-white/5 dark:bg-[var(--card)]">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/60 px-4 py-3 dark:border-white/5 dark:bg-white/[0.02]">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+          <h3 className="text-[12px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
             Learners Needing Academic Attention
           </h3>
-          <p className="text-xs font-medium text-slate-500">
+          <p className="text-[12px] font-medium text-slate-500">
             {filteredLearners.length} learner{filteredLearners.length === 1 ? "" : "s"} found
           </p>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[840px] border-collapse text-left text-xs">
+          <table className="w-full min-w-[840px] border-collapse text-left">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/80 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-white/5 dark:bg-white/[0.03] dark:text-slate-400">
+              <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:border-white/5 dark:bg-white/[0.03] dark:text-slate-400">
                 <th className="px-4 py-3">Learner</th>
-                <th className="px-3.5 py-3">Section</th>
-                <th className="px-3 py-3">Subject</th>
-                <th className="px-3 py-3 text-center">Current Grade</th>
-                <th className="px-3.5 py-3 text-center">Risk</th>
-                <th className="px-3.5 py-3">Current Support</th>
+                <th className="px-4 py-3">Section</th>
+                <th className="px-4 py-3">Subject</th>
+                <th className="px-4 py-3 text-center">Current Grade</th>
+                <th className="px-4 py-3 text-center">Risk</th>
+                <th className="px-4 py-3">Current Support</th>
                 <th className="px-4 py-3 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
               {pagedLearners.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                  <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-400">
                     No learners currently require academic review under this selection.
                   </td>
                 </tr>
@@ -260,48 +261,48 @@ export default function AdminMonitoredStudentsPanel({
                       key={learner.id || learner.studentId}
                       className="transition-colors hover:bg-slate-50/70 dark:hover:bg-white/[0.02]"
                     >
-                      <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">
+                      <td className="px-4 py-3 text-[13px] font-semibold text-slate-900 dark:text-slate-100">
                         {learner.name}
                       </td>
-                      <td className="px-3.5 py-3 font-medium text-slate-700 dark:text-slate-300">
+                      <td className="px-4 py-3 text-[13px] font-medium text-slate-700 dark:text-slate-300">
                         {sectionDisplay}
                       </td>
-                      <td className="px-3 py-3 text-slate-600 dark:text-slate-300">
+                      <td className="px-4 py-3 text-[13px] text-slate-600 dark:text-slate-300">
                         {subjectsDisplay}
                       </td>
-                      <td className="px-3 py-3 text-center font-bold text-slate-800 dark:text-slate-200">
+                      <td className="px-4 py-3 text-center text-[13px] font-bold text-slate-800 dark:text-slate-200">
                         {gradeDisplay}
                       </td>
-                      <td className="px-3.5 py-3 text-center">
+                      <td className="px-4 py-3 text-center">
                         <span
                           className={cn(
-                            "inline-flex rounded-full px-2.5 py-0.5 text-[11px]",
+                            "inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
                             riskBadgeClass
                           )}
                         >
                           {riskBadgeLabel}
                         </span>
                       </td>
-                      <td className="px-3.5 py-3">
+                      <td className="px-4 py-3">
                         {inAralProgram ? (
-                          <span className="text-[11px] font-medium text-purple-700 dark:text-purple-400">
+                          <span className="text-[12px] font-medium text-purple-700 dark:text-purple-400">
                             In ARAL Program
                           </span>
                         ) : hasAralReferral ? (
-                          <span className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                          <span className="text-[12px] font-medium text-amber-700 dark:text-amber-400">
                             ARAL Referral: Pending Principal Review
                           </span>
                         ) : isRemedial ? (
-                          <span className="text-[11px] font-medium text-blue-700 dark:text-blue-400">
+                          <span className="text-[12px] font-medium text-blue-700 dark:text-blue-400">
                             Class Remedial
                           </span>
                         ) : learner.monitoringStatus ===
                           MONITORING_STATUS.ONGOING ? (
-                          <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                          <span className="text-[12px] font-medium text-slate-700 dark:text-slate-300">
                             Ongoing Monitoring
                           </span>
                         ) : (
-                          <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                          <span className="text-[12px] text-slate-400 dark:text-slate-500">
                             Classroom Monitoring
                           </span>
                         )}
@@ -310,7 +311,7 @@ export default function AdminMonitoredStudentsPanel({
                         <button
                           type="button"
                           onClick={() => onViewStudent?.(learner)}
-                          className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-cnhs-green px-3 py-1 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-cnhs-green-dark"
+                          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 active:scale-95"
                         >
                           View Record
                         </button>
@@ -323,18 +324,13 @@ export default function AdminMonitoredStudentsPanel({
           </table>
         </div>
 
-        {/* Pagination */}
-        {filteredLearners.length > PAGE_SIZE ? (
-          <div className="border-t border-slate-100 p-2.5 dark:border-white/5">
-            <TablePagination
-              page={page}
-              totalPages={totalPages}
-              onPageChange={setPage}
-              totalItems={filteredLearners.length}
-              pageSize={PAGE_SIZE}
-            />
-          </div>
-        ) : null}
+        <AdminTablePagination
+          page={safePage}
+          pageSize={PAGE_SIZE}
+          total={filteredLearners.length}
+          onPageChange={setPage}
+          itemLabel="learners"
+        />
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
+import AdminTablePagination from "@/components/shared/AdminTablePagination";
 import {
   BarChart,
   Bar,
@@ -10,6 +11,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+
+const PAGE_SIZE = 10;
 
 export default function AcademicReportTab({
   summary = {},
@@ -144,6 +147,17 @@ export default function AcademicReportTab({
     });
   }, [classReports]);
 
+  const [page, setPage] = useState(1);
+  useEffect(() => {
+    setPage(1);
+  }, [sectionSummaryData]);
+  const totalPages = Math.max(1, Math.ceil(sectionSummaryData.length / PAGE_SIZE));
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+  const pagedSections = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE;
+    return sectionSummaryData.slice(start, start + PAGE_SIZE);
+  }, [sectionSummaryData, safePage]);
+
   return (
     <div className="space-y-4">
       {/* 4 SCOPED SUMMARY CARDS */}
@@ -227,54 +241,70 @@ export default function AcademicReportTab({
       </div>
 
       {/* SECTION SUMMARY TABLE */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
-        <div className="border-b border-slate-100 pb-2.5 dark:border-white/5">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">
+      <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+        <div className="border-b border-slate-200/80 px-4 py-3 dark:border-white/5">
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
             Section Summary
           </h3>
-          <p className="mt-0.5 text-[11px] text-slate-500">
+          <p className="mt-0.5 text-[12px] text-slate-500">
             Summary of learners requiring academic assistance across grade sections.
           </p>
         </div>
 
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-left text-xs">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-500 dark:border-white/10">
-                <th className="pb-2 font-semibold">Section</th>
-                <th className="pb-2 font-semibold tabular-nums">Learners</th>
-                <th className="pb-2 font-semibold tabular-nums">Need Support</th>
-                <th className="pb-2 font-semibold">Main Concern</th>
+              <tr className="bg-slate-50/80 border-b border-slate-200/80 dark:bg-white/[0.02]">
+                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Section
+                </th>
+                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 tabular-nums">
+                  Learners
+                </th>
+                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 tabular-nums">
+                  Need Support
+                </th>
+                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Main Concern
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-              {sectionSummaryData.length > 0 ? (
-                sectionSummaryData.map((row) => (
-                  <tr key={row.section} className="hover:bg-slate-50/60 dark:hover:bg-white/[0.02]">
-                    <td className="py-2.5 font-medium text-slate-900 dark:text-slate-100">
+              {sectionSummaryData.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-10 text-center text-[13px] text-slate-400">
+                    No section data available for the selected reporting period.
+                  </td>
+                </tr>
+              ) : (
+                pagedSections.map((row) => (
+                  <tr key={row.section} className="hover:bg-slate-50/70 transition-colors dark:hover:bg-white/[0.02]">
+                    <td className="px-4 py-3 text-[13px] font-semibold text-slate-800 dark:text-slate-100">
                       {row.section}
                     </td>
-                    <td className="py-2.5 tabular-nums text-slate-700 dark:text-slate-300">
+                    <td className="px-4 py-3 text-[13px] tabular-nums text-slate-700 dark:text-slate-300">
                       {row.learners}
                     </td>
-                    <td className="py-2.5 font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+                    <td className="px-4 py-3 text-[13px] font-semibold tabular-nums text-slate-900 dark:text-slate-100">
                       {row.needSupport}
                     </td>
-                    <td className="py-2.5 text-slate-600 dark:text-slate-400">
+                    <td className="px-4 py-3 text-[13px] text-slate-600 dark:text-slate-400">
                       {row.mainConcern}
                     </td>
                   </tr>
                 ))
-              ) : (
-                <tr>
-                  <td colSpan={4} className="py-6 text-center text-xs text-slate-400">
-                    No section data available for the selected reporting period.
-                  </td>
-                </tr>
               )}
             </tbody>
           </table>
         </div>
+
+        <AdminTablePagination
+          page={safePage}
+          pageSize={PAGE_SIZE}
+          total={sectionSummaryData.length}
+          onPageChange={setPage}
+          itemLabel="sections"
+        />
       </div>
     </div>
   );

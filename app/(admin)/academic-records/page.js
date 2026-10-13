@@ -18,9 +18,9 @@ import SectionFolderCards from "@/components/academic-records/SectionFolderCards
 import OperationsAccordion from "@/components/academic-records/OperationsAccordion";
 import RecordsBrowseBar from "@/components/academic-records/RecordsBrowseBar";
 import SummaryCard from "@/components/academic-records/SummaryCard";
-import TablePagination, {
-  ACADEMIC_RECORDS_PAGE_SIZE,
-} from "@/components/academic-records/TablePagination";
+import AdminTablePagination, {
+  DEFAULT_ADMIN_PAGE_SIZE,
+} from "@/components/shared/AdminTablePagination";
 import Header from "@/components/layout/Header";
 import AppSelect from "@/components/shared/AppSelect";
 import { useAppToast } from "@/components/shared/AppToast";
@@ -110,13 +110,13 @@ export default function AcademicRecordsPage() {
   const totalStudents = students.length;
   const totalPages = Math.max(
     1,
-    Math.ceil(totalStudents / ACADEMIC_RECORDS_PAGE_SIZE) || 1
+    Math.ceil(totalStudents / DEFAULT_ADMIN_PAGE_SIZE) || 1
   );
   const safePage = Math.min(Math.max(page, 1), totalPages);
 
   const pagedStudents = useMemo(() => {
-    const start = (safePage - 1) * ACADEMIC_RECORDS_PAGE_SIZE;
-    return students.slice(start, start + ACADEMIC_RECORDS_PAGE_SIZE);
+    const start = (safePage - 1) * DEFAULT_ADMIN_PAGE_SIZE;
+    return students.slice(start, start + DEFAULT_ADMIN_PAGE_SIZE);
   }, [students, safePage]);
 
   async function handleExportRecords() {
@@ -358,11 +358,13 @@ export default function AcademicRecordsPage() {
                       : `${selectedClass.termLabel} grade`
                   }
                 />
-                <TablePagination
+                <AdminTablePagination
                   page={safePage}
-                  pageSize={ACADEMIC_RECORDS_PAGE_SIZE}
+                  pageSize={DEFAULT_ADMIN_PAGE_SIZE}
                   total={totalStudents}
                   onPageChange={setPage}
+                  itemLabel="learners"
+                  className="rounded-xl border border-slate-200/80 mt-2"
                 />
               </>
             ) : gradeFocused && sectionFocused ? (

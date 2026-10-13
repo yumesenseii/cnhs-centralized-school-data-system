@@ -1,10 +1,12 @@
-"use client";
-
+import { useEffect, useMemo, useState } from "react";
 import AssignmentRow from "@/components/class-assignments/AssignmentRow";
 import AppSelect from "@/components/shared/AppSelect";
+import AdminTablePagination from "@/components/shared/AdminTablePagination";
 import { formatPersonName } from "@/lib/admin/classAssignmentMappers";
 import { TERM_ALL_LABEL, TERM_OPTIONS } from "@/lib/academic/termLabels";
 import { GRADE_FILTER_OPTIONS } from "@/lib/academic/gradeLevels";
+
+const PAGE_SIZE = 10;
 
 const columns = [
   "Teacher",
@@ -26,8 +28,29 @@ export default function AssignmentsTable({
   onDelete,
   busy,
 }) {
+  const [page, setPage] = useState(1);
+
+  // Reset to page 1 on filter or search change
+  useEffect(() => {
+    setPage(1);
+  }, [
+    filters.search,
+    filters.schoolYear,
+    filters.grade,
+    filters.quarter,
+    filters.teacherId,
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(assignments.length / PAGE_SIZE));
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+
+  const pagedAssignments = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE;
+    return assignments.slice(start, start + PAGE_SIZE);
+  }, [assignments, safePage]);
+
   return (
-    <section className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
+    <section className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xs">
       <div className="flex flex-col gap-3 border-b border-slate-100 p-4 lg:flex-row lg:items-center">
         <label className="relative min-w-0 flex-1">
           <span className="sr-only">Search assignments</span>
@@ -38,7 +61,7 @@ export default function AssignmentsTable({
               onFiltersChange({ ...filters, search: event.target.value })
             }
             placeholder="Search teacher, subject, section, or school year"
-            className="h-9 w-full rounded-full border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-cnhs-green-dark/40"
+            className="h-9 w-full rounded-full border border-slate-200 bg-white px-3 text-[13px] text-slate-700 outline-none focus:border-cnhs-green-dark/40"
           />
         </label>
         <div className="flex shrink-0 flex-wrap gap-2 lg:ml-auto">
@@ -88,7 +111,7 @@ export default function AssignmentsTable({
               {columns.map((column) => (
                 <th
                   key={column}
-                  className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400 first:pl-4 last:pr-4"
+                  className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 first:pl-5 last:pr-5"
                 >
                   {column}
                 </th>
@@ -106,7 +129,7 @@ export default function AssignmentsTable({
                 </td>
               </tr>
             ) : (
-              assignments.map((assignment) => (
+              pagedAssignments.map((assignment) => (
                 <AssignmentRow
                   key={assignment.id}
                   assignment={assignment}
@@ -119,6 +142,14 @@ export default function AssignmentsTable({
           </tbody>
         </table>
       </div>
+
+      <AdminTablePagination
+        page={safePage}
+        pageSize={PAGE_SIZE}
+        total={assignments.length}
+        onPageChange={setPage}
+        itemLabel="assignments"
+      />
     </section>
   );
 }

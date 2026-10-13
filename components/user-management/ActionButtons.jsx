@@ -81,9 +81,9 @@ export default function ActionButtons({
       <button
         type="button"
         onClick={() => onView?.(user)}
-        className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-cnhs-green-dark/25 bg-white px-2.5 text-[10px] font-semibold text-cnhs-green-dark transition-colors hover:border-cnhs-green-dark/40 hover:bg-green-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cnhs-green/30"
+        className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cnhs-green/30 active:scale-95"
       >
-        <Eye size={11} />
+        <Eye size={13} aria-hidden="true" />
         View
       </button>
       <button
@@ -93,9 +93,9 @@ export default function ActionButtons({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={toggleMenu}
-        className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cnhs-green/30"
+        className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cnhs-green/30 active:scale-95"
       >
-        <MoreHorizontal size={14} />
+        <MoreHorizontal size={14} aria-hidden="true" />
       </button>
 
       {open
@@ -105,13 +105,13 @@ export default function ActionButtons({
               role="menu"
               aria-label={`Actions for ${user.fullName}`}
               style={{ top: position.top, right: position.right }}
-              className="fixed z-[80] w-44 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-[0_16px_40px_rgba(15,23,42,0.16)]"
+              className="fixed z-[80] w-48 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-[0_16px_40px_rgba(15,23,42,0.16)]"
             >
               <button
                 type="button"
                 role="menuitem"
                 onClick={() => runAction(onEdit)}
-                className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cnhs-green/25"
+                className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cnhs-green/25"
               >
                 <Pencil size={13} aria-hidden="true" />
                 Edit user
@@ -120,7 +120,7 @@ export default function ActionButtons({
                 type="button"
                 role="menuitem"
                 onClick={() => runAction(onResetPassword)}
-                className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cnhs-green/25"
+                className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cnhs-green/25"
               >
                 <KeyRound size={13} aria-hidden="true" />
                 Reset password
@@ -132,7 +132,7 @@ export default function ActionButtons({
                     type="button"
                     role="menuitem"
                     onClick={() => runAction(onToggleStatus)}
-                    className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cnhs-green/25"
+                    className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cnhs-green/25"
                   >
                     {isActive ? (
                       <UserX size={13} aria-hidden="true" />

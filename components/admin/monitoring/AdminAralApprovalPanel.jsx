@@ -25,6 +25,7 @@ import { parseRecordedGrade } from "@/lib/ecr/computeGrades";
 import { normalizeSubjectName } from "@/lib/services/recommendation/subjectCapabilities";
 import { Pill } from "@/components/teacher/monitoring/shared";
 import AdminAralReviewModal from "@/components/admin/monitoring/AdminAralReviewModal";
+import AdminTablePagination from "@/components/shared/AdminTablePagination";
 import { cn } from "@/lib/utils";
 
 const SECTIONS_PAGE_SIZE = 10;
@@ -848,9 +849,9 @@ export default function AdminAralApprovalPanel({
 
                       <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white dark:border-white/5 dark:bg-[var(--card)]">
                         <table className="min-w-[780px] w-full border-collapse text-left">
-                          <thead>
-                            <tr className="bg-slate-50/80 dark:bg-white/[0.03]">
-                              <th className="px-2.5 py-1.5">
+                          <thead className="bg-slate-50/80 dark:bg-white/[0.03]">
+                            <tr>
+                              <th className="px-4 py-3">
                                 <input
                                   type="checkbox"
                                   checked={allSectionSelected}
@@ -870,7 +871,7 @@ export default function AdminAralApprovalPanel({
                               ].map((h) => (
                                 <th
                                   key={h}
-                                  className="px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400"
+                                  className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 last:text-right"
                                 >
                                   {h}
                                 </th>
@@ -886,7 +887,7 @@ export default function AdminAralApprovalPanel({
                                   key={learner.selectKey}
                                   className="border-t border-slate-100 hover:bg-slate-50/60 dark:border-white/5 dark:hover:bg-white/[0.03]"
                                 >
-                                  <td className="px-2.5 py-2">
+                                  <td className="px-4 py-3">
                                     <input
                                       type="checkbox"
                                       checked={
@@ -900,7 +901,7 @@ export default function AdminAralApprovalPanel({
                                       className="disabled:cursor-not-allowed disabled:opacity-40"
                                     />
                                   </td>
-                                  <td className="px-2.5 py-2">
+                                  <td className="px-4 py-3">
                                     {typeof onViewStudent === "function" ? (
                                       <button
                                         type="button"
@@ -911,10 +912,10 @@ export default function AdminAralApprovalPanel({
                                         }
                                         className="cursor-pointer text-left transition hover:text-cnhs-green-dark"
                                       >
-                                        <p className="text-[12px] font-semibold text-slate-800 hover:text-cnhs-green-dark dark:text-slate-100 dark:hover:text-cnhs-green">
+                                        <p className="text-[13px] font-semibold text-slate-800 hover:text-cnhs-green-dark dark:text-slate-100 dark:hover:text-cnhs-green">
                                           {learner.name}
                                         </p>
-                                        <p className="text-[10px] text-slate-400">
+                                        <p className="text-[12px] text-slate-400">
                                           {learner.studentNumber}
                                           {learner.quarter
                                             ? ` · ${learner.quarter}`
@@ -923,10 +924,10 @@ export default function AdminAralApprovalPanel({
                                       </button>
                                     ) : (
                                       <>
-                                        <p className="text-[12px] font-semibold text-slate-800 dark:text-slate-100">
+                                        <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-100">
                                           {learner.name}
                                         </p>
-                                        <p className="text-[10px] text-slate-400">
+                                        <p className="text-[12px] text-slate-400">
                                           {learner.studentNumber}
                                           {learner.quarter
                                             ? ` · ${learner.quarter}`
@@ -935,7 +936,7 @@ export default function AdminAralApprovalPanel({
                                       </>
                                     )}
                                   </td>
-                                  <td className="px-2.5 py-2">
+                                  <td className="px-4 py-3">
                                     <div className="flex flex-col gap-1">
                                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                                         {(learner.identifiedSubjects?.length
@@ -953,12 +954,12 @@ export default function AdminAralApprovalPanel({
                                               key={entry.subject}
                                               className="inline-flex items-center gap-1.5"
                                             >
-                                              <span className="inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 dark:bg-sky-500/15 dark:text-sky-300 dark:ring-0">
+                                              <span className="inline-flex rounded-full bg-sky-50 px-2.5 py-0.5 text-[11px] font-semibold text-sky-700 dark:bg-sky-500/15 dark:text-sky-300 dark:ring-0">
                                                 {entry.subject}
                                               </span>
                                               <span
                                                 className={cn(
-                                                  "text-[11px] font-semibold tabular-nums",
+                                                  "text-[12px] font-semibold tabular-nums",
                                                   entry.grade === null
                                                     ? "text-slate-400 dark:text-slate-500"
                                                     : failing
@@ -973,13 +974,13 @@ export default function AdminAralApprovalPanel({
                                         })}
                                       </div>
                                       {learner.reasonLine ? (
-                                        <p className="text-[10px] text-slate-400">
+                                        <p className="text-[12px] text-slate-400">
                                           {learner.reasonLine}
                                         </p>
                                       ) : null}
                                     </div>
                                   </td>
-                                  <td className="px-2.5 py-2">
+                                  <td className="px-4 py-3">
                                     <Pill
                                       value={aralApprovalDisplayLabel(
                                         learner.displayStatus
@@ -995,7 +996,7 @@ export default function AdminAralApprovalPanel({
                                       }}
                                     />
                                   </td>
-                                  <td className="px-2.5 py-2">
+                                  <td className="px-4 py-3">
                                     {locked ? (
                                       (() => {
                                         const noteText = String(
@@ -1005,13 +1006,13 @@ export default function AdminAralApprovalPanel({
                                         ).trim();
                                         return noteText ? (
                                           <p
-                                            className="max-w-[10rem] text-[11px] leading-snug text-slate-600 dark:text-slate-300"
+                                            className="max-w-[12rem] text-[12px] leading-snug text-slate-600 dark:text-slate-300"
                                             title={noteText}
                                           >
                                             {noteText}
                                           </p>
                                         ) : (
-                                          <p className="text-[10px] text-slate-400">
+                                          <p className="text-[12px] text-slate-400">
                                             No note
                                           </p>
                                         );
@@ -1030,13 +1031,13 @@ export default function AdminAralApprovalPanel({
                                           }))
                                         }
                                         placeholder="Optional return / review note"
-                                        className="h-7 w-44 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] text-slate-700 outline-none placeholder:text-slate-400 focus:border-cnhs-green dark:border-white/5 dark:bg-white/[0.03] dark:text-slate-200 dark:placeholder:text-slate-500"
+                                        className="h-8 w-48 rounded-lg border border-slate-200 bg-white px-3 text-[12px] text-slate-700 outline-none placeholder:text-slate-400 focus:border-cnhs-green dark:border-white/5 dark:bg-white/[0.03] dark:text-slate-200 dark:placeholder:text-slate-500"
                                       />
                                     )}
                                   </td>
-                                  <td className="px-2.5 py-2">
+                                  <td className="px-4 py-3">
                                     {locked ? (
-                                      <span className="text-[10px] font-medium text-slate-400">
+                                      <span className="text-[12px] font-medium text-slate-400">
                                         Reviewed
                                       </span>
                                     ) : (
@@ -1059,7 +1060,7 @@ export default function AdminAralApprovalPanel({
                                             )
                                           }
                                           className={cn(
-                                            "h-7 cursor-pointer rounded-full px-2.5 text-[10px] font-semibold transition-colors disabled:opacity-50",
+                                            "h-7 cursor-pointer rounded-full px-2.5 text-[11px] font-semibold transition-colors disabled:opacity-50",
                                             decisions[learner.selectKey] ===
                                               ARAL_APPROVAL_DB.APPROVED
                                               ? "bg-cnhs-green-dark text-white"
@@ -1082,7 +1083,7 @@ export default function AdminAralApprovalPanel({
                                             )
                                           }
                                           className={cn(
-                                            "h-7 cursor-pointer rounded-full px-2.5 text-[10px] font-semibold transition-colors disabled:opacity-50",
+                                            "h-7 cursor-pointer rounded-full px-2.5 text-[11px] font-semibold transition-colors disabled:opacity-50",
                                             decisions[learner.selectKey] ===
                                               ARAL_APPROVAL_DB.RETURNED
                                               ? "bg-cnhs-orange text-white"
@@ -1094,7 +1095,7 @@ export default function AdminAralApprovalPanel({
                                       </div>
                                     )}
                                   </td>
-                                  <td className="px-2.5 py-2">
+                                  <td className="px-4 py-3 text-right">
                                     <button
                                       type="button"
                                       disabled={busy}
@@ -1105,9 +1106,9 @@ export default function AdminAralApprovalPanel({
                                           setReviewKey(learner.selectKey);
                                         }
                                       }}
-                                      className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-600 transition hover:bg-slate-50 active:scale-95 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                                      className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 active:scale-95 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
                                     >
-                                      <Eye size={11} />
+                                      <Eye size={13} />
                                       Details
                                     </button>
                                   </td>
@@ -1124,44 +1125,13 @@ export default function AdminAralApprovalPanel({
             })}
           </div>
 
-          {visibleSections.length > SECTIONS_PAGE_SIZE ? (
-            <div className="flex flex-col gap-2 border-t border-slate-100 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-4">
-              <p className="text-[11px] font-medium text-slate-500">
-                Showing{" "}
-                <span className="font-semibold tabular-nums text-slate-700">
-                  {sectionStart}–{sectionEnd}
-                </span>{" "}
-                of{" "}
-                <span className="font-semibold tabular-nums text-slate-700">
-                  {visibleSections.length}
-                </span>{" "}
-                sections · {SECTIONS_PAGE_SIZE} per page
-              </p>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setPage(safePage - 1)}
-                  disabled={safePage <= 1}
-                  className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/5 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
-                >
-                  <ChevronLeft size={13} />
-                  Previous
-                </button>
-                <span className="min-w-[4rem] text-center text-[11px] font-semibold tabular-nums text-slate-600">
-                  {safePage} / {totalPages}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setPage(safePage + 1)}
-                  disabled={safePage >= totalPages}
-                  className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/5 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
-                >
-                  Next
-                  <ChevronRight size={13} />
-                </button>
-              </div>
-            </div>
-          ) : null}
+          <AdminTablePagination
+            page={safePage}
+            pageSize={SECTIONS_PAGE_SIZE}
+            total={visibleSections.length}
+            onPageChange={setPage}
+            itemLabel="sections"
+          />
         </>
       )}
       <AdminAralReviewModal

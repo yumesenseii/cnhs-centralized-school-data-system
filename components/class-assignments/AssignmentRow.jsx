@@ -10,45 +10,45 @@ export default function AssignmentRow({
 }) {
   return (
     <tr className="border-t border-slate-100 transition-colors hover:bg-slate-50/70">
-      <td className="px-3 py-2 pl-4 text-[12px] font-semibold text-slate-800">
+      <td className="px-4 py-3 pl-5 text-[13px] font-semibold text-slate-900">
         {assignment.teacherName}
       </td>
-      <td className="px-3 py-2 text-[12px] text-slate-700">
+      <td className="px-4 py-3 text-[13px] text-slate-800">
         {assignment.subjectName}
         {assignment.subjectCode ? (
-          <span className="ml-1 text-slate-400">({assignment.subjectCode})</span>
+          <span className="ml-1 text-[12px] text-slate-400">({assignment.subjectCode})</span>
         ) : null}
       </td>
-      <td className="px-3 py-2 text-[12px] text-slate-600">
+      <td className="px-4 py-3 text-[13px] text-slate-600">
         {assignment.gradeLabel}
       </td>
-      <td className="px-3 py-2 text-[12px] font-medium text-slate-700">
+      <td className="px-4 py-3 text-[13px] font-medium text-slate-800">
         {assignment.sectionName}
       </td>
-      <td className="px-3 py-2 text-[12px] text-slate-600">
+      <td className="px-4 py-3 text-[13px] text-slate-600">
         {assignment.schoolYear}
       </td>
-      <td className="px-3 py-2 text-[12px] text-slate-600">
+      <td className="px-4 py-3 text-[13px] text-slate-600">
         {assignment.quarterLabel}
       </td>
-      <td className="px-3 py-2 pr-4">
-        <div className="flex flex-wrap items-center gap-1.5">
+      <td className="px-4 py-3 pr-5">
+        <div className="flex items-center justify-end gap-2">
           <button
             type="button"
             disabled={busy}
             onClick={() => onEdit?.(assignment)}
-            className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-40"
+            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <Pencil size={11} />
+            <Pencil size={12} />
             Edit
           </button>
           <button
             type="button"
             disabled={busy}
             onClick={() => onDelete?.(assignment)}
-            className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-red-200 bg-white px-2.5 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-40"
+            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <Trash2 size={11} />
+            <Trash2 size={12} />
             Remove
           </button>
         </div>

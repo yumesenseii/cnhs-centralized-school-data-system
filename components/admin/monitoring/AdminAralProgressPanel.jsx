@@ -41,7 +41,7 @@ import {
   listAralAssessmentScoresForSection,
 } from "@/lib/supabase/queries/aralProgram";
 import { cn } from "@/lib/utils";
-import TablePagination from "@/components/academic-records/TablePagination";
+import AdminTablePagination from "@/components/shared/AdminTablePagination";
 
 const PAGE_SIZE = 10;
 
@@ -289,10 +289,11 @@ export default function AdminAralProgressPanel({
   }, [uniqueLearnersList, search]);
 
   const totalPages = Math.max(1, Math.ceil(filteredLearners.length / PAGE_SIZE));
+  const safePage = Math.min(Math.max(page, 1), totalPages);
   const pagedLearners = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
+    const start = (safePage - 1) * PAGE_SIZE;
     return filteredLearners.slice(start, start + PAGE_SIZE);
-  }, [filteredLearners, page]);
+  }, [filteredLearners, safePage]);
 
   // Section summary metrics
   const sectionSummary = useMemo(() => {
@@ -553,27 +554,27 @@ export default function AdminAralProgressPanel({
             ) : detailTab === "all" ? (
               <div>
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[850px] border-collapse text-left text-xs">
+                  <table className="w-full min-w-[850px] border-collapse text-left">
                     <thead>
-                      <tr className="border-b border-slate-100 bg-slate-50/80 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-white/5 dark:bg-white/[0.03] dark:text-slate-400">
-                        <th className="px-3 py-2.5">Learner</th>
-                        <th className="px-3 py-2.5">Target Subject</th>
-                        <th className="px-3 py-2.5 text-center">Beginning Assessment</th>
+                      <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:border-white/5 dark:bg-white/[0.03] dark:text-slate-400">
+                        <th className="px-4 py-3">Learner</th>
+                        <th className="px-4 py-3">Target Subject</th>
+                        <th className="px-4 py-3 text-center">Beginning Assessment</th>
                         {showMidPhase ? (
-                          <th className="px-3 py-2.5 text-center">Mid-Year</th>
+                          <th className="px-4 py-3 text-center">Mid-Year</th>
                         ) : null}
                         {showPostPhase ? (
-                          <th className="px-3 py-2.5 text-center">End-of-Year</th>
+                          <th className="px-4 py-3 text-center">End-of-Year</th>
                         ) : null}
-                        <th className="px-3 py-2.5 text-center">Learning Progress</th>
-                        <th className="px-3 py-2.5 text-center">ARAL Status</th>
-                        <th className="px-3 py-2.5 text-right">Action</th>
+                        <th className="px-4 py-3 text-center">Learning Progress</th>
+                        <th className="px-4 py-3 text-center">ARAL Status</th>
+                        <th className="px-4 py-3 text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-white/5">
               {pagedLearners.length === 0 ? (
                 <tr>
-                  <td colSpan={5 + (showMidPhase ? 1 : 0) + (showPostPhase ? 1 : 0)} className="py-10 text-center text-slate-400">
+                  <td colSpan={5 + (showMidPhase ? 1 : 0) + (showPostPhase ? 1 : 0)} className="px-4 py-10 text-center text-sm text-slate-400">
                     {outcomeFilter === "completed"
                       ? "No completed learners yet."
                       : outcomeFilter === "continued"
@@ -604,86 +605,86 @@ export default function AdminAralProgressPanel({
                               key={sid}
                               className="transition-colors hover:bg-slate-50/70 dark:hover:bg-white/[0.02]"
                             >
-                              <td className="px-3 py-2.5 font-medium text-slate-900 dark:text-slate-100">
+                              <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
                                 {typeof onViewStudent === "function" ? (
                                   <button
                                     type="button"
                                     onClick={() => onViewStudent(learner)}
                                     className="cursor-pointer text-left transition hover:text-cnhs-green-dark"
                                   >
-                                    <p className="font-semibold">{learner.name}</p>
-                                    <p className="text-[10px] text-slate-400">{learner.studentNumber}</p>
+                                    <p className="text-[13px] font-semibold">{learner.name}</p>
+                                    <p className="text-[12px] text-slate-400">{learner.studentNumber}</p>
                                   </button>
                                 ) : (
                                   <>
-                                    <p className="font-semibold">{learner.name}</p>
-                                    <p className="text-[10px] text-slate-400">{learner.studentNumber}</p>
+                                    <p className="text-[13px] font-semibold">{learner.name}</p>
+                                    <p className="text-[12px] text-slate-400">{learner.studentNumber}</p>
                                   </>
                                 )}
                               </td>
 
-                              <td className="px-3 py-2.5">
-                                <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-300">
+                              <td className="px-4 py-3">
+                                <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-300">
                                   {learner.subject || "English / Filipino"}
                                 </span>
                               </td>
 
-                              <td className="px-3 py-2.5 text-center">
+                              <td className="px-4 py-3 text-center">
                                 {hasPreScore ? (
                                   <div>
-                                    <span className="font-bold text-slate-800 dark:text-slate-200">
+                                    <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200">
                                       {pre.score} / {pre.maxScore || 20}
                                     </span>
                                     {pre.result ? (
-                                      <p className="text-[10px] text-slate-500">{pre.result}</p>
+                                      <p className="text-[11px] text-slate-500">{pre.result}</p>
                                     ) : null}
                                   </div>
                                 ) : (
-                                  <span className="text-[11px] text-slate-400">Waiting</span>
+                                  <span className="text-[12px] text-slate-400">Waiting</span>
                                 )}
                               </td>
 
                       {showMidPhase ? (
-                        <td className="px-3 py-2.5 text-center">
+                        <td className="px-4 py-3 text-center">
                           {hasMidScore ? (
                             <div>
-                              <span className="font-bold text-slate-800 dark:text-slate-200">
+                              <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200">
                                 {mid.score} / {mid.maxScore || 20}
                               </span>
                               {mid.result ? (
-                                <p className="text-[10px] text-slate-500">{mid.result}</p>
+                                <p className="text-[11px] text-slate-500">{mid.result}</p>
                               ) : null}
                             </div>
                           ) : (
-                            <span className="text-[11px] text-slate-400">Waiting</span>
+                            <span className="text-[12px] text-slate-400">Waiting</span>
                           )}
                         </td>
                       ) : null}
 
                       {showPostPhase ? (
-                        <td className="px-3 py-2.5 text-center">
+                        <td className="px-4 py-3 text-center">
                           {hasPostScore ? (
                             <div>
-                              <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                              <span className="text-[13px] font-bold text-emerald-700 dark:text-emerald-400">
                                 {post.score} / {post.maxScore || 20}
                               </span>
                               {post.result ? (
-                                <p className="text-[10px] font-semibold text-emerald-600">
+                                <p className="text-[11px] font-semibold text-emerald-600">
                                   {post.result}
                                 </p>
                               ) : null}
                             </div>
                           ) : (
-                            <span className="text-[11px] text-slate-400">Waiting</span>
+                            <span className="text-[12px] text-slate-400">Waiting</span>
                           )}
                         </td>
                       ) : null}
 
-                              <td className="px-3 py-2.5 text-center">
+                              <td className="px-4 py-3 text-center">
                                 {improvement != null ? (
                                   <span
                                     className={cn(
-                                      "inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-bold",
+                                      "inline-flex items-center gap-0.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold",
                                       improvement > 0
                                         ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
                                         : improvement === 0
@@ -692,12 +693,12 @@ export default function AdminAralProgressPanel({
                                     )}
                                   >
                                     {improvement > 0 ? (
-                                      <TrendingUp size={10} />
+                                      <TrendingUp size={12} />
                                     ) : null}
                                     {improvement > 0 ? `+${improvement}` : improvement} pts
                                   </span>
                                 ) : (
-                                  <span className="text-[11px] text-slate-400">
+                                  <span className="text-[12px] text-slate-400">
                                     {learner.weeklyUpdateCount
                                       ? `${learner.weeklyUpdateCount} session update(s)`
                                       : "Ongoing sessions"}
@@ -705,7 +706,7 @@ export default function AdminAralProgressPanel({
                                 )}
                               </td>
 
-                              <td className="px-3 py-2.5 text-center">
+                              <td className="px-4 py-3 text-center">
                                 <Pill
                                   value={
                                     learner.monitoringStatus === "Completed / Exited" ||
@@ -717,13 +718,13 @@ export default function AdminAralProgressPanel({
                                 />
                               </td>
 
-                              <td className="px-3 py-2.5 text-right">
+                              <td className="px-4 py-3 text-right">
                                 <button
                                   type="button"
                                   onClick={() => onViewStudent?.(learner)}
-                                  className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50 active:scale-95 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                                  className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 active:scale-95 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
                                 >
-                                  <Eye size={12} />
+                                  <Eye size={13} />
                                   View
                                 </button>
                               </td>
@@ -735,17 +736,13 @@ export default function AdminAralProgressPanel({
                   </table>
                 </div>
 
-                {filteredLearners.length > PAGE_SIZE ? (
-                  <div className="border-t border-slate-100 pt-3 dark:border-white/5">
-                    <TablePagination
-                      page={page}
-                      totalPages={totalPages}
-                      onPageChange={setPage}
-                      total={filteredLearners.length}
-                      pageSize={PAGE_SIZE}
-                    />
-                  </div>
-                ) : null}
+                <AdminTablePagination
+                  page={safePage}
+                  pageSize={PAGE_SIZE}
+                  total={filteredLearners.length}
+                  onPageChange={setPage}
+                  itemLabel="learners"
+                />
               </div>
             ) : (
               <div className="space-y-4">

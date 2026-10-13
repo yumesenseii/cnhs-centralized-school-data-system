@@ -20,6 +20,7 @@ import { getAdminSession } from "@/lib/supabase/queries/adminAuth";
 import { confirmDelete } from "@/lib/ui/confirmAction";
 import { AnimatedBanner } from "@/components/shared/AnimatedFeedback";
 import { useAppToast } from "@/components/shared/AppToast";
+import AdminTablePagination from "@/components/shared/AdminTablePagination";
 import { cn } from "@/lib/utils";
 import AppSelect from "@/components/shared/AppSelect";
 
@@ -700,8 +701,8 @@ export default function AdminAralFacilitatorAssignPanel({
                     {showLearners ? (
                       <div className="mt-3 overflow-x-auto rounded-xl border border-slate-100 bg-slate-50/40">
                         <table className="min-w-[720px] w-full border-collapse text-left">
-                          <thead>
-                            <tr className="bg-slate-50/80">
+                          <thead className="bg-slate-50/80">
+                            <tr>
                               {[
                                 "ARAL Learner",
                                 "Identified in",
@@ -712,7 +713,7 @@ export default function AdminAralFacilitatorAssignPanel({
                               ].map((column) => (
                                 <th
                                   key={column}
-                                  className="px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400"
+                                  className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 last:text-right"
                                 >
                                   {column}
                                 </th>
@@ -730,9 +731,9 @@ export default function AdminAralFacilitatorAssignPanel({
                               return (
                                 <tr
                                   key={learner.studentId}
-                                  className="border-t border-slate-100 bg-white hover:bg-slate-50/70"
+                                  className="border-t border-slate-100 bg-white transition-colors hover:bg-slate-50/70"
                                 >
-                                  <td className="px-2.5 py-2">
+                                  <td className="px-4 py-3">
                                     {typeof onViewStudent === "function" ? (
                                       <button
                                         type="button"
@@ -743,40 +744,40 @@ export default function AdminAralFacilitatorAssignPanel({
                                         }
                                         className="cursor-pointer text-left transition hover:text-cnhs-green-dark"
                                       >
-                                        <p className="text-[12px] font-semibold text-slate-800 hover:text-cnhs-green-dark">
+                                        <p className="text-[13px] font-semibold text-slate-800 hover:text-cnhs-green-dark">
                                           {learner.name}
                                         </p>
-                                        <p className="text-[10px] text-slate-400">
+                                        <p className="text-[12px] text-slate-400">
                                           {learner.studentNumber}
                                         </p>
                                       </button>
                                     ) : (
                                       <>
-                                        <p className="text-[12px] font-semibold text-slate-800">
+                                        <p className="text-[13px] font-semibold text-slate-800">
                                           {learner.name}
                                         </p>
-                                        <p className="text-[10px] text-slate-400">
+                                        <p className="text-[12px] text-slate-400">
                                           {learner.studentNumber}
                                         </p>
                                       </>
                                     )}
                                   </td>
-                                  <td className="px-2.5 py-2">
+                                  <td className="px-4 py-3">
                                     <div className="flex flex-wrap gap-1">
                                       {learner.subjects.map((subject) => (
                                         <span
                                           key={subject}
-                                          className="inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700"
+                                          className="inline-flex rounded-full bg-sky-50 px-2.5 py-0.5 text-[11px] font-semibold text-sky-700"
                                         >
                                           {subject}
                                         </span>
                                       ))}
                                     </div>
                                   </td>
-                                  <td className="px-2.5 py-2 text-[11px] text-slate-600">
+                                  <td className="px-4 py-3 text-[12px] text-slate-600">
                                     {learner.teacherNames.join(", ") || "—"}
                                   </td>
-                                  <td className="px-2.5 py-2">
+                                  <td className="px-4 py-3">
                                     {showFacilitatorSelect ? (
                                       <AppSelect
                                         label={`Facilitator for ${learner.name}`}
@@ -806,36 +807,36 @@ export default function AdminAralFacilitatorAssignPanel({
                                           })),
                                         ]}
                                         triggerClassName={cn(
-                                          "h-7 min-w-[160px] rounded-full px-2 text-[11px]",
+                                          "h-8 min-w-[170px] rounded-full px-2.5 text-[12px]",
                                           loadingTeachers && "bg-slate-50"
                                         )}
                                       />
                                     ) : null}
 
                                     {learner.aralFacilitatorName ? (
-                                      <p className="mt-0.5 text-[10px] text-cnhs-green-dark">
+                                      <p className="mt-0.5 text-[11px] font-medium text-cnhs-green-dark">
                                         Current: {learner.aralFacilitatorName}
                                       </p>
                                     ) : (
-                                      <p className="mt-0.5 text-[10px] text-cnhs-orange">
+                                      <p className="mt-0.5 text-[11px] font-medium text-cnhs-orange">
                                         Unassigned
                                       </p>
                                     )}
                                   </td>
-                                  <td className="px-2.5 py-2">
+                                  <td className="px-4 py-3">
                                     {(() => {
                                       const status = supportStatusFor(learner, absentIds);
                                       return (
                                         <span
-                                          className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${SUPPORT_STATUS_TONES[status] ?? "bg-slate-100 text-slate-600 ring-slate-200"}`}
+                                          className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${SUPPORT_STATUS_TONES[status] ?? "bg-slate-100 text-slate-600 ring-slate-200"}`}
                                         >
                                           {status}
                                         </span>
                                       );
                                     })()}
                                   </td>
-                                  <td className="px-2.5 py-2">
-                                    <div className="flex flex-wrap gap-1">
+                                  <td className="px-4 py-3 text-right">
+                                    <div className="flex flex-wrap items-center justify-end gap-1.5">
                                       {showFacilitatorSelect ? (
                                         <button
                                           type="button"
@@ -843,15 +844,15 @@ export default function AdminAralFacilitatorAssignPanel({
                                             busy || !drafts[learner.studentId]
                                           }
                                           onClick={() => handleAssign(learner)}
-                                          className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full bg-cnhs-green-dark px-2.5 text-[10px] font-semibold text-white hover:bg-[#246f54] disabled:cursor-not-allowed disabled:opacity-60"
+                                          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-cnhs-green-dark px-3 text-[12px] font-semibold text-white shadow-xs transition hover:bg-[#246f54] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
                                         >
                                           {busy ? (
                                             <Loader2
-                                              size={11}
+                                              size={12}
                                               className="animate-spin"
                                             />
                                           ) : (
-                                            <UserPlus size={11} />
+                                            <UserPlus size={12} />
                                           )}
                                           Assign
                                         </button>
@@ -863,9 +864,9 @@ export default function AdminAralFacilitatorAssignPanel({
                                           type="button"
                                           disabled={busy}
                                           onClick={() => handleRemove(learner)}
-                                          className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed"
+                                          className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[12px] font-semibold text-slate-500 shadow-xs transition hover:bg-slate-50 disabled:cursor-not-allowed"
                                         >
-                                          <X size={11} />
+                                          <X size={12} />
                                           Remove
                                         </button>
                                       ) : null}
@@ -884,44 +885,13 @@ export default function AdminAralFacilitatorAssignPanel({
             })}
           </div>
 
-          {visibleSections.length > SECTIONS_PAGE_SIZE ? (
-            <div className="flex flex-col gap-2 border-t border-slate-100 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-4">
-              <p className="text-[11px] font-medium text-slate-500">
-                Showing{" "}
-                <span className="font-semibold tabular-nums text-slate-700">
-                  {sectionStart}–{sectionEnd}
-                </span>{" "}
-                of{" "}
-                <span className="font-semibold tabular-nums text-slate-700">
-                  {visibleSections.length}
-                </span>{" "}
-                sections · {SECTIONS_PAGE_SIZE} per page
-              </p>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setPage(safePage - 1)}
-                  disabled={safePage <= 1}
-                  className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <ChevronLeft size={13} />
-                  Previous
-                </button>
-                <span className="min-w-[4rem] text-center text-[11px] font-semibold tabular-nums text-slate-600">
-                  {safePage} / {totalPages}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setPage(safePage + 1)}
-                  disabled={safePage >= totalPages}
-                  className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Next
-                  <ChevronRight size={13} />
-                </button>
-              </div>
-            </div>
-          ) : null}
+          <AdminTablePagination
+            page={safePage}
+            pageSize={SECTIONS_PAGE_SIZE}
+            total={visibleSections.length}
+            onPageChange={setPage}
+            itemLabel="sections"
+          />
         </>
       )}
     </section>

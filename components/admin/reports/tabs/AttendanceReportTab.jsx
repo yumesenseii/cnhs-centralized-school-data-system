@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
+import AdminTablePagination from "@/components/shared/AdminTablePagination";
 import {
   BarChart,
   Bar,
@@ -10,6 +11,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+
+const PAGE_SIZE = 10;
 
 export default function AttendanceReportTab({ daily = null }) {
   const rows = daily?.rows ?? [];
@@ -114,6 +117,17 @@ export default function AttendanceReportTab({ daily = null }) {
     ).length;
   }, [daily]);
 
+  const [page, setPage] = useState(1);
+  useEffect(() => {
+    setPage(1);
+  }, [rows]);
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+  const pagedRows = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE;
+    return rows.slice(start, start + PAGE_SIZE);
+  }, [rows, safePage]);
+
   return (
     <div className="space-y-4">
       {/* 4 SCOPED SUMMARY CARDS */}
@@ -195,31 +209,49 @@ export default function AttendanceReportTab({ daily = null }) {
       </div>
 
       {/* SECTION SUMMARY TABLE */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
-        <div className="border-b border-slate-100 pb-2.5 dark:border-white/5">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">
+      <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+        <div className="border-b border-slate-200/80 px-4 py-3 dark:border-white/5">
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
             Section Summary
           </h3>
-          <p className="mt-0.5 text-[11px] text-slate-500">
+          <p className="mt-0.5 text-[12px] text-slate-500">
             Morning and Afternoon session records recorded by class advisers.
           </p>
         </div>
 
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-left text-xs">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-500 dark:border-white/10">
-                <th className="pb-2 font-semibold">Section</th>
-                <th className="pb-2 font-semibold">Grade Level</th>
-                <th className="pb-2 font-semibold tabular-nums">Present Marks</th>
-                <th className="pb-2 font-semibold tabular-nums">Absent Marks</th>
-                <th className="pb-2 font-semibold tabular-nums">Attendance Rate</th>
-                <th className="pb-2 font-semibold">Status</th>
+              <tr className="bg-slate-50/80 border-b border-slate-200/80 dark:bg-white/[0.02]">
+                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Section
+                </th>
+                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Grade Level
+                </th>
+                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 tabular-nums">
+                  Present Marks
+                </th>
+                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 tabular-nums">
+                  Absent Marks
+                </th>
+                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 tabular-nums">
+                  Attendance Rate
+                </th>
+                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Status
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-              {rows.length > 0 ? (
-                rows.map((row) => {
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-10 text-center text-[13px] text-slate-400">
+                    No section attendance records for this period.
+                  </td>
+                </tr>
+              ) : (
+                pagedRows.map((row) => {
                   const pres = Number(row.present || 0);
                   const abs = Number(row.absent || 0);
                   const isSubmitted = pres > 0 || abs > 0;
@@ -228,29 +260,29 @@ export default function AttendanceReportTab({ daily = null }) {
                   return (
                     <tr
                       key={row.id || row.sectionId}
-                      className="hover:bg-slate-50/60 dark:hover:bg-white/[0.02]"
+                      className="hover:bg-slate-50/70 transition-colors dark:hover:bg-white/[0.02]"
                     >
-                      <td className="py-2.5 font-medium text-slate-900 dark:text-slate-100">
+                      <td className="px-4 py-3 text-[13px] font-semibold text-slate-800 dark:text-slate-100">
                         {row.sectionName || `Section ${row.sectionId}`}
                       </td>
-                      <td className="py-2.5 text-slate-600 dark:text-slate-400">
+                      <td className="px-4 py-3 text-[13px] text-slate-600 dark:text-slate-400">
                         {row.gradeLevel ? `Grade ${row.gradeLevel}` : "—"}
                       </td>
-                      <td className="py-2.5 tabular-nums text-slate-700 dark:text-slate-300">
+                      <td className="px-4 py-3 text-[13px] tabular-nums text-slate-700 dark:text-slate-300">
                         {pres}
                       </td>
-                      <td className="py-2.5 tabular-nums text-slate-700 dark:text-slate-300">
+                      <td className="px-4 py-3 text-[13px] tabular-nums text-slate-700 dark:text-slate-300">
                         {abs}
                       </td>
-                      <td className="py-2.5 font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+                      <td className="px-4 py-3 text-[13px] font-semibold tabular-nums text-slate-900 dark:text-slate-100">
                         {rateStr}
                       </td>
-                      <td className="py-2.5">
+                      <td className="px-4 py-3">
                         <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                          className={`inline-flex rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${
                             isSubmitted
-                              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
-                              : "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-400"
+                              ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-400"
+                              : "bg-slate-100 text-slate-600 ring-1 ring-slate-200/60 dark:bg-white/10 dark:text-slate-400"
                           }`}
                         >
                           {isSubmitted ? "Submitted" : "Pending"}
@@ -259,16 +291,18 @@ export default function AttendanceReportTab({ daily = null }) {
                     </tr>
                   );
                 })
-              ) : (
-                <tr>
-                  <td colSpan={6} className="py-6 text-center text-xs text-slate-400">
-                    No section attendance records for this period.
-                  </td>
-                </tr>
               )}
             </tbody>
           </table>
         </div>
+
+        <AdminTablePagination
+          page={safePage}
+          pageSize={PAGE_SIZE}
+          total={rows.length}
+          onPageChange={setPage}
+          itemLabel="sections"
+        />
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { FileSpreadsheet, Loader2 } from "lucide-react";
 import ClassReportFilesTable from "@/components/teacher/monitoring/ClassReportFilesTable";
 import ClassReportFileModal from "@/components/teacher/monitoring/ClassReportFileModal";
-import TablePagination from "@/components/academic-records/TablePagination";
+import AdminTablePagination from "@/components/shared/AdminTablePagination";
 import {
   ARAL_APPROVAL_DB,
   ARAL_APPROVAL_STATUS,
@@ -291,11 +291,13 @@ export default function AdminClassReportFilesPanel({
                 onView={(f) => setModalFile(f)}
                 onEdit={(f) => setModalFile(f)}
               />
-              <TablePagination
+              <AdminTablePagination
                 page={safePage}
                 pageSize={FILES_PAGE_SIZE}
                 total={filteredFiles.length}
                 onPageChange={setPage}
+                itemLabel="class reports"
+                className="rounded-xl border border-slate-200/80"
               />
             </div>
           )}

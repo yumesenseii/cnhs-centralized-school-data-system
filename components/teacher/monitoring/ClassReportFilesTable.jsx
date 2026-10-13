@@ -44,14 +44,14 @@ export default function ClassReportFilesTable({
   );
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
+    <section className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xs">
       <div className="border-b border-slate-100 px-4 py-3">
         <p className="text-[12px] font-medium text-slate-500">
           Showing {files.length} of {total}{" "}
           {total === 1 ? "file" : "files"}
         </p>
         {showHtHint ? (
-          <p className="mt-1 text-[11px] text-slate-400">
+          <p className="mt-1 text-[12px] text-slate-400">
             HT receives Eng/Fil class reports after you Send to HT
             {hasNotForHt
               ? " · Other subjects show “Not for HT”."
@@ -62,13 +62,13 @@ export default function ClassReportFilesTable({
 
       <div className="overflow-x-auto">
         <table className="min-w-[880px] w-full border-collapse text-left">
-          <thead>
+          <thead className="bg-slate-50/80">
             <tr>
               {["File name", "Type", "Modified", "Uploaded by", "HT status", "Actions"].map(
                 (h) => (
                   <th
                     key={h}
-                    className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400"
+                    className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 last:text-right"
                   >
                     {h}
                   </th>
@@ -81,7 +81,7 @@ export default function ClassReportFilesTable({
               <tr className="border-t border-slate-100">
                 <td
                   colSpan={6}
-                  className="px-4 py-10 text-center text-sm text-slate-500"
+                  className="px-4 py-10 text-center text-sm text-slate-400"
                 >
                   {emptyMessage}
                 </td>
@@ -110,7 +110,7 @@ export default function ClassReportFilesTable({
                         <p className="truncate text-[13px] font-semibold text-slate-800">
                           {file.fileName}
                         </p>
-                        <p className="text-[11px] text-slate-400">
+                        <p className="text-[12px] text-slate-500">
                           {file.learnerCount} learners · {file.failingCount}{" "}
                           failing ·{" "}
                           {file.moderateCount ?? file.atRiskCount ?? 0}{" "}
@@ -134,7 +134,7 @@ export default function ClassReportFilesTable({
                     <div className="flex items-center gap-2">
                       <span
                         className={cn(
-                          "flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-semibold",
+                          "flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold",
                           avatarTones.green
                         )}
                       >
@@ -148,22 +148,22 @@ export default function ClassReportFilesTable({
                   <td className="px-4 py-3">
                     <Pill value={file.htLabel} styles={htStyles} />
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap items-center justify-end gap-2.5">
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
                       <button
                         type="button"
                         onClick={() => onView?.(file)}
-                        className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                        className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 active:scale-95"
                       >
-                        <Eye size={11} />
+                        <Eye size={13} />
                         View
                       </button>
                       <button
                         type="button"
                         onClick={() => onEdit?.(file)}
-                        className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-cnhs-green-dark/30 bg-white px-2.5 text-[10px] font-semibold text-cnhs-green-dark transition-colors hover:bg-green-50"
+                        className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 active:scale-95"
                       >
-                        <Pencil size={11} />
+                        <Pencil size={13} />
                         Edit
                       </button>
                       {canSubmit ? (
@@ -172,12 +172,12 @@ export default function ClassReportFilesTable({
                           disabled={submitting}
                           onClick={() => onSubmitToHt?.(file)}
                           title="Submit ARAL recommendations in this file for School Principal review"
-                          className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 text-[10px] font-semibold text-amber-900 transition-colors hover:bg-amber-100 disabled:opacity-50"
+                          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 text-[12px] font-semibold text-amber-900 shadow-xs transition-colors hover:bg-amber-100 active:scale-95 disabled:opacity-50"
                         >
                           {submitting ? (
-                            <Loader2 size={11} className="animate-spin" />
+                            <Loader2 size={13} className="animate-spin" />
                           ) : (
-                            <Send size={11} />
+                            <Send size={13} />
                           )}
                           Send to HT
                         </button>

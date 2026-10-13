@@ -95,12 +95,6 @@ function NavLink({
           : "text-white/70"
       )}
     >
-      {isActive && !collapsed ? (
-        <span
-          className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[#7dd8a9]"
-          aria-hidden="true"
-        />
-      ) : null}
       <span className="relative shrink-0">
         <Icon
           size={18}

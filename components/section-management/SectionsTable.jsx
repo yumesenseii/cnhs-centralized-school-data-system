@@ -1,8 +1,10 @@
-"use client";
-
+import { useEffect, useMemo, useState } from "react";
 import SectionRow from "@/components/section-management/SectionRow";
 import AppSelect from "@/components/shared/AppSelect";
+import AdminTablePagination from "@/components/shared/AdminTablePagination";
 import { GRADE_FILTER_OPTIONS } from "@/lib/academic/gradeLevels";
+
+const PAGE_SIZE = 10;
 
 const columns = [
   "Grade Level",
@@ -23,8 +25,23 @@ export default function SectionsTable({
   onRestore,
   busy,
 }) {
+  const [page, setPage] = useState(1);
+
+  // Reset to page 1 on filter or search change
+  useEffect(() => {
+    setPage(1);
+  }, [filters.search, filters.schoolYear, filters.grade, filters.status]);
+
+  const totalPages = Math.max(1, Math.ceil(sections.length / PAGE_SIZE));
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+
+  const pagedSections = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE;
+    return sections.slice(start, start + PAGE_SIZE);
+  }, [sections, safePage]);
+
   return (
-    <section className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
+    <section className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xs">
       <div className="flex flex-col gap-3 border-b border-slate-100 p-4 md:flex-row md:items-center">
         <label className="relative min-w-0 flex-1">
           <span className="sr-only">Search sections</span>
@@ -35,7 +52,7 @@ export default function SectionsTable({
               onFiltersChange({ ...filters, search: event.target.value })
             }
             placeholder="Search by section, grade, school year, or adviser"
-            className="h-9 w-full rounded-full border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none transition-colors placeholder:text-slate-400 focus:border-cnhs-green-dark/40"
+            className="h-9 w-full rounded-full border border-slate-200 bg-white px-3 text-[13px] text-slate-700 outline-none transition-colors placeholder:text-slate-400 focus:border-cnhs-green-dark/40"
           />
         </label>
         <div className="flex shrink-0 flex-wrap gap-2 md:ml-auto">
@@ -69,7 +86,7 @@ export default function SectionsTable({
               {columns.map((column) => (
                 <th
                   key={column}
-                  className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400 first:pl-4 last:pr-4"
+                  className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 first:pl-5 last:pr-5"
                 >
                   {column}
                 </th>
@@ -87,7 +104,7 @@ export default function SectionsTable({
                 </td>
               </tr>
             ) : (
-              sections.map((section) => (
+              pagedSections.map((section) => (
                 <SectionRow
                   key={section.id}
                   section={section}
@@ -101,6 +118,14 @@ export default function SectionsTable({
           </tbody>
         </table>
       </div>
+
+      <AdminTablePagination
+        page={safePage}
+        pageSize={PAGE_SIZE}
+        total={sections.length}
+        onPageChange={setPage}
+        itemLabel="sections"
+      />
     </section>
   );
 }
