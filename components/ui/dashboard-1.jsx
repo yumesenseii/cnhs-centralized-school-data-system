@@ -30,28 +30,66 @@ export function gradeEntriesFrom(data) {
 }
 
 /**
- * Returns true when every published total is backed by its parts, so the
- * UI never silently displays inconsistent numbers.
+ * Returns true when every published total is backed by its parts dynamically,
+ * validating:
+ * - male + female = grade total for each grade
+ * - sum of grade totals = demographics.totalLearners
+ * - sum of male values = demographics.maleLearners
+ * - sum of female values = demographics.femaleLearners
  */
 export function demographicsAreConsistent(data) {
-  const total = toNumber(data?.total);
-  const entries = gradeEntriesFrom(data);
-  if (total == null || entries.some((entry) => entry.total == null)) {
+  if (!data) return false;
+  const totalLearners = toNumber(data.totalLearners ?? data.total);
+  const maleLearners = toNumber(data.maleLearners ?? data.male);
+  const femaleLearners = toNumber(data.femaleLearners ?? data.female);
+
+  if (totalLearners == null || maleLearners == null || femaleLearners == null) {
     return false;
   }
-  const gradeSum = entries.reduce((sum, entry) => sum + entry.total, 0);
-  if (gradeSum !== total) return false;
-  const male = toNumber(data?.male);
-  const female = toNumber(data?.female);
-  if (male == null || female == null) return false;
-  return male + female === total;
+
+  if (maleLearners + femaleLearners !== totalLearners) {
+    return false;
+  }
+
+  const entries = gradeEntriesFrom(data);
+  if (!entries.length) return false;
+
+  let sumGradeTotals = 0;
+  let sumMale = 0;
+  let sumFemale = 0;
+
+  for (const entry of entries) {
+    if (entry.total == null || entry.male == null || entry.female == null) {
+      return false;
+    }
+    if (entry.male + entry.female !== entry.total) {
+      return false;
+    }
+    sumGradeTotals += entry.total;
+    sumMale += entry.male;
+    sumFemale += entry.female;
+  }
+
+  if (sumGradeTotals !== totalLearners) {
+    return false;
+  }
+
+  if (sumMale !== maleLearners) {
+    return false;
+  }
+
+  if (sumFemale !== femaleLearners) {
+    return false;
+  }
+
+  return true;
 }
 
 export function Dashboard1({ data, className }) {
   const source = data ?? {};
-  const total = toNumber(source.total);
-  const male = toNumber(source.male);
-  const female = toNumber(source.female);
+  const total = toNumber(source.totalLearners ?? source.total);
+  const male = toNumber(source.maleLearners ?? source.male);
+  const female = toNumber(source.femaleLearners ?? source.female);
   const consistent = demographicsAreConsistent(source);
 
   const metrics = [

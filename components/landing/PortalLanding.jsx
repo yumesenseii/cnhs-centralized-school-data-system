@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight, Menu, Search } from "lucide-react";
 import { loginContent, LOGIN_COLORS } from "@/lib/constants/loginContent";
 import { cn } from "@/lib/utils";
-import { Dashboard1, gradeEntriesFrom } from "@/components/ui/dashboard-1";
+import { Dashboard1 } from "@/components/ui/dashboard-1";
 import EnrollmentByGradeChart from "@/components/landing/EnrollmentByGradeChart";
 
 function PortalLoginButton({ scrolled, className = "" }) {
@@ -101,22 +101,177 @@ function BrandLogo({ scrolled = false, size = "md" }) {
 export default function PortalLanding({ demographics }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState("home");
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  const itemRefs = useRef({});
+  const isProgrammaticScroll = useRef(false);
+  const scrollLockTimeoutRef = useRef(null);
 
   const navigation = [
-    ["Home", "/"],
-    ["About", "#about"],
-    ["Academics", "#academics"],
-    ["Contact", "#contact"],
+    { label: "Home", href: "#home", id: "home" },
+    { label: "About", href: "#about", id: "about" },
+    { label: "Academics", href: "#academics", id: "academics" },
+    { label: "Contact", href: "#contact", id: "contact" },
   ];
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReducedMotion(mq.matches);
+    const handler = (e) => setPrefersReducedMotion(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  const updateIndicator = useCallback((sectionId = activeSection) => {
+    const targetEl = itemRefs.current[sectionId];
+    if (!targetEl) return;
+    setIndicatorStyle({
+      left: targetEl.offsetLeft,
+      width: targetEl.offsetWidth,
+    });
+  }, [activeSection]);
+
+  useEffect(() => {
+    updateIndicator(activeSection);
+  }, [activeSection, updateIndicator]);
+
+  useEffect(() => {
+    const onResize = () => updateIndicator(activeSection);
+    window.addEventListener("resize", onResize, { passive: true });
+    return () => window.removeEventListener("resize", onResize);
+  }, [activeSection, updateIndicator]);
+
+  const unlockScroll = useCallback(() => {
+    isProgrammaticScroll.current = false;
+    if (scrollLockTimeoutRef.current) {
+      clearTimeout(scrollLockTimeoutRef.current);
+      scrollLockTimeoutRef.current = null;
+    }
+    window.removeEventListener("scrollend", unlockScroll);
+  }, []);
+
+  const handleNavClick = useCallback(
+    (e, id, href) => {
+      if (e) e.preventDefault();
+
+      // 1. Immediately update active state & indicator position
+      setActiveSection(id);
+      updateIndicator(id);
+
+      // 2. Lock IntersectionObserver during programmatic scrolling
+      isProgrammaticScroll.current = true;
+      if (scrollLockTimeoutRef.current) {
+        clearTimeout(scrollLockTimeoutRef.current);
+      }
+
+      if ("onscrollend" in window) {
+        window.addEventListener("scrollend", unlockScroll, { once: true });
+      }
+      scrollLockTimeoutRef.current = setTimeout(
+        unlockScroll,
+        prefersReducedMotion ? 50 : 850
+      );
+
+      // 3. Scroll to target element with 72px sticky header offset
+      const target = document.getElementById(id);
+      if (target) {
+        const headerOffset = 72;
+        const elementTop = target.getBoundingClientRect().top + window.scrollY;
+        const targetY = id === "home" ? 0 : Math.max(0, elementTop - headerOffset);
+
+        window.scrollTo({
+          top: targetY,
+          behavior: prefersReducedMotion ? "auto" : "smooth",
+        });
+      }
+
+      // 4. Update URL hash without reloading the page
+      if (typeof window !== "undefined" && window.history?.replaceState) {
+        window.history.replaceState(null, "", href);
+      }
+    },
+    [prefersReducedMotion, unlockScroll, updateIndicator]
+  );
+
+  const determineActiveSection = useCallback(() => {
+    if (isProgrammaticScroll.current) return;
+
+    const contactEl = document.getElementById("contact");
+    const academicsEl = document.getElementById("academics");
+    const aboutEl = document.getElementById("about");
+
+    const windowHeight = window.innerHeight;
+    const headerThreshold = 140; // 72px fixed header + reading offset
+
+    // 1. Contact (footer): active when footer enters main reading viewport
+    if (contactEl) {
+      const contactTop = contactEl.getBoundingClientRect().top;
+      if (contactTop <= windowHeight * 0.55) {
+        setActiveSection((prev) => (prev !== "contact" ? "contact" : prev));
+        return;
+      }
+    }
+
+    // 2. Academics: active when academics section reaches or passes sticky header
+    if (academicsEl) {
+      const academicsTop = academicsEl.getBoundingClientRect().top;
+      if (academicsTop <= headerThreshold) {
+        setActiveSection((prev) => (prev !== "academics" ? "academics" : prev));
+        return;
+      }
+    }
+
+    // 3. About: active when about section reaches or passes sticky header
+    if (aboutEl) {
+      const aboutTop = aboutEl.getBoundingClientRect().top;
+      if (aboutTop <= headerThreshold) {
+        setActiveSection((prev) => (prev !== "about" ? "about" : prev));
+        return;
+      }
+    }
+
+    // 4. Default: Home
+    setActiveSection((prev) => (prev !== "home" ? "home" : prev));
+  }, []);
 
   useEffect(() => {
     function onScroll() {
       setScrolled(window.scrollY > 24);
+      determineActiveSection();
     }
+
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [determineActiveSection]);
+
+  useEffect(() => {
+    const sectionIds = ["home", "about", "academics", "contact"];
+    const elements = sectionIds
+      .map((id) => document.getElementById(id))
+      .filter(Boolean);
+
+    if (!elements.length) return;
+
+    const observer = new IntersectionObserver(
+      () => {
+        determineActiveSection();
+      },
+      {
+        rootMargin: "-72px 0px -20% 0px",
+        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
+      }
+    );
+
+    elements.forEach((el) => observer.observe(el));
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [determineActiveSection]);
 
   useEffect(() => {
     if (!mobileNavOpen) return undefined;
@@ -144,7 +299,8 @@ export default function PortalLanding({ demographics }) {
       >
         <div className="mx-auto flex h-[4.5rem] max-w-[1440px] items-center justify-between gap-5 px-5 sm:px-8 lg:px-12">
           <Link
-            href="/"
+            href="#home"
+            onClick={(e) => handleNavClick(e, "home", "#home")}
             aria-label="CNHS home"
             className="group flex min-w-0 cursor-pointer items-center gap-3"
           >
@@ -171,27 +327,52 @@ export default function PortalLanding({ demographics }) {
 
           <div className="flex items-center gap-4">
             <nav
+              ref={(el) => {
+                if (el) itemRefs.current.__nav = el;
+              }}
               aria-label="Main navigation"
-              className="hidden items-center gap-5 lg:flex"
+              className="relative hidden items-center gap-5 lg:flex"
             >
-              {navigation.map(([label, href], index) => (
-                <a
-                  key={label}
-                  href={href}
-                  className={cn(
-                    "cursor-pointer border-b-2 py-2 text-[9px] font-semibold uppercase tracking-[0.05em] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4c430]",
-                    index === 0
-                      ? scrolled
-                        ? "border-cnhs-green-dark text-cnhs-green-dark"
-                        : "border-[#f4c430] text-white"
-                      : scrolled
-                        ? "border-transparent text-slate-500 hover:text-[#123d2c]"
-                        : "border-transparent text-white/75 hover:text-white"
-                  )}
-                >
-                  {label}
-                </a>
-              ))}
+              {navigation.map(({ label, href, id }) => {
+                const isActive = activeSection === id;
+                return (
+                  <a
+                    key={id}
+                    ref={(el) => {
+                      if (el) itemRefs.current[id] = el;
+                    }}
+                    href={href}
+                    onClick={(e) => handleNavClick(e, id, href)}
+                    aria-current={isActive ? "page" : undefined}
+                    className={cn(
+                      "cursor-pointer py-2 text-[9px] font-semibold uppercase tracking-[0.05em] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4c430] rounded-xs",
+                      isActive
+                        ? scrolled
+                          ? "text-[#123d2c] font-bold"
+                          : "text-white font-bold"
+                        : scrolled
+                          ? "text-slate-500 hover:text-[#123d2c]"
+                          : "text-white/75 hover:text-white"
+                    )}
+                  >
+                    {label}
+                  </a>
+                );
+              })}
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "pointer-events-none absolute bottom-0 h-[2.5px] rounded-full bg-[#f4c430] ease-out",
+                  prefersReducedMotion
+                    ? "transition-none"
+                    : "transition-[transform,width] duration-200",
+                  indicatorStyle.width === 0 && "opacity-0"
+                )}
+                style={{
+                  transform: `translateX(${indicatorStyle.left}px)`,
+                  width: `${indicatorStyle.width}px`,
+                }}
+              />
               <button
                 type="button"
                 aria-label="Search"
@@ -233,16 +414,28 @@ export default function PortalLanding({ demographics }) {
             transition={{ duration: 0.18, ease: "easeOut" }}
             className="absolute inset-x-4 top-[4.85rem] overflow-hidden rounded-xl border border-slate-100 bg-white p-2 shadow-[0_16px_40px_rgba(15,23,42,0.16)] lg:hidden"
           >
-            {navigation.map(([label, href]) => (
-              <a
-                key={label}
-                href={href}
-                onClick={() => setMobileNavOpen(false)}
-                className="block cursor-pointer rounded-lg px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-slate-600 transition-colors duration-200 hover:bg-green-50 hover:text-cnhs-green-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4c430]"
-              >
-                {label}
-              </a>
-            ))}
+            {navigation.map(({ label, href, id }) => {
+              const isActive = activeSection === id;
+              return (
+                <a
+                  key={id}
+                  href={href}
+                  onClick={(e) => {
+                    handleNavClick(e, id, href);
+                    setMobileNavOpen(false);
+                  }}
+                  aria-current={isActive ? "page" : undefined}
+                  className={cn(
+                    "block cursor-pointer rounded-lg px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.05em] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4c430]",
+                    isActive
+                      ? "bg-green-50 text-cnhs-green-dark border-l-2 border-[#f4c430] font-bold"
+                      : "text-slate-600 hover:bg-green-50/50 hover:text-cnhs-green-dark"
+                  )}
+                >
+                  {label}
+                </a>
+              );
+            })}
           </motion.nav>
         ) : null}
       </header>
@@ -297,6 +490,7 @@ export default function PortalLanding({ demographics }) {
                 <PortalLoginButton scrolled={false} />
                 <a
                   href="#about"
+                  onClick={(e) => handleNavClick(e, "about", "#about")}
                   className="inline-flex h-9 cursor-pointer items-center rounded-full border border-white/35 bg-white/10 px-4 text-[11px] font-bold uppercase tracking-[0.04em] text-white backdrop-blur-sm transition-colors hover:bg-white/20"
                 >
                   Learn more
@@ -325,52 +519,15 @@ export default function PortalLanding({ demographics }) {
             <div className="mx-auto max-w-6xl px-5 sm:px-8">
               <div className="mb-10 text-center">
                 <h2 className="text-3xl font-bold tracking-tight text-[#123d2c] sm:text-4xl">
-                  CNHS at a Glance
+                  CNHS Enrollment Overview
                 </h2>
                 <p className="mt-3 text-[15px] text-slate-500">
-                  A quick look at Cambaog National High School for the current school year.
+                  A quick look at learner enrollment across grade levels for the current school year.
                 </p>
               </div>
               <Dashboard1 data={demographics} />
-              <div className="mt-4 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-                <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <h3 className="text-[13px] font-semibold tracking-tight text-slate-600">
-                    Enrollment by Grade Level
-                  </h3>
-                  <div className="mt-3">
-                    <EnrollmentByGradeChart data={demographics} />
-                  </div>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <h3 className="text-[13px] font-semibold tracking-tight text-slate-600">
-                    Grade Breakdown
-                  </h3>
-                  <ul className="mt-3 space-y-2.5">
-                    {gradeEntriesFrom(demographics).map((entry) => (
-                      <li
-                        key={entry.grade}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-[#f7faf7] px-3.5 py-2.5"
-                      >
-                        <span className="text-[12px] font-bold text-[#123d2c]">
-                          Grade {entry.grade}
-                        </span>
-                        <span className="text-right text-[11px] leading-5 text-slate-600">
-                          <span className="block text-[13px] font-bold text-slate-900">
-                            {entry.total == null ? "Not available" : entry.total.toLocaleString()}
-                          </span>
-                          {entry.male != null || entry.female != null ? (
-                            <span>
-                              M: {entry.male == null ? "Not available" : entry.male.toLocaleString()} · F:{" "}
-                              {entry.female == null ? "Not available" : entry.female.toLocaleString()}
-                            </span>
-                          ) : (
-                            <span>Not available</span>
-                          )}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+              <div className="mt-6 rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-7 shadow-xs">
+                <EnrollmentByGradeChart data={demographics} />
               </div>
             </div>
           </section>
@@ -499,10 +656,11 @@ export default function PortalLanding({ demographics }) {
                   Explore
                 </p>
                 <ul className="mt-3 space-y-2">
-                  {navigation.map(([label, href]) => (
+                  {navigation.map(({ label, href, id }) => (
                     <li key={label}>
                       <a
                         href={href}
+                        onClick={(e) => handleNavClick(e, id, href)}
                         className="cursor-pointer text-[12px] text-white/75 transition-colors hover:text-white"
                       >
                         {label}
