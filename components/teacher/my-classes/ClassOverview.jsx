@@ -126,7 +126,7 @@ export default function ClassOverview({ classId }) {
 
   if (loading && !classItem) {
     return (
-      <div className="rounded-xl border border-slate-100 bg-white px-4 py-10 text-center text-sm text-slate-400 dark:border-white/10 dark:bg-slate-900">
+      <div className="mx-auto w-full max-w-5xl rounded-xl border border-slate-100 bg-white px-4 py-10 text-center text-sm text-slate-400 dark:border-white/10 dark:bg-slate-900">
         Loading class overview...
       </div>
     );
@@ -134,7 +134,7 @@ export default function ClassOverview({ classId }) {
 
   if (error || !classItem) {
     return (
-      <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-10 text-center text-sm text-red-600 dark:border-red-900/40 dark:bg-red-950/20">
+      <div className="mx-auto w-full max-w-5xl rounded-xl border border-red-100 bg-red-50 px-4 py-10 text-center text-sm text-red-600 dark:border-red-900/40 dark:bg-red-950/20">
         {error || "Class not found."}
       </div>
     );
@@ -148,7 +148,7 @@ export default function ClassOverview({ classId }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className="pb-8 space-y-4 max-w-5xl"
+      className="mx-auto w-full max-w-5xl space-y-4 pb-8"
     >
       {/* Simple Header */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
