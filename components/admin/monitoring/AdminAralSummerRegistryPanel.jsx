@@ -486,7 +486,7 @@ export default function AdminAralSummerRegistryPanel({
                               type="button"
                               onClick={() => handleOpenAssign(row, false)}
                               title="Assign Facilitator"
-                              className="inline-flex items-center gap-1 rounded-md bg-cnhs-green px-2 py-1 text-[10.5px] font-bold text-white hover:bg-cnhs-green-dark"
+                              className="inline-flex items-center gap-1 rounded-md bg-cnhs-green-dark px-2 py-1 text-[10.5px] font-bold text-white hover:bg-[#1b5842]"
                             >
                               <UserCheck size={12} />
                               <span>Assign</span>
@@ -499,7 +499,7 @@ export default function AdminAralSummerRegistryPanel({
                               type="button"
                               onClick={() => handleConfirmPlacement(row)}
                               title="Confirm Summer Placement"
-                              className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2 py-1 text-[10.5px] font-bold text-white hover:bg-emerald-700"
+                              className="inline-flex items-center gap-1 rounded-md bg-cnhs-green-dark px-2 py-1 text-[10.5px] font-bold text-white hover:bg-[#1b5842]"
                             >
                               <CheckCircle2 size={12} />
                               <span>Confirm</span>
@@ -708,7 +708,7 @@ export default function AdminAralSummerRegistryPanel({
                   <button
                     type="button"
                     onClick={() => handleConfirmPlacement(selectedRecord)}
-                    className="rounded-lg bg-cnhs-green px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-cnhs-green-dark"
+                    className="rounded-lg bg-cnhs-green-dark px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-[#1b5842]"
                   >
                     Confirm Placement
                   </button>
@@ -905,7 +905,7 @@ export default function AdminAralSummerRegistryPanel({
                 type="button"
                 onClick={handleConfirmAssignment}
                 disabled={savingAssignment || !assignmentForm.teacherId}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-cnhs-green px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-cnhs-green-dark disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-[#1b5842] disabled:opacity-50"
               >
                 {savingAssignment ? <Loader2 size={13} className="animate-spin" /> : null}
                 Save Assignment

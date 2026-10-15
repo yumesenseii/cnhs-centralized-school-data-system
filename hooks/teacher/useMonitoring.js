@@ -18,6 +18,7 @@ import {
   peekAdminMonitoringUiSnapshot,
   saveAdminMonitoringUiSnapshot,
 } from "@/lib/admin/adminMonitoringUiCache";
+import { learnerIdentityKey } from "@/lib/monitoring/academicLearnerAggregation";
 import {
   getCachedTeacherRoster,
   invalidateTeacherRosterCache,
@@ -280,6 +281,53 @@ export function useTeacherMonitoring() {
     [classSummaries, teacher, profile]
   );
 
+  const patchLearnerSupportState = useCallback(
+    (payload) => {
+      if (!payload) return;
+      const updates = Array.isArray(payload) ? payload : [payload];
+      if (!updates.length) return;
+
+      const patched = studentsRef.current.map((student) => {
+        const studentKey = learnerIdentityKey(student);
+        const match = updates.find((u) => {
+          const targetKey = learnerIdentityKey(u);
+          if (studentKey !== targetKey) return false;
+          if (u.subject && student.subject && u.subject !== student.subject) return false;
+          if (u.classId && student.classId && u.classId !== student.classId) return false;
+          if (u.schoolYear && student.schoolYear && u.schoolYear !== student.schoolYear) return false;
+          if (u.quarter && student.quarter && String(u.quarter) !== String(student.quarter)) return false;
+          return true;
+        });
+
+        if (!match) return student;
+
+        return {
+          ...student,
+          remedialStatus: match.remedialStatus ?? student.remedialStatus,
+          monitoringStatus: match.monitoringStatus ?? student.monitoringStatus,
+          currentSupport: match.currentSupport ?? student.currentSupport,
+          interventionGiven: match.interventionGiven ?? match.intervention_given ?? student.interventionGiven,
+          intervention_given: match.intervention_given ?? match.interventionGiven ?? student.intervention_given,
+          latestObservationDate: match.observationDate || new Date().toISOString().split("T")[0],
+          teacherRemarks: match.remarks ?? student.teacherRemarks,
+        };
+      });
+
+      studentsRef.current = patched;
+      setStudents(patched);
+      const nextKpis = buildMonitoringKpis(patched, classSummaries);
+      setKpis(nextKpis);
+      saveTeacherMonitoringUiSnapshot({
+        students: patched,
+        classSummaries,
+        kpis: nextKpis,
+        teacher,
+        profile,
+      });
+    },
+    [classSummaries, teacher, profile]
+  );
+
   return {
     students,
     classSummaries,
@@ -294,6 +342,7 @@ export function useTeacherMonitoring() {
     error,
     refresh: () => refresh({ bustCache: true }),
     applyLocalStudentPatches,
+    patchLearnerSupportState,
   };
 }
 

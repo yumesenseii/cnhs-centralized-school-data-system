@@ -25,6 +25,7 @@
 *.pem
 .tmp-test-evidence/
 supabase/.temp/
+scratch/
 
 # debug
 npm-debug.log*

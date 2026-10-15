@@ -178,7 +178,7 @@ export default function TeacherLessonPlanHub() {
 
   const statusOptions = [
     { value: "All Status", label: "All Status" },
-    { value: "Pending Review", label: "Pending Review" },
+    { value: "Pending Review", label: "Pending" },
     { value: "Needs Revision", label: "Needs Revision" },
     { value: "Approved", label: "Approved" },
   ];
@@ -194,7 +194,9 @@ export default function TeacherLessonPlanHub() {
         String(plan.gradeSection || "").toLowerCase().includes(q);
 
       const matchesStatus =
-        statusFilter === "All Status" || plan.status === statusFilter;
+        statusFilter === "All Status" ||
+        plan.status === statusFilter ||
+        (statusFilter === "Pending Review" && (plan.status === "Pending" || plan.status === "Pending Review"));
       const parsedFilterTerm = parseTermNumber(selectedTerm);
       const matchesTerm =
         selectedTerm === TERM_ALL_LABEL ||
@@ -213,7 +215,10 @@ export default function TeacherLessonPlanHub() {
   const trackerPlans = useMemo(() => {
     if (trackerTab === "pending") {
       return plans.filter(
-        (p) => p.status === "Pending Review" || p.status === "Under Review"
+        (p) =>
+          p.status === "Pending Review" ||
+          p.status === "Pending" ||
+          p.status === "Under Review"
       );
     }
     if (trackerTab === "revision") {
@@ -228,7 +233,10 @@ export default function TeacherLessonPlanHub() {
   // Counts for tracker pills
   const counts = useMemo(() => {
     const pending = plans.filter(
-      (p) => p.status === "Pending Review" || p.status === "Under Review"
+      (p) =>
+        p.status === "Pending Review" ||
+        p.status === "Pending" ||
+        p.status === "Under Review"
     ).length;
     const revision = plans.filter((p) => p.status === "Needs Revision").length;
     const approved = plans.filter((p) => p.status === "Approved").length;
@@ -832,7 +840,7 @@ export default function TeacherLessonPlanHub() {
                       </p>
                     ) : null}
 
-                    {plan.status === "Pending Review" ? (
+                    {plan.status === "Pending Review" || plan.status === "Pending" ? (
                       <p className="mt-2 text-[10.5px] text-amber-700 dark:text-amber-400 flex items-center gap-1">
                         <Clock size={12} /> Awaiting review from Principal
                       </p>

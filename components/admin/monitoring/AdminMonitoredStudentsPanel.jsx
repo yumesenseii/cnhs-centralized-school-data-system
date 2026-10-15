@@ -11,6 +11,10 @@ import {
   RISK_LEVEL,
   normalizeRiskLevel,
 } from "@/lib/monitoring/recommendations";
+import {
+  getLearnerAralReferralState,
+  isAralLanguageSubject,
+} from "@/lib/monitoring/aralAcademicStatus";
 import AdminTablePagination from "@/components/shared/AdminTablePagination";
 
 const PAGE_SIZE = 10;
@@ -45,11 +49,13 @@ export default function AdminMonitoredStudentsPanel({
       const isRemedial =
         learner.recommendation === RECOMMENDATION.REMEDIATION ||
         learner.classroomRemedialRecommended;
+      const isLanguage = isAralLanguageSubject(learner.subject);
       const isAral =
-        isAralRecommended(learner) ||
-        learner.recommendation === RECOMMENDATION.ARAL ||
-        learner.aralApprovalStatus === ARAL_APPROVAL_STATUS.SUBMITTED ||
-        learner.aralApprovalStatus === ARAL_APPROVAL_STATUS.SUGGESTED;
+        isLanguage &&
+        (learner.aralApprovalStatus === ARAL_APPROVAL_STATUS.SUBMITTED ||
+          learner.aralApprovalStatus === ARAL_APPROVAL_STATUS.APPROVED ||
+          learner.candidateStatus === "Referred to ARAL" ||
+          learner.inAralProgram);
       const isOngoing =
         learner.monitoringStatus === MONITORING_STATUS.ONGOING;
       const isImproving =
@@ -248,13 +254,7 @@ export default function AdminMonitoredStudentsPanel({
                     learner.generalAverage ??
                     "—";
 
-                  const hasAralReferral =
-                    isAralRecommended(learner) ||
-                    learner.aralApprovalStatus === ARAL_APPROVAL_STATUS.SUBMITTED ||
-                    learner.aralApprovalStatus === ARAL_APPROVAL_STATUS.SUGGESTED;
-                  const inAralProgram =
-                    learner.aralApprovalStatus === ARAL_APPROVAL_STATUS.APPROVED ||
-                    learner.inAralProgram;
+                  const refState = getLearnerAralReferralState(learner);
 
                   return (
                     <tr
@@ -284,22 +284,29 @@ export default function AdminMonitoredStudentsPanel({
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        {inAralProgram ? (
+                        {refState.isLanguageSubject && refState.isUnderSupport ? (
                           <span className="text-[12px] font-medium text-purple-700 dark:text-purple-400">
-                            In ARAL Program
+                            Under ARAL Support
                           </span>
-                        ) : hasAralReferral ? (
+                        ) : refState.isLanguageSubject && refState.isApproved ? (
+                          <span className="text-[12px] font-medium text-emerald-700 dark:text-emerald-400">
+                            Approved for Assessment
+                          </span>
+                        ) : refState.isLanguageSubject && refState.isPending ? (
                           <span className="text-[12px] font-medium text-amber-700 dark:text-amber-400">
-                            ARAL Referral: Pending Principal Review
+                            Pending Principal Review
+                          </span>
+                        ) : refState.isLanguageSubject && refState.isReturned ? (
+                          <span className="text-[12px] font-medium text-orange-700 dark:text-orange-400">
+                            Returned for Teacher Review
                           </span>
                         ) : isRemedial ? (
                           <span className="text-[12px] font-medium text-blue-700 dark:text-blue-400">
                             Class Remedial
                           </span>
-                        ) : learner.monitoringStatus ===
-                          MONITORING_STATUS.ONGOING ? (
+                        ) : learner.monitoringStatus && learner.monitoringStatus !== "Not Started" ? (
                           <span className="text-[12px] font-medium text-slate-700 dark:text-slate-300">
-                            Ongoing Monitoring
+                            {learner.monitoringStatus}
                           </span>
                         ) : (
                           <span className="text-[12px] text-slate-400 dark:text-slate-500">

@@ -5,17 +5,22 @@ import { Save } from "lucide-react";
 import ProfileUploader from "@/components/settings/ProfileUploader";
 import {
   loadSchoolSettings,
-  saveSchoolSettings,
+  saveSchoolSettingsCanonical,
+  syncSchoolSettingsFromDb,
 } from "@/lib/settings/adminSettingsStorage";
 
 export default function SchoolInformationCard({ school: schoolProp }) {
   const [school, setSchool] = useState(schoolProp);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     setSchool(loadSchoolSettings());
     setHydrated(true);
+    syncSchoolSettingsFromDb().then((synced) => {
+      if (synced) setSchool(synced);
+    });
   }, []);
 
   function handleChange(field, value) {
@@ -23,10 +28,12 @@ export default function SchoolInformationCard({ school: schoolProp }) {
     setSaved(false);
   }
 
-  function handleSave() {
-    const next = saveSchoolSettings(school);
+  async function handleSave() {
+    setSaving(true);
+    const next = await saveSchoolSettingsCanonical(school);
     setSchool(next);
     setSaved(true);
+    setSaving(false);
     window.setTimeout(() => setSaved(false), 2500);
   }
 

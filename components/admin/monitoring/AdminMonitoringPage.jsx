@@ -32,216 +32,12 @@ import {
 import { cn } from "@/lib/utils";
 import AppSelect from "@/components/shared/AppSelect";
 
+import LearnerAcademicDetailModal from "@/components/monitoring/shared/LearnerAcademicDetailModal";
+
 const MONITORING_TABS = [
   { id: "matrix", label: "School & Sections" },
   { id: "students", label: "Learners Needing Review" },
 ];
-
-function DetailPanel({ detail, learner, loading, onClose }) {
-  if (!detail && !learner && !loading) return null;
-
-  const activeName = detail?.name ?? learner?.name ?? "Learner Record";
-  const activeNumber =
-    detail?.studentNumber ?? learner?.studentNumber ?? "";
-  const activeSection =
-    detail?.gradeSection ?? learner?.gradeSection ?? learner?.section ?? "";
-  const activeRisk = detail?.riskLevel ?? learner?.riskLevel ?? "—";
-  const activeRecommendation =
-    detail?.recommendation ?? learner?.recommendation ?? "—";
-  const activeStatus =
-    detail?.monitoringStatus ?? learner?.monitoringStatus ?? "—";
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-3 backdrop-blur-[1px] sm:p-4"
-      role="dialog"
-      aria-modal="true"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose?.();
-      }}
-    >
-      <div className="relative z-10 flex max-h-[75vh] w-[min(900px,94vw)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[var(--card)]">
-        {/* Header */}
-        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-5 py-3.5 dark:border-white/5">
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Academic Monitoring Record
-            </p>
-            <h2 className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
-              {activeName}
-            </h2>
-            <p className="mt-0.5 text-xs text-slate-500">
-              {activeNumber ? `${activeNumber} · ` : ""}
-              {activeSection}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="cursor-pointer rounded-full p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="min-h-0 flex-1 space-y-3.5 overflow-y-auto px-5 py-4">
-          <div className="flex flex-wrap gap-2">
-            <RiskPill value={activeRisk} />
-            <Pill value={activeRecommendation} styles={interventionStyles} />
-            <Pill value={activeStatus} styles={monitoringStatusStyles} />
-          </div>
-
-          {loading && !detail ? (
-            <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
-              <Loader2 size={16} className="animate-spin text-cnhs-green-dark" />
-              Loading academic details…
-            </div>
-          ) : detail ? (
-            <>
-              {/* Student Academic Info */}
-              <section className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 dark:border-white/5 dark:bg-white/[0.02]">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Academic Information
-                </p>
-                <div className="mt-2 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
-                  <div>
-                    <span className="text-slate-400">Adviser:</span>
-                    <p className="font-semibold text-slate-700 dark:text-slate-200">
-                      {detail.adviser || "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-slate-400">Teacher:</span>
-                    <p className="font-semibold text-slate-700 dark:text-slate-200">
-                      {detail.teacher || "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-slate-400">Subject Grade:</span>
-                    <p className="font-bold text-slate-800 dark:text-slate-100">
-                      {detail.classSubjectGrade ?? detail.generalAverage ?? "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-slate-400">Period:</span>
-                    <p className="font-semibold text-slate-700 dark:text-slate-200">
-                      {detail.schoolYear} · {detail.quarter}
-                    </p>
-                  </div>
-                </div>
-              </section>
-
-              {/* Subject Grades */}
-              <section>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Subject Grades
-                </p>
-                <div className="mt-1.5 overflow-hidden rounded-xl border border-slate-100 dark:border-white/5">
-                  <table className="w-full text-left text-xs">
-                    <tbody>
-                      {detail.subjectGrades && detail.subjectGrades.length ? (
-                        detail.subjectGrades.map((row) => (
-                          <tr
-                            key={`${row.subject}-${row.grade}`}
-                            className="border-t border-slate-100 first:border-t-0 dark:border-white/5"
-                          >
-                            <td className="px-3.5 py-2 text-slate-700 dark:text-slate-300">
-                              {row.subject}
-                            </td>
-                            <td className="px-3.5 py-2 text-right font-bold text-slate-900 dark:text-slate-100">
-                              {row.grade ?? "—"}
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td className="px-3.5 py-3 text-center text-slate-400">
-                            No subject grades recorded.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-
-              {/* System Academic Recommendation */}
-              {detail.recommendationReason ? (
-                <section>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Academic Recommendation
-                  </p>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
-                    {detail.recommendationReason}
-                  </p>
-                </section>
-              ) : null}
-
-              {/* Weekly Progress History */}
-              <section>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Weekly Progress History (View-Only)
-                </p>
-                <div className="mt-2 space-y-2">
-                  {detail.records && detail.records.length ? (
-                    detail.records.map((record) => (
-                      <div
-                        key={record.id}
-                        className="rounded-xl border border-slate-100 bg-white p-3 shadow-2xs dark:border-white/5 dark:bg-white/[0.02]"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                            {record.weekLabel ? `${record.weekLabel} · ` : ""}
-                            {record.observationDate}
-                          </p>
-                          <Pill
-                            value={record.monitoringStatus}
-                            styles={monitoringStatusStyles}
-                          />
-                        </div>
-                        {record.studentProgress ? (
-                          <p className="mt-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                            Progress: {record.studentProgress}
-                          </p>
-                        ) : null}
-                        {record.interventionGiven ? (
-                          <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">
-                            {record.interventionGiven}
-                          </p>
-                        ) : null}
-                        {record.teacherRemarks ? (
-                          <p className="mt-0.5 text-xs text-slate-500 italic dark:text-slate-400">
-                            "{record.teacherRemarks}"
-                          </p>
-                        ) : null}
-                      </div>
-                    ))
-                  ) : (
-                    <p className="py-2 text-center text-xs text-slate-400">
-                      No weekly progress history recorded yet.
-                    </p>
-                  )}
-                </div>
-              </section>
-            </>
-          ) : null}
-        </div>
-
-        {/* Footer */}
-        <div className="flex shrink-0 justify-end border-t border-slate-100 px-5 py-3 dark:border-white/5">
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-9 cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function AdminMonitoringPage() {
   const searchParams = useSearchParams();
@@ -633,14 +429,23 @@ export default function AdminMonitoringPage() {
       </div>
 
       {/* VIEW-ONLY ACADEMIC RECORD DETAIL MODAL */}
-      {selectedLearner || selectedDetail ? (
-        <DetailPanel
+      {Boolean(selectedLearner || selectedDetail) && (
+        <LearnerAcademicDetailModal
+          key={
+            (selectedDetail || selectedLearner)?.studentId ||
+            (selectedDetail || selectedLearner)?.id ||
+            "admin-modal"
+          }
           detail={selectedDetail}
           learner={selectedLearner}
+          isOpen={Boolean(selectedLearner || selectedDetail)}
           loading={detailLoading}
           onClose={closeStudent}
+          role="principal"
+          schoolYear={activeSchoolYear}
+          currentQuarterNumber={quarter === "All Terms" ? 1 : Number(quarter.replace(/\D/g, "")) || 1}
         />
-      ) : null}
+      )}
     </motion.div>
   );
 }

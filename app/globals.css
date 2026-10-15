@@ -66,7 +66,7 @@
   --card-foreground: #1f2937;
   --popover: #ffffff;
   --popover-foreground: #1f2937;
-  --primary: #2f7d5f;
+  --primary: #246f54;
   --primary-foreground: #ffffff;
   --secondary: #f1f5f9;
   --secondary-foreground: #334155;
@@ -96,7 +96,7 @@
   --cnhs-sidebar-muted: #2b5a43;
   --cnhs-page: #f8fafc;
   --cnhs-green: #52b788;
-  --cnhs-green-dark: #2f7d5f;
+  --cnhs-green-dark: #246f54;
   --cnhs-green-soft: #eaf8f0;
   --cnhs-red: #d83a3a;
   --cnhs-red-soft: #fdecec;
@@ -112,7 +112,7 @@
   --card-foreground: #e8e8e8;
   --popover: #1c1c1c;
   --popover-foreground: #e8e8e8;
-  --primary: #2f7d5f;
+  --primary: #246f54;
   --primary-foreground: #ffffff;
   --secondary: #222222;
   --secondary-foreground: #d4d4d4;
@@ -136,7 +136,7 @@
   --cnhs-sidebar-muted: #222222;
   --cnhs-page: #141414;
   --cnhs-green: #52b788;
-  --cnhs-green-dark: #2f7d5f;
+  --cnhs-green-dark: #246f54;
   --cnhs-green-soft: color-mix(in srgb, #1c1c1c 88%, #52b788 12%);
   --cnhs-red-soft: color-mix(in srgb, #1c1c1c 88%, #d83a3a 12%);
   --cnhs-orange-soft: color-mix(in srgb, #1c1c1c 88%, #e8892f 12%);

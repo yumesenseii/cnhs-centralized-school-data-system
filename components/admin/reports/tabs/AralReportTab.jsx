@@ -10,8 +10,13 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Cell,
 } from "recharts";
+import { Eye, TrendingDown, TrendingUp, Minus, Info, CheckCircle2 } from "lucide-react";
 import { aralPeriodLabel } from "@/lib/monitoring/assessmentTimeline";
+import { aggregateAralLearners } from "@/lib/monitoring/aralLearnerAggregation";
+import { computePrincipalAralReportData } from "@/lib/reports/aralReportsAggregation";
+import PrincipalAralOutcomeModal from "@/components/admin/reports/PrincipalAralOutcomeModal";
 
 const PAGE_SIZE = 10;
 
@@ -20,153 +25,151 @@ export default function AralReportTab({
   aralPeriod = "BOSY",
   classReports = [],
   overviewHotspots = {},
+  students = [],
+  schoolYear = "SY 2026-2027",
+  quarter = "",
 }) {
-  const waitingReview = Number(aralSummary?.waitingForReview ?? 0);
-  const waitingAssessment = Number(aralSummary?.waitingForAssessment ?? 0);
-  const underSupport = Number(aralSummary?.underAralSupport ?? 0);
-  const outcomesCount = Number(aralSummary?.outcomes ?? 0);
+  // 1. Authoritative aggregation of canonical ARAL cases
+  const canonicalLearners = useMemo(() => {
+    return aggregateAralLearners(students, { schoolYear });
+  }, [students, schoolYear]);
 
-  // 4 Scoped Summary Cards
-  const cards = [
-    {
-      label: "Waiting for Review",
-      value: waitingReview,
-      desc: "Referrals awaiting administrative endorsement",
-    },
-    {
-      label: "Waiting for Assessment",
-      value: waitingAssessment,
-      desc: `${aralPeriodLabel(aralPeriod)} assessment pending`,
-    },
-    {
-      label: "Under ARAL Support",
-      value: underSupport,
-      desc: "Learners actively undergoing sessions",
-    },
-    {
-      label: "Outcomes",
-      value: outcomesCount,
-      desc:
-        outcomesCount > 0
-          ? `${outcomesCount} learners completed program`
-          : "No completed outcomes yet for this period",
-    },
-  ];
+  // 2. Compute Principal ARAL Report Data
+  const reportData = useMemo(() => {
+    return computePrincipalAralReportData(canonicalLearners, {
+      schoolYear,
+      quarter,
+      aralPeriod,
+    });
+  }, [canonicalLearners, schoolYear, quarter, aralPeriod]);
 
-  // Grade-level ARAL distribution for the chart
+  // Modal state for viewing outcome details
+  const [selectedOutcome, setSelectedOutcome] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleOpenOutcome = (record) => {
+    setSelectedOutcome(record);
+    setIsModalOpen(true);
+  };
+
+  // 8. Summary Cards: Prefer computed reportData; fallback to prop aralSummary if empty
+  const summaryCards = useMemo(() => {
+    if (canonicalLearners.length > 0) {
+      return reportData.summaryCards;
+    }
+    const waitingReview = Number(aralSummary?.waitingForReview ?? 0);
+    const waitingAssessment = Number(aralSummary?.waitingForAssessment ?? 0);
+    const underSupport = Number(aralSummary?.underAralSupport ?? 0);
+    const outcomesCount = Number(aralSummary?.outcomes ?? 0);
+
+    return [
+      {
+        label: "Waiting for Review",
+        value: waitingReview,
+        desc: "Referrals awaiting administrative endorsement",
+      },
+      {
+        label: "Waiting for Assessment",
+        value: waitingAssessment,
+        desc: `${aralPeriodLabel(aralPeriod)} assessment pending`,
+      },
+      {
+        label: "Under ARAL Support",
+        value: underSupport,
+        desc: "Learners actively undergoing sessions",
+      },
+      {
+        label: "Outcomes",
+        value: outcomesCount,
+        desc: outcomesCount > 0 ? `${outcomesCount} validated outcomes` : "No completed outcomes yet for this period",
+      },
+    ];
+  }, [canonicalLearners.length, reportData.summaryCards, aralSummary, aralPeriod]);
+
+  // 11. Grade Chart Data: Prefer reportData grade distribution
   const gradeChartData = useMemo(() => {
+    if (canonicalLearners.length > 0) {
+      return reportData.gradeChartData;
+    }
+    // Fallback if raw students not yet loaded
     const gradeMap = new Map([
       ["Grade 7", 0],
       ["Grade 8", 0],
       ["Grade 9", 0],
       ["Grade 10", 0],
     ]);
-
     classReports.forEach((c) => {
       const g = c.gradeLevel ? `Grade ${c.gradeLevel}` : null;
       if (g && gradeMap.has(g)) {
-        const aralCount = c.aralEligible ? (Number(c.aralScreening) || 0) : (Number(c.aralCount) || 0);
-        gradeMap.set(g, gradeMap.get(g) + aralCount);
+        const count = c.aralEligible ? Number(c.aralScreening) || 0 : Number(c.aralCount) || 0;
+        gradeMap.set(g, gradeMap.get(g) + count);
       }
     });
-
-    // If no grade distribution yet, derive from hotspots
-    const hasData = Array.from(gradeMap.values()).some((v) => v > 0);
-    if (!hasData && overviewHotspots?.sections?.length) {
-      overviewHotspots.sections.forEach((sec) => {
-        const label = sec.label || "";
-        for (const g of ["Grade 7", "Grade 8", "Grade 9", "Grade 10"]) {
-          if (label.includes(g)) {
-            gradeMap.set(g, gradeMap.get(g) + (Number(sec.aral) || 0));
-          }
-        }
-      });
-    }
-
     return Array.from(gradeMap.entries()).map(([grade, learners]) => ({
       grade,
       learners,
     }));
-  }, [classReports, overviewHotspots]);
+  }, [canonicalLearners.length, reportData.gradeChartData, classReports]);
 
-  // Section Summary Table Data
+  // 12. Section Summary Table Data: Prefer reportData section table
   const sectionSummaryData = useMemo(() => {
+    if (canonicalLearners.length > 0) {
+      return reportData.sectionSummaryTable;
+    }
+    // Fallback from classReports
     const secMap = new Map();
-
     classReports.forEach((c) => {
-      const name =
-        c.gradeSection ||
-        c.className ||
-        (c.gradeLevel && c.sectionName ? `Grade ${c.gradeLevel} - ${c.sectionName}` : "Section");
-
+      const name = c.gradeSection || c.className || "Section";
       if (!secMap.has(name)) {
         secMap.set(name, {
           section: name,
-          totalLearners: Number(c.students) || 0,
-          waitingReview: 0,
-          inSupport: 0,
-          aralTotal: 0,
+          totalCases: Number(c.aralScreening) || Number(c.aralCount) || 0,
+          waitingAssessment: 0,
+          underSupport: Number(c.aralCount) || 0,
+          completedOutcomes: 0,
         });
       }
-
-      const entry = secMap.get(name);
-      entry.totalLearners = Math.max(entry.totalLearners, Number(c.students) || 0);
-      const aralCount = c.aralEligible ? (Number(c.aralScreening) || 0) : (Number(c.aralCount) || 0);
-      entry.aralTotal += aralCount;
     });
+    return Array.from(secMap.values());
+  }, [canonicalLearners.length, reportData.sectionSummaryTable, classReports]);
 
-    if (secMap.size === 0 && overviewHotspots?.sections?.length) {
-      overviewHotspots.sections.forEach((s) => {
-        secMap.set(s.label, {
-          section: s.label,
-          totalLearners: (Number(s.aral) || 0) + (Number(s.atRisk) || 0),
-          waitingReview: 0,
-          inSupport: Number(s.aral) || 0,
-          aralTotal: Number(s.aral) || 0,
-        });
-      });
-    }
-
-    return Array.from(secMap.values()).map((row) => {
-      const inSupport = Math.max(0, row.aralTotal - row.waitingReview);
-      let status = "Monitoring";
-      if (inSupport > 0) status = "Active Support";
-      else if (row.waitingReview > 0) status = "Needs Review";
-
-      return {
-        section: row.section,
-        totalLearners: row.totalLearners,
-        waitingReview: row.waitingReview,
-        inSupport: inSupport > 0 ? inSupport : row.aralTotal,
-        status,
-      };
-    });
-  }, [classReports, overviewHotspots]);
-
-  const [page, setPage] = useState(1);
+  // Section Table Pagination
+  const [sectionPage, setSectionPage] = useState(1);
   useEffect(() => {
-    setPage(1);
+    setSectionPage(1);
   }, [sectionSummaryData]);
-  const totalPages = Math.max(1, Math.ceil(sectionSummaryData.length / PAGE_SIZE));
-  const safePage = Math.min(Math.max(page, 1), totalPages);
+  const totalSectionPages = Math.max(1, Math.ceil(sectionSummaryData.length / PAGE_SIZE));
+  const safeSectionPage = Math.min(Math.max(sectionPage, 1), totalSectionPages);
   const pagedSections = useMemo(() => {
-    const start = (safePage - 1) * PAGE_SIZE;
+    const start = (safeSectionPage - 1) * PAGE_SIZE;
     return sectionSummaryData.slice(start, start + PAGE_SIZE);
-  }, [sectionSummaryData, safePage]);
+  }, [sectionSummaryData, safeSectionPage]);
+
+  // Outcomes Table Pagination
+  const outcomesList = reportData.outcomesTableRows || [];
+  const [outcomePage, setOutcomePage] = useState(1);
+  const totalOutcomePages = Math.max(1, Math.ceil(outcomesList.length / PAGE_SIZE));
+  const safeOutcomePage = Math.min(Math.max(outcomePage, 1), totalOutcomePages);
+  const pagedOutcomes = useMemo(() => {
+    const start = (safeOutcomePage - 1) * PAGE_SIZE;
+    return outcomesList.slice(start, start + PAGE_SIZE);
+  }, [outcomesList, safeOutcomePage]);
+
+  const { trendData, termMovement, outcomeCategoriesSummary, hasOutcomes } = reportData;
 
   return (
-    <div className="space-y-4">
-      {/* 4 SCOPED SUMMARY CARDS */}
+    <div className="space-y-5">
+      {/* 8. PRINCIPAL ARAL SUMMARY (4 SCOPED CARDS) */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {cards.map((card) => (
+        {summaryCards.map((card) => (
           <div
             key={card.label}
-            className="flex min-h-[110px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-[var(--card)]"
+            className="flex min-h-[105px] flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-[var(--card)]"
           >
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
               {card.label}
             </p>
-            <p className="mt-1 text-2xl font-bold leading-tight tabular-nums text-slate-900 dark:text-slate-100">
+            <p className="mt-1 text-2xl font-bold leading-tight tabular-nums text-[#166534] dark:text-emerald-400">
               {card.value}
             </p>
             <p className="mt-1 truncate text-[11px] text-slate-500">
@@ -176,18 +179,124 @@ export default function AralReportTab({
         ))}
       </div>
 
-      {/* 1 SIMPLE CHART: ARAL STATUS BY GRADE */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+      {/* 9 & 10. TERM-BASED ARAL TREND & TERM MOVEMENT */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* ARAL SUPPORT TREND */}
+        <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+          <div className="border-b border-slate-100 pb-2.5 dark:border-white/5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#166534] dark:text-emerald-400">
+              ARAL SUPPORT TREND
+            </h3>
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              Term-over-term comparison of learners requiring ARAL support.
+            </p>
+          </div>
+
+          {trendData?.isAvailable ? (
+            <div className="mt-3.5 space-y-3">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5 dark:border-white/5 dark:bg-white/[0.02]">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Previous Term
+                  </p>
+                  <p className="mt-1 text-base font-bold tabular-nums text-slate-700 dark:text-slate-300">
+                    {trendData.previousTermCount}
+                  </p>
+                  <p className="text-[10px] text-slate-400">learners</p>
+                </div>
+                <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5 dark:border-white/5 dark:bg-white/[0.02]">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Current Term
+                  </p>
+                  <p className="mt-1 text-base font-bold tabular-nums text-slate-900 dark:text-slate-100">
+                    {trendData.currentTermCount}
+                  </p>
+                  <p className="text-[10px] text-slate-400">learners</p>
+                </div>
+                <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5 dark:border-white/5 dark:bg-white/[0.02]">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Change
+                  </p>
+                  <p className="mt-1 text-base font-bold tabular-nums text-[#166534] dark:text-emerald-400">
+                    {trendData.changeText}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3 text-xs text-slate-700 dark:border-white/5 dark:bg-white/[0.02] dark:text-slate-300">
+                <span className="font-semibold text-slate-900 dark:text-slate-100">
+                  Current Direction:{" "}
+                </span>
+                “{trendData.directionText}”
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3.5 rounded-lg border border-slate-100 bg-slate-50/50 p-4 text-xs text-slate-500 dark:border-white/5 dark:bg-white/[0.02]">
+              {trendData?.notice || "Trend will appear when a previous comparable term is available."}
+            </div>
+          )}
+        </div>
+
+        {/* TERM MOVEMENT */}
+        <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+          <div className="border-b border-slate-100 pb-2.5 dark:border-white/5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#166534] dark:text-emerald-400">
+              TERM MOVEMENT
+            </h3>
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              Actual case transitions explaining changes in active support volume.
+            </p>
+          </div>
+
+          <div className="mt-3.5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5 text-center dark:border-white/5 dark:bg-white/[0.02]">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                New Referrals
+              </p>
+              <p className="mt-1 text-lg font-bold tabular-nums text-slate-800 dark:text-slate-200">
+                {termMovement.newReferrals}
+              </p>
+            </div>
+            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5 text-center dark:border-white/5 dark:bg-white/[0.02]">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Started Support
+              </p>
+              <p className="mt-1 text-lg font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
+                {termMovement.startedSupport}
+              </p>
+            </div>
+            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5 text-center dark:border-white/5 dark:bg-white/[0.02]">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Completed / Exited
+              </p>
+              <p className="mt-1 text-lg font-bold tabular-nums text-blue-700 dark:text-blue-400">
+                {termMovement.completedExited}
+              </p>
+            </div>
+            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5 text-center dark:border-white/5 dark:bg-white/[0.02]">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Net Change
+              </p>
+              <p className="mt-1 text-lg font-bold tabular-nums text-slate-900 dark:text-slate-100">
+                {termMovement.netChangeText}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 11. ARAL STATUS BY GRADE */}
+      <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
         <div className="border-b border-slate-100 pb-2.5 dark:border-white/5">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-            ARAL Status by Grade Level
+          <h3 className="text-xs font-bold uppercase tracking-wider text-[#166534] dark:text-emerald-400">
+            ARAL STATUS BY GRADE LEVEL
           </h3>
           <p className="mt-0.5 text-[11px] text-slate-500">
-            Enrolled reading and language intervention learners across grade cohorts.
+            Current valid ARAL cases distributed across grade levels.
           </p>
         </div>
 
-        <div className="mt-4 h-[220px] w-full">
+        <div className="mt-4 h-[200px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={gradeChartData}
@@ -212,11 +321,11 @@ export default function AralReportTab({
                   borderRadius: "8px",
                   fontSize: "12px",
                 }}
-                formatter={(val) => [`${val} learners`, "ARAL Learners"]}
+                formatter={(val) => [`${val} learners`, "ARAL Cases"]}
               />
               <Bar
                 dataKey="learners"
-                fill="#1b4332"
+                fill="#166534"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={36}
               />
@@ -225,64 +334,52 @@ export default function AralReportTab({
         </div>
       </div>
 
-      {/* SECTION SUMMARY TABLE */}
+      {/* 12. SECTION SUMMARY TABLE */}
       <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
-        <div className="border-b border-slate-200/80 px-4 py-3 dark:border-white/5">
-          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-            Section Summary
+        <div className="border-b border-slate-100 bg-slate-50/60 px-4 py-3 dark:border-white/5 dark:bg-white/[0.02]">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-[#166534] dark:text-emerald-400">
+            SECTION SUMMARY
           </h3>
-          <p className="mt-0.5 text-[12px] text-slate-500">
-            Intervention progress and review status per section.
+          <p className="mt-0.5 text-[11px] text-slate-500">
+            Breakdown of ARAL cases, assessments, and active support per section.
           </p>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left">
+          <table className="w-full border-collapse text-left text-xs">
             <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-200/80 dark:bg-white/[0.02]">
-                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                  Section
-                </th>
-                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 tabular-nums">
-                  Total Learners
-                </th>
-                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 tabular-nums">
-                  Waiting for Review
-                </th>
-                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 tabular-nums">
-                  In Support
-                </th>
-                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                  Status
-                </th>
+              <tr className="border-b border-slate-100 bg-slate-50/70 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-white/5">
+                <th className="px-4 py-2.5">Section</th>
+                <th className="px-4 py-2.5 text-center tabular-nums">Total ARAL Cases</th>
+                <th className="px-4 py-2.5 text-center tabular-nums">Waiting for Assessment</th>
+                <th className="px-4 py-2.5 text-center tabular-nums">Under ARAL Support</th>
+                <th className="px-4 py-2.5 text-right tabular-nums">Completed / Outcomes</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
               {sectionSummaryData.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-[13px] text-slate-400">
+                  <td colSpan={5} className="px-4 py-8 text-center text-xs text-slate-400">
                     No section ARAL records available for this period.
                   </td>
                 </tr>
               ) : (
                 pagedSections.map((row) => (
-                  <tr key={row.section} className="hover:bg-slate-50/70 transition-colors dark:hover:bg-white/[0.02]">
-                    <td className="px-4 py-3 text-[13px] font-semibold text-slate-800 dark:text-slate-100">
+                  <tr key={row.section} className="hover:bg-slate-50/50">
+                    <td className="px-4 py-2.5 font-semibold text-slate-800 dark:text-slate-100">
                       {row.section}
                     </td>
-                    <td className="px-4 py-3 text-[13px] tabular-nums text-slate-700 dark:text-slate-300">
-                      {row.totalLearners}
+                    <td className="px-4 py-2.5 text-center font-bold tabular-nums text-slate-800 dark:text-slate-200">
+                      {row.totalCases}
                     </td>
-                    <td className="px-4 py-3 text-[13px] tabular-nums text-slate-700 dark:text-slate-300">
-                      {row.waitingReview}
+                    <td className="px-4 py-2.5 text-center tabular-nums text-slate-600 dark:text-slate-400">
+                      {row.waitingAssessment}
                     </td>
-                    <td className="px-4 py-3 text-[13px] font-semibold tabular-nums text-slate-900 dark:text-slate-100">
-                      {row.inSupport}
+                    <td className="px-4 py-2.5 text-center font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+                      {row.underSupport}
                     </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-[12px] font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-300">
-                        {row.status}
-                      </span>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-300">
+                      {row.completedOutcomes}
                     </td>
                   </tr>
                 ))
@@ -292,13 +389,152 @@ export default function AralReportTab({
         </div>
 
         <AdminTablePagination
-          page={safePage}
+          page={safeSectionPage}
           pageSize={PAGE_SIZE}
           total={sectionSummaryData.length}
-          onPageChange={setPage}
+          onPageChange={setSectionPage}
           itemLabel="sections"
         />
       </div>
+
+      {/* C. PRINCIPAL OUTCOMES SECTION (SAFEGUARDS 1 & 7) */}
+      <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+        <div className="border-b border-slate-100 pb-3 dark:border-white/5">
+          <div className="flex items-center gap-2">
+            <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#166534] dark:bg-emerald-950/40 dark:text-emerald-300">
+              Validated Dispositions
+            </span>
+          </div>
+          <h3 className="mt-1.5 text-sm font-bold tracking-tight text-[#166534] dark:text-emerald-400">
+            PRINCIPAL OUTCOMES
+          </h3>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Consolidated results from Teacher ARAL Monitoring. Dispositions reflect completed assessments and resolved intervention milestones.
+          </p>
+        </div>
+
+        {hasOutcomes ? (
+          <div className="mt-4 space-y-4">
+            {/* 14. OUTCOME SUMMARY CHIPS */}
+            <div>
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                OUTCOME SUMMARY
+              </p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {outcomeCategoriesSummary.map((cat) => (
+                  <div
+                    key={cat.label}
+                    className="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5 text-center dark:border-white/5 dark:bg-white/[0.02]"
+                  >
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      {cat.label}
+                    </p>
+                    <p className="mt-1 text-lg font-bold tabular-nums text-[#166534] dark:text-emerald-400">
+                      {cat.count}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 15. OUTCOMES TABLE */}
+            <div className="overflow-hidden rounded-lg border border-slate-100 dark:border-white/5">
+              <table className="w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50/70 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-white/5">
+                    <th className="px-3 py-2.5">Learner</th>
+                    <th className="px-3 py-2.5">Grade & Section</th>
+                    <th className="px-3 py-2.5">Language</th>
+                    <th className="px-3 py-2.5">Latest Reading Profile</th>
+                    <th className="px-3 py-2.5">Outcome</th>
+                    <th className="px-3 py-2.5">Assessment Period</th>
+                    <th className="px-3 py-2.5 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                  {pagedOutcomes.map((row) => (
+                    <tr key={row.id} className="hover:bg-slate-50/50">
+                      <td className="px-3 py-2.5 font-semibold text-slate-800 dark:text-slate-100">
+                        {row.learnerName}
+                      </td>
+                      <td className="px-3 py-2.5 text-slate-600 dark:text-slate-400">
+                        {row.gradeSection}
+                      </td>
+                      <td className="px-3 py-2.5 text-slate-600 dark:text-slate-400">
+                        {row.language}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            row.latestReadingProfile === "Independent"
+                              ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                              : row.latestReadingProfile === "Instructional"
+                                ? "bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+                                : row.latestReadingProfile === "Frustration"
+                                  ? "bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-300"
+                                  : "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-400"
+                          }`}
+                        >
+                          {row.latestReadingProfile}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <span className="inline-flex rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-[#166534] dark:bg-emerald-950/40 dark:text-emerald-300">
+                          {row.outcome}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-slate-600 dark:text-slate-400">
+                        {row.assessmentPeriod}
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenOutcome(row)}
+                          className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 dark:border-white/10 dark:bg-[var(--card)] dark:text-slate-300"
+                        >
+                          <Eye size={12} />
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {outcomesList.length > PAGE_SIZE ? (
+                <AdminTablePagination
+                  page={safeOutcomePage}
+                  pageSize={PAGE_SIZE}
+                  total={outcomesList.length}
+                  onPageChange={setOutcomePage}
+                  itemLabel="outcomes"
+                />
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          /* 17. EMPTY OUTCOME STATE */
+          <div className="py-8 text-center">
+            <Info size={28} className="mx-auto text-slate-300 dark:text-slate-600" />
+            <p className="mt-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
+              No learner outcomes yet.
+            </p>
+            <p className="mt-1 text-[11px] text-slate-400">
+              Outcomes will appear after the applicable assessment and support stages are completed.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* 16. OUTCOME DETAIL MODAL (Read-only for Principal) */}
+      <PrincipalAralOutcomeModal
+        open={isModalOpen}
+        outcomeRecord={selectedOutcome}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedOutcome(null);
+        }}
+      />
     </div>
   );
 }

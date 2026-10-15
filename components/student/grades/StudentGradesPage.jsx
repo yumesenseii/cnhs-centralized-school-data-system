@@ -224,7 +224,7 @@ export default function StudentGradesPage() {
             <div className="mb-4 rounded-2xl border border-emerald-200/90 bg-emerald-50/70 p-4 shadow-sm dark:border-emerald-800/60 dark:bg-emerald-950/30">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cnhs-green text-white shadow-xs">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cnhs-green-dark text-white shadow-xs">
                     <FileDown size={20} />
                   </div>
                   <div>
@@ -254,7 +254,7 @@ export default function StudentGradesPage() {
                         );
                       }
                     }}
-                    className="inline-flex h-8.5 items-center gap-1.5 rounded-xl bg-cnhs-green px-3.5 text-xs font-semibold text-white shadow-xs hover:bg-[#115a3e] active:bg-[#0c432e] transition-colors"
+                    className="inline-flex h-8.5 items-center gap-1.5 rounded-xl bg-cnhs-green-dark px-3.5 text-xs font-semibold text-white shadow-xs hover:bg-[#1b5842] active:bg-[#144332] transition-colors"
                   >
                     <FileDown size={14} />
                     <span>Download Official SF9 (PDF)</span>

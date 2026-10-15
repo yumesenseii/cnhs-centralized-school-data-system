@@ -24,6 +24,7 @@ function shortStatusLabel(value) {
 
 export default function StatusBadge({ value, dot = true, dense = false }) {
   const showDot = dense ? false : dot;
+  const displayValue = value === "Pending Review" ? "Pending" : value;
 
   return (
     <span
@@ -32,7 +33,7 @@ export default function StatusBadge({ value, dot = true, dense = false }) {
         dense
           ? "gap-1 rounded-md px-1.5 py-0.5 text-[10px] leading-4"
           : "gap-1.5 rounded-full px-2.5 py-1 text-[11px]",
-        styles[value] ?? "bg-slate-100 text-slate-500"
+        styles[displayValue] ?? styles[value] ?? "bg-slate-100 text-slate-500"
       )}
     >
       {showDot ? (
@@ -41,7 +42,7 @@ export default function StatusBadge({ value, dot = true, dense = false }) {
           aria-hidden="true"
         />
       ) : null}
-      {dense ? shortStatusLabel(value) : value}
+      {dense ? shortStatusLabel(value) : displayValue}
     </span>
   );
 }

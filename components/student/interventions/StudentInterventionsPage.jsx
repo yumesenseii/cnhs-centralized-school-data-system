@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ClipboardList, Loader2 } from "lucide-react";
+import { ClipboardList, Loader2, RotateCw } from "lucide-react";
 import StudentPageHeader from "@/components/student/layout/StudentPageHeader";
 import StudentSectionCard from "@/components/student/layout/StudentSectionCard";
 import {
@@ -12,7 +12,7 @@ import {
 import { useStudentPortal } from "@/hooks/student/useStudentPortal";
 
 export default function StudentInterventionsPage() {
-  const { data, loading, error } = useStudentPortal();
+  const { data, loading, isRefreshing, error, refresh } = useStudentPortal();
 
   return (
     <motion.div
@@ -25,6 +25,18 @@ export default function StudentInterventionsPage() {
         breadcrumb="Home / Interventions"
         title="Interventions"
         subtitle="ARAL Learners and Classroom Remedial from your grades — view only."
+        actions={
+          <button
+            type="button"
+            onClick={() => refresh()}
+            disabled={loading || isRefreshing}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-700 shadow-xs hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50"
+            title="Refresh interventions and status"
+          >
+            <RotateCw size={13} className={isRefreshing ? "animate-spin" : ""} />
+            <span>{isRefreshing ? "Refreshing…" : "Refresh"}</span>
+          </button>
+        }
       />
 
       {error ? (

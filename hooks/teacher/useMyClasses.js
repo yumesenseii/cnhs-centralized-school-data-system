@@ -22,6 +22,7 @@ import {
 import { parseTermNumber, TERM_OPTIONS, termLabel } from "@/lib/academic/termLabels";
 import { syncSiblingClassRosters } from "@/lib/academic/siblingTermClasses";
 import { createClient } from "@/lib/supabase/client";
+import { deriveLearnerMonitoringState } from "@/lib/monitoring/academicMonitoringState";
 import { useSoftLoadState } from "@/hooks/useSoftLoadState";
 
 export function useTeacherClasses() {
@@ -32,7 +33,7 @@ export function useTeacherClasses() {
   const [error, setError] = useState("");
   const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(true);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (opts = {}) => {
     beginLoad();
     setError("");
 
@@ -50,7 +51,9 @@ export function useTeacherClasses() {
     setProfile(nextProfile);
     setTeacher(nextTeacher);
 
-    const classesResult = await getTeacherClasses(teacherId);
+    const classesResult = await getTeacherClasses(teacherId, {
+      bypassCache: Boolean(opts?.bypassCache ?? opts?.force),
+    });
     if (classesResult.error) {
       setError(classesResult.error.message);
       endLoad(false);
@@ -66,6 +69,16 @@ export function useTeacherClasses() {
 
   useEffect(() => {
     refresh();
+
+    function handleInvalidation() {
+      refresh({ bypassCache: true });
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("cnhs-classes-invalidated", handleInvalidation);
+      return () => {
+        window.removeEventListener("cnhs-classes-invalidated", handleInvalidation);
+      };
+    }
   }, [refresh]);
 
   return {
@@ -269,7 +282,7 @@ export function useClassDetails(classId) {
     termClassIds,
     availableTerms:
       availableTerms.length > 0 ? availableTerms : TERM_OPTIONS.map((t) => Number(t.value)),
-    termOptions: [1, 2, 3, 4].map((n) => ({
+    termOptions: [1, 2, 3].map((n) => ({
       value: n,
       label: termLabel(n),
       classId: termClassIds[n] ?? null,
@@ -304,9 +317,21 @@ export function useStudentProfile(classId, studentId) {
 
       const { teacherId } = sessionResult.data;
 
-      const [classResult, studentResult] = await Promise.all([
+      const supabase = createClient();
+      const [classResult, studentResult, siblingsResult, monitoringResult, aralResult] = await Promise.all([
         getClassById(classId, { teacherId }),
         getStudentInClass(classId, studentId, { teacherId }),
+        getTeacherClasses(teacherId),
+        supabase
+          .from("monitoring_records")
+          .select("id, student_id, class_id, monitoring_status, intervention_given, teacher_remarks, observation_date, student_progress, created_at")
+          .eq("student_id", studentId)
+          .order("observation_date", { ascending: false }),
+        supabase
+          .from("aral_recommendation_approvals")
+          .select("id, student_id, status, approval_status, principal_notes")
+          .eq("student_id", studentId)
+          .maybeSingle(),
       ]);
 
       if (!active) return;
@@ -326,8 +351,27 @@ export function useStudentProfile(classId, studentId) {
       }
 
       const mappedClass = mapClassRecord(classResult.data);
+      const siblingMapped = (siblingsResult.data ?? []).map(mapClassRecord);
+      const grouped = groupClassesForMyClassesList(siblingMapped);
+      const group =
+        grouped.find(
+          (item) =>
+            item.id === classId ||
+            (item.relatedClassIds ?? []).includes(classId) ||
+            Object.values(item.termClassIds ?? {}).includes(classId)
+        ) ?? null;
+
+      const termClassIds = group?.termClassIds ?? mappedClass.termClassIds ?? {};
+      const siblingIds = [
+        ...new Set([
+          classId,
+          ...Object.values(termClassIds).filter(Boolean).map(String),
+        ]),
+      ];
 
       const gradesResult = await getStudentGrades(classId, studentId, {
+        classIds: siblingIds,
+        subjectId: mappedClass.subjectId,
         schoolYear: mappedClass.schoolYear,
       });
 
@@ -339,6 +383,9 @@ export function useStudentProfile(classId, studentId) {
         return;
       }
 
+      const latestMonitoring = monitoringResult?.data?.[0] ?? null;
+      const aralData = aralResult?.data ?? null;
+
       const gradeRows = gradesResult.data ?? [];
       const summary = summarizeStudentGrades(gradeRows);
       const mappedStudent = mapEnrollmentToStudent(
@@ -346,22 +393,39 @@ export function useStudentProfile(classId, studentId) {
         summary
       );
 
+      const learnerBundle = {
+        ...mappedStudent,
+        id: studentId,
+        student_id: studentId,
+        subject: mappedClass.subject,
+        currentGrade: summary.currentGrade,
+        classSubjectGrade: summary.currentGrade,
+        previousGrade: summary.previousGrade,
+        monitoringStatus: latestMonitoring?.monitoring_status,
+        monitoring_status: latestMonitoring?.monitoring_status,
+        remedialStatus: latestMonitoring?.monitoring_status,
+        interventionStatus: latestMonitoring?.monitoring_status,
+        interventionGiven: latestMonitoring?.intervention_given,
+        intervention_given: latestMonitoring?.intervention_given,
+        teacherRemarks: latestMonitoring?.teacher_remarks,
+        latestObservationDate: latestMonitoring?.observation_date,
+        aralApprovalStatus: aralData?.status || aralData?.approval_status,
+      };
+
+      const monitoringState = deriveLearnerMonitoringState(learnerBundle);
+
       setClassItem(mappedClass);
       setStudent({
         ...mappedStudent,
         grade: mappedClass.grade,
         section: mappedClass.section,
-        quarter: mappedClass.quarterLabel || mappedClass.currentQuarter,
+        quarter: termLabel(mappedClass.quarterNumber || mappedClass.quarter) || mappedClass.quarterLabel,
         schoolYear: mappedClass.schoolYear,
         assignedClass: `${mappedClass.gradeSection} · ${mappedClass.subject}`,
-        averageGrade: summary.generalAverage,
-        weakSubject: summary.weakestSubject,
-        academicSummary: {
-          quarterLabel: "Grades per Quarter",
-          columnLabel: "Quarter",
-          subjects: summary.subjects,
-          generalAverage: summary.generalAverage,
-        },
+        summary,
+        monitoringState,
+        latestMonitoring,
+        aralData,
       });
       setGrades(gradeRows);
       setLoading(false);

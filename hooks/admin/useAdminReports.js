@@ -175,6 +175,7 @@ export function useAdminReports() {
       underAralSupport: 0,
       outcomes: 0,
     },
+    students: model?.students ?? [],
     doingWell: model?.doingWell ?? 0,
     setSchoolYear,
     setQuarter,

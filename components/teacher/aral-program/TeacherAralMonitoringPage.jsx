@@ -16,7 +16,8 @@ import {
 import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import AralMonitoringSection from "@/components/teacher/monitoring/AralMonitoringSection";
-import StudentMonitoringSidePanel from "@/components/teacher/monitoring/StudentMonitoringSidePanel";
+import AralLearnerRecordModal from "@/components/teacher/monitoring/AralLearnerRecordModal";
+import AralAssessmentFlowModal from "@/components/teacher/monitoring/AralAssessmentFlowModal";
 import PageHelp from "@/components/shared/PageHelp";
 import { useTeacherMonitoring } from "@/hooks/teacher/useMonitoring";
 import { formatPersonName } from "@/lib/teacher/monitoringMappers";
@@ -45,6 +46,7 @@ export default function TeacherAralMonitoringPage() {
   } = useTeacherMonitoring();
 
   const [selectedLearner, setSelectedLearner] = useState(null);
+  const [selectedAssessmentLearner, setSelectedAssessmentLearner] = useState(null);
   const [exportingAral, setExportingAral] = useState(false);
   const { showToast } = useAppToast();
   const { period: aralPeriod } = useAralAssessmentPeriod();
@@ -118,24 +120,17 @@ export default function TeacherAralMonitoringPage() {
                     ARAL Monitoring
                   </span>
                 </p>
+
                 <div className="mt-2 flex items-center gap-2">
-                  <h1 className="text-2xl font-semibold tracking-[-0.03em] text-slate-900 sm:text-[28px]">
+                  <h1 className="text-2xl font-semibold tracking-[-0.03em] text-slate-900 sm:text-[28px] dark:text-white">
                     ARAL Monitoring
                   </h1>
-                  <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-cnhs-green-dark border border-emerald-200">
-                    <GraduationCap size={13} />
-                    RA 12028
-                  </span>
                 </div>
-                <p className="mt-1 text-[13px] text-slate-500">
-                  Specialized reading intervention and Phil-IRI assessment tracking.
+                <p className="mt-0.5 text-[11px] font-medium text-[#246f54] dark:text-emerald-400">
+                  {aralPeriodLabel(aralPeriod)} · {controls.schoolYear || "SY 2026–2027"}
                 </p>
-                <p className="mt-0.5 text-[11px] text-slate-400">
-                  {controls.schoolYear} · Term {controls.quarterNumber || 1}
-                  <span className="mx-1.5 text-slate-300">•</span>
-                  <span className="font-semibold text-cnhs-green-dark">
-                    {aralPeriodLabel(aralPeriod)}
-                  </span>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Reading assessment and ARAL support for assigned learners.
                 </p>
               </div>
 
@@ -148,13 +143,12 @@ export default function TeacherAralMonitoringPage() {
           {/* Action buttons */}
           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
             <PageHelp
-              summary="Specialized reading intervention tracking across DepEd ARAL milestones."
+              summary="Teacher ARAL Monitoring for English & Filipino reading assessment and support."
               steps={[
-                "BOSY Group Screening Test (GST) Form 1B establishes baseline reading levels.",
-                "Review candidates flagged from English and Filipino academic performance.",
-                "Track learners across: Needs Review → Active Intervention → Midline → EOSY → Final Outcome.",
-                "ARAL Summer Program is strictly recorded as an Eligibility/Referral state (Eligible/Not Eligible); summer lessons and scheduling are conducted outside CNHS Learn.",
-                "Click on any learner to view their continuous Learner Profile and update Phil-IRI assessment scores.",
+                "Who is assigned to me? Check the learner work queue below.",
+                "What step are they in? Review the current step (Waiting for Assessment, Needs Individual Assessment, Under ARAL Support, etc.).",
+                "What do I do next? Click Assess to record GST screening, Continue for Individual Assessment, or View for the full record.",
+                "Summary Cards at the top give you an instant tally of remaining tasks.",
               ]}
             />
 
@@ -163,7 +157,7 @@ export default function TeacherAralMonitoringPage() {
               onClick={handleExportAral}
               disabled={loading || exportingAral || aralExportCount === 0}
               title="Download Eng/Fil ARAL-recommended learners list."
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-[12px] font-semibold text-cnhs-green-dark transition-colors hover:bg-emerald-100 disabled:opacity-60"
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-[12px] font-semibold text-[#246f54] transition-colors hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
             >
               {exportingAral ? (
                 <Loader2 size={13} className="animate-spin" />
@@ -172,7 +166,7 @@ export default function TeacherAralMonitoringPage() {
               )}
               <span>Export Endorsement List</span>
               {aralExportCount > 0 ? (
-                <span className="rounded-full bg-white/90 px-1.5 text-[10px] font-bold text-cnhs-green-dark">
+                <span className="rounded-full bg-white/90 px-1.5 text-[10px] font-bold text-[#246f54]">
                   {aralExportCount}
                 </span>
               ) : null}
@@ -181,7 +175,7 @@ export default function TeacherAralMonitoringPage() {
             <button
               type="button"
               onClick={() => refresh()}
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
             >
               <RefreshCw
                 size={13}
@@ -193,7 +187,7 @@ export default function TeacherAralMonitoringPage() {
             <Link
               href="/teacher/monitoring"
               title="Return to general Academic Monitoring across subjects"
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
             >
               <FileText size={13} />
               <span>Academic Monitoring</span>
@@ -203,20 +197,21 @@ export default function TeacherAralMonitoringPage() {
       </header>
 
       {error ? (
-        <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+        <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-400">
           {error}
         </div>
       ) : null}
 
       {/* Main Content Area */}
       {loading && students.length === 0 ? (
-        <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-100 bg-white py-16 text-sm text-slate-500 shadow-sm">
-          <Loader2 size={16} className="animate-spin text-cnhs-green-dark" />
+        <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-100 bg-white py-16 text-sm text-slate-500 shadow-sm dark:border-white/10 dark:bg-slate-900">
+          <Loader2 size={16} className="animate-spin text-[#246f54]" />
           <span>Loading ARAL monitoring records…</span>
         </div>
       ) : (
         <AralMonitoringSection
           students={students}
+          filterOptions={filterOptions}
           teacherId={teacherId}
           schoolYear={controls.schoolYear}
           quarter={controls.quarter}
@@ -226,16 +221,30 @@ export default function TeacherAralMonitoringPage() {
         />
       )}
 
-      {/* Continuous Learner Profile Side Panel (ARAL context) */}
-      <StudentMonitoringSidePanel
+      {/* Focused 5-Part Learner Record Modal */}
+      <AralLearnerRecordModal
         learner={selectedLearner}
         isOpen={Boolean(selectedLearner)}
         onClose={() => setSelectedLearner(null)}
+        teacherId={teacherId}
+        schoolYear={controls.schoolYear}
+        onOpenAssessment={(l) => {
+          setSelectedAssessmentLearner(l);
+          setSelectedLearner(null);
+        }}
         onRefresh={refresh}
-        context="aral"
+      />
+
+      {/* Two-Stage Assessment Flow Modal */}
+      <AralAssessmentFlowModal
+        learner={selectedAssessmentLearner}
+        isOpen={Boolean(selectedAssessmentLearner)}
+        onClose={() => setSelectedAssessmentLearner(null)}
+        teacherId={teacherId}
+        schoolYear={controls.schoolYear}
+        quarter={controls.quarter}
         aralPeriod={aralPeriod}
-        isLanguageTeacher={true}
-        currentQuarterNumber={controls.quarterNumber || 1}
+        onSuccess={refresh}
       />
     </motion.div>
   );

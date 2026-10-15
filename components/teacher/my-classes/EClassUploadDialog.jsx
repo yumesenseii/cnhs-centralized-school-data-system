@@ -10,6 +10,7 @@ import {
   validateEClassFile,
 } from "@/lib/eclass/validateEClassFile";
 import EClassValidationWorkspace from "@/components/teacher/my-classes/EClassValidationWorkspace";
+import EClassMismatchAlert from "@/components/teacher/common/EClassMismatchAlert";
 import { cn } from "@/lib/utils";
 
 export default function EClassUploadDialog({
@@ -33,12 +34,14 @@ export default function EClassUploadDialog({
   // Validation step state: 'upload' | 'validation'
   const [step, setStep] = useState("upload");
   const [validationResult, setValidationResult] = useState(null);
+  const [validationError, setValidationError] = useState(null);
 
   if (!open || !classItem) return null;
 
   function resetState() {
     setFile(null);
     setError("");
+    setValidationError(null);
     setProgress(0);
     setStatusLabel("");
     setUploading(false);
@@ -59,12 +62,14 @@ export default function EClassUploadDialog({
     const fileCheck = validateEClassFile(selected);
     if (!fileCheck.ok) {
       setError(fileCheck.error);
+      setValidationError(null);
       setFile(null);
       setPreviewMeta(null);
       return;
     }
 
     setError("");
+    setValidationError(null);
     setFile(selected);
     setPreviewMeta(null);
     setWorkbookBuffer(null);
@@ -86,7 +91,8 @@ export default function EClassUploadDialog({
 
       if (!parsed.ok) {
         setPreviewMeta(parsed.metadata);
-        setError(parsed.error || "This file doesn’t match the class you selected.");
+        setError(parsed.error || "Hindi po tugma ang napiling file sa klase na ito.");
+        setValidationError(parsed.validation || null);
         return;
       }
 
@@ -296,9 +302,19 @@ export default function EClassUploadDialog({
               ) : null}
 
               {error ? (
-                <div className="whitespace-pre-line rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-[11px] font-medium leading-5 text-red-600">
-                  {error}
-                </div>
+                <EClassMismatchAlert
+                  error={error}
+                  validation={validationError}
+                  assignedClass={classItem}
+                  uploadedMeta={previewMeta}
+                  onClear={() => {
+                    setError("");
+                    setValidationError(null);
+                    setFile(null);
+                    setPreviewMeta(null);
+                    if (inputRef.current) inputRef.current.value = "";
+                  }}
+                />
               ) : null}
             </div>
 

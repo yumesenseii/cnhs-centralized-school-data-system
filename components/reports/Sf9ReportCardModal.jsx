@@ -5,80 +5,78 @@ import {
   X,
   Download,
   Printer,
-  FileText,
-  Users,
   Loader2,
   CheckCircle2,
+  Clock,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Minus,
+  Plus,
   AlertTriangle,
-  Send,
-  Check,
-  ShieldCheck,
-  RotateCcw,
+  Lock,
 } from "lucide-react";
 import {
   generateSf9PdfDocument,
+  generateSf9SinglePageDocument,
   downloadSingleStudentSf9Pdf,
-  downloadSectionBatchSf9Pdf,
 } from "@/lib/reports/sf9PdfGenerator";
 import {
   formatDepEdLearnerName,
   validateSf9ReleaseEligibility,
   formatStudentForSf9,
 } from "@/lib/reports/sf9DataService";
-import {
-  getLearnerSf9Release,
-  updateSf9Status,
-  releaseSf9ReportCard,
-} from "@/lib/supabase/queries/sf9Releases";
 import AppSelect from "@/components/shared/AppSelect";
+import { cn } from "@/lib/utils";
 
 export default function Sf9ReportCardModal({
   isOpen,
   onClose,
   studentData = null,
   studentsList = [],
+  subjectsList = [],
   section = null,
   sectionName = "",
   schoolYear = "2026-2027",
   onStatusChange = null,
 }) {
   const [selectedStudent, setSelectedStudent] = useState(studentData);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [zoom, setZoom] = useState(100);
+  const [showPendingDetails, setShowPendingDetails] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generationError, setGenerationError] = useState("");
-  const [releaseRecord, setReleaseRecord] = useState(null);
-  const [savingStatus, setSavingStatus] = useState(false);
-  const [confirmReleaseOpen, setConfirmReleaseOpen] = useState(false);
-  const [actionError, setActionError] = useState("");
 
-  const effectiveSectionName = section?.sectionName || sectionName || "Advisory Section";
-  const effectiveSectionId = section?.id || studentData?.sectionId || studentData?.section_id;
+  const effectiveSectionName =
+    section?.sectionName || sectionName || "Advisory Section";
+  const effectiveSectionId =
+    section?.id || studentData?.sectionId || studentData?.section_id;
+
+  // Clean school year to prevent duplicate "SY SY" prefix
+  const cleanSy = String(schoolYear || "").replace(/^SY\s*/i, "").trim() || "2026-2027";
+  const displaySchoolYear = `SY ${cleanSy}`;
 
   // Initialize selectedStudent when prop changes
   useEffect(() => {
     if (studentData) {
       setSelectedStudent(formatStudentForSf9(studentData));
+      setCurrentPage(1);
+      setZoom(100);
+      setShowPendingDetails(false);
     }
-  }, [studentData]);
+  }, [studentData, isOpen]);
 
-  // Load release record from DB when selected student changes
-  useEffect(() => {
-    let active = true;
-    async function fetchRelease() {
-      if (!selectedStudent?.studentId && !selectedStudent?.id) return;
-      const sId = selectedStudent.studentId || selectedStudent.id;
-      const { data } = await getLearnerSf9Release(sId, schoolYear);
-      if (active) {
-        setReleaseRecord(data || null);
-      }
-    }
-    fetchRelease();
-    return () => {
-      active = false;
-    };
-  }, [selectedStudent, schoolYear]);
+  // Evaluate release validation as single source of truth
+  const validation = useMemo(() => {
+    if (!selectedStudent) return { isEligible: false, missing: [] };
+    return validateSf9ReleaseEligibility(
+      selectedStudent,
+      section || { id: effectiveSectionId }
+    );
+  }, [selectedStudent, section, effectiveSectionId]);
 
-  // Generate PDF document
+  // Generate single page PDF document for preview
   useEffect(() => {
     if (!isOpen || !selectedStudent) {
       if (pdfBlobUrl) {
@@ -93,12 +91,16 @@ export default function Sf9ReportCardModal({
     let blobUrl = null;
 
     try {
-      const doc = generateSf9PdfDocument(selectedStudent, schoolYear);
+      const doc = generateSf9SinglePageDocument(
+        selectedStudent,
+        cleanSy,
+        currentPage
+      );
       const blob = doc.output("blob");
       blobUrl = URL.createObjectURL(blob);
       setPdfBlobUrl(blobUrl);
     } catch (err) {
-      console.error("[Sf9Modal] Failed to generate PDF preview:", err);
+      console.error("[Sf9Modal] Failed to generate SF9 preview:", err);
       setGenerationError(err?.message || "Unable to generate SF9 preview.");
     } finally {
       setLoading(false);
@@ -109,24 +111,46 @@ export default function Sf9ReportCardModal({
         URL.revokeObjectURL(blobUrl);
       }
     };
-  }, [isOpen, selectedStudent, schoolYear]);
-
-  // Evaluate release validation
-  const validation = useMemo(() => {
-    if (!selectedStudent) return { isEligible: false, missing: [] };
-    return validateSf9ReleaseEligibility(selectedStudent, section || { id: effectiveSectionId });
-  }, [selectedStudent, section, effectiveSectionId]);
+  }, [isOpen, selectedStudent, cleanSy, currentPage]);
 
   if (!isOpen || !selectedStudent) return null;
 
-  const currentStatus = releaseRecord?.status || (validation.isEligible ? "ready_for_review" : "pending");
-  const isReleased = currentStatus === "released";
-  const isCompleted = currentStatus === "completed";
+  // Polished learner display name
+  const rawDepEdName = formatDepEdLearnerName(selectedStudent);
+  const learnerDisplayName =
+    selectedStudent.lastName && selectedStudent.firstName
+      ? `${selectedStudent.lastName}, ${selectedStudent.firstName}${
+          selectedStudent.middleName ? ` ${selectedStudent.middleName[0]}.` : ""
+        }`
+      : rawDepEdName;
 
-  const learnerDisplayName = formatDepEdLearnerName(selectedStudent);
-  const hasMultipleStudents = studentsList && studentsList.length > 1;
+  const gradeLevel = selectedStudent.gradeLevel || section?.gradeLevel || "7";
+  const hasMultipleStudents = Array.isArray(studentsList) && studentsList.length > 1;
 
-  // Options for student switcher AppSelect
+  // Map pending requirements with assigned teacher names from section curriculum
+  const pendingItemsWithTeachers = (validation.missing || []).map((item) => {
+    const cleanLabel = item.replace(", Term ", " — Term ");
+    const itemLower = item.toLowerCase();
+    let matchedTeacher = "";
+
+    if (Array.isArray(subjectsList) && subjectsList.length > 0) {
+      const found = subjectsList.find((s) => {
+        const sName = String(s.label || s.subject_name || s.subjectName || "").toLowerCase();
+        return itemLower.includes(sName) || (sName && itemLower.startsWith(sName.slice(0, 5)));
+      });
+      if (found?.teacherName) {
+        matchedTeacher = found.teacherName;
+      }
+    }
+
+    return {
+      label: cleanLabel,
+      teacherName: matchedTeacher || "Unassigned",
+    };
+  });
+
+  const pendingCount = pendingItemsWithTeachers.length;
+
   const studentSelectOptions = (studentsList || []).map((s) => ({
     value: String(s.id || s.studentId),
     label: `${formatDepEdLearnerName(s)} (${s.lrn || s.studentNumber || "—"})`,
@@ -136,137 +160,76 @@ export default function Sf9ReportCardModal({
     const found = studentsList.find((s) => String(s.id || s.studentId) === val);
     if (found) {
       setSelectedStudent(formatStudentForSf9(found));
+      setCurrentPage(1);
+      setShowPendingDetails(false);
     }
   };
 
-  const handleDownload = () => {
-    downloadSingleStudentSf9Pdf(selectedStudent, schoolYear);
-  };
-
-  const handleBatchDownload = () => {
-    downloadSectionBatchSf9Pdf(effectiveSectionName, studentsList, schoolYear);
+  const handleDownloadFinal = () => {
+    if (!validation.isEligible) return;
+    downloadSingleStudentSf9Pdf(selectedStudent, cleanSy);
+    onStatusChange?.(selectedStudent.id || selectedStudent.studentId, "completed");
   };
 
   const handlePrint = () => {
-    const iframe = document.getElementById("sf9-pdf-preview-frame");
-    if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.print();
-    } else {
-      handleDownload();
-    }
-  };
-
-  const handleMarkAsCompleted = async () => {
     if (!validation.isEligible) return;
-    setSavingStatus(true);
-    setActionError("");
     try {
-      const studentId = selectedStudent.studentId || selectedStudent.id;
-      const { data, error } = await updateSf9Status({
-        studentId,
-        sectionId: effectiveSectionId,
-        schoolYear,
-        status: "completed",
-        snapshotData: selectedStudent,
-        validationSummary: validation,
-      });
-      if (error) throw error;
-      setReleaseRecord(data);
-      onStatusChange?.(studentId, "completed");
+      const doc = generateSf9PdfDocument(selectedStudent, cleanSy);
+      const blob = doc.output("blob");
+      const url = URL.createObjectURL(blob);
+      const iframe = document.createElement("iframe");
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0";
+      iframe.style.height = "0";
+      iframe.style.border = "0";
+      iframe.src = url;
+      document.body.appendChild(iframe);
+      iframe.onload = () => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+          URL.revokeObjectURL(url);
+        }, 3000);
+      };
     } catch (err) {
-      console.error("[Sf9Modal] Failed to mark completed:", err);
-      setActionError(err.message || "Failed to update SF9 status.");
-    } finally {
-      setSavingStatus(false);
-    }
-  };
-
-  const handleConfirmRelease = async () => {
-    setSavingStatus(true);
-    setActionError("");
-    try {
-      const studentId = selectedStudent.studentId || selectedStudent.id;
-      const { data, error } = await releaseSf9ReportCard({
-        studentId,
-        sectionId: effectiveSectionId,
-        schoolYear,
-        snapshotData: selectedStudent,
-        validationSummary: validation,
-      });
-      if (error) throw error;
-      setReleaseRecord(data);
-      setConfirmReleaseOpen(false);
-      onStatusChange?.(studentId, "released");
-    } catch (err) {
-      console.error("[Sf9Modal] Failed to release SF9:", err);
-      setActionError(err.message || "Failed to release SF9 to Student Portal.");
-    } finally {
-      setSavingStatus(false);
-    }
-  };
-
-  const getStatusBadge = () => {
-    switch (currentStatus) {
-      case "released":
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-            <CheckCircle2 size={13} className="text-emerald-600 dark:text-emerald-400" />
-            <span>Released to Student Portal</span>
-          </span>
-        );
-      case "completed":
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
-            <ShieldCheck size={13} className="text-blue-600" />
-            <span>Completed (Ready for Release)</span>
-          </span>
-        );
-      case "ready_for_review":
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
-            <Check size={13} className="text-purple-600" />
-            <span>Ready for Review</span>
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-            <AlertTriangle size={13} className="text-amber-600" />
-            <span>Pending ({validation.missing.length} Missing)</span>
-          </span>
-        );
+      console.error("[Sf9Modal] Print failed:", err);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-5 animate-in fade-in duration-200">
-      <div className="flex flex-col w-full max-w-6xl h-[92vh] bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-        {/* Modal Top Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-800/60 gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 rounded-lg bg-cnhs-green/10 text-cnhs-green dark:bg-emerald-950/60 dark:text-emerald-400 shrink-0">
-              <FileText className="w-5 h-5" />
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-2 sm:p-4 animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="sf9-preview-title"
+    >
+      <div className="flex flex-col w-full max-w-5xl h-[94vh] bg-white dark:bg-[var(--card)] rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden">
+        {/* POLISHED HEADER */}
+        <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-100 bg-white dark:border-white/5 dark:bg-transparent shrink-0">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h2
+                id="sf9-preview-title"
+                className="text-sm font-bold text-slate-900 dark:text-white"
+              >
+                SF9 Report Card Preview
+              </h2>
+              <span className="text-slate-300 dark:text-white/20">&bull;</span>
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">
+                {learnerDisplayName}
+              </span>
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
-                  DepEd School Form 9 (SF9 / Form 138)
-                </h3>
-                <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
-                  MATATAG SY {schoolYear}
-                </span>
-                {getStatusBadge()}
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                Official Learner Progress Report &bull; {learnerDisplayName} &bull; LRN: {selectedStudent.lrn}
-              </p>
-            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              Grade {gradeLevel} &ndash; {effectiveSectionName} &middot; {displaySchoolYear}
+            </p>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-            {/* Student Switcher AppSelect */}
+          <div className="flex items-center gap-3 shrink-0">
             {hasMultipleStudents && (
-              <div className="w-56">
+              <div className="w-52 hidden md:block">
                 <AppSelect
                   size="pill"
                   value={String(selectedStudent.id || selectedStudent.studentId)}
@@ -277,242 +240,242 @@ export default function Sf9ReportCardModal({
               </div>
             )}
 
-            {hasMultipleStudents && (
-              <button
-                type="button"
-                onClick={handleBatchDownload}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
-                title="Download all learners in section into a single PDF"
-              >
-                <Users className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">Batch Section PDF ({studentsList.length})</span>
-                <span className="md:hidden">Batch</span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
-              title="Print SF9"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Print</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleDownload}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-900 text-white dark:bg-slate-700 dark:hover:bg-slate-600 shadow-xs transition"
-              title="Download Learner SF9 PDF"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Download PDF</span>
-            </button>
-
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              className="cursor-pointer rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition dark:hover:bg-white/10 dark:hover:text-white"
               aria-label="Close"
             >
-              <X className="w-5 h-5" />
+              <X size={18} />
             </button>
           </div>
         </div>
 
-        {/* Validation Status Notice Banner */}
-        <div className="px-5 py-2.5 border-b border-slate-200 dark:border-slate-800 text-xs">
-          {actionError && (
-            <div className="mb-2 p-2 rounded bg-rose-50 border border-rose-200 text-rose-700 dark:bg-rose-950/40 dark:border-rose-900 dark:text-rose-300">
-              {actionError}
-            </div>
-          )}
+        {/* SLIM CONTEXTUAL STATUS STRIP (Compact 40px) */}
+        {!validation.isEligible ? (
+          <div className="border-b border-amber-200/70 bg-amber-50/80 px-6 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200 shrink-0">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-amber-100/90 px-2 py-0.5 text-[11px] font-bold text-amber-900 dark:bg-amber-900/50 dark:text-amber-200">
+                  <Clock size={12} />
+                  <span>Preview only</span>
+                </span>
+                <span className="text-amber-800 dark:text-amber-300 hidden sm:inline text-xs">
+                  Some required grades are still pending.
+                </span>
+                <span className="font-semibold text-amber-950 dark:text-amber-100 shrink-0 text-xs">
+                  ({pendingCount} required grade{pendingCount === 1 ? "" : "s"} pending)
+                </span>
+              </div>
 
-          {!validation.isEligible ? (
-            <div className="flex items-start gap-2.5 p-2.5 rounded-lg bg-amber-50/80 border border-amber-200 text-amber-800 dark:bg-amber-950/30 dark:border-amber-900/60 dark:text-amber-300">
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
-              <div>
-                <p className="font-semibold text-xs">
-                  SF9 cannot be released yet. Incomplete official learning areas / grades:
+              <button
+                type="button"
+                onClick={() => setShowPendingDetails(!showPendingDetails)}
+                className="inline-flex shrink-0 cursor-pointer items-center gap-1 font-semibold text-amber-900 hover:text-amber-950 hover:underline dark:text-amber-300 dark:hover:text-amber-100 text-xs"
+              >
+                <span>{showPendingDetails ? "Hide Details" : "View Pending Grades"}</span>
+                <ChevronDown
+                  size={13}
+                  className={cn(
+                    "transition-transform duration-200",
+                    showPendingDetails && "rotate-180"
+                  )}
+                />
+              </button>
+            </div>
+
+            {/* EXPANDABLE PENDING GRADES WITH ASSIGNED CO-TEACHERS */}
+            {showPendingDetails && (
+              <div className="mt-2.5 pt-2.5 border-t border-amber-200/70 dark:border-amber-900/40">
+                <p className="text-[11px] font-bold text-amber-900 dark:text-amber-200 mb-2">
+                  Pending Learning Areas & Assigned Subject Teachers:
                 </p>
-                <div className="mt-1 flex flex-wrap gap-1.5">
-                  {validation.missing.map((item, idx) => (
-                    <span
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-40 overflow-y-auto pr-1">
+                  {pendingItemsWithTeachers.map((item, idx) => (
+                    <div
                       key={idx}
-                      className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-amber-100/90 text-amber-900 dark:bg-amber-900/50 dark:text-amber-200"
+                      className="rounded-lg border border-amber-200/90 bg-white/95 px-3 py-1.5 shadow-2xs dark:border-amber-900/60 dark:bg-slate-900/80"
                     >
-                      {item}
-                    </span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-100 block truncate text-[11.5px]">
+                        {item.label}
+                      </span>
+                      <span className="text-[10.5px] text-slate-500 dark:text-slate-400 block truncate">
+                        Teacher: <strong className="text-slate-700 dark:text-slate-300">{item.teacherName}</strong>
+                      </span>
+                    </div>
                   ))}
                 </div>
               </div>
+            )}
+          </div>
+        ) : (
+          <div className="border-b border-emerald-200/70 bg-emerald-50/80 px-6 py-2.5 text-xs text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200 shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100/90 px-2 py-0.5 text-[11px] font-bold text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-200">
+                <CheckCircle2 size={12} />
+                <span>SF9 is ready</span>
+              </span>
+              <span className="text-emerald-800 dark:text-emerald-300 text-xs">
+                All required grades are complete. This report card is ready for final download.
+              </span>
             </div>
-          ) : isReleased ? (
-            <div className="flex items-center justify-between p-2.5 rounded-lg bg-emerald-50/80 border border-emerald-200 text-emerald-800 dark:bg-emerald-950/30 dark:border-emerald-900/60 dark:text-emerald-300">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-cnhs-green dark:text-emerald-400 shrink-0" />
-                <span>
-                  <strong>Officially Released.</strong> Available to learner in Student Portal. (Version {releaseRecord?.version || 1} &bull; Released on {new Date(releaseRecord?.released_at || Date.now()).toLocaleDateString()})
-                </span>
-              </div>
-            </div>
-          ) : isCompleted ? (
-            <div className="flex items-center justify-between p-2.5 rounded-lg bg-blue-50/80 border border-blue-200 text-blue-800 dark:bg-blue-950/30 dark:border-blue-900/60 dark:text-blue-300">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
-                <span>
-                  <strong>Completed & Reviewed.</strong> Ready for official publication to the Student Portal.
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setConfirmReleaseOpen(true)}
-                disabled={savingStatus}
-                className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-lg bg-cnhs-green text-white hover:bg-[#115a3e] active:bg-[#0c432e] shadow-xs transition"
-              >
-                <Send size={12} />
-                <span>Release SF9</span>
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 dark:bg-slate-800/40 dark:border-slate-700 dark:text-slate-300">
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-cnhs-green shrink-0" />
-                <span>All required learning areas and records are verified. Inspect preview below before marking as completed.</span>
-              </div>
-              <button
-                type="button"
-                onClick={handleMarkAsCompleted}
-                disabled={savingStatus}
-                className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow-xs transition"
-              >
-                {savingStatus ? <Loader2 size={12} className="animate-spin" /> : <ShieldCheck size={12} />}
-                <span>Mark as Completed</span>
-              </button>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Modal Body / PDF Preview Frame */}
-        <div className="flex-1 bg-slate-100 dark:bg-slate-950 p-3 sm:p-4 relative overflow-hidden flex items-center justify-center">
+        {/* SF9 DOCUMENT DESK CANVAS */}
+        <div className="flex-1 bg-slate-100/80 p-4 relative overflow-auto flex flex-col items-center dark:bg-slate-950">
+          {/* FLOATING NAVIGATION & ZOOM DOCK */}
+          <div className="sticky top-0 z-10 mb-4 inline-flex items-center gap-3 rounded-full border border-slate-200/90 bg-white/95 px-3.5 py-1.5 shadow-md backdrop-blur-xs dark:border-white/10 dark:bg-slate-900/95">
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-35 disabled:cursor-not-allowed transition dark:text-slate-200 dark:hover:bg-white/10"
+              >
+                <ChevronLeft size={13} />
+                <span>Previous</span>
+              </button>
+              <span className="px-2 text-xs font-bold text-slate-800 dark:text-slate-100">
+                Page {currentPage} of 2
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage(2)}
+                disabled={currentPage === 2}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-35 disabled:cursor-not-allowed transition dark:text-slate-200 dark:hover:bg-white/10"
+              >
+                <span>Next</span>
+                <ChevronRight size={13} />
+              </button>
+            </div>
+
+            <div className="h-4 w-px bg-slate-200 dark:bg-white/10" />
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setZoom((z) => Math.max(75, z - 10))}
+                disabled={zoom <= 75}
+                className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition dark:text-slate-300 dark:hover:bg-white/10"
+                aria-label="Zoom out"
+              >
+                <Minus size={11} />
+              </button>
+              <span className="w-10 text-center text-xs font-semibold text-slate-700 dark:text-slate-300">
+                {zoom}%
+              </span>
+              <button
+                type="button"
+                onClick={() => setZoom((z) => Math.min(125, z + 10))}
+                disabled={zoom >= 125}
+                className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition dark:text-slate-300 dark:hover:bg-white/10"
+                aria-label="Zoom in"
+              >
+                <Plus size={11} />
+              </button>
+            </div>
+          </div>
+
+          {/* DOCUMENT SHEET */}
           {loading ? (
-            <div className="flex flex-col items-center gap-3 text-slate-500">
-              <Loader2 className="w-8 h-8 animate-spin text-cnhs-green" />
-              <p className="text-sm font-medium">Generating official DepEd SF9 document...</p>
+            <div className="flex flex-col items-center justify-center gap-2.5 my-auto text-slate-500">
+              <Loader2 size={24} className="animate-spin text-cnhs-green" />
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                Loading SF9 document preview...
+              </span>
             </div>
           ) : generationError ? (
-            <div className="text-center p-6 max-w-md">
-              <AlertTriangle className="w-10 h-10 text-rose-500 mx-auto mb-2" />
-              <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Unable to generate SF9 preview</h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{generationError}</p>
+            <div className="text-center p-6 my-auto max-w-sm">
+              <AlertTriangle size={28} className="text-rose-500 mx-auto mb-2" />
+              <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                Unable to load SF9 preview
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {generationError}
+              </p>
             </div>
           ) : pdfBlobUrl ? (
-            <iframe
-              id="sf9-pdf-preview-frame"
-              src={pdfBlobUrl}
-              className="w-full h-full rounded-lg border border-slate-300 dark:border-slate-800 bg-white shadow-inner"
-              title="SF9 PDF Preview"
-            />
-          ) : (
-            <div className="text-center text-rose-500 text-sm font-medium">
-              Failed to load PDF preview. Click Download PDF to save directly.
+            <div
+              style={{
+                width: `${Math.round(620 * (zoom / 100))}px`,
+                height: `${Math.round(820 * (zoom / 100))}px`,
+                minHeight: "540px",
+              }}
+              className="bg-white rounded-xs shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200/90 overflow-hidden shrink-0 transition-all duration-150"
+            >
+              <iframe
+                id="sf9-pdf-preview-frame"
+                src={`${pdfBlobUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+                className="w-full h-full border-0 bg-white"
+                title="SF9 Report Card Preview"
+              />
             </div>
-          )}
+          ) : null}
         </div>
 
-        {/* Modal Footer */}
-        <div className="flex items-center justify-between px-6 py-2.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 text-xs text-slate-500 dark:text-slate-400">
-          <div>
-            Format: Official DepEd MATATAG Duplex (Page 1: Academic Progress &bull; Page 2: Attendance & Certification)
-          </div>
+        {/* POLISHED FOOTER */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-slate-200/80 bg-slate-50/80 px-6 py-3 dark:border-white/5 dark:bg-transparent shrink-0">
           <div className="flex items-center gap-2">
-            {validation.isEligible && !isReleased && (
-              <button
-                type="button"
-                onClick={() => setConfirmReleaseOpen(true)}
-                disabled={savingStatus}
-                className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md bg-cnhs-green hover:bg-[#115a3e] active:bg-[#0c432e] text-white shadow-xs transition"
-              >
-                <Send size={12} />
-                <span>Release to Student Portal</span>
-              </button>
+            {!validation.isEligible ? (
+              <>
+                <Lock size={13} className="text-slate-400" />
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  Available when all required grades are complete.
+                </span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 size={13} className="text-emerald-600 dark:text-emerald-400" />
+                <span className="text-xs text-emerald-700 font-semibold dark:text-emerald-400">
+                  Report card is finalized and ready for release.
+                </span>
+              </>
             )}
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-md transition"
+              className="cursor-pointer rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
             >
               Close
             </button>
+
+            {validation.isEligible ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+                >
+                  <Printer size={13} />
+                  <span>Print</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadFinal}
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-cnhs-green-dark px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#1b5842] transition"
+                >
+                  <Download size={13} />
+                  <span>Download Final SF9</span>
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-xl bg-slate-200 px-4 py-2 text-xs font-semibold text-slate-400 opacity-60 dark:bg-white/10 dark:text-slate-500"
+              >
+                <Download size={13} />
+                <span>Download Final SF9</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
-
-      {/* Release Confirmation Dialog */}
-      {confirmReleaseOpen && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-2xl">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-cnhs-green dark:text-emerald-400 shrink-0">
-                <Send size={18} />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                  Release SF9 for {learnerDisplayName}?
-                </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Once released, this official report card will become available to the learner in the Student Portal.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-4 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300">
-              <div className="flex justify-between py-0.5">
-                <span className="text-slate-400">Learner:</span>
-                <span className="font-semibold">{learnerDisplayName}</span>
-              </div>
-              <div className="flex justify-between py-0.5">
-                <span className="text-slate-400">LRN:</span>
-                <span className="font-mono">{selectedStudent.lrn}</span>
-              </div>
-              <div className="flex justify-between py-0.5">
-                <span className="text-slate-400">Section:</span>
-                <span>{effectiveSectionName} (SY {schoolYear})</span>
-              </div>
-            </div>
-
-            <div className="mt-5 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setConfirmReleaseOpen(false)}
-                disabled={savingStatus}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 dark:border-slate-700 dark:hover:bg-slate-800 dark:text-slate-300"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmRelease}
-                disabled={savingStatus}
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-cnhs-green hover:bg-[#115a3e] active:bg-[#0c432e] text-white shadow-xs transition"
-              >
-                {savingStatus ? (
-                  <>
-                    <Loader2 size={13} className="animate-spin" />
-                    <span>Releasing...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 size={13} />
-                    <span>Confirm & Release</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

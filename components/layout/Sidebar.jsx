@@ -152,6 +152,7 @@ export default function Sidebar({
   widthClass = SIDEBAR_WIDTH_CLASS,
   schoolName = SCHOOL_NAME,
   onToggleCollapse,
+  pendingDeleteRequestsCount = 0,
 }) {
   const pathname = usePathname();
   const showCollapseToggle = !mobile && typeof onToggleCollapse === "function";
@@ -228,6 +229,11 @@ export default function Sidebar({
             <NavLink
               key={item.href}
               {...item}
+              badge={
+                item.href === "/class-organization"
+                  ? pendingDeleteRequestsCount
+                  : 0
+              }
               collapsed={collapsed}
               isActive={isActive(item.href)}
               onNavigate={onNavigate}

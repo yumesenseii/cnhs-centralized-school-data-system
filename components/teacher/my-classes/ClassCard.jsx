@@ -3,8 +3,6 @@
 import Link from "next/link";
 import {
   BookOpen,
-  FileSpreadsheet,
-  Loader2,
   Upload,
   Users,
 } from "lucide-react";
@@ -26,8 +24,6 @@ const btnBase =
 export default function ClassCard({
   classItem,
   onUploadRecord,
-  onGenerateReport,
-  generating = false,
 }) {
   const metaRows = [
     { label: "Grade & Section", value: classItem.gradeSection },
@@ -82,18 +78,19 @@ export default function ClassCard({
         ))}
       </dl>
 
-      <div className="mt-auto space-y-2 pt-3">
+      <div className="mt-auto flex flex-col gap-2 pt-3">
+        <Link
+          href={`/teacher/my-classes/${classItem.id}`}
+          className={cn(
+            btnBase,
+            "w-full bg-cnhs-green-dark text-white hover:bg-[#246f54]"
+          )}
+        >
+          <BookOpen size={12} />
+          Open Class
+        </Link>
+
         <div className="grid grid-cols-2 gap-2">
-          <Link
-            href={`/teacher/my-classes/${classItem.id}`}
-            className={cn(
-              btnBase,
-              "bg-cnhs-green-dark text-white hover:bg-[#246f54]"
-            )}
-          >
-            <BookOpen size={12} />
-            Open Class
-          </Link>
           <button
             type="button"
             onClick={onUploadRecord}
@@ -104,26 +101,6 @@ export default function ClassCard({
           >
             <Upload size={12} />
             Upload Record
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            disabled={generating}
-            onClick={() => onGenerateReport?.(classItem)}
-            title="Create/refresh this class report file in Academic Monitoring"
-            className={cn(
-              btnBase,
-              "cursor-pointer border border-cnhs-green-dark/35 bg-white text-cnhs-green-dark hover:bg-green-50 dark:border-emerald-700/50 dark:bg-slate-800 dark:text-emerald-400 dark:hover:bg-slate-750 disabled:opacity-60"
-            )}
-          >
-            {generating ? (
-              <Loader2 size={12} className="animate-spin" />
-            ) : (
-              <FileSpreadsheet size={12} />
-            )}
-            Generate report
           </button>
           <Link
             href={`/teacher/my-classes/${classItem.id}/students`}

@@ -469,6 +469,8 @@ export function useTeacherReports() {
     setQuarter,
     setSubject,
     setSection,
+    students: built?.students ?? EMPTY_LIST,
+    teacherId: teacher?.id ?? null,
     refresh: () => refresh({ bustCache: true }),
     getPreview,
   };

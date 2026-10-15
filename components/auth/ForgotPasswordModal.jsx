@@ -37,7 +37,7 @@ export default function ForgotPasswordModal({ open, onClose }) {
 
   async function handleSubmit(event) {
     event.preventDefault();
-    const trimmed = email.trim();
+    const trimmed = email.trim().toLowerCase();
     if (!trimmed) {
       setError(validation.emailRequired);
       return;

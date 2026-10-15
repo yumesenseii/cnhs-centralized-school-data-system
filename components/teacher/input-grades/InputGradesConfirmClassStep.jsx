@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { validateEClassAgainstAssignedClass } from "@/lib/eclass/validateEClassMetadata";
 import { cn } from "@/lib/utils";
 import AppSelect from "@/components/shared/AppSelect";
+import EClassMismatchAlert from "@/components/teacher/common/EClassMismatchAlert";
 
 const readonlyClass =
   "mt-1.5 h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-[12px] font-medium text-slate-600";
@@ -158,9 +159,13 @@ export default function InputGradesConfirmClassStep({
       ) : null}
 
       {validation && !validation.ok ? (
-        <div className="mb-4 whitespace-pre-line rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-[11px] font-medium leading-5 text-red-600">
-          {validation.error}
-        </div>
+        <EClassMismatchAlert
+          error={validation.error}
+          validation={validation}
+          assignedClass={selectedClass}
+          uploadedMeta={metadata}
+          className="mb-4"
+        />
       ) : null}
 
       {validation?.ok ? (

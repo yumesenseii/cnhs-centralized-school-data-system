@@ -40,6 +40,7 @@ export default function AdminReportsPage() {
     overviewHotspots,
     overviewMonitoringHealth,
     aralSummary,
+    students,
     doingWell,
     setSchoolYear,
     setQuarter,
@@ -246,6 +247,9 @@ export default function AdminReportsPage() {
                 aralPeriod={aralPeriod}
                 classReports={classReports}
                 overviewHotspots={overviewHotspots}
+                students={students}
+                schoolYear={schoolYear}
+                quarter={quarter}
               />
             ) : null}
 

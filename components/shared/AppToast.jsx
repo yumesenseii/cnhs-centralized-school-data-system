@@ -46,6 +46,7 @@ const TONE_STYLES = {
 };
 
 export function AppToast({
+  title = null,
   message,
   tone = "success",
   durationMs = TOAST_DURATION_MS,
@@ -56,8 +57,8 @@ export function AppToast({
   const [paused, setPaused] = useState(false);
   const [remaining, setRemaining] = useState(durationMs);
   const startedAtRef = useRef(Date.now());
-  const visible = Boolean(message);
-  const resolvedTone = inferTone(message, tone);
+  const visible = Boolean(message || title);
+  const resolvedTone = inferTone(title || message, tone);
   const styles = TONE_STYLES[resolvedTone] ?? TONE_STYLES.success;
   const Icon = styles.Icon;
 
@@ -70,7 +71,7 @@ export function AppToast({
     setPaused(false);
     setRemaining(durationMs);
     startedAtRef.current = Date.now();
-  }, [visible, message, durationMs]);
+  }, [visible, message, title, durationMs]);
 
   useEffect(() => {
     if (!visible || paused) return undefined;
@@ -117,9 +118,21 @@ export function AppToast({
                 <Icon size={14} strokeWidth={2.4} />
               </span>
               <div className="min-w-0 flex-1 pt-0.5">
-                <p className="text-[12px] font-medium leading-4 text-slate-700 dark:text-white/85">
-                  {message}
-                </p>
+                {title ? (
+                  <p className="text-[13px] font-semibold leading-snug text-slate-900 dark:text-white">
+                    {title}
+                  </p>
+                ) : null}
+                {message ? (
+                  <p
+                    className={cn(
+                      "text-[12px] leading-relaxed text-slate-700 dark:text-white/85",
+                      title && "mt-0.5 font-normal text-slate-500 dark:text-slate-300"
+                    )}
+                  >
+                    {message}
+                  </p>
+                ) : null}
                 {action?.href && action?.label ? (
                   <Link
                     href={action.href}
@@ -147,7 +160,7 @@ export function AppToast({
             </div>
             <div className="h-[3px] bg-slate-100 dark:bg-white/8">
               <motion.div
-                key={`${message}-${paused}-${remaining}`}
+                key={`${title}-${message}-${paused}-${remaining}`}
                 className={cn("h-full origin-left", styles.bar)}
                 initial={{ scaleX: remaining / Math.max(durationMs, 1) }}
                 animate={{ scaleX: paused ? remaining / Math.max(durationMs, 1) : 0 }}
@@ -174,16 +187,48 @@ export function ToastProvider({ children }) {
     setToast(null);
   }, []);
 
-  const showToast = useCallback((message, options = {}) => {
-    const text = String(message ?? "").trim();
-    if (!text) {
+  const showToast = useCallback((firstArg, secondArg = {}) => {
+    let title = null;
+    let message = "";
+    let options = {};
+
+    if (firstArg && typeof firstArg === "object" && !Array.isArray(firstArg)) {
+      options = firstArg;
+      title = options.title ? String(options.title).trim() : null;
+      message = options.message ? String(options.message).trim() : "";
+    } else if (typeof firstArg === "string") {
+      const trimmedFirst = firstArg.trim();
+      // Handle legacy positional arguments like showToast("success", "Item saved")
+      if (
+        (trimmedFirst === "success" ||
+          trimmedFirst === "error" ||
+          trimmedFirst === "info" ||
+          trimmedFirst === "warning") &&
+        typeof secondArg === "string"
+      ) {
+        options = { tone: trimmedFirst };
+        message = secondArg.trim();
+      } else {
+        message = trimmedFirst;
+        if (secondArg && typeof secondArg === "object") {
+          options = secondArg;
+          if (options.title) title = String(options.title).trim();
+          if (options.message) message = String(options.message).trim();
+        }
+      }
+    }
+
+    if (!message && !title) {
       setToast(null);
       return;
     }
+
+    const toastTone = inferTone(title || message, options.tone);
     setToast({
-      id: `${Date.now()}-${text}`,
-      message: text,
-      tone: inferTone(text, options.tone),
+      id: `${Date.now()}-${title || ""}-${message}`,
+      title,
+      message,
+      tone: toastTone,
       action: options.action ?? null,
       durationMs: options.durationMs ?? TOAST_DURATION_MS,
     });
@@ -194,6 +239,7 @@ export function ToastProvider({ children }) {
       {children}
       <AppToast
         key={toast?.id ?? "empty"}
+        title={toast?.title ?? null}
         message={toast?.message ?? ""}
         tone={toast?.tone}
         durationMs={toast?.durationMs}

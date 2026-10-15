@@ -25,9 +25,11 @@ import ReportInsightCallout from "@/components/reports/ReportInsightCallout";
 import ReportKpiStrip from "@/components/reports/ReportKpiStrip";
 import ReportModule from "@/components/reports/ReportModule";
 import ReportSubmissionsPanel from "@/components/reports/ReportSubmissionsPanel";
+import TeacherAralReportModule from "@/components/teacher/reports/TeacherAralReportModule";
 import { AnimatedBanner } from "@/components/shared/AnimatedFeedback";
 import { useAppToast } from "@/components/shared/AppToast";
 import { useTeacherReports } from "@/hooks/teacher/useTeacherReports";
+import { useAralAssessmentPeriod } from "@/hooks/useAralAssessmentPeriod";
 import {
   PASSING_GRADE,
   QUARTER_OPTIONS,
@@ -120,6 +122,8 @@ export default function TeacherReportsPage() {
     lessonSummary,
     classReports,
     charts,
+    students,
+    teacherId,
     schoolYear,
     quarter,
     quarterLabel,
@@ -135,6 +139,7 @@ export default function TeacherReportsPage() {
     getPreview,
   } = useTeacherReports();
   const { showToast } = useAppToast();
+  const { period: aralPeriod } = useAralAssessmentPeriod();
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [preview, setPreview] = useState(null);
@@ -750,6 +755,15 @@ export default function TeacherReportsPage() {
               />
             ) : null}
           </ReportModule>
+ 
+          <TeacherAralReportModule
+            students={students}
+            teacherId={teacherId}
+            teacherName={teacherName}
+            schoolYear={schoolYear}
+            schoolYears={schoolYears}
+            initialPeriod={aralPeriod}
+          />
 
           <ReportModule
             title="Submissions & follow-up"

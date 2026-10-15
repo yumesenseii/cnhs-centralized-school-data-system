@@ -426,7 +426,7 @@ export default function AdminGradeProgressMatrix({
                           <button
                             type="button"
                             onClick={() => onViewStudent?.(learner)}
-                            className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-cnhs-green px-3 py-1 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-cnhs-green-dark"
+                            className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-cnhs-green-dark px-3 py-1 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-[#1b5842]"
                           >
                             View Record
                           </button>

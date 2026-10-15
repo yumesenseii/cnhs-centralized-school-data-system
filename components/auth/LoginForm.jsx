@@ -55,7 +55,7 @@ export default function LoginForm() {
 
   function validateFields() {
     const nextErrors = { email: "", password: "" };
-    const trimmedEmail = email.trim();
+    const trimmedEmail = email.trim().toLowerCase();
 
     if (!trimmedEmail) nextErrors.email = validation.emailRequired;
     if (!password) nextErrors.password = validation.passwordRequired;
@@ -81,19 +81,26 @@ export default function LoginForm() {
 
     try {
       const result = await signIn({
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         password,
         rememberMe,
       });
 
       if (result?.error || !result?.data) {
-        setServerError(errors.invalidCredentials);
+        const errorMsg = String(result?.error?.message || "");
+        if (/fetch failed|network|failed to fetch|timeout|connect|abort/i.test(errorMsg)) {
+          setServerError("Unable to connect to the authentication server. Please check your internet connection and try again.");
+        } else if (errorMsg && !/invalid login credentials/i.test(errorMsg)) {
+          setServerError(errorMsg);
+        } else {
+          setServerError(errors.invalidCredentials);
+        }
         return;
       }
 
       if (
-        (result.data.needsFirstLogin || result.data.mustChangePassword) &&
-        (result.data.role === "admin" || result.data.role === "teacher")
+        result.data.needsFirstLogin ||
+        result.data.mustChangePassword
       ) {
         router.replace("/login/first-login");
         router.refresh();

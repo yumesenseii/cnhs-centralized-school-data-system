@@ -328,7 +328,7 @@ export default function LessonPlansDashboard() {
             quarters: TERM_FILTER_OPTIONS,
             statuses: [
               "All Status",
-              "Pending Review",
+              { value: "Pending Review", label: "Pending" },
               "Under Review",
               "Approved",
               "Needs Revision",

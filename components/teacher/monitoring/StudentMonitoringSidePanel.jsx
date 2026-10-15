@@ -20,8 +20,8 @@ import {
   BookOpen,
   Calendar,
 } from "lucide-react";
-import { saveSinglePhilIriResult, createMonitoringRecord, referLearnerToAral } from "@/lib/supabase/queries/monitoring";
-import { submitAralRecommendationForReview } from "@/lib/supabase/queries/aralApprovals";
+import { saveSinglePhilIriResult, createMonitoringRecord } from "@/lib/supabase/queries/monitoring";
+import { submitAralReferralCanonical } from "@/lib/monitoring/aralAcademicStatus";
 import AppSelect from "@/components/shared/AppSelect";
 import {
   READING_CONCERN_OPTIONS,
@@ -154,8 +154,16 @@ export default function StudentMonitoringSidePanel({
     try {
       const studentId = learner.studentId || learner.id;
       const classId = learner.classId || null;
+      if (!studentId) {
+        showToast({
+          title: "Could not update learner support",
+          message: "Please try again.",
+          tone: "error",
+        });
+        return;
+      }
       const remarks = `Class Remedial status confirmed as ${newStatus}.${extraRemarks ? ` Teacher note: ${extraRemarks}` : ""}`;
-      await createMonitoringRecord({
+      const res = await createMonitoringRecord({
         student_id: studentId,
         class_id: classId,
         observation_date: new Date().toISOString().split("T")[0],
@@ -167,13 +175,43 @@ export default function StudentMonitoringSidePanel({
         school_year: learner.schoolYear || "SY 2026-2027",
         quarter: currentQuarterNumber,
       });
+      if (res?.error) {
+        showToast({
+          title: "Could not update learner support",
+          message: "Please try again.",
+          tone: "error",
+        });
+        return;
+      }
       setRemedialStatus(newStatus);
       setReviewNote("");
-      showToast("success", `Class Remedial status updated to ${newStatus}.`);
+      if (newStatus === "Active") {
+        showToast({
+          title: "Class remedial started",
+          message: "Learner is now under class support.",
+          tone: "success",
+        });
+      } else if (newStatus === "Completed") {
+        showToast({
+          title: "Remedial completed",
+          message: "Learner classroom remedial marked as completed.",
+          tone: "success",
+        });
+      } else {
+        showToast({
+          title: "Remedial support continued",
+          message: `Learner continues under ${newStatus.toLowerCase()} class support.`,
+          tone: "success",
+        });
+      }
       onRefresh?.();
     } catch (err) {
       console.error(err);
-      showToast("error", "Failed to update Class Remedial status.");
+      showToast({
+        title: "Could not update learner support",
+        message: "Please try again.",
+        tone: "error",
+      });
     } finally {
       setUpdatingRemedial(false);
     }
@@ -389,30 +427,19 @@ export default function StudentMonitoringSidePanel({
     }
     setRecommendingAral(true);
     try {
-      const referralNote = [
-        `Teacher-confirmed reading concern${reviewConcern ? `: ${reviewConcern}` : ""}.`,
-        reviewNote.trim() ? `Teacher note: ${reviewNote.trim()}` : "",
-      ]
-        .filter(Boolean)
-        .join(" ");
-      // Legacy triage trail (monitoring record + candidate status).
-      await referLearnerToAral({
-        studentId,
-        classId,
-        notes: referralNote,
-      });
-      // Principal queue record (duplicate-guarded by upsert + approved check).
-      const submitResult = await submitAralRecommendationForReview({
+      const submitResult = await submitAralReferralCanonical({
         studentId,
         classId,
         schoolYear: learner.schoolYear || "SY 2026-2027",
         quarter: learner.quarterNumber ?? currentQuarterNumber,
+        notes: reviewNote.trim(),
+        reviewConcern,
       });
-      if (submitResult?.error) {
-        showToast("error", submitResult.error.message || "Failed to submit ARAL referral.");
+      if (!submitResult?.success) {
+        showToast("error", submitResult?.error?.message || "Failed to submit ARAL referral.");
         return;
       }
-      showToast("success", "ARAL referral submitted. Pending Principal review.");
+      showToast("success", "ARAL referral submitted: Pending Principal Review.");
       setReviewNote("");
       onRefresh?.();
       onClose?.();
@@ -429,12 +456,16 @@ export default function StudentMonitoringSidePanel({
     const studentId = learner.studentId || learner.id;
     const classId = learner.classId || null;
     if (!studentId) {
-      showToast("error", "Missing learner record. Cannot continue monitoring.");
+      showToast({
+        title: "Could not update learner support",
+        message: "Please try again.",
+        tone: "error",
+      });
       return;
     }
     setContinuingMonitoring(true);
     try {
-      await createMonitoringRecord({
+      const res = await createMonitoringRecord({
         student_id: studentId,
         class_id: classId,
         observation_date: new Date().toISOString().split("T")[0],
@@ -448,12 +479,28 @@ export default function StudentMonitoringSidePanel({
         school_year: learner.schoolYear || "SY 2026-2027",
         quarter: currentQuarterNumber,
       });
-      showToast("success", "Monitoring continued for this learner.");
+      if (res?.error) {
+        showToast({
+          title: "Could not update learner support",
+          message: "Please try again.",
+          tone: "error",
+        });
+        return;
+      }
+      showToast({
+        title: "Monitoring continued",
+        message: "Learner will remain under teacher monitoring.",
+        tone: "success",
+      });
       setReviewNote("");
       onRefresh?.();
     } catch (err) {
       console.error(err);
-      showToast("error", "Failed to continue monitoring.");
+      showToast({
+        title: "Could not update learner support",
+        message: "Please try again.",
+        tone: "error",
+      });
     } finally {
       setContinuingMonitoring(false);
     }
@@ -1545,7 +1592,7 @@ export default function StudentMonitoringSidePanel({
                     type="button"
                     onClick={() => handleUpdateRemedialStatus("Active", reviewNote.trim())}
                     disabled={updatingRemedial}
-                    className="inline-flex h-9 cursor-pointer items-center rounded-lg bg-emerald-600 px-3.5 text-[12px] font-semibold text-white shadow-xs transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex h-9 cursor-pointer items-center rounded-lg bg-cnhs-green-dark px-3.5 text-[12px] font-semibold text-white shadow-xs transition hover:bg-[#1b5842] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Start Class Remedial
                   </button>
@@ -1564,7 +1611,7 @@ export default function StudentMonitoringSidePanel({
                       reviewNote.trim()
                     )}
                     disabled={updatingRemedial}
-                    className="inline-flex h-9 cursor-pointer items-center rounded-lg bg-emerald-600 px-3.5 text-[12px] font-semibold text-white shadow-xs transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex h-9 cursor-pointer items-center rounded-lg bg-cnhs-green-dark px-3.5 text-[12px] font-semibold text-white shadow-xs transition hover:bg-[#1b5842] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {remedialStatus === "Recommended" ? "Start Class Remedial" : "Continue Class Remedial"}
                   </button>

@@ -24,15 +24,16 @@ const styles = {
 };
 
 export default function StatusBadge({ value, className }) {
+  const displayValue = value === "Pending Review" ? "Pending" : value;
   return (
     <span
       className={cn(
         "inline-flex rounded-full px-3 py-1 text-[11px] font-semibold leading-tight",
-        styles[value] ?? styles.Pending,
+        styles[displayValue] ?? styles[value] ?? styles.Pending,
         className
       )}
     >
-      {value}
+      {displayValue}
     </span>
   );
 }

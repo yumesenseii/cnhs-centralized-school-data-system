@@ -14,7 +14,6 @@ import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import ClassCard from "@/components/teacher/my-classes/ClassCard";
 import EClassUploadDialog from "@/components/teacher/my-classes/EClassUploadDialog";
-import GenerateClassReportDialog from "@/components/teacher/my-classes/GenerateClassReportDialog";
 import {
   PageBreadcrumb,
   SummaryKpiCards,
@@ -22,9 +21,7 @@ import {
 import { useTeacherClasses } from "@/hooks/teacher/useMyClasses";
 import { useAdvisoryClass } from "@/hooks/teacher/useAdvisoryClass";
 import AdvisorySectionHub from "@/components/teacher/advisory/AdvisorySectionHub";
-import { TERM_ALL_LABEL, termLabel } from "@/lib/academic/termLabels";
-import { REPORT_TERM_ALL } from "@/lib/monitoring/classReportFiles";
-import { buildAndSaveClassReportSnapshot } from "@/lib/monitoring/classReportSnapshot";
+import { TERM_ALL_LABEL } from "@/lib/academic/termLabels";
 import { formatPersonName } from "@/lib/teacher/monitoringMappers";
 import { useAppToast } from "@/components/shared/AppToast";
 import { cn } from "@/lib/utils";
@@ -48,9 +45,7 @@ export default function MyClasses() {
   const [schoolYear, setSchoolYear] = useState("All School Years");
   const [quarter, setQuarter] = useState(TERM_ALL_LABEL);
   const [uploadClass, setUploadClass] = useState(null);
-  const [generateClass, setGenerateClass] = useState(null);
   const { showToast } = useAppToast();
-  const [generatingId, setGeneratingId] = useState("");
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -94,52 +89,6 @@ export default function MyClasses() {
     if (named && named !== "—") return named;
     return profile?.email || "Teacher";
   }, [teacher, profile]);
-
-  function handleGenerateReport(classItem) {
-    setGenerateClass(classItem);
-  }
-
-  async function handleConfirmGenerate(termSelection) {
-    if (!generateClass) return;
-    setGeneratingId(generateClass.id);
-    try {
-      const { files, terms } = await buildAndSaveClassReportSnapshot({
-        classItem: generateClass,
-        termSelection,
-        teacherId,
-        teacherName: teacherDisplayName,
-      });
-
-      if (!files.length) {
-        showToast("Unable to generate class report file.");
-        return;
-      }
-
-      const primary = files[0];
-      const monitoringAction = {
-        href: `/teacher/monitoring?classId=${primary.classId}`,
-        label: "Open in Academic Monitoring",
-      };
-      if (termSelection === REPORT_TERM_ALL || terms.length > 1) {
-        const labels = terms.map((t) => termLabel(t)).join(", ");
-        showToast(
-          `Generated ${files.length} report file(s) (${labels}). Open Academic Monitoring — each term has its own Failing / Moderate / Passing tabs.`,
-          { action: monitoringAction }
-        );
-      } else {
-        showToast(
-          `Report ready: ${primary.fileName}. Classification uses ${termLabel(terms[0])} grades only.`,
-          { action: monitoringAction }
-        );
-      }
-      setGenerateClass(null);
-    } catch (err) {
-      console.error(err);
-      showToast("Unable to generate class report file.");
-    } finally {
-      setGeneratingId("");
-    }
-  }
 
   const filterOptions = useMemo(() => {
     const subjects = [
@@ -466,8 +415,6 @@ export default function MyClasses() {
                     key={classItem.id}
                     classItem={classItem}
                     onUploadRecord={() => setUploadClass(classItem)}
-                    onGenerateReport={handleGenerateReport}
-                    generating={generatingId === classItem.id}
                   />
                 ))}
               </div>
@@ -499,18 +446,8 @@ export default function MyClasses() {
               grades ? ` and ${grades} grade record${grades === 1 ? "" : "s"}` : ""
             }.`
           );
-          await refresh();
+          await refresh({ bypassCache: true });
         }}
-      />
-
-      <GenerateClassReportDialog
-        open={Boolean(generateClass)}
-        classItem={generateClass}
-        confirming={Boolean(generatingId)}
-        onClose={() => {
-          if (!generatingId) setGenerateClass(null);
-        }}
-        onConfirm={handleConfirmGenerate}
       />
     </motion.div>
   );

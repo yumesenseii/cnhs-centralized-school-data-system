@@ -14,21 +14,31 @@ import {
 import LearnerName from "@/components/shared/LearnerName";
 import AppSelect from "@/components/shared/AppSelect";
 import MonitoringTablePagination from "@/components/teacher/monitoring/MonitoringTablePagination";
-import { RiskPill, PriorityCue } from "@/components/teacher/monitoring/shared";
+import { RiskPill } from "@/components/teacher/monitoring/shared";
 import ReviewRecommendedModal from "@/components/teacher/monitoring/ReviewRecommendedModal";
+import BulkActionConfirmModal from "@/components/teacher/monitoring/BulkActionConfirmModal";
+import { saveOrUpdateCanonicalMonitoringRecord } from "@/lib/supabase/queries/monitoring";
+import { learnerIdentityKey } from "@/lib/monitoring/academicLearnerAggregation";
 import {
   buildReadingReviewSummary,
   isReadingReviewCandidate,
 } from "@/lib/monitoring/readingReviewSummary";
 import { useAppToast } from "@/components/shared/AppToast";
-import { referLearnerToAral } from "@/lib/supabase/queries/monitoring";
-import { submitAralRecommendationForReview } from "@/lib/supabase/queries/aralApprovals";
+import { submitAralReferralCanonical } from "@/lib/monitoring/aralAcademicStatus";
+import {
+  calculateMonitoringSummaryCards,
+  deriveLearnerMonitoringState,
+  deriveCurrentSupport,
+  deriveAcademicProgress,
+  deriveAcademicRisk,
+  isHighPriority,
+} from "@/lib/monitoring/academicMonitoringState";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
 
-function TrendIndicator({ trend }) {
-  if (trend === "Improving") {
+function ProgressIndicator({ progress }) {
+  if (progress === "Improving") {
     return (
       <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
         <TrendingUp size={12} className="text-emerald-600" />
@@ -36,7 +46,7 @@ function TrendIndicator({ trend }) {
       </span>
     );
   }
-  if (trend === "Declining") {
+  if (progress === "Declining") {
     return (
       <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800">
         <TrendingDown size={12} className="text-amber-700" />
@@ -44,49 +54,27 @@ function TrendIndicator({ trend }) {
       </span>
     );
   }
-  if (trend === "Stable") {
+  if (progress === "No clear change") {
     return (
       <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600">
         <Minus size={12} className="text-slate-400" />
-        <span>Stable</span>
+        <span>No clear change</span>
       </span>
     );
   }
   return <span className="text-[11px] text-slate-400">—</span>;
 }
 
-import { ArrowUpRight } from "lucide-react";
-
-function StatusBadge({ row }) {
-  if (row?.monitoringStatus === "Ongoing" || row?.inAralProgram || row?.recommendedSupport === "Class Remedial") {
-    return (
-      <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-800">
-        Under Support
-      </span>
-    );
-  }
-  if (row?.performanceTrend === "Improving") {
-    return (
-      <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
-        Improving
-      </span>
-    );
-  }
-  if (
-    row?.monitoringStatus === "Needs Review" ||
-    row?.monitoringStatus === "For Review" ||
-    row?.recommendedSupport === "Review" ||
-    row?.recommendedSupport === "ARAL Screening"
-  ) {
-    return (
-      <span className="inline-flex items-center rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
-        For Review
-      </span>
-    );
-  }
+function CurrentSupportBadge({ row }) {
+  const support = deriveCurrentSupport(row);
   return (
-    <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-      Monitoring
+    <span
+      className={cn(
+        "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
+        support.badgeStyle
+      )}
+    >
+      {support.label}
     </span>
   );
 }
@@ -147,6 +135,7 @@ export default function ClassRemedialsSection({
   onViewLearner,
   onNavigateToAral,
   onRefresh,
+  onUpdateSupport = null,
 }) {
   const { showToast } = useAppToast();
   const [search, setSearch] = useState("");
@@ -154,6 +143,8 @@ export default function ClassRemedialsSection({
   const [subject, setSubject] = useState("All subjects");
   const [supportFilter, setSupportFilter] = useState("All support");
   const [page, setPage] = useState(1);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [bulkWorking, setBulkWorking] = useState(false);
 
   // Batch reading-concern triage (UI state only — selection never creates
   // ARAL records; referrals are submitted explicitly per learner).
@@ -164,32 +155,11 @@ export default function ClassRemedialsSection({
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
 
   // 4 Primary Summary Cards (Academic Focus)
-  const forReviewCount = useMemo(() => {
-    return students.filter((s) => {
-      return s.monitoringStatus === "Needs Review" || s.monitoringStatus === "For Review" || s.recommendedSupport === "Review";
-    }).length;
+  const summaryCards = useMemo(() => {
+    return calculateMonitoringSummaryCards(students);
   }, [students]);
 
-  const highPriorityCount = useMemo(() => {
-    return students.filter((s) => {
-      const risk = s.riskLevel || s.academicRisk || "";
-      return risk === "High Risk" || risk === "High";
-    }).length;
-  }, [students]);
-
-  const underSupportCount = useMemo(() => {
-    return students.filter((s) => {
-      return (
-        s.monitoringStatus === "Ongoing" ||
-        s.recommendedSupport === "Class Remedial" ||
-        s.inAralProgram
-      );
-    }).length;
-  }, [students]);
-
-  const improvingCount = useMemo(() => {
-    return students.filter((s) => s.performanceTrend === "Improving").length;
-  }, [students]);
+  const [activeSummaryCard, setActiveSummaryCard] = useState(null);
 
   // Rows arrive pre-aggregated (one learner per section per quarter) from
   // MonitoringDashboard. This component filters and renders only.
@@ -223,21 +193,44 @@ export default function ClassRemedialsSection({
       );
     }
 
+    // Active summary card filter
+    if (activeSummaryCard === "for_review") {
+      list = list.filter((s) => deriveCurrentSupport(s).key === "needs_review");
+    } else if (activeSummaryCard === "high_priority") {
+      list = list.filter((s) => isHighPriority(s));
+    } else if (activeSummaryCard === "under_support") {
+      list = list.filter((s) => deriveCurrentSupport(s).isUnderSupport);
+    } else if (activeSummaryCard === "improving") {
+      list = list.filter(
+        (s) =>
+          deriveAcademicProgress(
+            s.classSubjectGrade ?? s.currentGrade,
+            s.previousGrade
+          ).progress === "Improving"
+      );
+    }
+
     if (supportFilter === "Learners for Reading Review") {
       list = list.filter((s) => isReadingReviewCandidate(s));
     } else if (supportFilter !== "All support") {
-      list = list.filter((s) => (s.recommendedSupport || "None") === supportFilter);
+      list = list.filter((s) => deriveCurrentSupport(s).label === supportFilter);
     }
 
     return list;
-  }, [students, search, section, subject, supportFilter]);
+  }, [students, search, section, subject, activeSummaryCard, supportFilter]);
 
   useEffect(() => {
     setPage(1);
     setSelectedIds(new Set());
     setTriageByKey({});
     setTriageDetail({});
-  }, [search, section, quarterFilter, subject, supportFilter]);
+  }, [search, section, quarterFilter, subject, supportFilter, activeSummaryCard]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE) || 1);
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+  const pagedRows = useMemo(() => {
+    return filteredRows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  }, [filteredRows, safePage]);
 
   const rowsByKey = useMemo(() => {
     const map = new Map();
@@ -256,6 +249,8 @@ export default function ClassRemedialsSection({
 
   function clearSelection() {
     setSelectedIds(new Set());
+    setTriageByKey({});
+    setTriageDetail({});
   }
 
   // Derived review summary over the current filter (all counts dynamic).
@@ -340,27 +335,15 @@ export default function ClassRemedialsSection({
         }
         try {
           const detail = triageDetail[key] || {};
-          const referralNote = [
-            `Teacher-confirmed reading concern (${concernSubject}) from Academic Monitoring batch triage.`,
-            detail.concern ? `Main concern: ${detail.concern}.` : "",
-            detail.note ? `Teacher note: ${detail.note}` : "",
-          ]
-            .filter(Boolean)
-            .join(" ");
-          // Legacy triage trail (monitoring record + candidate status).
-          await referLearnerToAral({
-            studentId: row.studentId,
-            classId: targetClassId,
-            notes: referralNote,
-          });
-          // Principal queue record (one row per learner, duplicate-guarded).
-          const submitResult = await submitAralRecommendationForReview({
+          const submitResult = await submitAralReferralCanonical({
             studentId: row.studentId,
             classId: targetClassId,
             schoolYear: row.schoolYear || "SY 2026-2027",
             quarter: row.quarterNumber ?? row.quarter ?? currentQuarterNumber,
+            notes: detail.note || "",
+            reviewConcern: detail.concern || "",
           });
-          if (submitResult?.error) {
+          if (!submitResult?.success) {
             failures.push(row.name || row.studentNumber || "Learner");
           } else {
             created += 1;
@@ -391,63 +374,343 @@ export default function ClassRemedialsSection({
     }
   }
 
-  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE) || 1);
-  const safePage = Math.min(Math.max(page, 1), totalPages);
-  const pagedRows = useMemo(() => {
-    return filteredRows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
-  }, [filteredRows, safePage]);
+  const selectedLearners = useMemo(() => {
+    return [...selectedIds].map((id) => rowsByKey.get(id)).filter(Boolean);
+  }, [selectedIds, rowsByKey]);
+
+  const allVisibleSelected = useMemo(() => {
+    if (!pagedRows?.length) return false;
+    return pagedRows.every((r) => selectedIds.has(rowKey(r)));
+  }, [pagedRows, selectedIds]);
+
+  function handleToggleSelectAllVisible() {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) {
+        for (const r of pagedRows) next.delete(rowKey(r));
+      } else {
+        for (const r of pagedRows) next.add(rowKey(r));
+      }
+      return next;
+    });
+  }
+
+  const bulkEligibility = useMemo(() => {
+    const count = selectedLearners.length;
+    if (!count) {
+      return {
+        canMonitoring: false,
+        canRemedial: false,
+        monitoringReason: null,
+        remedialReason: null,
+        warning: null,
+      };
+    }
+
+    let underSupportCount = 0;
+    let alreadyMonitoringCount = 0;
+    let needsReviewCount = 0;
+
+    for (const l of selectedLearners) {
+      const support = deriveCurrentSupport(l);
+      if (
+        support.isUnderSupport ||
+        support.key === "under_class_support" ||
+        support.key === "under_aral_support"
+      ) {
+        underSupportCount++;
+      } else if (support.key === "monitoring") {
+        alreadyMonitoringCount++;
+      } else {
+        needsReviewCount++;
+      }
+    }
+
+    // Continue Monitoring: enabled ONLY when every selected learner can legitimately transition to Monitoring.
+    // Needs Review -> allowed
+    // Already Monitoring -> no new action needed
+    // Under Class Support -> not allowed
+    const canMonitoring = count > 0 && underSupportCount === 0 && needsReviewCount === count;
+
+    let monitoringReason = null;
+    if (!canMonitoring) {
+      if (underSupportCount > 0) {
+        monitoringReason = `${underSupportCount} learner${underSupportCount === 1 ? " is" : "s are"} already under active support.`;
+      } else if (alreadyMonitoringCount === count) {
+        monitoringReason = "Selected learners are already under monitoring.";
+      } else if (alreadyMonitoringCount > 0) {
+        monitoringReason = `${alreadyMonitoringCount} learner${alreadyMonitoringCount === 1 ? " is" : "s are"} already under monitoring.`;
+      } else {
+        monitoringReason = "Continue Monitoring is only valid for learners needing review.";
+      }
+    }
+
+    // Start Class Remedial: allowed for valid Needs Review / Monitoring learners if the existing lifecycle permits it.
+    // Under Class Support -> never allow starting remedial again.
+    const canRemedial = count > 0 && underSupportCount === 0;
+
+    let remedialReason = null;
+    if (!canRemedial) {
+      if (underSupportCount > 0) {
+        remedialReason = `${underSupportCount} learner${underSupportCount === 1 ? " is" : "s are"} already under class support.`;
+      } else {
+        remedialReason = "Cannot start remedial for selected learners.";
+      }
+    }
+
+    const warning = remedialReason || monitoringReason || null;
+
+    return {
+      canMonitoring,
+      canRemedial,
+      monitoringReason,
+      remedialReason,
+      warning,
+    };
+  }, [selectedLearners]);
+
+  async function handleExecuteBulkAction() {
+    if (!confirmAction || bulkWorking || !selectedLearners.length) return;
+
+    setBulkWorking(true);
+    const action = confirmAction;
+    const isRemedial = action === "remedial";
+
+    const interventionGiven = isRemedial ? "Class Remedial" : "Monitoring";
+    const defaultRemarks = isRemedial
+      ? "Started classroom remedial support."
+      : "Teacher confirmed continued classroom monitoring.";
+    const targetRemedialStatus = isRemedial ? "Active" : "Monitoring";
+    const targetSupportLabel = isRemedial ? "Under Class Support" : "Monitoring";
+
+    const results = await Promise.allSettled(
+      selectedLearners.map(async (row) => {
+        const canonicalKey = rowKey(row);
+        const studentId = row.studentId || row.student_id;
+        const classId = row.classId || row.primaryClassId;
+        const teacherId = row.teacherId || row.primaryTeacherId;
+        const schoolYear = row.schoolYear || "SY 2026-2027";
+        const quarter = row.quarterNumber ?? row.quarter ?? currentQuarterNumber;
+
+        const res = await saveOrUpdateCanonicalMonitoringRecord({
+          student_id: studentId,
+          class_id: classId,
+          teacher_id: teacherId,
+          school_year: schoolYear,
+          quarter: quarter,
+          observation_date: new Date().toISOString().split("T")[0],
+          intervention_given: interventionGiven,
+          teacher_remarks: defaultRemarks,
+          student_progress: "Ongoing",
+          monitoring_status: "Ongoing",
+          follow_up_needed: false,
+        });
+
+        if (res?.error) {
+          throw res.error;
+        }
+
+        return {
+          row,
+          canonicalKey,
+          persistedData: res?.data || null,
+        };
+      })
+    );
+
+    const succeeded = [];
+    const failedKeys = new Set();
+
+    results.forEach((r, idx) => {
+      const learner = selectedLearners[idx];
+      const key = rowKey(learner);
+      if (r.status === "fulfilled") {
+        const persisted = r.value.persistedData;
+        succeeded.push({
+          studentId: learner.studentId || learner.student_id,
+          classId: learner.classId || learner.primaryClassId,
+          subject: learner.primarySubject || learner.subject,
+          schoolYear: learner.schoolYear,
+          quarter: learner.quarterNumber ?? learner.quarter,
+          remedialStatus:
+            persisted?.intervention_given === "Class Remedial"
+              ? "Active"
+              : persisted?.intervention_given === "Monitoring"
+              ? "Monitoring"
+              : targetRemedialStatus,
+          monitoringStatus: persisted?.monitoring_status || "Ongoing",
+          currentSupport:
+            persisted?.intervention_given === "Class Remedial"
+              ? "Under Class Support"
+              : targetSupportLabel,
+          interventionGiven: persisted?.intervention_given || interventionGiven,
+          intervention_given: persisted?.intervention_given || interventionGiven,
+          remarks: persisted?.teacher_remarks || defaultRemarks,
+          observationDate:
+            persisted?.observation_date ||
+            new Date().toISOString().split("T")[0],
+        });
+      } else {
+        failedKeys.add(key);
+      }
+    });
+
+    const successCount = succeeded.length;
+    const failCount = failedKeys.size;
+
+    // Apply UI state patches using persisted results and recalculate summary cards
+    if (successCount > 0 && onUpdateSupport) {
+      onUpdateSupport(succeeded);
+    }
+
+    // Keep failed learners selected, remove succeeded ones
+    setSelectedIds((prev) => {
+      const next = new Set();
+      for (const k of prev) {
+        if (failedKeys.has(k)) {
+          next.add(k);
+        }
+      }
+      return next;
+    });
+
+    // Close modal
+    setConfirmAction(null);
+    setBulkWorking(false);
+
+    // Toast notifications strictly adhering to Safeguard 6
+    if (failCount === 0 && successCount > 0) {
+      // All succeeded
+      if (isRemedial) {
+        showToast({
+          title: "Class remedial started",
+          message: `${successCount} learner${successCount === 1 ? " is" : "s are"} now under class support.`,
+          tone: "success",
+        });
+      } else {
+        showToast({
+          title: "Monitoring continued",
+          message: `${successCount} learner${successCount === 1 ? " will" : "s will"} remain under teacher monitoring.`,
+          tone: "success",
+        });
+      }
+    } else if (successCount > 0 && failCount > 0) {
+      // Partial success
+      showToast({
+        title: `${successCount} learner${successCount === 1 ? "" : "s"} updated`,
+        message: `${failCount} learner${failCount === 1 ? "" : "s"} could not be updated. Please try again.`,
+        tone: "warning",
+      });
+    } else {
+      // All failed
+      showToast({
+        title: "Could not update learner support",
+        message: "Please try again.",
+        tone: "error",
+      });
+    }
+
+    // Background refresh for verification
+    if (successCount > 0 && onRefresh) {
+      onRefresh();
+    }
+  }
 
   return (
     <div className="space-y-4">
       {/* 4 PRIMARY CARDS: FOR REVIEW, HIGH PRIORITY, UNDER SUPPORT, IMPROVING */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
+        <button
+          type="button"
+          onClick={() =>
+            setActiveSummaryCard((prev) => (prev === "for_review" ? null : "for_review"))
+          }
+          className={cn(
+            "rounded-xl border bg-white p-4 shadow-xs text-left transition sm:p-5 cursor-pointer hover:border-slate-300",
+            activeSummaryCard === "for_review"
+              ? "border-amber-400 ring-2 ring-amber-400/30 bg-amber-50/20"
+              : "border-slate-200"
+          )}
+        >
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               For Review
             </p>
             <p className="mt-1 text-[26px] font-bold leading-none tracking-tight text-slate-900">
-              {forReviewCount}
+              {summaryCards.forReviewCount}
             </p>
             <p className="mt-1.5 text-[11px] leading-4 text-slate-400">Requires teacher review</p>
           </div>
-        </div>
+        </button>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
+        <button
+          type="button"
+          onClick={() =>
+            setActiveSummaryCard((prev) => (prev === "high_priority" ? null : "high_priority"))
+          }
+          className={cn(
+            "rounded-xl border bg-white p-4 shadow-xs text-left transition sm:p-5 cursor-pointer hover:border-slate-300",
+            activeSummaryCard === "high_priority"
+              ? "border-red-400 ring-2 ring-red-400/30 bg-red-50/20"
+              : "border-slate-200"
+          )}
+        >
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               High Priority
             </p>
             <p className="mt-1 text-[26px] font-bold leading-none tracking-tight text-red-700">
-              {highPriorityCount}
+              {summaryCards.highPriorityCount}
             </p>
             <p className="mt-1.5 text-[11px] leading-4 text-slate-400">Immediate attention needed</p>
           </div>
-        </div>
+        </button>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
+        <button
+          type="button"
+          onClick={() =>
+            setActiveSummaryCard((prev) => (prev === "under_support" ? null : "under_support"))
+          }
+          className={cn(
+            "rounded-xl border bg-white p-4 shadow-xs text-left transition sm:p-5 cursor-pointer hover:border-slate-300",
+            activeSummaryCard === "under_support"
+              ? "border-blue-400 ring-2 ring-blue-400/30 bg-blue-50/20"
+              : "border-slate-200"
+          )}
+        >
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               Under Support
             </p>
             <p className="mt-1 text-[26px] font-bold leading-none tracking-tight text-blue-700">
-              {underSupportCount}
+              {summaryCards.underSupportCount}
             </p>
             <p className="mt-1.5 text-[11px] leading-4 text-slate-400">Active remediation / intervention</p>
           </div>
-        </div>
+        </button>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
+        <button
+          type="button"
+          onClick={() =>
+            setActiveSummaryCard((prev) => (prev === "improving" ? null : "improving"))
+          }
+          className={cn(
+            "rounded-xl border bg-white p-4 shadow-xs text-left transition sm:p-5 cursor-pointer hover:border-slate-300",
+            activeSummaryCard === "improving"
+              ? "border-emerald-400 ring-2 ring-emerald-400/30 bg-emerald-50/20"
+              : "border-slate-200"
+          )}
+        >
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               Improving
             </p>
             <p className="mt-1 text-[26px] font-bold leading-none tracking-tight text-emerald-700">
-              {improvingCount}
+              {summaryCards.improvingCount}
             </p>
             <p className="mt-1.5 text-[11px] leading-4 text-slate-400">Positive performance trend</p>
           </div>
-        </div>
+        </button>
       </div>
 
       {/* MAIN CLEAN SCHOOL-RECORD TABLE */}
@@ -511,11 +774,11 @@ export default function ClassRemedialsSection({
                 onChange={setSupportFilter}
                 options={[
                   "All support",
-                  "Class Remedial",
-                  "ARAL Screening",
-                  "Review",
+                  "Needs Review",
+                  "Monitoring",
+                  "Under Class Support",
+                  "Under ARAL Support",
                   "Learners for Reading Review",
-                  "None",
                 ]}
                 size="pill"
                 triggerClassName="h-8.5 text-[11px] font-semibold"
@@ -523,6 +786,71 @@ export default function ClassRemedialsSection({
             </div>
           </div>
         </div>
+
+        {/* Compact Bulk Action Bar - Appears ONLY when selectedCount > 0 */}
+        {selectedCount > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-emerald-100 bg-emerald-50/40 px-4 py-2 transition-all duration-150">
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] font-semibold text-slate-800">
+                <strong className="font-bold text-slate-900">{selectedCount}</strong> learner{selectedCount === 1 ? "" : "s"} selected
+              </span>
+              {bulkEligibility.warning ? (
+                <span className="hidden text-[11px] font-medium text-amber-700 sm:inline">
+                  • {bulkEligibility.warning}
+                </span>
+              ) : null}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmAction("monitoring")}
+                disabled={!bulkEligibility.canMonitoring}
+                title={bulkEligibility.monitoringReason || "Continue Monitoring for selected learners"}
+                className="inline-flex h-7.5 cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 shadow-2xs transition-colors duration-150 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Continue Monitoring
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setConfirmAction("remedial")}
+                disabled={!bulkEligibility.canRemedial}
+                title={bulkEligibility.remedialReason || "Start Class Remedial for selected learners"}
+                className="inline-flex h-7.5 cursor-pointer items-center rounded-lg bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white shadow-2xs transition-colors duration-150 hover:bg-[#1b5842] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Start Class Remedial
+              </button>
+
+              <button
+                type="button"
+                onClick={clearSelection}
+                className="inline-flex h-7.5 cursor-pointer items-center rounded-lg border border-transparent px-2.5 text-[11px] font-semibold text-slate-500 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700"
+              >
+                Clear
+              </button>
+
+              <button
+                type="button"
+                onClick={handleToggleSelectAllVisible}
+                className="inline-flex h-7.5 cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-700 shadow-2xs transition-colors duration-150 hover:bg-slate-50"
+              >
+                {allVisibleSelected ? "Deselect all visible" : "Select all visible"}
+              </button>
+
+              {confirmedKeys.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={handleSubmitReferrals}
+                  disabled={batchWorking}
+                  className="inline-flex h-7.5 cursor-pointer items-center rounded-lg bg-amber-500 px-3 text-[11px] font-semibold text-white shadow-2xs transition-colors duration-150 hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {batchWorking ? "Submitting…" : `Submit ARAL (${confirmedKeys.length})`}
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
 
         {/* Table Sub-bar */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-white px-4 py-2 text-[11px] text-slate-500">
@@ -554,10 +882,9 @@ export default function ClassRemedialsSection({
                 <th className="py-2.5 px-4">Learner</th>
                 <th className="py-2.5 px-3">Subject</th>
                 <th className="py-2.5 px-3 text-center">Grade</th>
-                <th className="py-2.5 px-3">Trend</th>
+                <th className="py-2.5 px-3">Progress</th>
                 <th className="py-2.5 px-3 text-center">Risk</th>
-                <th className="py-2.5 px-3 text-center">Priority</th>
-                <th className="py-2.5 px-3 text-center">Status</th>
+                <th className="py-2.5 px-3 text-center">Current Support</th>
                 <th className="py-2.5 px-4 text-right">Action</th>
               </tr>
             </thead>
@@ -588,12 +915,12 @@ export default function ClassRemedialsSection({
 
                   return (
                     <tr
-                      key={row.id || `${row.studentId}-${row.subject}`}
+                      key={key}
                       onClick={() => onViewLearner?.(row)}
                       aria-selected={selected}
                       className={cn(
-                        "cursor-pointer transition-colors hover:bg-slate-50/80",
-                        selected && "bg-cnhs-green-soft/50 hover:bg-cnhs-green-soft/60"
+                        "cursor-pointer transition-colors duration-150 hover:bg-slate-50/80",
+                        selected && "bg-emerald-50/35 hover:bg-emerald-50/50"
                       )}
                     >
                       {/* Learner */}
@@ -606,22 +933,22 @@ export default function ClassRemedialsSection({
                               toggleSelect(key);
                             }}
                             aria-pressed={selected}
-                            title={selected ? "Deselect learner" : "Select learner for reading-concern triage"}
+                            title={selected ? "Deselect learner" : "Select learner for bulk actions"}
                             className={cn(
-                              "group flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full transition-all",
+                              "group flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-150",
                               selected
-                                ? "bg-cnhs-green-dark text-white shadow-xs"
+                                ? "bg-cnhs-green text-white shadow-2xs"
                                 : "bg-slate-100 text-[11px] font-bold text-slate-600 hover:bg-slate-200"
                             )}
                           >
                             {selected ? (
-                              <Check size={15} strokeWidth={2.5} />
+                              <Check size={14} strokeWidth={2.5} />
                             ) : (
                               <>
                                 <span className="block group-hover:hidden">
                                   {learnerInitials(row)}
                                 </span>
-                                <span className="hidden h-[18px] w-[18px] rounded-[5px] border-2 border-slate-300 bg-white transition-colors group-hover:block group-hover:border-cnhs-green-dark/60" />
+                                <span className="hidden h-[18px] w-[18px] rounded-[5px] border-2 border-slate-300 bg-white transition-colors duration-150 group-hover:block group-hover:border-cnhs-green/70" />
                               </>
                             )}
                           </button>
@@ -676,24 +1003,21 @@ export default function ClassRemedialsSection({
                         </span>
                       </td>
 
-                      {/* Performance Trend */}
+                      {/* Academic Progress */}
                       <td className="py-2.5 px-3">
-                        <TrendIndicator trend={trendVal} />
+                        <ProgressIndicator
+                          progress={deriveAcademicProgress(curGrade, prevGrade).progress}
+                        />
                       </td>
 
-                      {/* Risk */}
+                      {/* Academic Risk */}
                       <td className="py-2.5 px-3 text-center">
-                        <RiskPill value={row.riskLevel || row.academicRisk || "—"} />
+                        <RiskPill value={deriveAcademicRisk(row, curGrade)} />
                       </td>
 
-                      {/* Priority */}
+                      {/* Current Support */}
                       <td className="py-2.5 px-3 text-center">
-                        <PriorityCue learner={row} />
-                      </td>
-
-                      {/* Status */}
-                      <td className="py-2.5 px-3 text-center">
-                        <StatusBadge row={row} />
+                        <CurrentSupportBadge row={row} />
                       </td>
 
                       {/* Action */}
@@ -715,7 +1039,7 @@ export default function ClassRemedialsSection({
                 })
               ) : (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-sm text-slate-400">
+                  <td colSpan={7} className="px-4 py-12 text-center text-sm text-slate-400">
                     <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
                       <BookOpen size={20} />
                     </div>
@@ -729,60 +1053,6 @@ export default function ClassRemedialsSection({
             </tbody>
           </table>
         </div>
-
-        {/* Sticky batch triage bar */}
-        {selectedCount > 0 ? (
-          <div className="sticky bottom-3 z-10 mx-3 mb-1 flex flex-col gap-2 rounded-xl border border-slate-200 bg-white/95 px-4 py-2.5 shadow-[0_12px_32px_-8px_rgba(15,23,42,0.25)] backdrop-blur sm:flex-row sm:items-center sm:justify-between">
-            <span className="text-[12px] text-slate-600">
-              <strong className="font-bold text-slate-900">{selectedCount}</strong> learner{selectedCount === 1 ? "" : "s"} selected
-              {confirmedKeys.length > 0 ? (
-                <span className="ml-1.5 text-[11px] text-amber-700">
-                  · {confirmedKeys.length} confirmed reading concern{confirmedKeys.length === 1 ? "" : "s"}
-                </span>
-              ) : null}
-            </span>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => applyTriage("confirmed")}
-                className="inline-flex h-8 cursor-pointer items-center rounded-lg bg-amber-500 px-3 text-[11px] font-semibold text-white shadow-xs transition hover:bg-amber-600"
-              >
-                Confirm Reading Concern
-              </button>
-              <button
-                type="button"
-                onClick={() => applyTriage("not_reading")}
-                className="inline-flex h-8 cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50"
-              >
-                Not Reading-Related
-              </button>
-              <button
-                type="button"
-                onClick={() => applyTriage("needs_review")}
-                className="inline-flex h-8 cursor-pointer items-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-[11px] font-semibold text-blue-800 transition hover:bg-blue-100"
-              >
-                Needs Detailed Review
-              </button>
-              {confirmedKeys.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={handleSubmitReferrals}
-                  disabled={batchWorking}
-                  className="inline-flex h-8 cursor-pointer items-center rounded-lg bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white shadow-xs transition hover:bg-[#246f54] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {batchWorking ? "Submitting…" : `Submit ARAL Referrals (${confirmedKeys.length})`}
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={clearSelection}
-                className="inline-flex h-8 cursor-pointer items-center rounded-lg px-2.5 text-[11px] font-semibold text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-              >
-                Clear Selection
-              </button>
-            </div>
-          </div>
-        ) : null}
 
         {/* Pagination */}
         <MonitoringTablePagination
@@ -800,6 +1070,18 @@ export default function ClassRemedialsSection({
         recommended={reviewSummary.recommended}
         termLabel={reviewSummary.termLabel}
         onApply={handleApplyReview}
+      />
+
+      {/* Bulk action confirmation modal */}
+      <BulkActionConfirmModal
+        isOpen={Boolean(confirmAction)}
+        action={confirmAction}
+        count={selectedCount}
+        working={bulkWorking}
+        onConfirm={handleExecuteBulkAction}
+        onCancel={() => {
+          if (!bulkWorking) setConfirmAction(null);
+        }}
       />
     </div>
   );

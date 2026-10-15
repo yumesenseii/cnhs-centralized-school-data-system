@@ -17,6 +17,11 @@ import {
   aralApprovalStyles,
 } from "@/lib/monitoring/aralApproval";
 import { RECOMMENDATION } from "@/lib/monitoring/recommendations";
+import {
+  isAralLanguageSubject,
+  getLearnerAralReferralState,
+  ARAL_WORDING,
+} from "@/lib/monitoring/aralAcademicStatus";
 import { cn } from "@/lib/utils";
 
 function subjectGradeDisplay(learner, layout) {
@@ -163,17 +168,18 @@ export default function LearnersInterventionTable({
           </thead>
           <tbody>
             {learners.map((learner) => {
-              const aral = isAralRecommended(learner);
+              const isLanguage = isAralLanguageSubject(learner.subject);
+              const aral = isLanguage && isAralRecommended(learner);
+              const refState = getLearnerAralReferralState(learner);
               const approvalStatus =
                 learner.aralApprovalStatus || ARAL_APPROVAL_STATUS.SUGGESTED;
               const canSubmit =
                 showAralApproval &&
                 layout !== "htNonAral" &&
                 !isHtLite &&
-                aral &&
-                typeof onSubmitAralReview === "function" &&
-                approvalStatus !== ARAL_APPROVAL_STATUS.APPROVED &&
-                approvalStatus !== ARAL_APPROVAL_STATUS.SUBMITTED;
+                isLanguage &&
+                refState.canSubmitReferral &&
+                typeof onSubmitAralReview === "function";
               const submitting = submittingAralId === learner.id;
               const { grade, subjects } = subjectGradeDisplay(learner, layout);
               const subjectLine =
@@ -233,45 +239,55 @@ export default function LearnersInterventionTable({
                           <p className="text-[11px] font-medium text-cnhs-orange">
                             Classroom remedial
                           </p>
-                        ) : learner.recommendationDisplay ? (
+                        ) : learner.recommendationDisplay &&
+                          learner.recommendationDisplay !== RECOMMENDATION.NONE &&
+                          learner.recommendationDisplay !== "No Recommendation" ? (
                           <Pill
                             value={learner.recommendationDisplay}
                             styles={interventionStyles}
                           />
                         ) : (
-                          <Pill
-                            value={RECOMMENDATION.NONE}
-                            styles={interventionStyles}
-                          />
+                          <span className="text-[11px] text-slate-400">Regular instruction</span>
                         )}
                       </td>
                       {layout === "htAral" ? (
                         <td className="px-3 py-1.5">
-                          <Pill
-                            value={aralApprovalDisplayLabel(approvalStatus)}
-                            styles={{
-                              ...aralApprovalStyles,
-                              [aralApprovalDisplayLabel(approvalStatus)]:
-                                aralApprovalStyles[approvalStatus],
-                            }}
-                          />
-                          {learner.aralApprovalNote &&
-                          approvalStatus === ARAL_APPROVAL_STATUS.RETURNED ? (
-                            <p className="mt-0.5 max-w-[140px] truncate text-[10px] text-orange-700">
-                              {learner.aralApprovalNote}
-                            </p>
-                          ) : null}
+                          {isLanguage && (refState.hasActiveReferral || refState.isReturned) ? (
+                            <div>
+                              <Pill
+                                value={refState.standardizedStatus || ARAL_WORDING.PENDING}
+                                styles={{
+                                  ...aralApprovalStyles,
+                                  [refState.standardizedStatus]:
+                                    aralApprovalStyles[approvalStatus],
+                                }}
+                              />
+                              {learner.aralApprovalNote &&
+                              approvalStatus === ARAL_APPROVAL_STATUS.RETURNED ? (
+                                <p className="mt-0.5 max-w-[140px] truncate text-[10px] text-orange-700">
+                                  {learner.aralApprovalNote}
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-slate-400">—</span>
+                          )}
                         </td>
                       ) : null}
                       <td className="px-3 py-1.5">
-                        <Pill
-                          value={nextActionLabel(learner.monitoringStatus)}
-                          styles={{
-                            ...monitoringStatusStyles,
-                            [nextActionLabel(learner.monitoringStatus)]:
-                              monitoringStatusStyles[learner.monitoringStatus],
-                          }}
-                        />
+                        {learner.monitoringStatus &&
+                        learner.monitoringStatus !== "Not Started" ? (
+                          <Pill
+                            value={nextActionLabel(learner.monitoringStatus)}
+                            styles={{
+                              ...monitoringStatusStyles,
+                              [nextActionLabel(learner.monitoringStatus)]:
+                                monitoringStatusStyles[learner.monitoringStatus],
+                            }}
+                          />
+                        ) : (
+                          <span className="text-[11px] text-slate-400">Monitoring</span>
+                        )}
                       </td>
                       <td className="px-3 py-1.5">
                         <button
@@ -331,27 +347,26 @@ export default function LearnersInterventionTable({
                         <PriorityCue learner={learner} />
                       </td>
                       <td className="px-3 py-1.5">
-                        {learner.recommendationDisplay ? (
+                        {learner.recommendationDisplay &&
+                        learner.recommendationDisplay !== RECOMMENDATION.NONE &&
+                        learner.recommendationDisplay !== "No Recommendation" ? (
                           <Pill
                             value={learner.recommendationDisplay}
                             styles={interventionStyles}
                           />
                         ) : (
-                          <Pill
-                            value={RECOMMENDATION.NONE}
-                            styles={interventionStyles}
-                          />
+                          <span className="text-[11px] text-slate-400">Regular instruction</span>
                         )}
                       </td>
                       {showAralApproval ? (
                         <td className="px-3 py-1.5">
-                          {aral ? (
+                          {isLanguage && (refState.hasActiveReferral || refState.isReturned) ? (
                             <div>
                               <Pill
-                                value={aralApprovalDisplayLabel(approvalStatus)}
+                                value={refState.standardizedStatus || ARAL_WORDING.PENDING}
                                 styles={{
                                   ...aralApprovalStyles,
-                                  [aralApprovalDisplayLabel(approvalStatus)]:
+                                  [refState.standardizedStatus]:
                                     aralApprovalStyles[approvalStatus],
                                 }}
                               />
@@ -385,10 +400,15 @@ export default function LearnersInterventionTable({
                         </div>
                       </td>
                       <td className="px-3 py-1.5">
-                        <Pill
-                          value={learner.monitoringStatus}
-                          styles={monitoringStatusStyles}
-                        />
+                        {learner.monitoringStatus &&
+                        learner.monitoringStatus !== "Not Started" ? (
+                          <Pill
+                            value={learner.monitoringStatus}
+                            styles={monitoringStatusStyles}
+                          />
+                        ) : (
+                          <span className="text-[11px] text-slate-400">Monitoring</span>
+                        )}
                       </td>
                       <td className="px-3 py-1.5">
                         <div className="flex flex-wrap items-center gap-1.5">

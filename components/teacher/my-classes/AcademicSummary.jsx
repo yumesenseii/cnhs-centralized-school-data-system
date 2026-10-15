@@ -42,7 +42,9 @@ export default function AcademicSummary({ summary }) {
                   <td
                     className={cn(
                       "px-3 py-2.5 text-right text-[12px] font-semibold",
-                      row.grade < 75 ? "text-red-600" : "text-slate-700"
+                      row.grade !== "—" && Number(row.grade) < 75
+                        ? "text-red-600"
+                        : "text-slate-700"
                     )}
                   >
                     {row.grade}
@@ -52,7 +54,7 @@ export default function AcademicSummary({ summary }) {
             ) : (
               <tr className="border-t border-slate-100">
                 <td colSpan={2} className="px-3 py-2 text-[12px] text-slate-400">
-                  No quarterly grades imported yet.
+                  No grades recorded for this student yet.
                 </td>
               </tr>
             )}
@@ -65,7 +67,8 @@ export default function AcademicSummary({ summary }) {
                   "px-3 py-2.5 text-right text-[12px] font-semibold",
                   summary.generalAverage !== null &&
                     summary.generalAverage !== undefined &&
-                    summary.generalAverage < 75
+                    summary.generalAverage !== "—" &&
+                    Number(summary.generalAverage) < 75
                     ? "text-red-600"
                     : "text-slate-800"
                 )}

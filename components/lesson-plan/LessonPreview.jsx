@@ -8,6 +8,8 @@ import {
   ZoomIn,
   ZoomOut,
   X,
+  FileText,
+  FileX,
 } from "lucide-react";
 import {
   downloadFileFromUrl,
@@ -18,6 +20,7 @@ import LessonPlanScrollspy, {
   annotateLessonPlanHtml,
 } from "@/components/lesson-plan/LessonPlanScrollspy";
 import LessonInformation from "@/components/lesson-plan/LessonInformation";
+import SchoolPdfPreview from "@/components/shared/SchoolPdfPreview";
 import { cn } from "@/lib/utils";
 
 function fileKind(lesson) {
@@ -33,6 +36,26 @@ function fileKind(lesson) {
   }
   if (type.includes("msword") || name.endsWith(".doc")) return "doc";
   return "other";
+}
+
+/**
+ * Validate that an ArrayBuffer begins with a valid ZIP local header or central directory signature.
+ * Standard OpenXML (.docx) files must be ZIP containers starting with PK\x03\x04, PK\x05\x06, or PK\x07\x08.
+ */
+function isValidZipBuffer(buffer) {
+  if (!buffer || buffer.byteLength < 4) return false;
+
+  const bytes = new Uint8Array(buffer, 0, 4);
+
+  return (
+    bytes[0] === 0x50 &&
+    bytes[1] === 0x4b &&
+    (
+      (bytes[2] === 0x03 && bytes[3] === 0x04) ||
+      (bytes[2] === 0x05 && bytes[3] === 0x06) ||
+      (bytes[2] === 0x07 && bytes[3] === 0x08)
+    )
+  );
 }
 
 /**
@@ -53,8 +76,11 @@ export default function LessonPreview({
   const kind = fileKind(lesson);
 
   const [rawDocxHtml, setRawDocxHtml] = useState("");
-  const [docxError, setDocxError] = useState("");
-  const [loadingDocx, setLoadingDocx] = useState(false);
+  // 'idle' | 'loading' | 'ready' | 'preview-unavailable' | 'file-unavailable' | 'no-attachment'
+  const [previewStatus, setPreviewStatus] = useState("idle");
+  const [showingTemplateReference, setShowingTemplateReference] = useState(false);
+  const [templateHtml, setTemplateHtml] = useState("");
+  const [loadingTemplate, setLoadingTemplate] = useState(false);
   const [selectedTextSnippet, setSelectedTextSnippet] = useState("");
   const [zoomLevel, setZoomLevel] = useState(100);
   const [activeSectionId, setActiveSectionId] = useState("");
@@ -62,27 +88,96 @@ export default function LessonPreview({
   const docxContainerRef = useRef(null);
   const scrollContainerRef = useRef(null);
 
-  // Load official DOCX through Mammoth
+  // Load official DOCX through Mammoth with ZIP signature validation
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
 
     async function loadDocx() {
-      if (kind !== "docx" || !fileUrl) {
+      if (kind !== "docx") {
         setRawDocxHtml("");
-        setDocxError("");
-        setLoadingDocx(false);
+        setPreviewStatus("idle");
         return;
       }
-      setLoadingDocx(true);
-      setDocxError("");
+
+      if (!fileUrl) {
+        setRawDocxHtml("");
+        setPreviewStatus("no-attachment");
+        return;
+      }
+
+      setPreviewStatus("loading");
+      setShowingTemplateReference(false);
 
       try {
-        const mammoth = await import("mammoth");
-        const response = await fetch(fileUrl);
-        if (!response.ok) {
-          throw new Error("Unable to load the lesson plan file.");
+        let response;
+        try {
+          response = await fetch(fileUrl, { signal: controller.signal });
+        } catch (fetchErr) {
+          if (cancelled || fetchErr.name === "AbortError") return;
+          if (process.env.NODE_ENV !== "production") {
+            console.warn("[LessonPreview] Fetch failed for fileUrl:", fetchErr?.message || fetchErr);
+          }
+          setPreviewStatus("file-unavailable");
+          return;
         }
+
+        if (cancelled) return;
+
+        // Validate response status
+        if (!response || !response.ok) {
+          if (process.env.NODE_ENV !== "production") {
+            console.warn(`[LessonPreview] File request returned status ${response?.status}`);
+          }
+          if (response?.status === 404) {
+            setPreviewStatus("file-unavailable");
+          } else {
+            setPreviewStatus("preview-unavailable");
+          }
+          return;
+        }
+
+        // Read ArrayBuffer and validate not empty
         const buffer = await response.arrayBuffer();
+        if (cancelled) return;
+
+        if (!buffer || buffer.byteLength === 0) {
+          if (process.env.NODE_ENV !== "production") {
+            console.warn("[LessonPreview] Received empty file buffer");
+          }
+          setPreviewStatus("preview-unavailable");
+          return;
+        }
+
+        // Validate ZIP signature before calling Mammoth
+        if (!isValidZipBuffer(buffer)) {
+          let isNotFoundPayload = false;
+          try {
+            const textSnippet = new TextDecoder().decode(buffer.slice(0, 300));
+            if (
+              textSnippet.includes("Object not found") ||
+              textSnippet.includes("NoSuchKey") ||
+              textSnippet.includes('"statusCode":404') ||
+              textSnippet.includes('"statusCode":"404"')
+            ) {
+              isNotFoundPayload = true;
+            }
+          } catch {}
+
+          if (process.env.NODE_ENV !== "production") {
+            console.warn("[LessonPreview] Non-ZIP payload received for Word document preview");
+          }
+
+          if (isNotFoundPayload) {
+            setPreviewStatus("file-unavailable");
+          } else {
+            setPreviewStatus("preview-unavailable");
+          }
+          return;
+        }
+
+        // Dynamic import Mammoth and convert wrapped in try/catch
+        const mammoth = await import("mammoth");
         const convertToHtml = mammoth.convertToHtml ?? mammoth.default?.convertToHtml;
 
         const result = await convertToHtml(
@@ -103,18 +198,21 @@ export default function LessonPreview({
         );
 
         if (!cancelled) {
-          const cleanHtml = result.value || "";
-          setRawDocxHtml(cleanHtml);
-          onDocxParsed?.(cleanHtml);
+          const cleanHtml = result?.value || "";
+          if (cleanHtml.trim().length > 0) {
+            setRawDocxHtml(cleanHtml);
+            setPreviewStatus("ready");
+            onDocxParsed?.(cleanHtml);
+          } else {
+            setPreviewStatus("preview-unavailable");
+          }
         }
       } catch (err) {
-        if (!cancelled) {
-          console.error("DOCX parsing error:", err);
-          setDocxError("Could not render the Word document preview.");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingDocx(false);
+        if (!cancelled && err.name !== "AbortError") {
+          if (process.env.NODE_ENV !== "production") {
+            console.warn("[LessonPreview] DOCX preview conversion caught:", err?.message || err);
+          }
+          setPreviewStatus("preview-unavailable");
         }
       }
     }
@@ -123,8 +221,49 @@ export default function LessonPreview({
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [kind, fileUrl]);
+
+  // Handle viewing blank DepEd template format as optional reference
+  async function handleViewTemplateReference() {
+    setShowingTemplateReference(true);
+    if (templateHtml) return;
+
+    setLoadingTemplate(true);
+    try {
+      const mammoth = await import("mammoth");
+      const convertToHtml = mammoth.convertToHtml ?? mammoth.default?.convertToHtml;
+      const res = await fetch("/templates/LP_20week1.docx");
+      if (!res.ok) throw new Error("Template unavailable");
+      const buf = await res.arrayBuffer();
+      if (!isValidZipBuffer(buf)) throw new Error("Invalid template buffer");
+
+      const result = await convertToHtml(
+        { arrayBuffer: buf },
+        {
+          styleMap: [
+            "p[style-name='Heading 1'] => h1:fresh",
+            "p[style-name='Heading 2'] => h2:fresh",
+            "p[style-name='Heading 3'] => h3:fresh",
+            "p[style-name='Title'] => h1.title:fresh",
+            "p[style-name='Subtitle'] => h2.subtitle:fresh",
+            "table => table.table.table-bordered:fresh",
+            "r[style-name='Strong'] => strong",
+            "r[style-name='Emphasis'] => em",
+          ],
+          includeDefaultStyleMap: true,
+        }
+      );
+      setTemplateHtml(result?.value || "");
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[LessonPreview] Template reference load failed:", err);
+      }
+    } finally {
+      setLoadingTemplate(false);
+    }
+  }
 
   // Handle reviewer text selection
   function handleMouseUp() {
@@ -158,15 +297,21 @@ export default function LessonPreview({
 
   // Annotate remarks onto official document HTML
   const displayHtml = useMemo(() => {
-    let html = rawDocxHtml;
-    if (!html) return "";
+    const sourceHtml = showingTemplateReference ? templateHtml : rawDocxHtml;
+    if (!sourceHtml) return "";
+
+    // If viewing template reference, do not annotate teacher remarks onto the blank template
+    if (showingTemplateReference) {
+      return sourceHtml;
+    }
 
     const activeRemarks = remarks.filter(
       (r) => r.quotedText && r.status !== "resolved"
     );
 
-    if (activeRemarks.length === 0) return html;
+    if (activeRemarks.length === 0) return sourceHtml;
 
+    let html = sourceHtml;
     activeRemarks.forEach((rem) => {
       const target = rem.quotedText.trim();
       if (!target || target.length < 3) return;
@@ -182,12 +327,14 @@ export default function LessonPreview({
         const regex = new RegExp(`(${escapedTarget})`, "i");
         html = html.replace(regex, `<mark data-remark-id="${rem.id}" class="${markClass}">$1</mark>`);
       } catch (e) {
-        console.warn("[LessonPreview] highlight match error", e);
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("[LessonPreview] highlight match error", e);
+        }
       }
     });
 
     return html;
-  }, [rawDocxHtml, remarks, selectedRemarkId]);
+  }, [rawDocxHtml, templateHtml, showingTemplateReference, remarks, selectedRemarkId]);
 
   // Inject official CNHS section anchors for Scrollspy navigation
   const { annotatedHtml, availableSections } = useMemo(() => {
@@ -282,22 +429,23 @@ export default function LessonPreview({
       observer.disconnect();
       scrollContainer.removeEventListener("scroll", handleScroll);
     };
-  }, [availableSections, loadingDocx]);
+  }, [availableSections, previewStatus, loadingTemplate]);
 
-  // Download official lesson plan document
+  // Download official lesson plan document (always downloads the actual attachment)
   async function handleDownloadDocument() {
+    if (!fileUrl || previewStatus === "file-unavailable") return;
     const filename = formatLessonPlanDownloadName(lesson, kind === "pdf" ? "pdf" : "docx");
-    if (kind === "pdf" && fileUrl) {
+    if (kind === "pdf") {
       downloadFileFromUrl(fileUrl, filename);
       return;
     }
 
     try {
-      if (fileUrl) {
-        downloadFileFromUrl(fileUrl, filename);
-      }
+      downloadFileFromUrl(fileUrl, filename);
     } catch (err) {
-      console.error("[LessonPreview] download error", err);
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[LessonPreview] download error", err);
+      }
     }
   }
 
@@ -390,7 +538,7 @@ export default function LessonPreview({
           </div>
 
           <div className="flex items-center gap-2">
-            {kind === "docx" ? (
+            {((kind === "docx" && (previewStatus === "ready" || showingTemplateReference)) || (kind === "pdf" && fileUrl)) ? (
               <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 py-0.5 text-xs text-slate-600 shadow-2xs dark:border-slate-800 dark:bg-white/5 dark:text-slate-300">
                 <button
                   type="button"
@@ -416,7 +564,7 @@ export default function LessonPreview({
               </div>
             ) : null}
 
-            {fileUrl ? (
+            {fileUrl && previewStatus !== "file-unavailable" ? (
               <button
                 type="button"
                 onClick={handleDownloadDocument}
@@ -424,41 +572,177 @@ export default function LessonPreview({
                 title="Download official lesson plan document"
               >
                 <Download size={12} />
-                <span>Download</span>
+                <span>Download Document</span>
               </button>
             ) : null}
           </div>
         </div>
 
         {/* Document Body Sheet */}
-        {!fileUrl ? (
-          <div className="mx-auto max-w-4xl rounded-sm border border-slate-200 bg-white p-12 text-center text-sm text-slate-500 shadow-xs">
-            No file is attached to this lesson plan.
+        {!fileUrl && kind !== "docx" ? (
+          <div className="mx-auto max-w-4xl rounded-sm border border-slate-200 bg-white p-12 text-center shadow-xs dark:border-slate-800 dark:bg-slate-900">
+            <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400">
+              <FileText size={20} />
+            </div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              Document
+            </p>
+            <h3 className="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100">
+              No document attached
+            </h3>
+            <p className="mt-1.5 text-xs text-slate-500 max-w-md mx-auto">
+              This lesson plan does not currently have a document attached.
+            </p>
           </div>
         ) : kind === "pdf" ? (
-          <div
-            data-document-paper="true"
-            data-keep-white="true"
-            data-force-light="true"
-            className="document-paper-sheet mx-auto max-w-4xl overflow-hidden rounded-sm border border-slate-300/80 !bg-white shadow-xs"
-          >
-            <iframe
-              title={lesson.fileName || "Lesson plan PDF"}
-              src={fileUrl}
-              className="h-[min(75vh,760px)] w-full !bg-white"
-            />
-          </div>
+          <SchoolPdfPreview
+            fileUrl={fileUrl}
+            fileName={lesson?.fileName || "Lesson plan PDF"}
+            title={lesson?.lessonTitle || lesson?.title || lesson?.fileName}
+            zoom={zoomLevel}
+            onZoomChange={setZoomLevel}
+            showDock={true}
+          />
         ) : kind === "docx" ? (
-          loadingDocx ? (
-            <div className="mx-auto max-w-4xl rounded-sm border border-slate-200 bg-white py-24 text-center text-sm text-slate-600 shadow-xs dark:text-slate-400">
+          showingTemplateReference ? (
+            <div className="space-y-3">
+              {/* Reference Banner */}
+              <div className="mx-auto max-w-4xl flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50/90 px-4 py-2.5 text-xs text-amber-950 shadow-2xs dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-200">
+                <div className="flex items-center gap-2">
+                  <FileText size={15} className="shrink-0 text-amber-600 dark:text-amber-400" />
+                  <span>
+                    <strong>Reference Mode:</strong> Viewing blank DepEd template format as reference. This is not the teacher&apos;s uploaded document.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowingTemplateReference(false)}
+                  className="ml-3 shrink-0 rounded-md border border-amber-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-amber-900 hover:bg-amber-50 transition dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-100"
+                >
+                  Back to Document Status
+                </button>
+              </div>
+
+              {loadingTemplate ? (
+                <div className="mx-auto max-w-4xl rounded-sm border border-slate-200 bg-white py-24 text-center text-sm text-slate-600 shadow-xs dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+                  <div className="flex items-center justify-center gap-2">
+                    <Loader2 size={18} className="animate-spin text-cnhs-green" />
+                    <span>Loading blank DepEd template format…</span>
+                  </div>
+                </div>
+              ) : (
+                /* DepEd Word Document A4 Paper Sheet for Template Reference */
+                <div
+                  data-document-paper="true"
+                  data-keep-white="true"
+                  data-force-light="true"
+                  style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: "top center" }}
+                  className="document-paper-sheet mx-auto max-w-4xl rounded-xs border border-slate-300/80 !bg-white p-6 sm:p-10 lg:p-12 shadow-xs !text-slate-900 transition-all"
+                >
+                  <div
+                    className="lesson-plan-docx prose prose-slate max-w-none text-[13px] leading-relaxed !text-slate-900 outline-none
+                      [&_h1]:text-center [&_h1]:text-base [&_h1]:font-bold [&_h1]:my-1 [&_h1]:!text-slate-900
+                      [&_h2]:text-center [&_h2]:text-sm [&_h2]:font-bold [&_h2]:my-1 [&_h2]:!text-slate-900
+                      [&_h3]:text-xs [&_h3]:font-bold [&_h3]:my-1 [&_h3]:!text-slate-900
+                      [&_p]:my-1.5 [&_p]:!text-slate-800
+                      [&_table]:w-full [&_table]:my-3 [&_table]:border-collapse [&_table]:!border [&_table]:!border-slate-500 [&_table]:!bg-white
+                      [&_td]:!border [&_td]:!border-slate-500 [&_td]:p-2.5 [&_td]:align-top [&_td]:text-[12.5px] [&_td]:!text-slate-900 [&_td]:!bg-white
+                      [&_th]:!border [&_th]:!border-slate-500 [&_th]:!bg-slate-100 [&_th]:p-2.5 [&_th]:font-bold [&_th]:!text-slate-900
+                      [&_tr:first-child_td]:!bg-slate-50 [&_tr:first-child_td]:font-semibold"
+                    dangerouslySetInnerHTML={{ __html: annotatedHtml || displayHtml }}
+                  />
+                </div>
+              )}
+            </div>
+          ) : previewStatus === "loading" ? (
+            <div className="mx-auto max-w-4xl rounded-sm border border-slate-200 bg-white py-24 text-center text-sm text-slate-600 shadow-xs dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
               <div className="flex items-center justify-center gap-2">
                 <Loader2 size={18} className="animate-spin text-cnhs-green" />
                 <span>Loading official lesson plan…</span>
               </div>
             </div>
-          ) : docxError ? (
-            <div className="mx-auto max-w-4xl rounded-sm border border-slate-200 bg-white py-20 text-center text-sm text-slate-500 shadow-xs">
-              {docxError}
+          ) : previewStatus === "file-unavailable" ? (
+            <div className="mx-auto max-w-4xl rounded-sm border border-slate-200 bg-white p-12 text-center shadow-xs dark:border-slate-800 dark:bg-slate-900">
+              <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400">
+                <FileX size={20} />
+              </div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Word Document
+              </p>
+              <h3 className="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                File unavailable
+              </h3>
+              <p className="mt-1.5 text-xs text-slate-500 max-w-md mx-auto">
+                The uploaded file could not be found in storage.
+              </p>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5">
+                <button
+                  type="button"
+                  disabled
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-100 px-3 text-xs font-medium text-slate-400 opacity-70 cursor-not-allowed dark:border-slate-800 dark:bg-slate-800 dark:text-slate-500"
+                >
+                  <Download size={13} />
+                  <span>File unavailable</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleViewTemplateReference}
+                  className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition dark:border-slate-700 dark:bg-white/5 dark:text-slate-200"
+                >
+                  <FileText size={13} className="text-slate-500" />
+                  <span>View Blank DepEd Template Format</span>
+                </button>
+              </div>
+            </div>
+          ) : previewStatus === "preview-unavailable" ? (
+            <div className="mx-auto max-w-4xl rounded-sm border border-slate-200 bg-white p-12 text-center shadow-xs dark:border-slate-800 dark:bg-slate-900">
+              <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-300">
+                <FileText size={20} />
+              </div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Word Document
+              </p>
+              <h3 className="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                Preview unavailable
+              </h3>
+              <p className="mt-1.5 text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                This lesson plan cannot be previewed in the browser right now. You can still download the original file and open it in Microsoft Word.
+              </p>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5">
+                {fileUrl ? (
+                  <button
+                    type="button"
+                    onClick={handleDownloadDocument}
+                    className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3.5 text-xs font-semibold text-white hover:bg-[#1b5842] shadow-2xs transition"
+                  >
+                    <Download size={13} />
+                    <span>Download Document</span>
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={handleViewTemplateReference}
+                  className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition dark:border-slate-700 dark:bg-white/5 dark:text-slate-200"
+                >
+                  <FileText size={13} className="text-slate-500" />
+                  <span>View Blank DepEd Template Format</span>
+                </button>
+              </div>
+            </div>
+          ) : previewStatus === "no-attachment" ? (
+            <div className="mx-auto max-w-4xl rounded-sm border border-slate-200 bg-white p-12 text-center shadow-xs dark:border-slate-800 dark:bg-slate-900">
+              <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400">
+                <FileText size={20} />
+              </div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Word Document
+              </p>
+              <h3 className="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                No document attached
+              </h3>
+              <p className="mt-1.5 text-xs text-slate-500 max-w-md mx-auto">
+                This lesson plan does not currently have a Word document attached.
+              </p>
             </div>
           ) : (
             /* DepEd Word Document A4 Paper Sheet */

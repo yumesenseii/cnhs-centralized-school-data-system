@@ -89,11 +89,14 @@ function buildRevisionTimeline(events = [], plan = null) {
     }
 
     const last = history[history.length - 1];
-    if (last?.label === "Resubmitted" && plan.status === "Pending Review") {
+    if (
+      last?.label === "Resubmitted" &&
+      (plan.status === "Pending Review" || plan.status === "Pending")
+    ) {
       history.push({
         id: "active-pending-review",
         revision: `Revision ${revNumber}`,
-        label: "Pending Review",
+        label: "Pending",
         date: "Awaiting Principal Review",
         actor: "Principal",
         role: "admin",
@@ -126,11 +129,11 @@ function buildRevisionTimeline(events = [], plan = null) {
       role: "admin",
       note: plan.remarks || "Returned for revision.",
     });
-  } else if (plan.status === "Pending Review") {
+  } else if (plan.status === "Pending Review" || plan.status === "Pending") {
     fallback.push({
       id: "rev-1-pending",
       revision: "Revision 1",
-      label: "Pending Review",
+      label: "Pending",
       date: formatEventTimestamp(plan.lastUpdated),
       actor: "Principal",
       role: "admin",

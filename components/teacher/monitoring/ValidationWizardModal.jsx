@@ -265,7 +265,7 @@ export default function ValidationWizardModal({
             <button
               onClick={handleSubmit}
               disabled={isNextDisabled() || loading}
-              className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-lg bg-cnhs-green-dark px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#1b5842] disabled:opacity-50"
             >
               {loading ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
               Complete Check-off

@@ -15,12 +15,13 @@ import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import ClassReportFileModal from "@/components/teacher/monitoring/ClassReportFileModal";
 import ClassRemedialsSection from "@/components/teacher/monitoring/ClassRemedialsSection";
-import StudentMonitoringSidePanel from "@/components/teacher/monitoring/StudentMonitoringSidePanel";
+import LearnerAcademicDetailModal from "@/components/monitoring/shared/LearnerAcademicDetailModal";
 import { useTeacherMonitoring } from "@/hooks/teacher/useMonitoring";
 import { buildClassReportFiles } from "@/lib/monitoring/classReportFiles";
 import {
   aggregateAcademicLearners,
   filterRosterContext,
+  learnerIdentityKey,
 } from "@/lib/monitoring/academicLearnerAggregation";
 import { parseTermNumber, termLabel } from "@/lib/academic/termLabels";
 import { formatPersonName } from "@/lib/teacher/monitoringMappers";
@@ -43,6 +44,7 @@ export default function MonitoringDashboard() {
     error,
     refresh,
     applyLocalStudentPatches,
+    patchLearnerSupportState,
   } = useTeacherMonitoring();
 
   const [selectedLearner, setSelectedLearner] = useState(null);
@@ -115,6 +117,17 @@ export default function MonitoringDashboard() {
       includeQuarterInKey: quarterFilter === "All quarters",
     });
   }, [students, activeSchoolYear, quarterFilter]);
+
+  // Always derive activeSelectedLearner from the fresh aggregated collection
+  // so mutations immediately reflect in the open modal without stale snapshots.
+  const activeSelectedLearner = useMemo(() => {
+    if (!selectedLearner) return null;
+    const targetKey = learnerIdentityKey(selectedLearner);
+    const hit = aggregatedStudents.find(
+      (s) => learnerIdentityKey(s) === targetKey
+    );
+    return hit || selectedLearner;
+  }, [selectedLearner, aggregatedStudents]);
 
   const files = useMemo(() => {
     void metaTick;
@@ -274,26 +287,32 @@ export default function MonitoringDashboard() {
           availableQuarters={availableQuarters}
           onViewLearner={setSelectedLearner}
           onRefresh={refresh}
+          onUpdateSupport={patchLearnerSupportState}
           onNavigateToAral={(learner) => {
             router.push(`/teacher/aral-monitoring?studentId=${learner.studentId || learner.id}`);
           }}
         />
       )}
 
-      {/* Continuous Learner Profile Side Panel (academic context) */}
-      <StudentMonitoringSidePanel
-        learner={selectedLearner}
-        isOpen={Boolean(selectedLearner)}
-        onClose={() => setSelectedLearner(null)}
-        onRefresh={refresh}
-        context="academic"
-        onNavigateToAral={(learner) => {
-          setSelectedLearner(null);
-          router.push(`/teacher/aral-monitoring?studentId=${learner.studentId || learner.id}`);
-        }}
-        isLanguageTeacher={Boolean(filterOptions.hasAralClass)}
-        currentQuarterNumber={viewQuarterNumber}
-      />
+      {/* Unified Learner Academic Detail Modal */}
+      {Boolean(activeSelectedLearner) && (
+        <LearnerAcademicDetailModal
+          key={activeSelectedLearner?.studentId || activeSelectedLearner?.id || "teacher-modal"}
+          learner={activeSelectedLearner}
+          teacherId={teacherId}
+          isOpen={Boolean(activeSelectedLearner)}
+          onClose={() => setSelectedLearner(null)}
+          onRefresh={refresh}
+          onUpdateSupport={patchLearnerSupportState}
+          role="teacher"
+          onNavigateToAral={(learner) => {
+            setSelectedLearner(null);
+            router.push(`/teacher/aral-monitoring?studentId=${learner.studentId || learner.id}`);
+          }}
+          currentQuarterNumber={viewQuarterNumber}
+          schoolYear={activeSchoolYear}
+        />
+      )}
 
       {/* Class Report File Modal (from deep-links / My Classes integration) */}
       {modalFile ? (

@@ -12,14 +12,15 @@ const statusStyles = {
 };
 
 function StatusPill({ value }) {
+  const displayValue = value === "Pending Review" ? "Pending" : value;
   return (
     <span
       className={cn(
         "inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold leading-4",
-        statusStyles[value] ?? "bg-slate-100 text-slate-500"
+        statusStyles[displayValue] ?? statusStyles[value] ?? "bg-slate-100 text-slate-500"
       )}
     >
-      {value}
+      {displayValue}
     </span>
   );
 }
