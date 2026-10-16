@@ -1,19 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  X,
-  BookOpen,
-  Calendar,
-  CheckCircle2,
-  AlertCircle,
-  Plus,
-  Loader2,
-  FileText,
-  User,
-  ArrowRight,
-} from "lucide-react";
+import { motion } from "framer-motion";
+import { X, Plus, Loader2 } from "lucide-react";
 import {
   listAralProgressChecks,
   saveAralProgressCheck,
@@ -21,47 +10,108 @@ import {
 import { useAppToast } from "@/components/shared/AppToast";
 import { cn } from "@/lib/utils";
 
+const FOCUS_AREAS = [
+  "Reading Fluency",
+  "Comprehension",
+  "Phonemic Awareness",
+  "Word Recognition",
+  "Vocabulary",
+];
+
+const PROGRESS_RESULTS = [
+  "Improving",
+  "Satisfactory",
+  "Needs More Practice",
+];
+
+function getWhatHappensNowExplanation(stepKey, isGstAtGradeLevel) {
+  switch (stepKey) {
+    case "waiting_for_assessment":
+      return "The initial reading screening test has not yet been recorded. A screening test is needed to determine the learner's reading level.";
+    case "needs_individual_assessment":
+      return "The screening score indicates that an individual reading assessment is needed. Please administer the reading passage assessment.";
+    case "support_review":
+      return "The learner’s reading result is under review. Final support decision is still pending.";
+    case "waiting_for_facilitator":
+      return "The reading assessment is complete. Waiting for the school administration to assign a reading support teacher.";
+    case "waiting_for_support":
+      return "The reading assessment is complete and a support teacher is assigned. Reading support sessions may now begin.";
+    case "under_aral_support":
+      return "The learner is actively receiving reading support. Regular progress updates can be logged as sessions take place.";
+    case "progress_check_due":
+      return "A scheduled progress check is due to track this learner's ongoing reading development.";
+    case "completed":
+      return isGstAtGradeLevel
+        ? "The learner scored at grade level on the screening test. No additional reading intervention is required."
+        : "Reading support has been completed. No further action is required at this time.";
+    default:
+      if (isGstAtGradeLevel) {
+        return "The learner’s reading result is under review. Final support decision is still pending.";
+      }
+      return "The learner's reading record is active and currently being monitored.";
+  }
+}
+
+function getNextActionText(stepKey, isGstAtGradeLevel) {
+  switch (stepKey) {
+    case "waiting_for_assessment":
+      return "Administer the Phil-IRI Screening Test (GST) to this learner.";
+    case "needs_individual_assessment":
+      return "Conduct the Phil-IRI Individual Reading Assessment (Form 3).";
+    case "support_review":
+      return "Wait for the final support decision.";
+    case "waiting_for_facilitator":
+      return "Waiting for school administration to assign a reading support teacher.";
+    case "waiting_for_support":
+      return "Begin reading support sessions with this learner.";
+    case "under_aral_support":
+      return "Conduct regular reading support sessions and log progress.";
+    case "progress_check_due":
+      return "Submit a progress check for this learner.";
+    case "completed":
+      return "No further action required. Learner is at grade level or has completed reading support.";
+    default:
+      if (isGstAtGradeLevel) {
+        return "Wait for the final support decision.";
+      }
+      return "Wait for authorized review or further instructions.";
+  }
+}
+
 export default function AralLearnerRecordModal({
   isOpen,
   onClose,
   learner = null,
   teacherId = null,
-  schoolYear = "SY 2026-2027",
   onOpenAssessment,
   onRefresh,
 }) {
   const { showToast } = useAppToast();
   const [progressChecks, setProgressChecks] = useState([]);
-  const [loadingChecks, setLoadingChecks] = useState(false);
   const [showAddCheck, setShowAddCheck] = useState(false);
   const [savingCheck, setSavingCheck] = useState(false);
 
-  // New progress check form
-  const [activityName, setActivityName] = useState("");
-  const [competency, setCompetency] = useState("");
-  const [result, setResult] = useState("Improving");
-  const [nextAction, setNextAction] = useState("");
+  // Simplified progress check form state
+  const [focusArea, setFocusArea] = useState("Reading Fluency");
+  const [progressResult, setProgressResult] = useState("Improving");
+  const [teacherNote, setTeacherNote] = useState("");
+  const [nextStep, setNextStep] = useState("");
 
   const studentId = learner?.studentId || learner?.id;
-  const isAssignedToMe = Boolean(
-    learner?.aralFacilitatorAssigned &&
-    (!teacherId || learner?.aralFacilitatorTeacherId === teacherId)
-  );
 
-  // Load progress checks
+  // Load progress checks only if modal is open and learner has an ID
   useEffect(() => {
     if (!isOpen || !studentId) return;
 
     let isMounted = true;
-    setLoadingChecks(true);
     listAralProgressChecks(studentId)
       .then((res) => {
         if (isMounted) {
           setProgressChecks(res.data || []);
         }
       })
-      .finally(() => {
-        if (isMounted) setLoadingChecks(false);
+      .catch((err) => {
+        console.error("Failed to load progress checks:", err);
       });
 
     return () => {
@@ -74,61 +124,82 @@ export default function AralLearnerRecordModal({
   const language = learner.language || learner.subject || "English";
   const stepMeta = learner.currentStepMeta || {};
 
-  // Why this learner is here
-  const whyHere = learner.aralApprovalStatus === "approved"
-    ? "Reading concern was confirmed in Academic Monitoring and approved for assessment by the school principal."
-    : learner.aralFacilitatorAssigned
-    ? "Assigned for beginning reading assessment and support."
-    : "Referred for beginning reading assessment.";
+  const isGstAtGradeLevel =
+    learner.philIriScore != null && Number(learner.philIriScore) >= 28;
 
-  // Latest progress
-  const latestCheck = progressChecks[0] || null;
-  const latestUpdateText = latestCheck
-    ? `${latestCheck.result} (${latestCheck.check_date || "Recent"})`
-    : learner.inAralProgram
-    ? "Needs Initial Progress Update"
-    : "No Update Yet";
+  const hasIra = Boolean(
+    learner.readingLevel &&
+    learner.readingLevel !== "Not Screened" &&
+    learner.readingLevel !== "Not Assessed" &&
+    learner.readingLevel !== "Not Set" &&
+    learner.readingLevel !== "At Grade Level"
+  );
+
+  // Only show progress section if reading support intervention has actually started
+  const hasSupportStarted = Boolean(
+    learner.supportStarted ||
+    learner.date_started ||
+    Number(learner.weeklyUpdateCount) > 0 ||
+    Number(learner.activeSessionsCount) > 0 ||
+    learner.currentStepKey === "under_aral_support" ||
+    learner.currentStepKey === "progress_check_due"
+  );
 
   const handleSaveProgressCheck = async (e) => {
     e.preventDefault();
-    if (!activityName || !competency) {
-      showToast("error", "Please provide activity name and target competency.");
-      return;
-    }
-
     setSavingCheck(true);
     try {
       const res = await saveAralProgressCheck({
         studentId,
         teacherId,
-        activityName,
-        competency,
-        result,
-        nextAction,
+        activityName: focusArea,
+        competency: teacherNote ? `${focusArea} — ${teacherNote}` : focusArea,
+        result: progressResult,
+        teacherObservation: teacherNote,
+        nextAction: nextStep,
       });
 
       if (res.error) {
-        showToast("error", res.error.message || "Failed to save progress check.");
+        showToast("error", "We couldn’t save this progress update. Please try again.");
         return;
       }
 
-      showToast("success", "Progress check recorded.");
-      setActivityName("");
-      setCompetency("");
-      setNextAction("");
+      showToast("success", "Progress update recorded.");
+      setTeacherNote("");
+      setNextStep("");
       setShowAddCheck(false);
 
-      // Refresh checks
       const updated = await listAralProgressChecks(studentId);
       setProgressChecks(updated.data || []);
       onRefresh?.();
     } catch (err) {
       console.error(err);
-      showToast("error", "Error saving progress check.");
+      showToast("error", "We couldn’t save this progress update. Please try again.");
     } finally {
       setSavingCheck(false);
     }
   };
+
+  const readingResultValue = isGstAtGradeLevel
+    ? "At Grade Level"
+    : hasIra
+    ? learner.readingLevel
+    : "Pending";
+
+  const readingResultSource = isGstAtGradeLevel
+    ? "From Screening Test"
+    : hasIra
+    ? "From Individual Assessment"
+    : "Awaiting Assessment";
+
+  const readingResultColor =
+    isGstAtGradeLevel || learner.readingLevel === "Independent"
+      ? "text-emerald-700 dark:text-emerald-400"
+      : learner.readingLevel === "Instructional"
+      ? "text-amber-700 dark:text-amber-400"
+      : learner.readingLevel === "Frustration"
+      ? "text-rose-700 dark:text-rose-400"
+      : "text-slate-500 dark:text-slate-400";
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
@@ -136,27 +207,27 @@ export default function AralLearnerRecordModal({
         initial={{ opacity: 0, scale: 0.98, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98 }}
-        className="relative flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:border dark:border-white/10 dark:bg-slate-900"
+        className="relative flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:border dark:border-white/10 dark:bg-slate-900"
       >
-        {/* Modal Header */}
+        {/* 1. HEADER */}
         <div className="flex items-start justify-between border-b border-slate-100 p-5 pb-4 dark:border-white/5">
           <div className="min-w-0 pr-4">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              ARAL Learner Record
+              Reading Support Record
             </span>
-            <h2 className="mt-0.5 text-lg font-bold text-slate-900 dark:text-white uppercase truncate">
+            <h2 className="mt-0.5 text-base sm:text-lg font-bold text-slate-900 dark:text-white uppercase truncate">
               {learner.name}
             </h2>
             <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
-              LRN {learner.lrn || learner.studentNumber || "—"} · {learner.gradeSectionDisplay || `${learner.grade} - ${learner.section}`} · {language}
+              LRN {learner.lrn || learner.studentNumber || "—"} · {learner.gradeSectionDisplay || `Grade ${learner.grade || "7"} – ${learner.section || "Section"}`} · {language}
             </p>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
             <span
               className={cn(
-                "inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold border",
-                stepMeta.badgeClass || "border-slate-200 bg-slate-50 text-slate-700"
+                "inline-flex items-center px-3 py-1 rounded-xl text-xs font-semibold border",
+                stepMeta.badgeClass || "border-slate-200 bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
               )}
             >
               {learner.currentStepLabel || "Under Review"}
@@ -165,294 +236,333 @@ export default function AralLearnerRecordModal({
               type="button"
               onClick={onClose}
               className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-200 transition-colors cursor-pointer"
+              aria-label="Close"
             >
               <X size={18} />
             </button>
           </div>
         </div>
 
-        {/* Why this learner is here */}
-        <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-2.5 text-xs text-slate-600 dark:border-white/5 dark:bg-white/[0.02] dark:text-slate-300">
-          <span className="font-semibold text-slate-800 dark:text-slate-200">Why this learner is here: </span>
-          <span>{whyHere}</span>
-        </div>
-
-        {/* Scrollable Body: Horizontal 2-Column Balanced Grid */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-3.5">
-          {/* ROW 1: Current Step & Current Support (2 Columns) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 items-stretch">
-            {/* 1. CURRENT STEP */}
-            <section className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs dark:border-white/10 dark:bg-slate-800/60">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  1. Current Step
-                </span>
-                <span
-                  className={cn(
-                    "inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border",
-                    stepMeta.badgeClass
-                  )}
-                >
-                  Active
-                </span>
-              </div>
-              <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white">
-                {learner.currentStepLabel || "Waiting for Assessment"}
-              </p>
-            </section>
-
-            {/* 3. CURRENT SUPPORT */}
-            <section className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs dark:border-white/10 dark:bg-slate-800/60 space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                3. Current Support
-              </span>
-
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Program / Track</span>
-                  <p className="mt-0.5 font-bold text-slate-800 dark:text-slate-200 text-xs">
-                    {learner.inAralProgram
-                      ? (learner.aralProgramName || (learner.readingNeed ? `ARAL - ${learner.readingNeed}` : "ARAL Reading Intervention"))
-                      : learner.readingLevel === "Independent"
-                      ? "None (Independent)"
-                      : learner.readingLevel === "Instructional"
-                      ? "Guided Reading Review"
-                      : "No active ARAL intervention"}
-                  </p>
-                </div>
-
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Assigned Facilitator</span>
-                  <p className="mt-0.5 font-bold text-slate-800 dark:text-slate-200 text-xs">
-                    {learner.aralFacilitatorName || "Pending Assignment"}
-                  </p>
-                </div>
-              </div>
-
-              {!learner.inAralProgram && (
-                <div className="pt-1.5 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs">
-                  <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
-                    {learner.readingLevel === "Independent"
-                      ? "Assessment complete. No ARAL support needed."
-                      : "Classroom remedial is managed in Academic Monitoring."}
-                  </p>
-                  <a
-                    href="/teacher/monitoring"
-                    className="text-[11px] font-semibold text-[#246f54] hover:underline shrink-0 ml-1.5"
-                  >
-                    Go &rarr;
-                  </a>
-                </div>
-              )}
-            </section>
-          </div>
-
-          {/* ROW 2: Reading Assessment (Full Width) */}
-          <section className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs dark:border-white/10 dark:bg-slate-800/60 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                2. Reading Assessment
-              </span>
-              {isAssignedToMe && onOpenAssessment && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    onOpenAssessment(learner);
-                  }}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#246f54] hover:underline cursor-pointer"
-                >
-                  <span>{learner.philIriScore != null ? "Update Assessment" : "Record Assessment"}</span>
-                  <ArrowRight size={12} />
-                </button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 text-center text-xs">
-              <div className="rounded-lg bg-slate-50 p-2 border border-slate-100 dark:bg-slate-800 dark:border-white/5">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Group Screening</span>
-                <p className="mt-1 font-bold text-slate-800 dark:text-slate-200">
-                  {learner.philIriScore != null ? `${learner.philIriScore}/40` : "Not recorded"}
-                </p>
-              </div>
-
-              <div className="rounded-lg bg-slate-50 p-2 border border-slate-100 dark:bg-slate-800 dark:border-white/5">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Individual Assessment</span>
-                <p className="mt-1 font-bold text-slate-800 dark:text-slate-200">
-                  {learner.readingLevel && learner.readingLevel !== "Not Screened"
-                    ? "Completed"
-                    : learner.philIriScore != null && Number(learner.philIriScore) >= 28
-                    ? "Not Required"
-                    : "Pending"}
-                </p>
-              </div>
-
-              <div className="rounded-lg bg-slate-50 p-2 border border-slate-100 dark:bg-slate-800 dark:border-white/5">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Reading Profile</span>
-                <p
-                  className={cn(
-                    "mt-1 font-bold",
-                    learner.readingLevel === "Independent"
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : learner.readingLevel === "Instructional"
-                      ? "text-amber-600 dark:text-amber-400"
-                      : learner.readingLevel === "Frustration"
-                      ? "text-rose-600 dark:text-rose-400"
-                      : "text-slate-400"
-                  )}
-                >
-                  {learner.readingLevel || "Not yet assessed"}
-                </p>
-              </div>
-            </div>
-
-            {learner.screeningInterpretation && (
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
-                Assessment Level: {learner.screeningInterpretation}
-              </p>
-            )}
+        {/* BODY */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {/* 2. CURRENT STATUS */}
+          <section className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 dark:border-blue-900/30 dark:bg-blue-950/20">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-900 dark:text-blue-300">
+              What happens now?
+            </span>
+            <p className="mt-1.5 text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-normal">
+              {getWhatHappensNowExplanation(learner.currentStepKey, isGstAtGradeLevel)}
+            </p>
           </section>
 
-          {/* ROW 3: Progress & Assessment History (2 Columns) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 items-start">
-            {/* 4. PROGRESS */}
-            <section className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs dark:border-white/10 dark:bg-slate-800/60 space-y-2">
+          {/* 3. READING RESULT */}
+          <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs dark:border-white/10 dark:bg-slate-800/60 space-y-3">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              Reading Result
+            </span>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+              {/* Card 1: Screening Test */}
+              <div className="rounded-xl bg-slate-50 p-3 border border-slate-100 dark:bg-slate-900/40 dark:border-white/5">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                  Screening Test
+                </span>
+                <span className="text-[9.5px] text-slate-400 block">
+                  Phil-IRI {language === "Filipino" ? "Form 1A" : "Form 1B"}
+                </span>
+                <p className="mt-2 font-bold text-slate-900 dark:text-white text-base">
+                  {learner.philIriScore != null ? `${learner.philIriScore} / 40` : "Not recorded"}
+                </p>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                  {learner.philIriScore != null
+                    ? isGstAtGradeLevel
+                      ? "At Grade Level"
+                      : "Needs Reading Assessment"
+                    : "Screening pending"}
+                </span>
+              </div>
+
+              {/* Card 2: Individual Reading Assessment */}
+              <div className="rounded-xl bg-slate-50 p-3 border border-slate-100 dark:bg-slate-900/40 dark:border-white/5">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                  Individual Reading Assessment
+                </span>
+                <span className="text-[9.5px] text-slate-400 block">
+                  Phil-IRI {language === "Filipino" ? "Form 3A" : "Form 3B"}
+                </span>
+                <p className="mt-2 font-bold text-slate-900 dark:text-white text-base">
+                  {isGstAtGradeLevel
+                    ? "Not Needed"
+                    : hasIra
+                    ? "Completed"
+                    : learner.philIriScore != null
+                    ? "Pending Assessment"
+                    : "Not yet assessed"}
+                </p>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                  {isGstAtGradeLevel
+                    ? "Meets GST Benchmark"
+                    : hasIra
+                    ? (learner.screeningInterpretation || "Graded Passage Assessed")
+                    : "Reading passage needed"}
+                </span>
+              </div>
+
+              {/* Card 3: Reading Result (Never called Reading Profile when no Form 3) */}
+              <div className="rounded-xl bg-slate-50 p-3 border border-slate-100 dark:bg-slate-900/40 dark:border-white/5">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                  Reading Result
+                </span>
+                <span className="text-[9.5px] text-slate-400 block">
+                  {readingResultSource}
+                </span>
+                <p className={cn("mt-2 font-bold text-base", readingResultColor)}>
+                  {readingResultValue}
+                </p>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                  {readingResultSource}
+                </span>
+              </div>
+            </div>
+          </section>
+
+          {/* 4. ASSIGNED TEACHERS */}
+          <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs dark:border-white/10 dark:bg-slate-800/60 space-y-2.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              Assigned Teachers
+            </span>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+              <div className="rounded-xl bg-slate-50 p-3 border border-slate-100 dark:bg-slate-900/40 dark:border-white/5">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                  Reading Assessment
+                </span>
+                <p className="mt-1 font-semibold text-slate-800 dark:text-slate-200 text-xs">
+                  {learner.assessorTeacherName || `${language} Subject Teacher`}
+                </p>
+                <span className="text-[10px] text-slate-400 block mt-0.5">
+                  {learner.assessorRole || "Subject Teacher"}
+                </span>
+              </div>
+
+              <div className="rounded-xl bg-slate-50 p-3 border border-slate-100 dark:bg-slate-900/40 dark:border-white/5">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                  Reading Support
+                </span>
+                <p className="mt-1 font-semibold text-slate-800 dark:text-slate-200 text-xs">
+                  {learner.aralFacilitatorName || "Not yet assigned"}
+                </p>
+                <span className="text-[10px] text-slate-400 block mt-0.5">
+                  {learner.aralFacilitatorAssigned ? "Assigned Support Teacher" : "Pending assignment"}
+                </span>
+              </div>
+            </div>
+          </section>
+
+          {/* 5. PROGRESS UPDATES (CONDITIONAL: Only shown when support has started) */}
+          {hasSupportStarted && (
+            <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs dark:border-white/10 dark:bg-slate-800/60 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    4. Progress
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Progress Updates
                   </span>
-                  <p className="mt-0.5 text-xs font-bold text-slate-800 dark:text-slate-200">
-                    Latest: {latestUpdateText}
+                  <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">
+                    {progressChecks.length > 0
+                      ? `${progressChecks.length} progress update${progressChecks.length > 1 ? "s" : ""} recorded`
+                      : "No progress updates recorded yet"}
                   </p>
                 </div>
-                {isAssignedToMe && learner.inAralProgram && !showAddCheck && (
+
+                {!showAddCheck && (
                   <button
                     type="button"
                     onClick={() => setShowAddCheck(true)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 transition shadow-2xs dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 cursor-pointer"
+                    className="inline-flex items-center gap-1 rounded-xl bg-[#246f54]/10 px-3 py-1.5 text-xs font-semibold text-[#246f54] hover:bg-[#246f54]/20 transition dark:text-emerald-400 cursor-pointer"
                   >
-                    <Plus size={11} />
-                    <span>Update</span>
+                    <Plus size={12} />
+                    <span>Add Progress Update</span>
                   </button>
                 )}
               </div>
 
-              {/* Inline Add Check Form */}
+              {/* Simplified Add Progress Form */}
               {showAddCheck && (
-                <form onSubmit={handleSaveProgressCheck} className="rounded-xl border border-[#246f54]/30 bg-[#246f54]/5 p-2.5 space-y-2 dark:bg-[#246f54]/10">
+                <form
+                  onSubmit={handleSaveProgressCheck}
+                  className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3.5 space-y-3 dark:border-emerald-900/40 dark:bg-emerald-950/20"
+                >
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-[#246f54]">New Progress Check</span>
+                    <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200">
+                      New Progress Update
+                    </span>
                     <button
                       type="button"
                       onClick={() => setShowAddCheck(false)}
-                      className="text-slate-400 hover:text-slate-600 text-[11px] cursor-pointer"
+                      className="text-xs text-slate-400 hover:text-slate-600 cursor-pointer"
                     >
                       Cancel
                     </button>
                   </div>
-                  <div className="space-y-1.5 text-xs">
-                    <input
-                      type="text"
-                      placeholder="Activity name (e.g. Guided Phonics)"
-                      value={activityName}
-                      onChange={(e) => setActivityName(e.target.value)}
-                      required
-                      className="w-full h-7 rounded-lg border border-slate-200 bg-white px-2 text-xs dark:bg-slate-800 dark:border-white/10"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Competency (e.g. CVC Blending)"
-                      value={competency}
-                      onChange={(e) => setCompetency(e.target.value)}
-                      required
-                      className="w-full h-7 rounded-lg border border-slate-200 bg-white px-2 text-xs dark:bg-slate-800 dark:border-white/10"
-                    />
-                    <select
-                      value={result}
-                      onChange={(e) => setResult(e.target.value)}
-                      className="w-full h-7 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold dark:bg-slate-800 dark:border-white/10"
-                    >
-                      <option value="Improving">Improving</option>
-                      <option value="Needs Continued Support">Needs Continued Support</option>
-                      <option value="Mastered Target Competency">Mastered Competency</option>
-                    </select>
-                    <input
-                      type="text"
-                      placeholder="Next action (optional)"
-                      value={nextAction}
-                      onChange={(e) => setNextAction(e.target.value)}
-                      className="w-full h-7 rounded-lg border border-slate-200 bg-white px-2 text-xs dark:bg-slate-800 dark:border-white/10"
-                    />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block mb-1">
+                        Focus Area
+                      </label>
+                      <select
+                        value={focusArea}
+                        onChange={(e) => setFocusArea(e.target.value)}
+                        className="w-full h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium dark:bg-slate-800 dark:border-white/10"
+                      >
+                        {FOCUS_AREAS.map((fa) => (
+                          <option key={fa} value={fa}>
+                            {fa}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block mb-1">
+                        Progress
+                      </label>
+                      <select
+                        value={progressResult}
+                        onChange={(e) => setProgressResult(e.target.value)}
+                        className="w-full h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium dark:bg-slate-800 dark:border-white/10"
+                      >
+                        {PROGRESS_RESULTS.map((pr) => (
+                          <option key={pr} value={pr}>
+                            {pr}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block mb-1">
+                        Teacher Note (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Can read short phrases with minimal assistance"
+                        value={teacherNote}
+                        onChange={(e) => setTeacherNote(e.target.value)}
+                        className="w-full h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-xs dark:bg-slate-800 dark:border-white/10"
+                      >
+                      </input>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block mb-1">
+                        Next Step (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Practice multisyllabic vocabulary words"
+                        value={nextStep}
+                        onChange={(e) => setNextStep(e.target.value)}
+                        className="w-full h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-xs dark:bg-slate-800 dark:border-white/10"
+                      >
+                      </input>
+                    </div>
                   </div>
+
                   <div className="flex justify-end pt-1">
                     <button
                       type="submit"
                       disabled={savingCheck}
-                      className="rounded-lg bg-[#246f54] px-2.5 py-1 text-[11px] font-semibold text-white shadow-2xs hover:bg-[#1b5842] disabled:opacity-50 cursor-pointer"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-[#246f54] px-4 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-[#1b5842] disabled:opacity-50 cursor-pointer"
                     >
-                      {savingCheck ? "Saving..." : "Save Check"}
+                      {savingCheck ? (
+                        <>
+                          <Loader2 size={12} className="animate-spin" />
+                          <span>Saving...</span>
+                        </>
+                      ) : (
+                        <span>Save Progress</span>
+                      )}
                     </button>
                   </div>
                 </form>
               )}
 
-              {/* Previous checks list */}
+              {/* Progress checks list */}
               {progressChecks.length > 0 && (
-                <div className="space-y-1 pt-1">
-                  {progressChecks.slice(0, 2).map((check, idx) => (
+                <div className="space-y-2 pt-1">
+                  {progressChecks.map((check, idx) => (
                     <div
                       key={check.id || idx}
-                      className="flex items-center justify-between rounded-lg bg-slate-50 px-2 py-1 text-[10.5px] border border-slate-100 dark:bg-slate-800 dark:border-white/5"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 rounded-xl bg-slate-50 p-2.5 text-xs border border-slate-100 dark:bg-slate-900/40 dark:border-white/5"
                     >
-                      <div className="truncate pr-1">
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">
-                          {check.activity_name}
-                        </span>
-                        <span className="text-slate-400 mx-1">·</span>
-                        <span className="text-slate-500">{check.competency}</span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            {check.activity_name || "Reading Session"}
+                          </span>
+                          <span className="text-[11px] text-slate-400">
+                            {check.check_date || "Recent"}
+                          </span>
+                        </div>
+                        {check.teacher_observation && (
+                          <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
+                            {check.teacher_observation}
+                          </p>
+                        )}
                       </div>
-                      <span className="font-bold text-[#246f54] shrink-0">{check.result}</span>
+                      <span
+                        className={cn(
+                          "inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold shrink-0 self-start sm:self-center",
+                          check.result === "Improving" || check.result === "Mastered Target Competency"
+                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                            : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+                        )}
+                      >
+                        {check.result}
+                      </span>
                     </div>
                   ))}
                 </div>
               )}
             </section>
+          )}
 
-            {/* 5. ASSESSMENT HISTORY */}
-            <section className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs dark:border-white/10 dark:bg-slate-800/60">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                5. Assessment History
-              </span>
-
-              <div className="mt-2 grid grid-cols-3 gap-1.5 text-center text-xs">
-                <div className="rounded-lg bg-slate-50 p-2 border border-slate-100 dark:bg-slate-800 dark:border-white/5">
-                  <span className="text-[9.5px] uppercase font-bold text-slate-400">BOSY</span>
-                  <p className="mt-0.5 font-bold text-slate-800 dark:text-slate-200 text-[11px]">
-                    {learner.readingLevel || "Pending"}
-                  </p>
-                </div>
-
-                <div className="rounded-lg bg-slate-50/50 p-2 border border-dashed border-slate-200 dark:bg-slate-800/40 dark:border-white/5">
-                  <span className="text-[9.5px] uppercase font-bold text-slate-400">MOSY</span>
-                  <p className="mt-0.5 text-slate-400 text-[10.5px]">Not available</p>
-                </div>
-
-                <div className="rounded-lg bg-slate-50/50 p-2 border border-dashed border-slate-200 dark:bg-slate-800/40 dark:border-white/5">
-                  <span className="text-[9.5px] uppercase font-bold text-slate-400">EOSY</span>
-                  <p className="mt-0.5 text-slate-400 text-[10.5px]">Not available</p>
-                </div>
-              </div>
-            </section>
-          </div>
+          {/* 6. NEXT ACTION */}
+          <section className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-slate-800/40">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              Next Action
+            </span>
+            <p className="mt-1 text-xs font-semibold text-slate-800 dark:text-slate-200">
+              {getNextActionText(learner.currentStepKey, isGstAtGradeLevel)}
+            </p>
+          </section>
         </div>
 
-        {/* Modal Footer */}
-        <div className="flex items-center justify-end border-t border-slate-100 px-5 py-3 bg-slate-50/50 dark:border-white/5 dark:bg-slate-800/40">
+        {/* 7. FOOTER */}
+        <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-3.5 bg-slate-50/50 dark:border-white/5 dark:bg-slate-800/40">
+          {onOpenAssessment &&
+            (learner.currentStepKey === "waiting_for_assessment" ||
+              learner.currentStepKey === "needs_individual_assessment") && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenAssessment(learner);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#246f54] px-4 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-[#1b5842] transition cursor-pointer"
+              >
+                <span>
+                  {learner.currentStepKey === "waiting_for_assessment"
+                    ? "Start Screening"
+                    : "Continue Assessment"}
+                </span>
+              </button>
+            )}
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 cursor-pointer"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 cursor-pointer"
           >
             Close
           </button>

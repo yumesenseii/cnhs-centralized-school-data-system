@@ -2,9 +2,9 @@ import { Suspense } from "react";
 import AdminAralMonitoringDashboard from "@/components/admin/monitoring/AdminAralMonitoringDashboard";
 
 export const metadata = {
-  title: "Reading Intervention | CNHS Learn",
+  title: "ARAL Monitoring | CNHS Learn",
   description:
-    "Principal oversight of Phil-IRI reading intervention endorsements, facilitator assignments, learning progress, and EOSY summer eligibility.",
+    "Principal oversight of ARAL referrals, facilitator assignments, assessment progress, and learner outcomes under RA 12028.",
 };
 
 export default function AdminAralMonitoringRoute() {
@@ -12,7 +12,7 @@ export default function AdminAralMonitoringRoute() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center py-16 text-sm text-slate-500">
-          Loading Reading Intervention…
+          Loading ARAL Monitoring…
         </div>
       }
     >

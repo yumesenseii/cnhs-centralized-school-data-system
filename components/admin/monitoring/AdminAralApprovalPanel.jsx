@@ -9,147 +9,28 @@ import {
   Eye,
   Folder,
   Loader2,
+  X,
 } from "lucide-react";
 import {
   ARAL_APPROVAL_DB,
   ARAL_APPROVAL_STATUS,
   aralApprovalDisplayLabel,
-  aralApprovalStyles,
   isAralHtTrackedLearner,
 } from "@/lib/monitoring/aralApproval";
 import {
   reviewAralRecommendation,
 } from "@/lib/supabase/queries/aralApprovals";
 import { getAdminSession } from "@/lib/supabase/queries/adminAuth";
-import { parseRecordedGrade } from "@/lib/ecr/computeGrades";
-import { normalizeSubjectName } from "@/lib/services/recommendation/subjectCapabilities";
-import { Pill } from "@/components/teacher/monitoring/shared";
+import {
+  formatTeacherReadingConcern,
+} from "@/lib/monitoring/aralLearnerAggregation";
 import AdminAralReviewModal from "@/components/admin/monitoring/AdminAralReviewModal";
 import AdminTablePagination from "@/components/shared/AdminTablePagination";
+import { useAppToast } from "@/components/shared/AppToast";
 import { cn } from "@/lib/utils";
 
 const SECTIONS_PAGE_SIZE = 10;
-const ARAL_GRADE_THRESHOLD = 75;
 
-function resolveQuarterNumber(row = {}) {
-  const n = Number(
-    row.aralApprovalQuarter ??
-      row.quarterNumber ??
-      String(row.quarter ?? "").replace(/\D/g, "")
-  );
-  return Number.isFinite(n) && n >= 1 && n <= 4 ? n : null;
-}
-
-/**
- * Real class-subject grade only — never invent 0 from null/empty.
- * Prefer classSubjectGrade → termGrades[q] → subjectGrades match → aralClassSubjectGrade.
- */
-function resolveSubjectGrade(row = {}) {
-  const direct = parseRecordedGrade(row.classSubjectGrade);
-  if (direct !== null) return direct;
-
-  const qNum = resolveQuarterNumber(row);
-  const terms = row.termGrades || {};
-  if (qNum != null) {
-    const fromTerm = parseRecordedGrade(terms[qNum] ?? terms[String(qNum)]);
-    if (fromTerm !== null) return fromTerm;
-  }
-  // Any recorded term for this class subject if quarter key missed
-  for (const key of [1, 2, 3, 4]) {
-    const g = parseRecordedGrade(terms[key] ?? terms[String(key)]);
-    if (g !== null) return g;
-  }
-
-  const target = normalizeSubjectName(row.subject);
-  if (target && Array.isArray(row.subjectGrades)) {
-    for (const g of row.subjectGrades) {
-      const name = normalizeSubjectName(g.subject ?? g.subjectName);
-      if (name !== target) continue;
-      if (
-        qNum != null &&
-        g.quarter != null &&
-        Number(g.quarter) !== qNum
-      ) {
-        continue;
-      }
-      const grade = parseRecordedGrade(g.grade ?? g.finalGrade);
-      if (grade !== null) return grade;
-    }
-    // Same subject, any quarter
-    for (const g of row.subjectGrades) {
-      const name = normalizeSubjectName(g.subject ?? g.subjectName);
-      if (name !== target) continue;
-      const grade = parseRecordedGrade(g.grade ?? g.finalGrade);
-      if (grade !== null) return grade;
-    }
-  }
-
-  const aralOnly = parseRecordedGrade(row.aralClassSubjectGrade);
-  if (aralOnly !== null) return aralOnly;
-
-  return null;
-}
-
-function formatGradeDisplay(grade) {
-  if (grade === null || grade === undefined) return "—";
-  return Number.isInteger(grade) ? String(grade) : String(grade);
-}
-
-function buildIdentifiedEntry(row) {
-  const subject = String(row.subject || "").trim();
-  if (!subject) return null;
-  return {
-    subject,
-    grade: resolveSubjectGrade(row),
-    quarter: row.quarter || null,
-  };
-}
-
-function upsertIdentifiedSubject(list, entry) {
-  if (!entry) return list;
-  const next = [...list];
-  const idx = next.findIndex((e) => e.subject === entry.subject);
-  if (idx === -1) {
-    next.push(entry);
-    return next;
-  }
-  const prev = next[idx];
-  // Backfill grade/quarter when a later source row has real data
-  next[idx] = {
-    subject: entry.subject,
-    grade: prev.grade !== null ? prev.grade : entry.grade,
-    quarter: prev.quarter || entry.quarter,
-  };
-  return next;
-}
-
-/** One muted reason line under subject chips when any grade is below 75. */
-function identificationReasonLine(entries = [], fallbackQuarter = null) {
-  const failing = entries.filter(
-    (e) => e.grade !== null && e.grade < ARAL_GRADE_THRESHOLD
-  );
-  if (!failing.length) return null;
-  const quarter = failing[0].quarter || fallbackQuarter || null;
-  const termPart = quarter ? String(quarter) : null;
-  return termPart
-    ? `${termPart} · below ${ARAL_GRADE_THRESHOLD}`
-    : `below ${ARAL_GRADE_THRESHOLD}`;
-}
-
-function isPendingPrincipal(status) {
-  return (
-    status === ARAL_APPROVAL_STATUS.SUGGESTED ||
-    status === ARAL_APPROVAL_STATUS.SUBMITTED ||
-    !status
-  );
-}
-
-/** After Principal Approve, the row is locked (no re-approve / return / note). */
-function isApprovedLocked(learner) {
-  return learner?.displayStatus === ARAL_APPROVAL_STATUS.APPROVED;
-}
-
-/** Prefer gradeLevel field; else parse "Grade 7 — Mabini" / "Grade 7 Mabini". */
 function parseGradeLabel(gradeSection, gradeLevel) {
   const fromField = String(gradeLevel || "").trim();
   if (/^Grade\s+\d+/i.test(fromField)) {
@@ -181,7 +62,99 @@ function gradeSortKey(grade) {
   return Number.isFinite(n) ? n : 999;
 }
 
-/** Nest section groups under grade folders. */
+function isApprovedLocked(learner) {
+  return learner?.displayStatus === ARAL_APPROVAL_STATUS.APPROVED;
+}
+
+function isPendingPrincipal(status) {
+  return (
+    !status ||
+    status === ARAL_APPROVAL_STATUS.SUGGESTED ||
+    status === ARAL_APPROVAL_STATUS.SUBMITTED ||
+    String(status).toLowerCase().includes("submitted") ||
+    String(status).toLowerCase().includes("suggested")
+  );
+}
+
+function buildApprovalSectionGroups(aralRows = []) {
+  const bySection = new Map();
+
+  for (const row of aralRows) {
+    const sectionKey = String(row.gradeSection || "Unassigned section").trim();
+    if (!bySection.has(sectionKey)) {
+      bySection.set(sectionKey, new Map());
+    }
+    const learners = bySection.get(sectionKey);
+    const studentId = row.studentId || row.id;
+    const existing = learners.get(studentId);
+    const status = row.aralApprovalStatus || ARAL_APPROVAL_STATUS.SUGGESTED;
+
+    if (!existing) {
+      learners.set(studentId, {
+        studentId,
+        name: row.name,
+        studentNumber: row.studentNumber,
+        gradeSection: sectionKey,
+        gradeLevel: row.gradeLevel || null,
+        schoolYear: row.schoolYear,
+        quarter: row.quarter,
+        classId: row.classId || null,
+        subjects: row.subject ? [row.subject] : [],
+        identifiedSubjects: row.subject
+          ? [{ subject: row.subject, grade: row.classSubjectGrade ?? null }]
+          : [],
+        statuses: [status],
+        note: row.aralApprovalNote || "",
+        sourceRows: [row],
+        selectKey: `${sectionKey}::${studentId}`,
+      });
+      continue;
+    }
+
+    if (row.subject && !existing.subjects.includes(row.subject)) {
+      existing.subjects.push(row.subject);
+      existing.identifiedSubjects.push({
+        subject: row.subject,
+        grade: row.classSubjectGrade ?? null,
+      });
+    }
+    existing.statuses.push(status);
+    existing.sourceRows.push(row);
+    if (row.aralApprovalNote && !existing.note) {
+      existing.note = row.aralApprovalNote;
+    }
+  }
+
+  return [...bySection.entries()]
+    .map(([gradeSection, learnerMap]) => {
+      const learners = [...learnerMap.values()]
+        .map((learner) => {
+          const displayStatus = learner.statuses.includes(ARAL_APPROVAL_STATUS.RETURNED)
+            ? ARAL_APPROVAL_STATUS.RETURNED
+            : learner.statuses.includes(ARAL_APPROVAL_STATUS.SUBMITTED)
+              ? ARAL_APPROVAL_STATUS.SUBMITTED
+              : learner.statuses.includes(ARAL_APPROVAL_STATUS.APPROVED)
+                ? ARAL_APPROVAL_STATUS.APPROVED
+                : ARAL_APPROVAL_STATUS.SUGGESTED;
+          return { ...learner, displayStatus };
+        })
+        .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+
+      const pending = learners.filter((l) => isPendingPrincipal(l.displayStatus)).length;
+      const sample = learners[0];
+      const grade = parseGradeLabel(gradeSection, sample?.gradeLevel);
+      return {
+        gradeSection,
+        grade,
+        sectionName: formatFullSectionName(grade, sectionDisplayName(gradeSection, grade)),
+        learners,
+        count: learners.length,
+        pending,
+      };
+    })
+    .sort((a, b) => String(a.gradeSection).localeCompare(String(b.gradeSection)));
+}
+
 function buildGradeFolders(sectionGroups = []) {
   const byGrade = new Map();
 
@@ -206,106 +179,6 @@ function buildGradeFolders(sectionGroups = []) {
   );
 }
 
-/**
- * Group ARAL rows by gradeSection; dedupe same student (Eng/Fil → subject chips).
- * Keep sourceRows so Approve/Return still hits each class recommendation.
- */
-function buildApprovalSectionGroups(aralRows = []) {
-  const bySection = new Map();
-
-  for (const row of aralRows) {
-    const sectionKey = String(row.gradeSection || "Unassigned section").trim();
-    if (!bySection.has(sectionKey)) {
-      bySection.set(sectionKey, new Map());
-    }
-    const learners = bySection.get(sectionKey);
-    const studentId = row.studentId || row.id;
-    const existing = learners.get(studentId);
-    const status = row.aralApprovalStatus || ARAL_APPROVAL_STATUS.SUGGESTED;
-
-    const identified = buildIdentifiedEntry(row);
-
-    if (!existing) {
-      learners.set(studentId, {
-        studentId,
-        name: row.name,
-        studentNumber: row.studentNumber,
-        gradeSection: sectionKey,
-        gradeLevel: row.gradeLevel || null,
-        schoolYear: row.schoolYear,
-        quarter: row.quarter,
-        classId: row.classId || null,
-        subjects: row.subject ? [row.subject] : [],
-        identifiedSubjects: identified ? [identified] : [],
-        statuses: [status],
-        note: row.aralApprovalNote || "",
-        sourceRows: [row],
-        /** Stable multi-select key for the deduped learner card */
-        selectKey: `${sectionKey}::${studentId}`,
-      });
-      continue;
-    }
-
-    if (row.subject && !existing.subjects.includes(row.subject)) {
-      existing.subjects.push(row.subject);
-    }
-    existing.identifiedSubjects = upsertIdentifiedSubject(
-      existing.identifiedSubjects,
-      identified
-    );
-    existing.statuses.push(status);
-    existing.sourceRows.push(row);
-    if (!existing.classId && row.classId) existing.classId = row.classId;
-    if (row.aralApprovalNote && !existing.note) {
-      existing.note = row.aralApprovalNote;
-    }
-  }
-
-  return [...bySection.entries()]
-    .map(([gradeSection, learnerMap]) => {
-      const learners = [...learnerMap.values()]
-        .map((learner) => {
-          // Worst / most actionable status for display
-          const displayStatus = learner.statuses.includes(
-            ARAL_APPROVAL_STATUS.RETURNED
-          )
-            ? ARAL_APPROVAL_STATUS.RETURNED
-            : learner.statuses.includes(ARAL_APPROVAL_STATUS.SUBMITTED)
-              ? ARAL_APPROVAL_STATUS.SUBMITTED
-              : learner.statuses.includes(ARAL_APPROVAL_STATUS.SUGGESTED)
-                ? ARAL_APPROVAL_STATUS.SUGGESTED
-                : learner.statuses.includes(ARAL_APPROVAL_STATUS.APPROVED)
-                  ? ARAL_APPROVAL_STATUS.APPROVED
-                  : ARAL_APPROVAL_STATUS.SUGGESTED;
-          const reasonLine = identificationReasonLine(
-            learner.identifiedSubjects,
-            learner.quarter
-          );
-          return { ...learner, displayStatus, reasonLine };
-        })
-        .sort((a, b) => String(a.name).localeCompare(String(b.name)));
-
-      const pending = learners.filter((l) => isPendingPrincipal(l.displayStatus)).length;
-      const sample = learners[0];
-      const grade = parseGradeLabel(gradeSection, sample?.gradeLevel);
-      return {
-        gradeSection,
-        grade,
-        sectionName: formatFullSectionName(grade, sectionDisplayName(gradeSection, grade)),
-        learners,
-        count: learners.length,
-        pending,
-      };
-    })
-    .sort((a, b) =>
-      String(a.gradeSection).localeCompare(String(b.gradeSection))
-    );
-}
-
-/**
- * Admin/HT panel: approve or return ARAL recommendations.
- * OneData-style grade folders → sections → learners.
- */
 export default function AdminAralApprovalPanel({
   students = [],
   onChanged,
@@ -351,11 +224,9 @@ export default function AdminAralApprovalPanel({
   const [selected, setSelected] = useState(() => new Set());
   const [busyKey, setBusyKey] = useState("");
   const [batchBusy, setBatchBusy] = useState(false);
-  const [noteDrafts, setNoteDrafts] = useState({});
-  const [error, setError] = useState("");
-  const [toast, setToast] = useState("");
-  const [reviewKey, setReviewKey] = useState(null);
-  const [decisions, setDecisions] = useState({});
+  const [reviewingLearner, setReviewingLearner] = useState(null);
+  const [reviewNote, setReviewNote] = useState("");
+  const { showToast } = useAppToast();
 
   const activeFolder = useMemo(
     () => gradeFolders.find((f) => f.grade === selectedGrade) ?? null,
@@ -375,15 +246,6 @@ export default function AdminAralApprovalPanel({
     setOpenSections({});
   }, [selectedGrade]);
 
-  useEffect(() => {
-    if (
-      selectedGrade &&
-      !gradeFolders.some((folder) => folder.grade === selectedGrade)
-    ) {
-      setSelectedGrade(null);
-    }
-  }, [gradeFolders, selectedGrade]);
-
   const totalPages = Math.max(
     1,
     Math.ceil(visibleSections.length / SECTIONS_PAGE_SIZE) || 1
@@ -393,31 +255,6 @@ export default function AdminAralApprovalPanel({
     const start = (safePage - 1) * SECTIONS_PAGE_SIZE;
     return visibleSections.slice(start, start + SECTIONS_PAGE_SIZE);
   }, [visibleSections, safePage]);
-
-  const sectionStart =
-    visibleSections.length === 0
-      ? 0
-      : (safePage - 1) * SECTIONS_PAGE_SIZE + 1;
-  const sectionEnd = Math.min(
-    safePage * SECTIONS_PAGE_SIZE,
-    visibleSections.length
-  );
-
-  const uniqueLearnerCount = useMemo(() => {
-    const ids = new Set();
-    for (const group of visibleGroups) {
-      for (const learner of group.learners) ids.add(learner.studentId);
-    }
-    return ids.size;
-  }, [visibleGroups]);
-
-  function openGrade(grade) {
-    setSelectedGrade(grade);
-  }
-
-  function backToGrades() {
-    setSelectedGrade(null);
-  }
 
   function toggleSection(key) {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -450,14 +287,11 @@ export default function AdminAralApprovalPanel({
     });
   }
 
-  async function runReviewLearner(learner, status) {
-    if (isApprovedLocked(learner)) return;
+  async function handleSingleApprove(learner) {
+    if (!learner) return;
     setBusyKey(learner.selectKey);
-    setError("");
-    setToast("");
     const session = await getAdminSession();
     const profileId = session.data?.id ?? null;
-    const note = noteDrafts[learner.selectKey] || learner.note || null;
 
     let failed = null;
     for (const row of learner.sourceRows) {
@@ -466,8 +300,8 @@ export default function AdminAralApprovalPanel({
         classId: row.classId,
         schoolYear: row.schoolYear,
         quarter: row.quarterNumber ?? row.quarter,
-        status,
-        reviewNote: note,
+        status: ARAL_APPROVAL_DB.APPROVED,
+        reviewNote: null,
         profileId,
       });
       if (result.error) {
@@ -478,265 +312,234 @@ export default function AdminAralApprovalPanel({
 
     setBusyKey("");
     if (failed) {
-      setError(failed);
-      onChanged?.();
-      return false;
+      showToast({
+        title: "Review Error",
+        message: failed,
+        tone: "error",
+      });
+      return;
     }
-    setToast(
-      status === ARAL_APPROVAL_DB.APPROVED
-        ? `Approved ARAL recommendation for ${learner.name}.`
-        : `Returned ARAL recommendation for ${learner.name}.`
-    );
-    onChanged?.();
-    return true;
-  }
 
-  const reviewLearner = useMemo(() => {
-    if (!reviewKey) return null;
-    for (const group of sectionGroups) {
-      const found = group.learners.find((l) => l.selectKey === reviewKey);
-      if (found) return found;
-    }
-    return null;
-  }, [reviewKey, sectionGroups]);
-
-  function selectAllInSection(group) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      for (const learner of group.learners) {
-        if (!isApprovedLocked(learner)) next.add(learner.selectKey);
-      }
-      return next;
+    showToast({
+      title: "Referral Approved",
+      message: `${learner.name} is now approved for reading assessment.`,
+      tone: "success",
     });
+    setReviewingLearner(null);
+    onChanged?.();
   }
 
-  function setDecision(selectKey, status) {
-    setDecisions((prev) => ({ ...prev, [selectKey]: status }));
-  }
+  async function handleSingleReturn(learner, noteText) {
+    if (!learner) return;
+    setBusyKey(learner.selectKey);
+    const session = await getAdminSession();
+    const profileId = session.data?.id ?? null;
 
-  /**
-   * Apply mixed per-learner decisions in one section. Returns require a
-   * short note (draft or existing); the apply aborts listing offenders.
-   */
-  async function applyDecisions(group) {
-    const targets = group.learners.filter(
-      (l) => !isApprovedLocked(l) && selected.has(l.selectKey)
-    );
-    if (!targets.length) {
-      setError("Select at least one learner in this section.");
-      return;
-    }
-    const undecided = targets.filter((l) => !decisions[l.selectKey]);
-    if (undecided.length) {
-      setError(
-        `Choose Approve or Return for: ${undecided.map((l) => l.name).join(", ")}.`
-      );
-      return;
-    }
-    const missingNotes = targets.filter(
-      (l) =>
-        decisions[l.selectKey] === ARAL_APPROVAL_DB.RETURNED &&
-        !String(noteDrafts[l.selectKey] ?? l.note ?? "").trim()
-    );
-    if (missingNotes.length) {
-      setError(
-        `A short note is required to return: ${missingNotes.map((l) => l.name).join(", ")}.`
-      );
-      return;
-    }
-    setBatchBusy(true);
-    setError("");
-    setToast("");
-    let approved = 0;
-    let returned = 0;
     let failed = null;
-    for (const learner of targets) {
-      const ok = await runReviewLearner(learner, decisions[learner.selectKey]);
-      if (!ok) {
-        failed = learner.name;
+    for (const row of learner.sourceRows) {
+      const result = await reviewAralRecommendation({
+        studentId: row.studentId,
+        classId: row.classId,
+        schoolYear: row.schoolYear,
+        quarter: row.quarterNumber ?? row.quarter,
+        status: ARAL_APPROVAL_DB.RETURNED,
+        reviewNote: noteText || null,
+        profileId,
+      });
+      if (result.error) {
+        failed = result.error.message;
         break;
       }
-      if (decisions[learner.selectKey] === ARAL_APPROVAL_DB.APPROVED) {
-        approved += 1;
-      } else {
-        returned += 1;
+    }
+
+    setBusyKey("");
+    if (failed) {
+      showToast({
+        title: "Review Error",
+        message: failed,
+        tone: "error",
+      });
+      return;
+    }
+
+    showToast({
+      title: "Returned to Teacher",
+      message: `${learner.name}'s referral has been returned to the teacher.`,
+      tone: "info",
+    });
+    setReviewingLearner(null);
+    onChanged?.();
+  }
+
+  // Bulk Approve Selected Learners
+  async function handleBulkApprove() {
+    if (selected.size === 0) return;
+    setBatchBusy(true);
+
+    const allLearners = [];
+    for (const group of visibleGroups) {
+      for (const l of group.learners) {
+        if (selected.has(l.selectKey)) allLearners.push(l);
       }
     }
+
+    const session = await getAdminSession();
+    const profileId = session.data?.id ?? null;
+    let approvedCount = 0;
+    let failed = null;
+
+    for (const learner of allLearners) {
+      for (const row of learner.sourceRows) {
+        const result = await reviewAralRecommendation({
+          studentId: row.studentId,
+          classId: row.classId,
+          schoolYear: row.schoolYear,
+          quarter: row.quarterNumber ?? row.quarter,
+          status: ARAL_APPROVAL_DB.APPROVED,
+          reviewNote: null,
+          profileId,
+        });
+        if (result.error) {
+          failed = result.error.message;
+          break;
+        }
+      }
+      if (failed) break;
+      approvedCount++;
+    }
+
     setBatchBusy(false);
-    if (failed) return;
-    setToast(
-      `Decisions applied in ${group.gradeSection}: ${approved} approved, ${returned} returned.`
-    );
-    setSelected((prev) => {
-      const next = new Set(prev);
-      for (const l of targets) next.delete(l.selectKey);
-      return next;
+    if (failed) {
+      showToast({
+        title: "Bulk Approval Error",
+        message: failed,
+        tone: "error",
+      });
+      onChanged?.();
+      return;
+    }
+
+    showToast({
+      title: "Referrals Approved",
+      message: `${approvedCount} learner${approvedCount === 1 ? "" : "s"} approved for assessment.`,
+      tone: "success",
     });
-    setDecisions((prev) => {
-      const next = { ...prev };
-      for (const l of targets) delete next[l.selectKey];
-      return next;
-    });
+    setSelected(new Set());
     onChanged?.();
   }
 
   if (!sectionGroups.length) {
     return (
-      <section className="rounded-xl border border-slate-100 bg-white px-3 py-3 text-[12px] text-slate-500 shadow-[0_6px_16px_rgba(15,23,42,0.04)] sm:px-4">
-        No ARAL-recommended learners to approve yet. Recommendations appear
-        after English / Filipino class grades flag learners for ARAL support.
-      </section>
-    );
-  }
-
-  if (!visibleGroups.length) {
-    return (
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)] dark:border-white/5 dark:bg-[var(--card)] dark:shadow-none">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2.5 sm:px-4 dark:border-white/5">
-          <div>
-            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-              Approve ARAL Recommendations
-            </h2>
-          </div>
-          <div className="flex items-center gap-1.5">
-            {["pending", "all"].map((filter) => (
-              <button
-                key={filter}
-                type="button"
-                onClick={() => setStatusFilter(filter)}
-                aria-pressed={statusFilter === filter}
-                className={cn(
-                  "h-7 cursor-pointer rounded-full px-2.5 text-[11px] font-semibold transition-colors",
-                  statusFilter === filter
-                    ? "bg-cnhs-green-dark text-white"
-                    : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
-                )}
-              >
-                {filter === "pending" ? "Needs review" : "All"}
-              </button>
-            ))}
-          </div>
-        </div>
-        <p className="px-3 py-8 text-center text-[12px] text-slate-500 sm:px-4">
-          No referrals are waiting for review right now.
-        </p>
+      <section className="rounded-xl border border-slate-200 bg-white p-6 text-center text-xs text-slate-500 shadow-xs">
+        No ARAL reading referrals found. Referrals appear when English or Filipino teachers submit reading review candidates.
       </section>
     );
   }
 
   return (
-    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)] dark:border-white/5 dark:bg-[var(--card)] dark:shadow-none">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2.5 sm:px-4 dark:border-white/5">
+    <section className="relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs dark:border-white/5 dark:bg-[var(--card)]">
+      {/* Header Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:px-5 dark:border-white/5">
         <div>
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-            Approve ARAL Recommendations
+          <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+            Review Reading Referrals
           </h2>
+          <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+            Review teacher reading endorsements for English and Filipino learners.
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5">
-            {["pending", "all"].map((filter) => (
-              <button
-                key={filter}
-                type="button"
-                onClick={() => setStatusFilter(filter)}
-                aria-pressed={statusFilter === filter}
-                className={cn(
-                  "h-7 cursor-pointer rounded-full px-2.5 text-[11px] font-semibold transition-colors",
-                  statusFilter === filter
-                    ? "bg-cnhs-green-dark text-white"
-                    : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
-                )}
-              >
-                {filter === "pending" ? "Needs review" : "All"}
-              </button>
-            ))}
-          </div>
-          <span className="inline-flex rounded-full bg-cnhs-green-soft px-2.5 py-0.5 text-[10px] font-semibold text-cnhs-green-dark">
-            {uniqueLearnerCount} learner
-            {uniqueLearnerCount === 1 ? "" : "s"} · {visibleGroups.length}{" "}
-            section{visibleGroups.length === 1 ? "" : "s"} · {gradeFolders.length}{" "}
-            grade{gradeFolders.length === 1 ? "" : "s"}
-          </span>
+        <div className="flex items-center gap-1.5">
+          {["pending", "all"].map((filter) => (
+            <button
+              key={filter}
+              type="button"
+              onClick={() => setStatusFilter(filter)}
+              aria-pressed={statusFilter === filter}
+              className={cn(
+                "h-8 cursor-pointer rounded-full px-3 text-xs font-semibold transition-all",
+                statusFilter === filter
+                  ? "bg-cnhs-green-dark text-white shadow-xs"
+                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              )}
+            >
+              {filter === "pending" ? "Waiting for Review" : "All Referrals"}
+            </button>
+          ))}
         </div>
       </div>
 
-      {(error || toast) && (
-        <div
-          className={cn(
-            "border-b px-3 py-2 text-[12px] sm:px-4",
-            error
-              ? "border-red-100 bg-red-50 text-red-600"
-              : "border-emerald-100 bg-emerald-50 text-emerald-800"
-          )}
-        >
-          {error || toast}
+      {/* Bulk Action Bar (When learners are selected) */}
+      {selected.size > 0 ? (
+        <div className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-cnhs-green/30 bg-emerald-50/90 px-4 py-2.5 backdrop-blur-sm dark:bg-emerald-950/80">
+          <div className="flex items-center gap-2 text-xs font-semibold text-cnhs-green-dark dark:text-emerald-300">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-cnhs-green-dark text-[10px] text-white">
+              {selected.size}
+            </span>
+            <span>learner{selected.size === 1 ? "" : "s"} selected</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelected(new Set())}
+              className="inline-flex h-8 cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              disabled={batchBusy}
+              onClick={handleBulkApprove}
+              className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3.5 text-xs font-bold text-white shadow-xs transition hover:bg-[#246f54] active:scale-95 disabled:opacity-50"
+            >
+              {batchBusy ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <CheckCircle2 size={13} />
+              )}
+              Approve Selected ({selected.size})
+            </button>
+          </div>
         </div>
-      )}
+      ) : null}
 
-      {!selectedGrade ? (
-        <div className="p-3 sm:p-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {/* Main Content: Grade folders or Section Accordions */}
+      {selectedGrade === null ? (
+        <div className="p-4 sm:p-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {gradeFolders.map((folder) => {
-              const attention = folder.pending > 0;
+              const hasPending = folder.pending > 0;
               return (
                 <button
                   key={folder.grade}
                   type="button"
-                  onClick={() => openGrade(folder.grade)}
-                  className={cn(
-                    "group flex cursor-pointer flex-col rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-[0_6px_16px_rgba(15,23,42,0.04)] transition-colors hover:border-cnhs-green/40 hover:bg-cnhs-green-soft/20 dark:border-white/5 dark:bg-[var(--card)] dark:shadow-none dark:hover:border-cnhs-green/25 dark:hover:bg-white/[0.04]"
-                  )}
+                  onClick={() => setSelectedGrade(folder.grade)}
+                  className="group relative flex cursor-pointer flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 text-left shadow-xs transition-all hover:border-cnhs-green/50 hover:bg-cnhs-green-soft/10 active:scale-[0.99] dark:border-white/5 dark:bg-[var(--card)]"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cnhs-green-soft text-cnhs-green-dark">
-                      <Folder size={18} strokeWidth={1.75} />
-                    </span>
-                    <span
-                      className={cn(
-                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1",
-                        attention
-                          ? "bg-cnhs-orange-soft text-cnhs-orange ring-cnhs-orange/30 dark:bg-cnhs-orange/15 dark:text-cnhs-orange dark:ring-0"
-                          : "bg-cnhs-green-soft text-cnhs-green-dark ring-cnhs-green/25 dark:bg-cnhs-green/15 dark:text-cnhs-green dark:ring-0"
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cnhs-green-soft text-cnhs-green-dark">
+                        <Folder size={18} />
+                      </div>
+                      {hasPending ? (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                          {folder.pending} Waiting
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                          All Clear
+                        </span>
                       )}
-                    >
-                      <span
-                        className={cn(
-                          "h-1.5 w-1.5 rounded-full",
-                          attention ? "bg-cnhs-orange" : "bg-cnhs-green"
-                        )}
-                      />
-                      {attention ? "Attention" : "Clear"}
-                    </span>
+                    </div>
+                    <p className="mt-3 text-sm font-bold text-slate-900 dark:text-slate-100">
+                      {folder.grade}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {folder.count} learner{folder.count === 1 ? "" : "s"} · {folder.sections.length} section{folder.sections.length === 1 ? "" : "s"}
+                    </p>
                   </div>
-
-                  <p className="mt-4 text-[13px] font-semibold tracking-[-0.01em] text-slate-900 dark:text-slate-100">
-                    {folder.grade}
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-                    {folder.count} learner{folder.count === 1 ? "" : "s"} ·{" "}
-                    {folder.sections.length} section
-                    {folder.sections.length === 1 ? "" : "s"}
-                  </p>
-
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {folder.pending > 0 ? (
-                      <span className="rounded-full bg-cnhs-orange-soft px-2 py-0.5 text-[10px] font-medium text-cnhs-orange ring-1 ring-cnhs-orange/30 dark:bg-cnhs-orange/15 dark:text-cnhs-orange dark:ring-0">
-                        {folder.pending} pending Principal review
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-200 dark:bg-white/5 dark:text-slate-400 dark:ring-0">
-                        None pending
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between border-t border-slate-50 pt-3 dark:border-white/5">
-                    <span className="text-[11px] text-slate-400">
-                      Open sections
-                    </span>
-                    <span className="text-[11px] font-semibold text-cnhs-green-dark opacity-0 transition-opacity group-hover:opacity-100">
-                      Open →
-                    </span>
+                  <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-2.5 text-xs font-semibold text-cnhs-green-dark dark:border-white/5">
+                    <span>Open Sections</span>
+                    <span className="transition-transform group-hover:translate-x-0.5">→</span>
                   </div>
                 </button>
               );
@@ -744,372 +547,162 @@ export default function AdminAralApprovalPanel({
           </div>
         </div>
       ) : (
-        <>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-3 py-2.5 sm:px-4 dark:border-white/5">
+        <div className="space-y-4 p-4 sm:p-5">
+          {/* Breadcrumb Back */}
+          <div className="flex items-center justify-between">
             <button
               type="button"
-              onClick={backToGrades}
-              className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/5 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+              onClick={() => setSelectedGrade(null)}
+              className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
             >
               <ChevronLeft size={13} />
-              All grades
+              All Grades
             </button>
-            <div className="min-w-0 text-right">
-              <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-100">
-                {selectedGrade}
-              </p>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                {activeFolder?.count ?? 0} learner
-                {(activeFolder?.count ?? 0) === 1 ? "" : "s"} ·{" "}
-                {visibleSections.length} section
-                {visibleSections.length === 1 ? "" : "s"}
-                {activeFolder?.pending
-                  ? ` · ${activeFolder.pending} pending Principal review`
-                  : " · none pending"}
-              </p>
-            </div>
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+              {selectedGrade} ({activeFolder?.count ?? 0} learners)
+            </span>
           </div>
 
-          <div className="divide-y divide-slate-100">
+          {/* Section Accordions */}
+          <div className="space-y-3">
             {pagedSections.map((group) => {
               const open = Boolean(openSections[group.gradeSection]);
-              const pendingLearners = group.learners.filter(
-                (l) => !isApprovedLocked(l)
-              );
-              const sectionKeys = pendingLearners.map((l) => l.selectKey);
-              const selectedInSection = sectionKeys.filter((k) =>
-                selected.has(k)
-              ).length;
+              const sectionKeys = group.learners
+                .filter((l) => !isApprovedLocked(l))
+                .map((l) => l.selectKey);
               const allSectionSelected =
                 sectionKeys.length > 0 &&
                 sectionKeys.every((k) => selected.has(k));
 
               return (
-                <div key={group.gradeSection}>
+                <div
+                  key={group.gradeSection}
+                  className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs dark:border-white/5 dark:bg-[var(--card)]"
+                >
                   <button
                     type="button"
                     onClick={() => toggleSection(group.gradeSection)}
-                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-slate-50/80 dark:hover:bg-white/[0.04] sm:px-4"
+                    className="flex w-full cursor-pointer items-center justify-between gap-3 bg-slate-50/60 p-3.5 text-left transition hover:bg-slate-100/60 dark:bg-white/[0.02]"
                   >
-                    <ChevronDown
-                      size={16}
-                      className={cn(
-                        "shrink-0 text-slate-400 transition-transform",
-                        open ? "rotate-180" : ""
-                      )}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-100">
-                        {group.sectionName}
-                      </p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                        {group.count} learner{group.count === 1 ? "" : "s"}
-                        {group.pending > 0
-                          ? ` · ${group.pending} pending Principal review`
-                          : " · none pending"}
-                      </p>
+                    <div className="flex items-center gap-2.5">
+                      <ChevronDown
+                        size={16}
+                        className={cn(
+                          "text-slate-400 transition-transform",
+                          open ? "rotate-180" : ""
+                        )}
+                      />
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                          {group.sectionName}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          {group.count} learner{group.count === 1 ? "" : "s"}
+                          {group.pending > 0
+                            ? ` · ${group.pending} waiting for review`
+                            : " · all reviewed"}
+                        </p>
+                      </div>
                     </div>
                     {group.pending > 0 ? (
-                      <span className="inline-flex rounded-full bg-cnhs-orange-soft px-2 py-0.5 text-[10px] font-semibold text-cnhs-orange ring-1 ring-cnhs-orange/30 dark:bg-cnhs-orange/15 dark:text-cnhs-orange dark:ring-0">
-                        {group.pending} pending
+                      <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">
+                        {group.pending} Waiting
                       </span>
                     ) : (
-                      <span className="inline-flex rounded-full bg-cnhs-green-soft px-2 py-0.5 text-[10px] font-semibold text-cnhs-green-dark ring-1 ring-cnhs-green/25 dark:bg-cnhs-green/15 dark:text-cnhs-green dark:ring-0">
-                        Clear
+                      <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+                        Approved
                       </span>
                     )}
                   </button>
 
                   {open ? (
-                    <div className="border-t border-slate-50 bg-slate-50/40 px-3 py-3 sm:px-4 dark:border-white/5 dark:bg-white/[0.03]">
-                      <div className="mb-3 flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => selectAllInSection(group)}
-                          disabled={batchBusy || selectedInSection === sectionKeys.length}
-                          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
-                        >
-                          Select All
-                          {selectedInSection > 0 ? ` (${selectedInSection})` : ""}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => applyDecisions(group)}
-                          disabled={batchBusy || selectedInSection === 0}
-                          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white hover:bg-[#246f54] disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {batchBusy ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
-                            <CheckCircle2 size={12} />
-                          )}
-                          Apply Decisions ({selectedInSection})
-                        </button>
-                      </div>
-
-                      <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white dark:border-white/5 dark:bg-[var(--card)]">
-                        <table className="min-w-[780px] w-full border-collapse text-left">
-                          <thead className="bg-slate-50/80 dark:bg-white/[0.03]">
+                    <div className="border-t border-slate-100 dark:border-white/5">
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[700px] border-collapse text-left text-xs">
+                          <thead className="border-b border-slate-100 bg-slate-50/80 font-bold uppercase tracking-wider text-slate-500 dark:border-white/5 dark:bg-white/[0.02]">
                             <tr>
-                              <th className="px-4 py-3">
+                              <th className="w-10 px-4 py-3">
                                 <input
                                   type="checkbox"
                                   checked={allSectionSelected}
                                   disabled={sectionKeys.length === 0}
                                   onChange={() => toggleSectionAll(group)}
-                                  aria-label={`Select all pending in ${group.gradeSection}`}
-                                  className="disabled:cursor-not-allowed disabled:opacity-40"
+                                  className="rounded border-slate-300 text-cnhs-green focus:ring-cnhs-green"
                                 />
                               </th>
-                              {[
-                                "Learner",
-                                "Identified in",
-                                "Approval",
-                                "Principal note",
-                                "Decision",
-                                "Details",
-                              ].map((h) => (
-                                <th
-                                  key={h}
-                                  className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 last:text-right"
-                                >
-                                  {h}
-                                </th>
-                              ))}
+                              <th className="px-4 py-3">Learner</th>
+                              <th className="px-4 py-3">Grade & Section</th>
+                              <th className="px-4 py-3">Reading Concern</th>
+                              <th className="px-4 py-3">Status</th>
+                              <th className="px-4 py-3 text-right">Action</th>
                             </tr>
                           </thead>
-                          <tbody>
+                          <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                             {group.learners.map((learner) => {
-                              const busy = busyKey === learner.selectKey;
                               const locked = isApprovedLocked(learner);
+                              const isChecked = !locked && selected.has(learner.selectKey);
+                              const concern = formatTeacherReadingConcern(learner);
+
                               return (
                                 <tr
                                   key={learner.selectKey}
-                                  className="border-t border-slate-100 hover:bg-slate-50/60 dark:border-white/5 dark:hover:bg-white/[0.03]"
+                                  className={cn(
+                                    "transition-colors hover:bg-slate-50/70 dark:hover:bg-white/[0.02]",
+                                    isChecked ? "bg-emerald-50/40 dark:bg-emerald-950/20" : ""
+                                  )}
                                 >
                                   <td className="px-4 py-3">
                                     <input
                                       type="checkbox"
-                                      checked={
-                                        !locked && selected.has(learner.selectKey)
-                                      }
+                                      checked={isChecked}
                                       disabled={locked}
-                                      onChange={() =>
-                                        toggleOne(learner.selectKey, locked)
-                                      }
-                                      aria-label={`Select ${learner.name}`}
-                                      className="disabled:cursor-not-allowed disabled:opacity-40"
+                                      onChange={() => toggleOne(learner.selectKey, locked)}
+                                      className="rounded border-slate-300 text-cnhs-green focus:ring-cnhs-green disabled:opacity-30"
                                     />
                                   </td>
                                   <td className="px-4 py-3">
-                                    {typeof onViewStudent === "function" ? (
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          onViewStudent(
-                                            learner.sourceRows?.[0] || learner
-                                          )
-                                        }
-                                        className="cursor-pointer text-left transition hover:text-cnhs-green-dark"
-                                      >
-                                        <p className="text-[13px] font-semibold text-slate-800 hover:text-cnhs-green-dark dark:text-slate-100 dark:hover:text-cnhs-green">
-                                          {learner.name}
-                                        </p>
-                                        <p className="text-[12px] text-slate-400">
-                                          {learner.studentNumber}
-                                          {learner.quarter
-                                            ? ` · ${learner.quarter}`
-                                            : ""}
-                                        </p>
-                                      </button>
-                                    ) : (
-                                      <>
-                                        <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-100">
-                                          {learner.name}
-                                        </p>
-                                        <p className="text-[12px] text-slate-400">
-                                          {learner.studentNumber}
-                                          {learner.quarter
-                                            ? ` · ${learner.quarter}`
-                                            : ""}
-                                        </p>
-                                      </>
-                                    )}
+                                    <p className="font-semibold text-slate-900 dark:text-slate-100">
+                                      {learner.name}
+                                    </p>
+                                    <p className="text-[11px] text-slate-400">
+                                      LRN: {learner.studentNumber || learner.lrn || "—"}
+                                    </p>
+                                  </td>
+                                  <td className="px-4 py-3 font-medium text-slate-700 dark:text-slate-300">
+                                    {group.sectionName}
                                   </td>
                                   <td className="px-4 py-3">
-                                    <div className="flex flex-col gap-1">
-                                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                        {(learner.identifiedSubjects?.length
-                                          ? learner.identifiedSubjects
-                                          : learner.subjects.map((subject) => ({
-                                              subject,
-                                              grade: null,
-                                            }))
-                                        ).map((entry) => {
-                                          const failing =
-                                            entry.grade !== null &&
-                                            entry.grade < ARAL_GRADE_THRESHOLD;
-                                          return (
-                                            <span
-                                              key={entry.subject}
-                                              className="inline-flex items-center gap-1.5"
-                                            >
-                                              <span className="inline-flex rounded-full bg-sky-50 px-2.5 py-0.5 text-[11px] font-semibold text-sky-700 dark:bg-sky-500/15 dark:text-sky-300 dark:ring-0">
-                                                {entry.subject}
-                                              </span>
-                                              <span
-                                                className={cn(
-                                                  "text-[12px] font-semibold tabular-nums",
-                                                  entry.grade === null
-                                                    ? "text-slate-400 dark:text-slate-500"
-                                                    : failing
-                                                      ? "text-cnhs-orange"
-                                                      : "text-slate-700 dark:text-slate-200"
-                                                )}
-                                              >
-                                                {formatGradeDisplay(entry.grade)}
-                                              </span>
-                                            </span>
-                                          );
-                                        })}
-                                      </div>
-                                      {learner.reasonLine ? (
-                                        <p className="text-[12px] text-slate-400">
-                                          {learner.reasonLine}
-                                        </p>
-                                      ) : null}
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-3">
-                                    <Pill
-                                      value={aralApprovalDisplayLabel(
-                                        learner.displayStatus
-                                      )}
-                                      styles={{
-                                        ...aralApprovalStyles,
-                                        [aralApprovalDisplayLabel(
-                                          learner.displayStatus
-                                        )]:
-                                          aralApprovalStyles[
-                                            learner.displayStatus
-                                          ],
-                                      }}
-                                    />
+                                    <span className="inline-flex rounded-lg bg-sky-50 px-2.5 py-1 text-[11px] font-semibold text-sky-800 dark:bg-sky-950/40 dark:text-sky-300">
+                                      {concern}
+                                    </span>
                                   </td>
                                   <td className="px-4 py-3">
                                     {locked ? (
-                                      (() => {
-                                        const noteText = String(
-                                          noteDrafts[learner.selectKey] ??
-                                            learner.note ??
-                                            ""
-                                        ).trim();
-                                        return noteText ? (
-                                          <p
-                                            className="max-w-[12rem] text-[12px] leading-snug text-slate-600 dark:text-slate-300"
-                                            title={noteText}
-                                          >
-                                            {noteText}
-                                          </p>
-                                        ) : (
-                                          <p className="text-[12px] text-slate-400">
-                                            No note
-                                          </p>
-                                        );
-                                      })()
-                                    ) : (
-                                      <input
-                                        value={
-                                          noteDrafts[learner.selectKey] ??
-                                          learner.note ??
-                                          ""
-                                        }
-                                        onChange={(e) =>
-                                          setNoteDrafts((prev) => ({
-                                            ...prev,
-                                            [learner.selectKey]: e.target.value,
-                                          }))
-                                        }
-                                        placeholder="Optional return / review note"
-                                        className="h-8 w-48 rounded-lg border border-slate-200 bg-white px-3 text-[12px] text-slate-700 outline-none placeholder:text-slate-400 focus:border-cnhs-green dark:border-white/5 dark:bg-white/[0.03] dark:text-slate-200 dark:placeholder:text-slate-500"
-                                      />
-                                    )}
-                                  </td>
-                                  <td className="px-4 py-3">
-                                    {locked ? (
-                                      <span className="text-[12px] font-medium text-slate-400">
-                                        Reviewed
+                                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                                        <CheckCircle2 size={11} />
+                                        Approved
+                                      </span>
+                                    ) : learner.displayStatus === ARAL_APPROVAL_STATUS.RETURNED ? (
+                                      <span className="inline-flex rounded-full bg-orange-50 px-2.5 py-0.5 text-[11px] font-semibold text-orange-700 ring-1 ring-orange-200">
+                                        Returned
                                       </span>
                                     ) : (
-                                      <div
-                                        role="group"
-                                        aria-label={`Decision for ${learner.name}`}
-                                        className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-0.5 dark:border-white/10 dark:bg-white/5"
-                                      >
-                                        <button
-                                          type="button"
-                                          disabled={busy}
-                                          aria-pressed={
-                                            decisions[learner.selectKey] ===
-                                            ARAL_APPROVAL_DB.APPROVED
-                                          }
-                                          onClick={() =>
-                                            setDecision(
-                                              learner.selectKey,
-                                              ARAL_APPROVAL_DB.APPROVED
-                                            )
-                                          }
-                                          className={cn(
-                                            "h-7 cursor-pointer rounded-full px-2.5 text-[11px] font-semibold transition-colors disabled:opacity-50",
-                                            decisions[learner.selectKey] ===
-                                              ARAL_APPROVAL_DB.APPROVED
-                                              ? "bg-cnhs-green-dark text-white"
-                                              : "text-slate-500 hover:text-cnhs-green-dark"
-                                          )}
-                                        >
-                                          Approve
-                                        </button>
-                                        <button
-                                          type="button"
-                                          disabled={busy}
-                                          aria-pressed={
-                                            decisions[learner.selectKey] ===
-                                            ARAL_APPROVAL_DB.RETURNED
-                                          }
-                                          onClick={() =>
-                                            setDecision(
-                                              learner.selectKey,
-                                              ARAL_APPROVAL_DB.RETURNED
-                                            )
-                                          }
-                                          className={cn(
-                                            "h-7 cursor-pointer rounded-full px-2.5 text-[11px] font-semibold transition-colors disabled:opacity-50",
-                                            decisions[learner.selectKey] ===
-                                              ARAL_APPROVAL_DB.RETURNED
-                                              ? "bg-cnhs-orange text-white"
-                                              : "text-slate-500 hover:text-cnhs-orange"
-                                          )}
-                                        >
-                                          Return
-                                        </button>
-                                      </div>
+                                      <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200">
+                                        Waiting for Review
+                                      </span>
                                     )}
                                   </td>
                                   <td className="px-4 py-3 text-right">
                                     <button
                                       type="button"
-                                      disabled={busy}
                                       onClick={() => {
-                                        if (typeof onViewStudent === "function") {
-                                          onViewStudent(learner.sourceRows?.[0] || learner);
-                                        } else {
-                                          setReviewKey(learner.selectKey);
-                                        }
+                                        setReviewingLearner(learner);
+                                        setReviewNote(learner.note || "");
                                       }}
-                                      className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 active:scale-95 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                                      className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-slate-900 active:scale-95"
                                     >
-                                      <Eye size={13} />
-                                      Details
+                                      <Eye size={12} />
+                                      Review
                                     </button>
                                   </td>
                                 </tr>
@@ -1132,40 +725,22 @@ export default function AdminAralApprovalPanel({
             onPageChange={setPage}
             itemLabel="sections"
           />
-        </>
+        </div>
       )}
-      <AdminAralReviewModal
-        learner={reviewLearner}
-        locked={reviewLearner ? isApprovedLocked(reviewLearner) : false}
-        busy={reviewLearner ? busyKey === reviewLearner.selectKey : false}
-        note={
-          reviewLearner
-            ? (noteDrafts[reviewLearner.selectKey] ?? reviewLearner.note ?? "")
-            : ""
-        }
-        onNoteChange={(value) => {
-          if (!reviewLearner) return;
-          const key = reviewLearner.selectKey;
-          setNoteDrafts((prev) => ({ ...prev, [key]: value }));
-        }}
-        onApprove={async () => {
-          if (!reviewLearner) return;
-          const ok = await runReviewLearner(
-            reviewLearner,
-            ARAL_APPROVAL_DB.APPROVED
-          );
-          if (ok) setReviewKey(null);
-        }}
-        onReturn={async () => {
-          if (!reviewLearner) return;
-          const ok = await runReviewLearner(
-            reviewLearner,
-            ARAL_APPROVAL_DB.RETURNED
-          );
-          if (ok) setReviewKey(null);
-        }}
-        onClose={() => setReviewKey(null)}
-      />
+
+      {/* Centered Review Modal */}
+      {reviewingLearner ? (
+        <AdminAralReviewModal
+          learner={reviewingLearner}
+          locked={isApprovedLocked(reviewingLearner)}
+          busy={busyKey === reviewingLearner.selectKey}
+          note={reviewNote}
+          onNoteChange={setReviewNote}
+          onApprove={() => handleSingleApprove(reviewingLearner)}
+          onReturn={() => handleSingleReturn(reviewingLearner, reviewNote)}
+          onClose={() => setReviewingLearner(null)}
+        />
+      ) : null}
     </section>
   );
 }

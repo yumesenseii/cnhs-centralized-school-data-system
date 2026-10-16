@@ -903,7 +903,7 @@ export default function ClassRemedialsSection({
 
                   const readingDisplay =
                     row.readingLevel ||
-                    (row.philIriScore != null ? `GST ${row.philIriScore}/20` : null) ||
+                    (row.philIriScore != null ? `GST ${row.philIriScore}/40` : null) ||
                     (row.assessmentDisplay && row.assessmentDisplay !== "Not Screened" ? row.assessmentDisplay : null);
 
                   const isReadingSubject = /english|filipino/i.test(row.subject || "");

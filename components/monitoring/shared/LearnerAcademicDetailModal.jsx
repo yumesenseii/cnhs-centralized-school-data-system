@@ -760,30 +760,32 @@ export default function LearnerAcademicDetailModal({
       <div className="relative z-10 flex max-h-[85vh] w-[min(820px,96vw)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[var(--card)]">
         {/* HEADER */}
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 bg-white px-5 py-4 dark:border-white/5 dark:bg-transparent sm:px-6">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <span className="text-[10.5px] font-bold uppercase tracking-wider text-cnhs-green-dark">
               Academic Monitoring Record
             </span>
-            <h2
-              id="learner-academic-detail-title"
-              className="mt-1 truncate text-xl font-bold tracking-tight text-slate-900 dark:text-white"
-            >
-              {studentFullName}
-            </h2>
-            <p className="mt-0.5 text-xs font-medium text-slate-500">
+            <div className="mt-1 flex flex-wrap items-center gap-2.5">
+              <h2
+                id="learner-academic-detail-title"
+                className="text-xl font-bold tracking-tight text-slate-900 dark:text-white"
+              >
+                {studentFullName}
+              </h2>
+              <div className="flex items-center gap-2">
+                <RiskPill value={academicRisk} />
+                <span
+                  className={cn(
+                    "inline-flex items-center rounded-md border px-2.5 py-0.5 text-[11px] font-semibold",
+                    currentSupport.badgeStyle
+                  )}
+                >
+                  {currentSupport.label}
+                </span>
+              </div>
+            </div>
+            <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
               {studentSection}
             </p>
-            <div className="mt-2.5 flex flex-wrap items-center gap-2">
-              <RiskPill value={academicRisk} />
-              <span
-                className={cn(
-                  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-[11px] font-semibold",
-                  currentSupport.badgeStyle
-                )}
-              >
-                {currentSupport.label}
-              </span>
-            </div>
           </div>
           <button
             type="button"

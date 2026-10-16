@@ -20,6 +20,20 @@ import { useAppToast } from "@/components/shared/AppToast";
 import AppSelect from "@/components/shared/AppSelect";
 import { cn } from "@/lib/utils";
 
+/**
+ * Returns user-friendly passage grade string (e.g. "Grade 5 (2 Levels Below)")
+ */
+function getPassageLevelDisplay(rawGrade, levelStr) {
+  const match = String(rawGrade || "").match(/\d+/);
+  const num = match ? parseInt(match[0], 10) : 7;
+  const s = String(levelStr || "").toLowerCase();
+  if (s.includes("at grade")) return `Grade ${num} (At Grade Level)`;
+  if (s.includes("1")) return `Grade ${Math.max(1, num - 1)} (1 Level Below)`;
+  if (s.includes("2")) return `Grade ${Math.max(1, num - 2)} (2 Levels Below)`;
+  if (s.includes("3")) return `Grade ${Math.max(1, num - 3)} (3 Levels Below)`;
+  return levelStr || `Grade ${Math.max(1, num - 2)}`;
+}
+
 export default function AralAssessmentFlowModal({
   isOpen,
   onClose,
@@ -124,8 +138,8 @@ export default function AralAssessmentFlowModal({
       return;
     }
 
-    if (gstEval.isIndependent) {
-      // Independent -> Auto-save as Complete - No ARAL Support Needed
+    if (!gstEval.needsIndividualAssessment) {
+      // GST 28–40: At Grade Level — No Individual Assessment Needed
       setSaving(true);
       try {
         const studentId = learner.studentId || learner.id;
@@ -138,8 +152,8 @@ export default function AralAssessmentFlowModal({
           subject: language,
           gstScore: numScore,
           individualAssessmentRequired: false,
-          readingLevel: "Independent",
-          screeningInterpretation: "At Grade Level",
+          readingLevel: "Not Assessed", // No Form 3 administered
+          screeningInterpretation: "No further individualized assessment from GST",
           candidateStatus: "Baseline Complete",
           documents: gstFile ? [gstFile] : [],
           assessmentPeriod: aralPeriod,
@@ -150,6 +164,7 @@ export default function AralAssessmentFlowModal({
           return;
         }
 
+        showToast("success", "Assessment Result Submitted: At Grade Level");
         setStage("gst_result");
         onSuccess?.();
       } catch (err) {
@@ -159,14 +174,14 @@ export default function AralAssessmentFlowModal({
         setSaving(false);
       }
     } else {
-      // Score < 28 -> Proceed to IRA
+      // Score < 28 -> Proceed to Form 3 Graded Passage
       setAssessmentLevelUsed(gstEval.startingPassageLevel || "2 Grade Levels Below");
       setStage("ira");
     }
   };
 
-  // Save Individual Reading Assessment
-  const handleSaveIra = async (e) => {
+  // Move from Form 3 to Support Recommendation
+  const handleProceedToRecommendation = (e) => {
     e.preventDefault();
     const wPct = Number(wordReadingPct);
     const cPct = Number(comprehensionPct);
@@ -180,10 +195,16 @@ export default function AralAssessmentFlowModal({
       return;
     }
 
+    setStage("decision");
+  };
+
+  // Submit Form 3 Assessment Result & Support Recommendation for Authorized Review
+  const handleSubmitSupportRecommendation = async (recommendationChoice) => {
     setSaving(true);
     try {
       const studentId = learner.studentId || learner.id;
       const docs = [gstFile, iraFile].filter(Boolean);
+      const isRecommendingAral = recommendationChoice === "aral";
 
       const res = await saveSinglePhilIriResult({
         studentId,
@@ -199,7 +220,7 @@ export default function AralAssessmentFlowModal({
         candidateStatus:
           iraEval.readingProfile === "Independent"
             ? "Baseline Complete"
-            : iraEval.readingProfile === "Frustration"
+            : isRecommendingAral
             ? "ARAL Candidate"
             : "For Review",
         documents: docs,
@@ -207,15 +228,21 @@ export default function AralAssessmentFlowModal({
       });
 
       if (res.error) {
-        showToast("error", res.error.message || "Failed to save assessment.");
+        showToast("error", res.error.message || "Failed to submit recommendation.");
         return;
       }
 
-      setStage("decision");
+      showToast(
+        "success",
+        isRecommendingAral
+          ? "Assessment submitted: Recommended for ARAL Support (Pending Authorized Review)"
+          : "Assessment submitted: No ARAL Support Needed"
+      );
+      setStage("submitted_confirmation");
       onSuccess?.();
     } catch (err) {
       console.error(err);
-      showToast("error", "Failed to save reading assessment.");
+      showToast("error", "Failed to submit assessment result.");
     } finally {
       setSaving(false);
     }
@@ -237,10 +264,10 @@ export default function AralAssessmentFlowModal({
             </div>
             <div>
               <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                Record Reading Assessment
+                Reading Assessment
               </h2>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Beginning Assessment (BOSY) · {language}
+                {learner.name} · {learner.gradeSectionDisplay || `${learner.grade} - ${learner.section}`} · {language}
               </p>
             </div>
           </div>
@@ -248,7 +275,7 @@ export default function AralAssessmentFlowModal({
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-200"
+            className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-200 cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -286,11 +313,11 @@ export default function AralAssessmentFlowModal({
                 className="space-y-4"
               >
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Group Screening Test (GST)
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                    Step 1 of 2 — Screening Test
                   </h3>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Phil-IRI 40-item screening test score for {language}.
+                    Initial 40-item screening test score for {language} · Phil-IRI {language === "Filipino" ? "Form 1A" : "Form 1B"}
                   </p>
                 </div>
 
@@ -334,16 +361,29 @@ export default function AralAssessmentFlowModal({
                   <div
                     className={cn(
                       "rounded-xl p-3 text-xs border transition-all",
-                      gstEval.isIndependent
+                      !gstEval.needsIndividualAssessment
                         ? "border-emerald-200 bg-emerald-50/70 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300"
                         : "border-blue-200 bg-blue-50/70 text-blue-800 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-300"
                     )}
                   >
-                    <p className="font-semibold">{gstEval.message}</p>
-                    {!gstEval.isIndependent && (
-                      <p className="mt-1 text-[11px] opacity-90">
-                        Next: Individual Reading Assessment starting at <strong>{gstEval.startingPassageLevel}</strong>.
-                      </p>
+                    {!gstEval.needsIndividualAssessment ? (
+                      <>
+                        <p className="font-semibold text-emerald-900 dark:text-emerald-200">
+                          Learner is At Grade Level. No further reading assessment is needed.
+                        </p>
+                        <p className="mt-1 text-[11px] text-emerald-800/90 dark:text-emerald-300/80">
+                          Score: {gstScore}/40 meets the grade-level benchmark. Submit this result for review to record that no ARAL reading support is required.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-semibold text-blue-900 dark:text-blue-200">
+                          This learner needs a more detailed reading assessment.
+                        </p>
+                        <p className="mt-1 text-[11px] text-blue-800/90 dark:text-blue-300/80">
+                          Next step: Continue with the reading passage assessment, starting {getPassageLevelDisplay(learner.grade, gstEval.startingPassageLevel || "2 Grade Levels Below")}.
+                        </p>
+                      </>
                     )}
                   </div>
                 )}
@@ -353,16 +393,16 @@ export default function AralAssessmentFlowModal({
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        Official Assessment File
+                        Screening Record (Optional)
                       </span>
                       <p className="text-[10px] text-slate-400">
-                        Attach GST screening sheet or scanned record (optional)
+                        Attach Phil-IRI {language === "Filipino" ? "Form 1A" : "Form 1B"} sheet or score sheet (optional)
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-2xs dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-2xs dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 cursor-pointer"
                     >
                       <Upload size={12} />
                       <span>{gstFile ? "Change File" : "Attach File"}</span>
@@ -384,16 +424,16 @@ export default function AralAssessmentFlowModal({
                   <button
                     type="submit"
                     disabled={saving || gstScore === ""}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#246f54] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#1b5842] transition disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#246f54] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#1b5842] transition disabled:opacity-50 cursor-pointer"
                   >
                     {saving ? (
                       <>
                         <Loader2 size={13} className="animate-spin" />
                         <span>Saving...</span>
                       </>
-                    ) : gstEval.isIndependent ? (
+                    ) : !gstEval.needsIndividualAssessment ? (
                       <>
-                        <span>Save & Complete Assessment</span>
+                        <span>Submit Assessment Result</span>
                         <CheckCircle2 size={13} />
                       </>
                     ) : (
@@ -407,39 +447,39 @@ export default function AralAssessmentFlowModal({
               </motion.form>
             )}
 
-            {/* STAGE 2: INDIVIDUAL READING ASSESSMENT (IRA) */}
+            {/* STAGE 2: INDIVIDUAL READING ASSESSMENT (FORM 3) */}
             {stage === "ira" && (
               <motion.form
                 key="ira-form"
                 initial={{ opacity: 0, x: 8 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -8 }}
-                onSubmit={handleSaveIra}
+                onSubmit={handleProceedToRecommendation}
                 className="space-y-4"
               >
                 <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-white/5">
                   <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      Individual Reading Assessment (Form 3)
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                      Step 2 of 2 — Individual Reading Assessment
                     </h3>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      GST Score: <strong>{gstScore}/40</strong> · Passage level: <strong>{assessmentLevelUsed}</strong>
+                      Graded passage assessment · Phil-IRI {language === "Filipino" ? "Form 3A · Filipino" : "Form 3B · English"}
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setStage("gst")}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400"
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 cursor-pointer"
                   >
                     <ChevronLeft size={13} />
-                    <span>Back to GST</span>
+                    <span>Back to Screening</span>
                   </button>
                 </div>
 
                 {/* Assessment Level Used */}
                 <div>
                   <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Assessment Level Used
+                    Passage Level ({getPassageLevelDisplay(learner.grade, assessmentLevelUsed)})
                   </label>
                   <AppSelect
                     value={assessmentLevelUsed}
@@ -505,7 +545,7 @@ export default function AralAssessmentFlowModal({
                     min="0"
                     value={readingRate}
                     onChange={(e) => setReadingRate(e.target.value)}
-                    placeholder="e.g. 75 wpm"
+                    placeholder="e.g. 75 wpm (optional)"
                     className="mt-1 h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-900 outline-none focus:border-[#246f54] dark:border-white/10 dark:bg-slate-800 dark:text-white"
                   />
                 </div>
@@ -530,27 +570,34 @@ export default function AralAssessmentFlowModal({
                         {iraEval.readingProfile}
                       </span>
                       <span className="text-xs text-slate-500 dark:text-slate-400">
-                        at {assessmentLevelUsed}
+                        at {getPassageLevelDisplay(learner.grade, assessmentLevelUsed)}
                       </span>
                     </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                      {iraEval.readingProfile === "Independent"
+                        ? "The learner can read and comprehend this passage on their own."
+                        : iraEval.readingProfile === "Instructional"
+                        ? "The learner can read this passage with teacher guidance."
+                        : "The learner is still experiencing difficulty at this passage level."}
+                    </p>
                   </div>
                 )}
 
-                {/* Form 3 File Upload */}
+                {/* Reading Assessment File Upload */}
                 <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 dark:border-white/5 dark:bg-white/[0.02]">
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        Official Form 3 Record
+                        Reading Assessment Record (Optional)
                       </span>
                       <p className="text-[10px] text-slate-400">
-                        Attach completed oral reading record (optional)
+                        Attach completed oral reading record · Phil-IRI {language === "Filipino" ? "Form 3A" : "Form 3B"} (optional)
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-2xs dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-2xs dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 cursor-pointer"
                     >
                       <Upload size={12} />
                       <span>{iraFile ? "Change File" : "Attach File"}</span>
@@ -571,140 +618,252 @@ export default function AralAssessmentFlowModal({
                 <div className="flex justify-end pt-2">
                   <button
                     type="submit"
-                    disabled={saving || wordReadingPct === "" || comprehensionPct === ""}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#246f54] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#1b5842] transition disabled:opacity-50"
+                    disabled={wordReadingPct === "" || comprehensionPct === ""}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#246f54] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#1b5842] transition disabled:opacity-50 cursor-pointer"
                   >
-                    {saving ? (
-                      <>
-                        <Loader2 size={13} className="animate-spin" />
-                        <span>Saving...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Save Assessment</span>
-                        <CheckCircle2 size={13} />
-                      </>
-                    )}
+                    <span>Continue</span>
+                    <ArrowRight size={13} />
                   </button>
                 </div>
               </motion.form>
             )}
 
-            {/* STAGE 3: RESULT & SUPPORT DECISION */}
-            {(stage === "gst_result" || stage === "decision") && (
+            {/* STAGE 3A: SCREENING RESULT SUMMARY (FOR GST 28–40 — STRICTLY NOT FORM 4) */}
+            {stage === "gst_result" && (
               <motion.div
-                key="result-view"
+                key="gst-result-view"
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
                 className="space-y-4"
               >
-                {/* Result Card */}
-                {iraEval.readingProfile === "Independent" || gstEval.isIndependent ? (
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-center dark:border-emerald-900/60 dark:bg-emerald-950/20">
-                    <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                      <CheckCircle2 size={20} />
-                    </div>
-                    <h3 className="mt-2 text-sm font-bold text-emerald-900 dark:text-emerald-200">
-                      Assessment Complete — No ARAL Support Needed
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-5 text-center dark:border-emerald-900/60 dark:bg-emerald-950/20">
+                  <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                    <CheckCircle2 size={22} />
+                  </div>
+                  <div className="mt-3">
+                    <span className="inline-block rounded-full bg-emerald-100 px-3 py-0.5 text-[11px] font-bold text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300">
+                      At Grade Level
+                    </span>
+                    <h3 className="mt-1.5 text-base font-bold text-emerald-950 dark:text-emerald-200">
+                      Screening Result Summary
                     </h3>
-                    <p className="mt-1 text-xs text-emerald-800/90 dark:text-emerald-300/80">
-                      Learner demonstrates adequate reading proficiency in {language}.
+                    <p className="mt-1 text-xs text-emerald-900/90 dark:text-emerald-300/80 max-w-md mx-auto">
+                      Screening Score: <strong>{gstScore}/40</strong>. The learner meets the grade-level benchmark in {language}.
+                      No individual reading assessment is needed.
                     </p>
-                    <div className="mt-4">
-                      <button
-                        type="button"
-                        onClick={onClose}
-                        className="inline-flex items-center rounded-xl bg-[#246f54] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#1b5842]"
-                      >
-                        Complete Assessment
-                      </button>
+                  </div>
+
+                  <div className="mt-4 rounded-xl bg-white/80 p-3 text-left text-xs border border-emerald-200/70 text-slate-700 dark:bg-slate-800/80 dark:border-emerald-900/40 dark:text-slate-300">
+                    <p className="font-semibold text-slate-900 dark:text-white">Next Step</p>
+                    <p className="mt-0.5 text-[11px] text-slate-600 dark:text-slate-400">
+                      Assessment Complete · Awaiting Authorized Review (No Further Support Needed).
+                    </p>
+                  </div>
+
+                  <div className="mt-5 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="inline-flex items-center rounded-xl bg-[#246f54] px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#1b5842] transition cursor-pointer"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* STAGE 3B: SUPPORT RECOMMENDATION (AFTER FORM 3 — FORM 4 SUMMARY) */}
+            {stage === "decision" && (
+              <motion.div
+                key="decision-view"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="space-y-4"
+              >
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2 dark:border-white/10 dark:bg-white/[0.02]">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                        Reading Assessment Result
+                      </h3>
+                      <span className="text-[10px] text-slate-400">
+                        Phil-IRI Form 4 — Individual Summary Record
+                      </span>
+                    </div>
+                    <span
+                      className={cn(
+                        "inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold border",
+                        iraEval.readingProfile === "Independent"
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                          : iraEval.readingProfile === "Instructional"
+                          ? "border-amber-200 bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                          : "border-red-200 bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-300"
+                      )}
+                    >
+                      Profile: {iraEval.readingProfile}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                    <div className="rounded-lg bg-white p-2 border border-slate-100 dark:bg-slate-800 dark:border-white/5">
+                      <span className="text-[10px] text-slate-400 block font-medium">Word Reading</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">{wordReadingPct}%</span>
+                    </div>
+                    <div className="rounded-lg bg-white p-2 border border-slate-100 dark:bg-slate-800 dark:border-white/5">
+                      <span className="text-[10px] text-slate-400 block font-medium">Comprehension</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">{comprehensionPct}%</span>
+                    </div>
+                    <div className="rounded-lg bg-white p-2 border border-slate-100 dark:bg-slate-800 dark:border-white/5">
+                      <span className="text-[10px] text-slate-400 block font-medium">Passage Level</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">
+                        {getPassageLevelDisplay(learner.grade, assessmentLevelUsed)}
+                      </span>
                     </div>
                   </div>
-                ) : iraEval.readingProfile === "Instructional" ? (
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 space-y-3 dark:border-amber-900/60 dark:bg-amber-950/20">
-                    <div>
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
-                        Reading Profile: Instructional
-                      </span>
-                      <h3 className="text-sm font-bold text-amber-900 dark:text-amber-200">
-                        Learner requires guided reading support.
-                      </h3>
-                      <p className="mt-1 text-xs text-amber-800/90 dark:text-amber-300/80">
-                        Assessment Level: <strong>{assessmentLevelUsed}</strong>. Teacher/facilitator review is required.
-                      </p>
-                    </div>
+                </div>
 
-                    <div className="rounded-xl bg-white p-3 border border-amber-200/60 text-xs text-slate-700 dark:bg-slate-800 dark:border-white/10 dark:text-slate-300">
-                      <p className="font-semibold text-slate-900 dark:text-white">Next Step</p>
-                      <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-                        Review whether this learner can be accommodated in regular guided reading or referred for targeted assistance.
-                      </p>
-                    </div>
-
-                    <div className="flex justify-end pt-1">
-                      <button
-                        type="button"
-                        onClick={onClose}
-                        className="inline-flex items-center rounded-xl bg-[#246f54] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#1b5842]"
-                      >
-                        Finish Review
-                      </button>
-                    </div>
+                {/* Teacher Recommendation Form */}
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3 shadow-xs dark:border-white/10 dark:bg-slate-800">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                      Teacher Recommendation
+                    </h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      Choose what support you recommend based on the assessment result.
+                    </p>
                   </div>
-                ) : (
-                  <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 space-y-3 dark:border-rose-900/60 dark:bg-rose-950/20">
-                    <div>
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-rose-800 dark:text-rose-300">
-                        Reading Profile: Frustration
-                      </span>
-                      <h3 className="text-sm font-bold text-rose-900 dark:text-rose-200">
-                        Learner needs targeted reading support.
-                      </h3>
-                      <p className="mt-1 text-xs text-rose-800/90 dark:text-rose-300/80">
-                        Assessment Level: <strong>{assessmentLevelUsed}</strong>.
+
+                  {iraEval.readingProfile === "Independent" ? (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-xs text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300">
+                      <p className="font-semibold">Learner is Independent at this passage level.</p>
+                      <p className="mt-0.5 text-[11px] text-emerald-800/90 dark:text-emerald-300/80">
+                        Recommendation: No ARAL reading support needed. This recommendation will be submitted for Authorized Review.
                       </p>
                     </div>
-
-                    {/* Identified Reading Need */}
-                    <div>
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                        Identified Reading Need
-                      </label>
-                      <div className="mt-1.5 grid grid-cols-2 gap-2">
-                        {["Foundational Skills", "Fluency / Comprehension"].map((need) => (
-                          <button
-                            key={need}
-                            type="button"
-                            onClick={() => setReadingNeed(need)}
-                            className={cn(
-                              "rounded-xl border p-2.5 text-left text-xs transition",
-                              readingNeed === need
-                                ? "border-[#246f54] bg-[#246f54]/10 font-bold text-[#246f54] dark:bg-[#246f54]/20"
-                                : "border-slate-200 bg-white font-medium text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
-                            )}
-                          >
-                            <p>{need}</p>
-                            <span className="text-[10px] font-normal text-slate-400 block mt-0.5">
-                              {need === "Foundational Skills"
-                                ? "Phonics, word decoding, alphabet"
-                                : "Reading rate, vocabulary, understanding"}
-                            </span>
-                          </button>
-                        ))}
+                  ) : (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                          Focus Area for Support
+                        </label>
+                        <div className="mt-1.5 grid grid-cols-2 gap-2">
+                          {["Foundational Skills", "Fluency & Comprehension"].map((need) => (
+                            <button
+                              key={need}
+                              type="button"
+                              onClick={() => setReadingNeed(need)}
+                              className={cn(
+                                "rounded-xl border p-2.5 text-left text-xs transition cursor-pointer",
+                                readingNeed === need
+                                  ? "border-[#246f54] bg-[#246f54]/10 font-bold text-[#246f54] dark:bg-[#246f54]/20"
+                                  : "border-slate-200 bg-white font-medium text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
+                              )}
+                            >
+                              <p>{need}</p>
+                              <span className="text-[10px] font-normal text-slate-400 block mt-0.5">
+                                {need === "Foundational Skills"
+                                  ? "Phonics, word decoding, sound recognition"
+                                  : "Reading rate, vocabulary, passage understanding"}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
+                  )}
 
-                    <div className="flex justify-end pt-1">
+                  {/* Footer helper notice */}
+                  <p className="text-[11px] text-slate-400 italic">
+                    Your recommendation will be sent for review before support begins.
+                  </p>
+
+                  {/* Buttons */}
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-white/5">
+                    <button
+                      type="button"
+                      onClick={() => setStage("ira")}
+                      disabled={saving}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 cursor-pointer"
+                    >
+                      <ChevronLeft size={13} />
+                      <span>Back to Assessment</span>
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                      {iraEval.readingProfile !== "Independent" && (
+                        <button
+                          type="button"
+                          disabled={saving}
+                          onClick={() => handleSubmitSupportRecommendation("no_support")}
+                          className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-2xs dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 cursor-pointer disabled:opacity-50"
+                        >
+                          No Reading Support Needed
+                        </button>
+                      )}
+
                       <button
                         type="button"
-                        onClick={onClose}
-                        className="inline-flex items-center rounded-xl bg-[#246f54] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#1b5842]"
+                        disabled={saving}
+                        onClick={() =>
+                          handleSubmitSupportRecommendation(
+                            iraEval.readingProfile === "Independent" ? "no_support" : "aral"
+                          )
+                        }
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-[#246f54] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#1b5842] transition cursor-pointer disabled:opacity-50"
                       >
-                        Confirm Support Decision
+                        {saving ? (
+                          <>
+                            <Loader2 size={13} className="animate-spin" />
+                            <span>Submitting...</span>
+                          </>
+                        ) : iraEval.readingProfile === "Independent" ? (
+                          <>
+                            <span>Submit Assessment Result</span>
+                            <CheckCircle2 size={13} />
+                          </>
+                        ) : (
+                          <>
+                            <span>Recommend Reading Support</span>
+                            <CheckCircle2 size={13} />
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>
-                )}
+                </div>
+              </motion.div>
+            )}
+
+            {/* STAGE 4: SUBMITTED CONFIRMATION */}
+            {stage === "submitted_confirmation" && (
+              <motion.div
+                key="submitted-confirmation-view"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="space-y-4"
+              >
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-5 text-center dark:border-emerald-900/60 dark:bg-emerald-950/20">
+                  <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                    <CheckCircle2 size={22} />
+                  </div>
+                  <h3 className="mt-3 text-base font-bold text-emerald-950 dark:text-emerald-200">
+                    Assessment & Recommendation Submitted
+                  </h3>
+                  <p className="mt-1 text-xs text-emerald-900/90 dark:text-emerald-300/80 max-w-md mx-auto">
+                    The reading assessment results have been recorded. Support recommendation has been forwarded for Authorized Review (School Principal / Reading Coordinator).
+                  </p>
+
+                  <div className="mt-5 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="inline-flex items-center rounded-xl bg-[#246f54] px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#1b5842] transition"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

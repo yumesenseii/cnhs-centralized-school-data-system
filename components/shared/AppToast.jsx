@@ -11,7 +11,7 @@ import {
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Info, X } from "lucide-react";
+import { AlertCircle, Check, Info, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const TOAST_DURATION_MS = 5000;
@@ -19,7 +19,7 @@ export const TOAST_DURATION_MS = 5000;
 function inferTone(message, explicit) {
   if (explicit) return explicit;
   const text = String(message || "");
-  if (/unable|error|fail|invalid|denied/i.test(text)) return "error";
+  if (/unable|error|fail|invalid|denied|choose approve|required/i.test(text)) return "error";
   if (/preparing|loading/i.test(text)) return "info";
   return "success";
 }
@@ -28,19 +28,31 @@ const TONE_STYLES = {
   success: {
     accent: "text-cnhs-green",
     bar: "bg-cnhs-green",
-    iconWrap: "bg-cnhs-green-soft text-cnhs-green-dark",
+    iconWrap: "bg-cnhs-green text-white shadow-xs",
+    container:
+      "border-emerald-100/80 bg-gradient-to-br from-emerald-50/95 via-white to-teal-50/90 shadow-[0_12px_40px_rgba(16,185,129,0.14)] backdrop-blur-md dark:border-cnhs-green/40 dark:bg-[var(--card)] dark:bg-none dark:shadow-[0_12px_40px_rgba(0,0,0,0.55)]",
+    title: "text-slate-900 dark:text-card-foreground",
+    desc: "text-slate-600 dark:text-muted-foreground",
     Icon: Check,
   },
   error: {
     accent: "text-red-500",
     bar: "bg-red-500",
-    iconWrap: "bg-red-50 text-red-600",
-    Icon: Info,
+    iconWrap: "bg-red-500 text-white shadow-xs",
+    container:
+      "border-red-200/80 bg-gradient-to-br from-red-50/95 via-white to-rose-50/90 shadow-[0_12px_40px_rgba(239,68,68,0.14)] backdrop-blur-md dark:border-red-500/30 dark:bg-[var(--card)] dark:bg-none dark:shadow-[0_12px_40px_rgba(0,0,0,0.55)]",
+    title: "text-red-950 dark:text-white",
+    desc: "text-red-900/80 dark:text-slate-300",
+    Icon: AlertCircle,
   },
   info: {
     accent: "text-slate-500",
     bar: "bg-slate-400",
-    iconWrap: "bg-slate-100 text-slate-600",
+    iconWrap: "bg-slate-700 text-white shadow-xs dark:bg-slate-600",
+    container:
+      "border-slate-200/80 bg-gradient-to-br from-slate-50/95 via-white to-slate-100/90 shadow-[0_12px_40px_rgba(15,23,42,0.12)] backdrop-blur-md dark:border-white/10 dark:bg-[var(--card)] dark:bg-none dark:shadow-[0_12px_40px_rgba(0,0,0,0.55)]",
+    title: "text-slate-900 dark:text-card-foreground",
+    desc: "text-slate-600 dark:text-muted-foreground",
     Icon: Info,
   },
 };
@@ -88,11 +100,11 @@ export function AppToast({
         <motion.div
           role="status"
           aria-live="polite"
-          initial={{ opacity: 0, x: 8 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: 8 }}
-          transition={{ duration: 0.16, ease: "easeOut" }}
-          className="pointer-events-auto fixed right-4 top-4 z-[120] w-[min(22rem,calc(100vw-2rem))] sm:right-6 sm:top-5"
+          initial={{ opacity: 0, y: -12, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -8, scale: 0.96 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
+          className="pointer-events-auto fixed right-4 top-4 z-[200] w-[min(26rem,calc(100vw-2rem))] sm:right-6 sm:top-5"
           onMouseEnter={() => {
             setPaused(true);
             setRemaining((current) =>
@@ -105,29 +117,38 @@ export function AppToast({
           }}
         >
           <div
-            className="relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-[#1c1c1c] dark:shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
+            className={cn(
+              "relative overflow-hidden rounded-2xl border transition-shadow",
+              styles.container
+            )}
             onClick={() => onDismiss?.()}
           >
-            <div className="flex items-start gap-2.5 px-3 py-2.5">
+            <div className="flex items-start gap-3 px-3.5 py-3">
               <span
                 className={cn(
-                  "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+                  "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
                   styles.iconWrap
                 )}
               >
-                <Icon size={14} strokeWidth={2.4} />
+                <Icon size={15} strokeWidth={2.4} />
               </span>
               <div className="min-w-0 flex-1 pt-0.5">
                 {title ? (
-                  <p className="text-[13px] font-semibold leading-snug text-slate-900 dark:text-white">
+                  <p
+                    className={cn(
+                      "text-[13px] font-semibold tracking-tight leading-snug",
+                      styles.title
+                    )}
+                  >
                     {title}
                   </p>
                 ) : null}
                 {message ? (
                   <p
                     className={cn(
-                      "text-[12px] leading-relaxed text-slate-700 dark:text-white/85",
-                      title && "mt-0.5 font-normal text-slate-500 dark:text-slate-300"
+                      "text-[11px] leading-snug break-words",
+                      styles.desc,
+                      title && "mt-0.5"
                     )}
                   >
                     {message}
@@ -138,7 +159,7 @@ export function AppToast({
                     href={action.href}
                     onClick={(event) => event.stopPropagation()}
                     className={cn(
-                      "mt-1 inline-block text-[11px] font-semibold underline-offset-2 hover:underline",
+                      "mt-1.5 inline-block text-[11px] font-semibold underline-offset-2 hover:underline",
                       styles.accent
                     )}
                   >
@@ -153,12 +174,12 @@ export function AppToast({
                   event.stopPropagation();
                   onDismiss?.();
                 }}
-                className="inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/8 dark:hover:text-white"
+                className="inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-black/5 hover:text-slate-700 dark:text-muted-foreground dark:hover:bg-white/10 dark:hover:text-card-foreground"
               >
                 <X size={14} />
               </button>
             </div>
-            <div className="h-[3px] bg-slate-100 dark:bg-white/8">
+            <div className="h-[2.5px] bg-slate-200/50 dark:bg-white/10 overflow-hidden">
               <motion.div
                 key={`${title}-${message}-${paused}-${remaining}`}
                 className={cn("h-full origin-left", styles.bar)}
