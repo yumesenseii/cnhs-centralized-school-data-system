@@ -221,24 +221,24 @@ export default function AdminMonitoredStudentsPanel({
 
                   let riskBadgeLabel = "Needs Monitoring";
                   let riskBadgeClass =
-                    "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300";
+                    "border-amber-200/80 bg-amber-50 text-amber-800 dark:border-amber-800/40 dark:bg-amber-950/40 dark:text-amber-300";
 
                   if (isHigh) {
                     riskBadgeLabel = "Needs Immediate Review";
                     riskBadgeClass =
-                      "bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-400 font-bold";
+                      "border-red-200/80 bg-red-50 text-red-700 dark:border-red-800/40 dark:bg-red-950/40 dark:text-red-300";
                   } else if (isImproving) {
                     riskBadgeLabel = "Improving";
                     riskBadgeClass =
-                      "bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400";
+                      "border-emerald-200/80 bg-emerald-50 text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-300";
                   } else if (isRemedial) {
                     riskBadgeLabel = "Under Class Remedial";
                     riskBadgeClass =
-                      "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400";
+                      "border-slate-200/80 bg-slate-100 text-slate-700 dark:border-white/10 dark:bg-white/10 dark:text-slate-300";
                   } else if (isMod) {
                     riskBadgeLabel = "Needs Monitoring";
                     riskBadgeClass =
-                      "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300";
+                      "border-amber-200/80 bg-amber-50 text-amber-800 dark:border-amber-800/40 dark:bg-amber-950/40 dark:text-amber-300";
                   }
 
                   const subjectsDisplay =
@@ -261,31 +261,31 @@ export default function AdminMonitoredStudentsPanel({
                       key={learner.id || learner.studentId}
                       className="transition-colors hover:bg-slate-50/70 dark:hover:bg-white/[0.02]"
                     >
-                      <td className="px-4 py-3 text-[13px] font-semibold text-slate-900 dark:text-slate-100">
+                      <td className="px-4 py-2.5 text-[13px] font-semibold text-slate-900 dark:text-slate-100">
                         {learner.name}
                       </td>
-                      <td className="px-4 py-3 text-[13px] font-medium text-slate-700 dark:text-slate-300">
+                      <td className="px-4 py-2.5 text-[13px] font-medium text-slate-700 dark:text-slate-300">
                         {sectionDisplay}
                       </td>
-                      <td className="px-4 py-3 text-[13px] text-slate-600 dark:text-slate-300">
+                      <td className="px-4 py-2.5 text-[13px] text-slate-600 dark:text-slate-300">
                         {subjectsDisplay}
                       </td>
-                      <td className="px-4 py-3 text-center text-[13px] font-bold text-slate-800 dark:text-slate-200">
+                      <td className="px-4 py-2.5 text-center text-[13px] font-bold text-slate-800 dark:text-slate-200">
                         {gradeDisplay}
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-2.5 text-center">
                         <span
                           className={cn(
-                            "inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
+                            "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium leading-tight",
                             riskBadgeClass
                           )}
                         >
                           {riskBadgeLabel}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-2.5">
                         {refState.isLanguageSubject && refState.isUnderSupport ? (
-                          <span className="text-[12px] font-medium text-purple-700 dark:text-purple-400">
+                          <span className="text-[12px] font-medium text-slate-800 dark:text-slate-200">
                             Under ARAL Support
                           </span>
                         ) : refState.isLanguageSubject && refState.isApproved ? (
@@ -293,15 +293,15 @@ export default function AdminMonitoredStudentsPanel({
                             Approved for Assessment
                           </span>
                         ) : refState.isLanguageSubject && refState.isPending ? (
-                          <span className="text-[12px] font-medium text-amber-700 dark:text-amber-400">
+                          <span className="text-[12px] font-medium text-amber-800 dark:text-amber-400">
                             Pending Principal Review
                           </span>
                         ) : refState.isLanguageSubject && refState.isReturned ? (
-                          <span className="text-[12px] font-medium text-orange-700 dark:text-orange-400">
+                          <span className="text-[12px] font-medium text-amber-800 dark:text-amber-400">
                             Returned for Teacher Review
                           </span>
                         ) : isRemedial ? (
-                          <span className="text-[12px] font-medium text-blue-700 dark:text-blue-400">
+                          <span className="text-[12px] font-medium text-slate-700 dark:text-slate-300">
                             Class Remedial
                           </span>
                         ) : learner.monitoringStatus && learner.monitoringStatus !== "Not Started" ? (
@@ -314,11 +314,11 @@ export default function AdminMonitoredStudentsPanel({
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-2.5 text-right">
                         <button
                           type="button"
                           onClick={() => onViewStudent?.(learner)}
-                          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 active:scale-95"
+                          className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 active:scale-95 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                         >
                           View Record
                         </button>

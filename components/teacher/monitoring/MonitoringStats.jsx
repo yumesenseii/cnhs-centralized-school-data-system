@@ -3,13 +3,14 @@
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-// Reference style: AdminMonitoringExecutiveSummary — white card, colored
-// value text only (no icon tiles).
+// Reference style: institutional school software — white card, dark neutral number
 const tones = {
-  blue: "text-blue-700",
-  orange: "text-amber-800",
-  green: "text-emerald-700",
-  red: "text-red-700",
+  default: "text-slate-900 dark:text-slate-100",
+  blue: "text-slate-900 dark:text-slate-100",
+  orange: "text-slate-900 dark:text-slate-100",
+  amber: "text-slate-900 dark:text-slate-100",
+  green: "text-slate-900 dark:text-slate-100",
+  red: "text-slate-900 dark:text-slate-100",
 };
 
 export default function MonitoringStats({ kpis }) {
@@ -17,11 +18,9 @@ export default function MonitoringStats({ kpis }) {
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {kpis.map((kpi) => {
         return (
-          <motion.section
+          <section
             key={kpi.id}
-            whileHover={{ y: -2 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-            className="relative min-h-[88px] rounded-xl border border-slate-200 bg-white p-4 shadow-xs"
+            className="relative min-h-[88px] rounded-xl border border-slate-200 bg-white p-4 shadow-xs transition-colors hover:border-slate-300 dark:border-white/10 dark:bg-[var(--card)] dark:hover:border-white/20"
           >
             {kpi.alert ? (
               <span
@@ -31,12 +30,12 @@ export default function MonitoringStats({ kpis }) {
             ) : null}
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{kpi.label}</p>
-              <p className={cn("mt-1 text-2xl font-bold leading-none tracking-tight", tones[kpi.tone] ?? tones.blue)}>
+              <p className={cn("mt-1 text-2xl font-bold leading-none tracking-tight", tones[kpi.tone] ?? tones.default)}>
                 {kpi.value}
               </p>
               <p className="mt-1 text-[11px] text-slate-400">{kpi.description}</p>
             </div>
-          </motion.section>
+          </section>
         );
       })}
     </div>

@@ -247,10 +247,10 @@ export default function StudentDashboard() {
                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
                     Overall Average
                   </p>
-                  <p className="mt-0.5 text-xl font-bold tracking-tight text-emerald-700 dark:text-emerald-300 sm:text-2xl">
+                  <p className="mt-0.5 text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
                     {average !== null ? average : "—"}
                   </p>
-                  <p className="mt-0.5 truncate text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                  <p className="mt-0.5 truncate text-[10px] font-medium text-slate-500">
                     {average !== null
                       ? `Based on ${recordedCount} recorded subject${recordedCount === 1 ? "" : "s"}`
                       : "No grades recorded yet"}
@@ -264,10 +264,10 @@ export default function StudentDashboard() {
                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
                     Recorded Subjects
                   </p>
-                  <p className="mt-0.5 text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
+                  <p className="mt-0.5 text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
                     {recordedCount} / {totalSubjects}
                   </p>
-                  <p className="mt-0.5 truncate text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                  <p className="mt-0.5 truncate text-[10px] font-medium text-slate-500">
                     {recordedCount < totalSubjects
                       ? `${totalSubjects - recordedCount} pending teacher encoding`
                       : "All subjects recorded"}
@@ -281,13 +281,7 @@ export default function StudentDashboard() {
                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
                     Subjects Below 75
                   </p>
-                  <p
-                    className={`mt-0.5 text-xl font-bold tracking-tight sm:text-2xl ${
-                      below75Count !== null && below75Count > 0
-                        ? "text-red-700 dark:text-red-400"
-                        : "text-slate-900 dark:text-white"
-                    }`}
-                  >
+                  <p className="mt-0.5 text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
                     {below75Count !== null ? String(below75Count) : "—"}
                   </p>
                   <p className="mt-0.5 truncate text-[10px] font-medium text-slate-400 dark:text-slate-500">

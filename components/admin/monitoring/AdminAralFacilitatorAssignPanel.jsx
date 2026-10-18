@@ -89,7 +89,11 @@ function summarizeSectionFacilitator(learners = []) {
 function summarizeSectionAssessor(learners = []) {
   const assigned = learners.filter((l) => l.assessorTeacherId);
   if (!assigned.length) {
-    return { label: "Needs Assessor Assignment", teacherId: "", isAssigned: false };
+    return {
+      label: "Reading assessment teacher not found.",
+      teacherId: "",
+      isAssigned: false,
+    };
   }
   const first = assigned[0];
   return {
@@ -693,71 +697,58 @@ export default function AdminAralFacilitatorAssignPanel({
                         </span>
                       </div>
 
-                      {/* Unified vs Distinct Teacher presentation */}
-                      {group.isSameTeacher ? (
-                        <div className="mt-3.5 rounded-xl border border-emerald-100 bg-emerald-50/70 p-3 dark:border-emerald-950/40 dark:bg-emerald-950/20">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
-                            Assigned Teacher (Assessment + ARAL Support)
-                          </span>
-                          <div className="mt-1 flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
-                              <p className="truncate text-xs font-semibold text-emerald-950 dark:text-emerald-100">
-                                {group.facilitator.label}
-                              </p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenAssessorModal(group)}
-                              className="shrink-0 text-[10px] font-semibold text-emerald-700 hover:underline dark:text-emerald-300"
-                            >
-                              Split Assessor
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="mt-3.5 space-y-2">
-                          {/* Assessment Teacher Block */}
-                          <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 dark:border-white/5 dark:bg-white/[0.02]">
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                Assessment Teacher (Forms 1 & 3)
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenAssessorModal(group)}
-                                className="text-[10px] font-semibold text-cnhs-green-dark hover:underline dark:text-emerald-400"
-                              >
-                                Change Assessor
-                              </button>
-                            </div>
-                            <div className="mt-1 flex items-center gap-2">
-                              <span
-                                className={cn(
-                                  "h-2 w-2 rounded-full shrink-0",
-                                  group.assessor.isAssigned
-                                    ? "bg-blue-500"
-                                    : "bg-amber-400"
-                                )}
-                              />
-                              <p
-                                className={cn(
-                                  "truncate text-xs font-semibold",
-                                  group.assessor.isAssigned
-                                    ? "text-slate-900 dark:text-slate-100"
-                                    : "text-amber-700 dark:text-amber-400"
-                                )}
-                              >
-                                {group.assessor.label}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* ARAL Facilitator Block */}
-                          <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 dark:border-white/5 dark:bg-white/[0.02]">
+                      <div className="mt-3.5 space-y-2">
+                        {/* Assessment Teacher Block (Automatically resolved by Subject Teacher) */}
+                        <div
+                          className={cn(
+                            "rounded-xl border p-2.5",
+                            group.assessor.isAssigned
+                              ? "border-slate-100 bg-slate-50/70 dark:border-white/5 dark:bg-white/[0.02]"
+                              : "border-amber-200 bg-amber-50/60 dark:border-amber-900/40 dark:bg-amber-950/20"
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-1">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                              ARAL Facilitator (Support)
+                              Reading Assessor (Subject Teacher)
                             </span>
+                            {!group.assessor.isAssigned && (
+                              <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                                Action Needed
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-1 flex items-center gap-2">
+                            <span
+                              className={cn(
+                                "h-2 w-2 rounded-full shrink-0",
+                                group.assessor.isAssigned
+                                  ? "bg-blue-500"
+                                  : "bg-amber-500"
+                              )}
+                            />
+                            <p
+                              className={cn(
+                                "truncate text-xs font-semibold",
+                                group.assessor.isAssigned
+                                  ? "text-slate-900 dark:text-slate-100"
+                                  : "text-amber-800 dark:text-amber-300"
+                              )}
+                            >
+                              {group.assessor.label}
+                            </p>
+                          </div>
+                          {!group.assessor.isAssigned && (
+                            <p className="mt-1 text-[10px] text-amber-700 dark:text-amber-400">
+                              Assign language subject teacher in Classes &amp; Sections
+                            </p>
+                          )}
+                        </div>
+
+                        {/* ARAL Facilitator Block (School head assigned support teacher) */}
+                        <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 dark:border-white/5 dark:bg-white/[0.02]">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            ARAL Facilitator (Support)
+                          </span>
                             <div className="mt-1 flex items-center gap-2">
                               <span
                                 className={cn(
@@ -927,15 +918,6 @@ export default function AdminAralFacilitatorAssignPanel({
                   className="h-8 w-[200px] rounded-lg border border-slate-200 bg-white pl-8 pr-2.5 text-xs text-slate-700 outline-none placeholder:text-slate-400 focus:border-cnhs-green dark:border-white/10 dark:bg-slate-900 dark:text-slate-200 sm:w-[240px]"
                 />
               </div>
-
-              <button
-                type="button"
-                onClick={() => handleOpenAssessorModal(activeSection)}
-                className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
-              >
-                <UserCog size={12} />
-                Change Assessor
-              </button>
 
               <button
                 type="button"
@@ -1230,8 +1212,8 @@ export default function AdminAralFacilitatorAssignPanel({
         </AnimatedModal>
       ) : null}
 
-      {/* Centered Change Assessor / Master Teacher Override Modal */}
-      {assessorModalSection ? (
+      {/* Centered Change Assessor modal removed from normal workflow */}
+      {false && assessorModalSection ? (
         <AnimatedModal
           open={Boolean(assessorModalSection)}
           onClose={() => setAssessorModalSection(null)}

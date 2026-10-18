@@ -590,10 +590,10 @@ export default function StudentMonitoringSidePanel({
                   learner.inAralProgram) && (
                   <Link
                     href={`/teacher/aral-monitoring?studentId=${learner?.studentId || learner?.id || ""}`}
-                    title="View in ARAL Monitoring workspace"
+                    title="View in ARAL Reading Assessment"
                     className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-cnhs-green-dark shadow-2xs hover:bg-emerald-100 transition"
                   >
-                    <span>View in ARAL Monitoring</span>
+                    <span>View in ARAL Reading Assessment</span>
                     <ArrowUpRight size={13} className="text-cnhs-green-dark" />
                   </Link>
                 )
@@ -1037,7 +1037,7 @@ export default function StudentMonitoringSidePanel({
                     href={`/teacher/aral-monitoring?studentId=${learner?.studentId || learner?.id || ""}`}
                     className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-cnhs-green-dark hover:underline"
                   >
-                    View in ARAL Monitoring <ArrowUpRight size={11} />
+                    View in ARAL Reading Assessment <ArrowUpRight size={11} />
                   </Link>
                 </div>
               </div>
@@ -1496,7 +1496,7 @@ export default function StudentMonitoringSidePanel({
                 </div>
               </div>
 
-              {/* ARAL MONITORING CONNECTION */}
+              {/* ARAL READING ASSESSMENT CONNECTION */}
               {(recommendedSupport === "ARAL Screening" ||
                 learner.supportPathway === "ARAL Program" ||
                 isReadingSubject) && (
@@ -1526,13 +1526,13 @@ export default function StudentMonitoringSidePanel({
                         }}
                         className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-800 shadow-xs hover:bg-blue-50 transition"
                       >
-                        <span>View in ARAL Monitoring</span>
+                        <span>View in ARAL Reading Assessment</span>
                         <ArrowUpRight size={13} />
                       </button>
                     ) : null}
                   </div>
 
-                  {/* Inside ARAL Monitoring status preview */}
+                  {/* Inside ARAL Reading Assessment status preview */}
                   <div className="mt-3 grid grid-cols-3 gap-3 text-xs bg-white rounded-md border border-blue-100 p-2.5">
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">

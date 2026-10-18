@@ -1,43 +1,43 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
-  FileSpreadsheet,
   RefreshCw,
   X,
-  UserCheck,
-  ClipboardList,
   Eye,
   CheckCircle2,
+  Clock,
+  AlertCircle,
+  BookOpen,
+  TrendingUp,
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import PageHelp from "@/components/shared/PageHelp";
 import AppSelect from "@/components/shared/AppSelect";
-import AdminAralApprovalPanel from "@/components/admin/monitoring/AdminAralApprovalPanel";
-import AdminAralFacilitatorAssignPanel from "@/components/admin/monitoring/AdminAralFacilitatorAssignPanel";
-import AdminAralSummerEligibilityPanel from "@/components/admin/monitoring/AdminAralSummerEligibilityPanel";
-import AdminAralLearnerDetailPanel from "@/components/admin/monitoring/AdminAralLearnerDetailPanel";
 import AdminTablePagination from "@/components/shared/AdminTablePagination";
+import AralLearnerRecordModal from "@/components/teacher/monitoring/AralLearnerRecordModal";
+import LearnerName from "@/components/shared/LearnerName";
 
 import { useAdminMonitoring } from "@/hooks/teacher/useMonitoring";
 import {
   aggregateAralLearners,
-  formatReadingAssessmentDisplay,
+  computeAralMetrics,
+  filterAralLearners,
+  ARAL_STEP_DEFINITIONS,
 } from "@/lib/monitoring/aralLearnerAggregation";
 import {
-  isAralHtTrackedLearner,
-  ARAL_APPROVAL_STATUS,
-} from "@/lib/monitoring/aralApproval";
-import { listRecentAralAbsenceIds } from "@/lib/supabase/queries/monitoring";
+  aralPeriodLabel,
+  getAralTermDisplay,
+} from "@/lib/monitoring/assessmentTimeline";
+import { formatGradeSection } from "@/lib/monitoring/philIriEvaluation";
 import { useAralAssessmentPeriod } from "@/hooks/useAralAssessmentPeriod";
 import { cn } from "@/lib/utils";
 
-const ARAL_ADMIN_TABS = [
-  { id: "review", label: "Review Referrals" },
-  { id: "assign", label: "Assign Facilitators" },
-  { id: "outcomes", label: "Outcomes" },
+const ADMIN_READING_TABS = [
+  { id: "overview", label: "Assessment Overview" },
+  { id: "records", label: "Learner Reading Records" },
+  { id: "progress", label: "Term Progress & EOSY Review" },
 ];
 
 const ARAL_PERIOD_OPTIONS = [
@@ -46,33 +46,8 @@ const ARAL_PERIOD_OPTIONS = [
   { value: "EOSY", label: "End-of-Year Assessment (EOSY)" },
 ];
 
-const OUTCOMES_PAGE_SIZE = 10;
-
-function approvalIs(value, ...needles) {
-  const text = String(value || "");
-  return needles.some((n) => text.toLowerCase().includes(n));
-}
-
-function isApprovedLearner(s) {
-  return approvalIs(s.aralApprovalStatus, "approved");
-}
-
-function isCompletedLearner(s) {
-  return (
-    s.monitoringStatus === "Completed" ||
-    s.aralStatus === "Completed" ||
-    s.movementOutcome === "Promoted"
-  );
-}
-
-function isPendingPrincipal(status) {
-  return (
-    !status ||
-    status === ARAL_APPROVAL_STATUS.SUGGESTED ||
-    status === ARAL_APPROVAL_STATUS.SUBMITTED ||
-    approvalIs(status, "submitted", "suggested")
-  );
-}
+const RECORDS_PAGE_SIZE = 10;
+const EOSY_PAGE_SIZE = 10;
 
 export default function AdminAralMonitoringDashboard() {
   const prefersReducedMotion = useReducedMotion();
@@ -85,14 +60,17 @@ export default function AdminAralMonitoringDashboard() {
     refresh,
   } = useAdminMonitoring();
 
-  // 3 Core Principal Flow Tabs: 'review' | 'assign' | 'outcomes'
-  const [activeTab, setActiveTab] = useState("review");
-  const [assignCohortFilter, setAssignCohortFilter] = useState("all");
-  const [outcomeFilter, setOutcomeFilter] = useState("completed"); // 'completed' | 'continued' | 'summer'
-  const [outcomesPage, setOutcomesPage] = useState(1);
+  // Active Tab: 'overview' | 'records' | 'progress'
+  const [activeTab, setActiveTab] = useState("overview");
+
+  // Filter state for records tab
+  const [recordsPage, setRecordsPage] = useState(1);
+  const [eosyPage, setEosyPage] = useState(1);
   const [schoolYear, setSchoolYear] = useState("");
   const [grade, setGrade] = useState("All Grades");
   const [section, setSection] = useState("All Sections");
+  const [language, setLanguage] = useState("All Languages");
+  const [stepFilter, setStepFilter] = useState("All Steps");
   const [search, setSearch] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
 
@@ -102,207 +80,196 @@ export default function AdminAralMonitoringDashboard() {
     saving: savingPeriod,
   } = useAralAssessmentPeriod();
 
-  const currentTerm = "Term 1";
-
   const activeSchoolYear =
     schoolYear || filterOptions.schoolYears?.[0] || "SY 2026-2027";
 
-  // Deduplicate student records to unique learners
-  const deduplicatedStudents = useMemo(() => {
-    return aggregateAralLearners(students);
-  }, [students]);
+  // 1. Authoritative aggregation of all language reading cases
+  const allReadingLearners = useMemo(() => {
+    return aggregateAralLearners(students, {
+      schoolYear: activeSchoolYear,
+      role: "principal",
+      scope: "school-wide",
+    });
+  }, [students, activeSchoolYear]);
 
-  // Recent ARAL session absences
-  const [absentIds, setAbsentIds] = useState(() => new Set());
-  useEffect(() => {
-    if (activeTab !== "monitor" && activeTab !== "assign") return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const approvedIds = [
-          ...new Set(
-            (students ?? [])
-              .filter((s) => approvalIs(s.aralApprovalStatus, "approved"))
-              .map((s) => s.studentId)
-              .filter(Boolean)
-          ),
-        ];
-        if (!approvedIds.length) {
-          if (!cancelled) setAbsentIds(new Set());
-          return;
-        }
-        const result = await listRecentAralAbsenceIds(approvedIds, 30);
-        if (!cancelled) setAbsentIds(result.data ?? new Set());
-      } catch {
-        if (!cancelled) setAbsentIds(new Set());
+  // 2. Pure reading assessment metrics for top KPI cards
+  const metrics = useMemo(() => {
+    return computeAralMetrics(allReadingLearners);
+  }, [allReadingLearners]);
+
+  // 3. Reading Profile Distribution Breakdown
+  const profileDistribution = useMemo(() => {
+    let atGrade = 0;
+    let independent = 0;
+    let instructional = 0;
+    let frustration = 0;
+
+    for (const l of allReadingLearners) {
+      if (l.currentStepKey === "screening_complete_at_grade") {
+        atGrade++;
+      } else if (l.readingLevel === "Independent") {
+        independent++;
+      } else if (l.readingLevel === "Instructional") {
+        instructional++;
+      } else if (l.readingLevel === "Frustration") {
+        frustration++;
       }
-    })();
-    return () => {
-      cancelled = true;
+    }
+
+    const assessedTotal = metrics.totalCompleteCount || 1;
+
+    return {
+      atGrade,
+      independent,
+      instructional,
+      frustration,
+      atGradePct: Math.round((atGrade / assessedTotal) * 100) || 0,
+      independentPct: Math.round((independent / assessedTotal) * 100) || 0,
+      instructionalPct: Math.round((instructional / assessedTotal) * 100) || 0,
+      frustrationPct: Math.round((frustration / assessedTotal) * 100) || 0,
     };
-  }, [students, activeTab]);
+  }, [allReadingLearners, metrics.totalCompleteCount]);
 
-  // Dynamic Outcome Filter tabs: Summer Eligible only appears at EOSY
-  const outcomeFilterTabs = useMemo(() => {
-    const list = [
-      { id: "completed", label: "Completed & Exited" },
-      { id: "continued", label: "Needs Continued Support" },
-    ];
-    if (aralPeriod === "EOSY") {
-      list.push({ id: "summer", label: "Summer Eligible" });
-    }
-    return list;
-  }, [aralPeriod]);
+  // 4. Grade & Section summary breakdown
+  const sectionSummaries = useMemo(() => {
+    const map = new Map();
 
-  // Reset outcomeFilter if summer is selected but period is not EOSY
-  useEffect(() => {
-    if (aralPeriod !== "EOSY" && outcomeFilter === "summer") {
-      setOutcomeFilter("completed");
-    }
-  }, [aralPeriod, outcomeFilter]);
+    for (const l of allReadingLearners) {
+      const g = l.grade ? `Grade ${l.grade}` : "Grade 7";
+      const sec = l.section || "General";
+      const lang = l.language || l.subject || "English";
+      const key = `${g}_${sec}_${lang}`;
 
-  // Filtered learners
-  const filteredStudents = useMemo(() => {
-    return (students ?? []).filter((s) => {
-      if (grade !== "All Grades") {
-        const sGrade = s.gradeLevel || s.grade || "";
-        const cleanGrade = String(grade).replace(/^Grade\s+/i, "").trim();
-        const cleanSGrade = String(sGrade).replace(/^Grade\s+/i, "").trim();
-        if (cleanGrade !== cleanSGrade) return false;
+      if (!map.has(key)) {
+        map.set(key, {
+          grade: g,
+          section: sec,
+          language: lang,
+          total: 0,
+          assessed: 0,
+          needsIra: 0,
+          atGrade: 0,
+          instructional: 0,
+          frustration: 0,
+        });
       }
-      if (section !== "All Sections") {
-        const sSec = s.sectionName || s.section || "";
-        if (sSec !== section) return false;
+
+      const item = map.get(key);
+      item.total++;
+
+      if (
+        l.currentStepKey === "screening_complete_at_grade" ||
+        l.currentStepKey === "assessment_complete"
+      ) {
+        item.assessed++;
       }
+      if (l.currentStepKey === "needs_individual_assessment") {
+        item.needsIra++;
+      }
+      if (l.currentStepKey === "screening_complete_at_grade") {
+        item.atGrade++;
+      } else if (l.readingLevel === "Instructional") {
+        item.instructional++;
+      } else if (l.readingLevel === "Frustration") {
+        item.frustration++;
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => {
+      const gComp = a.grade.localeCompare(b.grade);
+      if (gComp !== 0) return gComp;
+      return a.section.localeCompare(b.section);
+    });
+  }, [allReadingLearners]);
+
+  // 5. Filtered list for the Records Tab
+  const filteredRecords = useMemo(() => {
+    return allReadingLearners.filter((row) => {
+      // Search
       if (search) {
         const q = search.toLowerCase().trim();
-        const nameHit = (s.name || `${s.firstName || ""} ${s.lastName || ""}`)
+        const nameHit = (row.name || `${row.firstName || ""} ${row.lastName || ""}`)
           .toLowerCase()
           .includes(q);
-        const lrnHit = String(s.studentNumber || s.lrn || "")
+        const lrnHit = String(row.studentNumber || row.lrn || "")
           .toLowerCase()
           .includes(q);
-        const secHit = String(s.gradeSection || "")
+        const secHit = String(row.gradeSection || "")
           .toLowerCase()
           .includes(q);
         if (!nameHit && !lrnHit && !secHit) return false;
       }
+
+      // Grade
+      if (grade !== "All Grades") {
+        const cleanTargetGrade = String(grade).replace(/^Grade\s+/i, "").trim();
+        const cleanRowGrade = String(row.grade || "").replace(/^Grade\s+/i, "").trim();
+        if (cleanRowGrade !== cleanTargetGrade) return false;
+      }
+
+      // Section
+      if (section !== "All Sections") {
+        if (row.section !== section && row.sectionName !== section) return false;
+      }
+
+      // Language
+      if (language !== "All Languages") {
+        if (String(row.language || "").toLowerCase() !== language.toLowerCase()) {
+          return false;
+        }
+      }
+
+      // Status
+      if (stepFilter !== "All Steps") {
+        if (
+          row.currentStepKey !== stepFilter &&
+          row.currentStepLabel !== stepFilter
+        ) {
+          return false;
+        }
+      }
+
       return true;
     });
-  }, [students, grade, section, search]);
+  }, [allReadingLearners, search, grade, section, language, stepFilter]);
 
-  // ARAL KPI Counts
-  const aralKpi = useMemo(() => {
-    const list = filteredStudents;
-    const awaitingReview = list.filter(
-      (s) => isAralHtTrackedLearner(s) && isPendingPrincipal(s.aralApprovalStatus)
-    ).length;
+  // Records pagination
+  const recordsTotalPages = Math.max(1, Math.ceil(filteredRecords.length / RECORDS_PAGE_SIZE));
+  const safeRecordsPage = Math.min(Math.max(recordsPage, 1), recordsTotalPages);
+  const pagedRecords = useMemo(() => {
+    const start = (safeRecordsPage - 1) * RECORDS_PAGE_SIZE;
+    return filteredRecords.slice(start, start + RECORDS_PAGE_SIZE);
+  }, [filteredRecords, safeRecordsPage]);
 
-    // Stage 1: Approved + no facilitator = Need Facilitator
-    const unassignedFacilitator = list.filter(
-      (s) =>
-        isApprovedLearner(s) &&
-        !isCompletedLearner(s) &&
-        !s.aralFacilitatorAssigned &&
-        !s.aralFacilitatorTeacherId
-    ).length;
-
-    // Stage 2: Facilitator assigned + assessment not completed = Waiting for Assessment
-    const facilitatorAssignedList = list.filter(
-      (s) =>
-        isApprovedLearner(s) &&
-        !isCompletedLearner(s) &&
-        (Boolean(s.aralFacilitatorAssigned) || Boolean(s.aralFacilitatorTeacherId))
-    );
-
-    const midlineDue = facilitatorAssignedList.filter(
-      (s) =>
-        s.monitoringStatus === "For Midline Assessment" ||
-        s.aralPhase === "Midline" ||
-        s.midlineScore == null
-    ).length;
-
-    const eosyDue = facilitatorAssignedList.filter(
-      (s) =>
-        s.monitoringStatus === "For EOSY Assessment" ||
-        s.aralPhase === "EOSY" ||
-        s.eosyScore == null
-    ).length;
-
-    const approvedAwaitingBaseline = facilitatorAssignedList.filter(
-      (s) => s.philIriScore == null
-    ).length;
-
-    const assessmentDue =
-      aralPeriod === "MOSY"
-        ? midlineDue
-        : aralPeriod === "EOSY"
-          ? eosyDue
-          : approvedAwaitingBaseline;
-
-    const summerEligible = list.filter(
-      (s) =>
-        s.summerStatus === "Eligible" ||
-        s.eosyDecision === "ARAL Summer Referral" ||
-        Boolean(s.isSummerEligible)
-    ).length;
-
-    const completedCount = list.filter(isCompletedLearner).length;
-    const continuedCount = list.filter(
-      (s) =>
-        s.monitoringStatus === "Needs Further Support" ||
-        s.monitoringStatus === "For Further Monitoring" ||
-        s.monitoringStatus === "Referred"
-    ).length;
-
-    const totalOutcomes = completedCount + continuedCount + (aralPeriod === "EOSY" ? summerEligible : 0);
-
-    return {
-      awaitingReview,
-      unassignedFacilitator,
-      assessmentDue,
-      summerEligible,
-      completedCount,
-      continuedCount,
-      totalOutcomes,
-    };
-  }, [filteredStudents, aralPeriod]);
-
-  // Outcomes list
-  const outcomeLearners = useMemo(() => {
-    const list = filteredStudents;
-    if (outcomeFilter === "completed") {
-      return list.filter(isCompletedLearner);
-    }
-    if (outcomeFilter === "continued") {
-      return list.filter(
-        (s) =>
-          s.monitoringStatus === "Needs Further Support" ||
-          s.monitoringStatus === "For Further Monitoring" ||
-          s.monitoringStatus === "Referred" ||
-          s.movementOutcome === "Needs Further Intervention"
+  // 6. End-of-Year Cases for Further Review
+  const eosyReviewCases = useMemo(() => {
+    return allReadingLearners.filter((l) => {
+      return (
+        l.currentStepKey === "for_review" ||
+        (aralPeriod === "EOSY" &&
+          (l.readingLevel === "Frustration" || l.readingLevel === "Instructional"))
       );
-    }
-    if (outcomeFilter === "summer") {
-      return list.filter(
-        (s) =>
-          s.summerStatus === "Eligible" ||
-          s.eosyDecision === "ARAL Summer Referral" ||
-          Boolean(s.isSummerEligible)
-      );
-    }
-    return [];
-  }, [filteredStudents, outcomeFilter]);
+    });
+  }, [allReadingLearners, aralPeriod]);
 
-  const outcomesTotalPages = Math.max(
-    1,
-    Math.ceil(outcomeLearners.length / OUTCOMES_PAGE_SIZE) || 1
-  );
-  const safeOutcomesPage = Math.min(Math.max(outcomesPage, 1), outcomesTotalPages);
-  const pagedOutcomes = useMemo(() => {
-    const start = (safeOutcomesPage - 1) * OUTCOMES_PAGE_SIZE;
-    return outcomeLearners.slice(start, start + OUTCOMES_PAGE_SIZE);
-  }, [outcomeLearners, safeOutcomesPage]);
+  const eosyTotalPages = Math.max(1, Math.ceil(eosyReviewCases.length / EOSY_PAGE_SIZE));
+  const safeEosyPage = Math.min(Math.max(eosyPage, 1), eosyTotalPages);
+  const pagedEosyCases = useMemo(() => {
+    const start = (safeEosyPage - 1) * EOSY_PAGE_SIZE;
+    return eosyReviewCases.slice(start, start + EOSY_PAGE_SIZE);
+  }, [eosyReviewCases, safeEosyPage]);
+
+  // Step filter options
+  const stepFilterOptions = useMemo(() => [
+    "All Steps",
+    "Needs Screening Test",
+    "Needs Reading Assessment",
+    "Screening Complete — At Grade Level",
+    "Reading Assessment Complete",
+    "GST Under Review",
+    "Absent / For Reschedule",
+    "For Further Review",
+  ], []);
 
   return (
     <motion.div
@@ -312,18 +279,18 @@ export default function AdminAralMonitoringDashboard() {
       className="space-y-4 pb-6"
     >
       <Header
-        breadcrumb="Home > ARAL Monitoring"
-        title="ARAL Monitoring"
-        description="Review referrals, assign facilitators, and track learner assessment progress and outcomes."
+        breadcrumb="Home > ARAL Reading Assessment"
+        title="ARAL Reading Assessment"
+        description="Principal oversight of Phil-IRI reading assessment progress, reading profiles, and term milestones."
         controls={
           <>
             <PageHelp
-              summary="School-wide ARAL Monitoring administration under RA 12028."
+              summary="School-wide reading assessment monitoring and oversight."
               steps={[
-                "Review teacher reading referrals for English and Filipino learners.",
-                "Assign reading facilitators to approved cohorts by section.",
-                "Monitor assessment progress from GST screening to Midline and EOSY.",
-                "Track verified learner outcomes and summer eligibility at EOSY.",
+                "English and Filipino Subject Teachers administer reading assessments for all enrolled students.",
+                "Principal monitors completion, reading profile distribution, and term-by-term progress.",
+                "End-of-Year cases requiring further review are flagged for school head oversight.",
+                "CNHS LEARN does not manage summer intervention classes or assign facilitators.",
               ]}
             />
 
@@ -343,7 +310,7 @@ export default function AdminAralMonitoringDashboard() {
               type="button"
               onClick={() => refresh({ bustCache: true })}
               disabled={loading || refreshing}
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-xs transition-colors hover:border-cnhs-green/40 hover:bg-cnhs-green-soft/30 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-[var(--card)] dark:text-slate-200"
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-xs transition-colors hover:border-[#246f54]/40 hover:bg-emerald-50/40 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-[var(--card)] dark:text-slate-200"
             >
               <RefreshCw
                 size={13}
@@ -358,7 +325,7 @@ export default function AdminAralMonitoringDashboard() {
       {error ? (
         <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50/80 px-4 py-3 text-xs text-red-700 shadow-xs">
           <div>
-            <p className="font-semibold">Unable to load ARAL monitoring data</p>
+            <p className="font-semibold">Unable to load reading monitoring data</p>
             <p className="mt-0.5 text-[11px] text-red-600">
               Please check your connection and try again.
             </p>
@@ -366,7 +333,7 @@ export default function AdminAralMonitoringDashboard() {
           <button
             type="button"
             onClick={() => refresh({ bustCache: true })}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-red-300 bg-white px-3 py-1 text-xs font-semibold text-red-700 transition hover:bg-red-50 active:scale-95"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-red-300 bg-white px-3 py-1 text-xs font-semibold text-red-700 transition hover:bg-red-50"
           >
             <RefreshCw size={12} />
             <span>Retry</span>
@@ -374,191 +341,81 @@ export default function AdminAralMonitoringDashboard() {
         </div>
       ) : null}
 
-      {/* 3 TOP SUMMARY CARDS (Exact size and style as Academic Monitoring) */}
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {/* 1. Waiting for Review */}
-        <button
-          type="button"
-          onClick={() => setActiveTab("review")}
-          className={cn(
-            "relative flex h-full min-h-[108px] w-full cursor-pointer flex-col justify-between rounded-xl border p-4 text-left shadow-xs transition-colors active:scale-[0.99] dark:bg-[var(--card)]",
-            aralKpi.awaitingReview > 0
-              ? "border-amber-300 bg-amber-50/25 dark:border-amber-500/30"
-              : "border-slate-200 bg-white dark:border-white/5"
-          )}
-        >
-          <div>
-            <div className="flex items-center justify-between">
-              <p
-                className={cn(
-                  "text-[11px] font-bold uppercase tracking-wider",
-                  aralKpi.awaitingReview > 0
-                    ? "text-amber-800 dark:text-amber-400"
-                    : "text-slate-500 dark:text-slate-400"
-                )}
-              >
-                Waiting for Review
-              </p>
-              {aralKpi.awaitingReview > 0 ? (
-                <span className="flex h-2 w-2 rounded-full bg-amber-500" />
-              ) : null}
-            </div>
-            <p
-              className={cn(
-                "mt-2 text-3xl font-bold leading-none tracking-tight tabular-nums",
-                aralKpi.awaitingReview > 0
-                  ? "text-amber-800 dark:text-amber-400"
-                  : "text-slate-900 dark:text-white"
-              )}
-            >
-              {aralKpi.awaitingReview}
+      {/* 4 TOP SUMMARY CARDS (Principal Oversight) */}
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {/* 1. Total Learners */}
+        <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Total Enrolled
             </p>
+            <BookOpen size={16} className="text-slate-400" />
           </div>
-          <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-            {aralKpi.awaitingReview > 0
-              ? "Teacher referrals waiting for your review."
-              : "No referrals waiting for review."}
+          <p className="mt-2 text-3xl font-bold leading-none tracking-tight text-slate-900 dark:text-slate-100">
+            {metrics.total}
           </p>
-        </button>
+          <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+            Enrolled in English & Filipino classes
+          </p>
+        </div>
 
-        {/* 2. Need Facilitator */}
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab("assign");
-            setAssignCohortFilter("unassigned");
-          }}
-          className={cn(
-            "relative flex h-full min-h-[108px] w-full cursor-pointer flex-col justify-between rounded-xl border p-4 text-left shadow-xs transition-colors active:scale-[0.99] dark:bg-[var(--card)]",
-            aralKpi.unassignedFacilitator > 0
-              ? "border-amber-300 bg-amber-50/25 dark:border-amber-500/30"
-              : "border-slate-200 bg-white dark:border-white/5"
-          )}
-        >
-          <div>
-            <div className="flex items-center justify-between">
-              <p
-                className={cn(
-                  "text-[11px] font-bold uppercase tracking-wider",
-                  aralKpi.unassignedFacilitator > 0
-                    ? "text-amber-800 dark:text-amber-400"
-                    : "text-slate-500 dark:text-slate-400"
-                )}
-              >
-                Need Facilitator
-              </p>
-              {aralKpi.unassignedFacilitator > 0 ? (
-                <span className="flex h-2 w-2 rounded-full bg-amber-500" />
-              ) : null}
-            </div>
-            <p
-              className={cn(
-                "mt-2 text-3xl font-bold leading-none tracking-tight tabular-nums",
-                aralKpi.unassignedFacilitator > 0
-                  ? "text-amber-800 dark:text-amber-400"
-                  : "text-slate-900 dark:text-white"
-              )}
-            >
-              {aralKpi.unassignedFacilitator}
+        {/* 2. Assessed */}
+        <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Assessed
             </p>
+            <CheckCircle2 size={16} className="text-slate-400" />
           </div>
-          <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-            {aralKpi.unassignedFacilitator > 0
-              ? "Approved learners without an assigned facilitator."
-              : "All approved cohorts have assigned facilitators."}
+          <p className="mt-2 text-3xl font-bold leading-none tracking-tight text-slate-900 dark:text-slate-100">
+            {metrics.totalCompleteCount}
           </p>
-        </button>
+          <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400 truncate">
+            {metrics.screeningCompleteCount} At Grade Level · {metrics.assessmentCompleteCount} IRA Complete
+          </p>
+        </div>
 
-        {/* 3. Waiting for Assessment */}
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab("assign");
-            setAssignCohortFilter("all");
-          }}
-          className="relative flex h-full min-h-[108px] w-full cursor-pointer flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 text-left shadow-xs transition-colors active:scale-[0.99] dark:border-white/5 dark:bg-[var(--card)]"
-        >
-          <div>
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Waiting for Assessment
-              </p>
-            </div>
-            <p className="mt-2 text-3xl font-bold leading-none tracking-tight tabular-nums text-slate-900 dark:text-white">
-              {aralKpi.assessmentDue}
+        {/* 3. Not Yet Assessed */}
+        <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Not Yet Assessed
             </p>
+            <Clock size={16} className="text-slate-400" />
           </div>
-          <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-            Assigned learners awaiting Phil-IRI evaluation by facilitators.
+          <p className="mt-2 text-3xl font-bold leading-none tracking-tight text-slate-900 dark:text-slate-100">
+            {metrics.waitingForAssessmentCount}
           </p>
-        </button>
-      </section>
+          <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+            Awaiting GST screening test
+          </p>
+        </div>
 
-      {/* FILTER CONTROLS */}
-      <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs dark:border-white/5 dark:bg-[var(--card)]">
-        <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search candidate name, LRN, or section…"
-            className="h-9 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none placeholder:text-slate-400 focus:border-cnhs-green dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
-          />
-          <div className="flex flex-wrap items-center gap-2">
-            <AppSelect
-              label="School year"
-              value={schoolYear || activeSchoolYear}
-              onChange={setSchoolYear}
-              options={filterOptions.schoolYears}
-              className="w-[144px]"
-              triggerClassName="h-9 rounded-lg text-xs font-medium"
-            />
-            <AppSelect
-              label="Grade"
-              value={grade}
-              onChange={setGrade}
-              options={filterOptions.grades}
-              className="w-[128px]"
-              triggerClassName="h-9 rounded-lg text-xs font-medium"
-            />
-            <AppSelect
-              label="Section"
-              value={section}
-              onChange={setSection}
-              options={filterOptions.sections}
-              className="w-[144px]"
-              triggerClassName="h-9 rounded-lg text-xs font-medium"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                setSearch("");
-                setGrade("All Grades");
-                setSection("All Sections");
-              }}
-              className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
-            >
-              <X size={13} />
-              Reset
-            </button>
+        {/* 4. Needs Further Assessment */}
+        <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Needs IRA
+            </p>
+            <AlertCircle size={16} className="text-slate-400" />
           </div>
+          <p className="mt-2 text-3xl font-bold leading-none tracking-tight text-slate-900 dark:text-slate-100">
+            {metrics.needsIndividualAssessmentCount}
+          </p>
+          <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+            GST score below 28 — Form 3 required
+          </p>
         </div>
       </section>
 
-      {/* 3 WORKFLOW TABS */}
+      {/* 3 READ-ONLY OVERSIGHT TABS */}
       <div
         className="flex items-end gap-5 overflow-x-auto border-b border-slate-200 dark:border-white/10"
         role="tablist"
-        aria-label="Principal ARAL monitoring workflow tabs"
+        aria-label="Principal reading assessment tabs"
       >
-        {ARAL_ADMIN_TABS.map((tab) => {
+        {ADMIN_READING_TABS.map((tab) => {
           const selected = activeTab === tab.id;
-          const badgeCount =
-            tab.id === "review"
-              ? aralKpi.awaitingReview
-              : tab.id === "assign"
-                ? aralKpi.unassignedFacilitator
-                : 0;
-
           return (
             <button
               key={tab.id}
@@ -569,23 +426,16 @@ export default function AdminAralMonitoringDashboard() {
               className={cn(
                 "-mb-px inline-flex shrink-0 cursor-pointer items-center gap-2 border-b-2 px-1 pb-2.5 text-sm transition-colors",
                 selected
-                  ? "border-cnhs-green-dark font-bold text-cnhs-green-dark dark:border-cnhs-green dark:text-cnhs-green"
+                  ? "border-cnhs-green-dark font-semibold text-cnhs-green-dark dark:border-emerald-400 dark:text-emerald-400"
                   : "border-transparent font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
               )}
             >
               <span>{tab.label}</span>
-              {badgeCount > 0 ? (
-                <span
-                  className={cn(
-                    "rounded-full px-1.5 py-0.2 text-[10px] font-bold tabular-nums",
-                    selected
-                      ? "bg-cnhs-green-soft text-cnhs-green-dark dark:bg-cnhs-green-dark/20 dark:text-cnhs-green"
-                      : "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400"
-                  )}
-                >
-                  {badgeCount}
+              {tab.id === "progress" && metrics.forReviewCount > 0 && (
+                <span className="rounded-md border border-red-200/80 bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold text-red-700 dark:border-red-800/40 dark:bg-red-950/40 dark:text-red-300">
+                  {metrics.forReviewCount}
                 </span>
-              ) : null}
+              )}
             </button>
           );
         })}
@@ -604,183 +454,595 @@ export default function AdminAralMonitoringDashboard() {
           }}
           role="tabpanel"
         >
-          {/* FLOW STEP 1: REVIEW REFERRALS */}
-          {activeTab === "review" ? (
-            <AdminAralApprovalPanel
-              students={filteredStudents}
-              onChanged={() => refresh({ bustCache: true })}
-              onViewStudent={setSelectedStudent}
-            />
-          ) : null}
-
-          {/* FLOW STEP 2: ASSIGN FACILITATORS & COHORTS */}
-          {activeTab === "assign" ? (
-            <AdminAralFacilitatorAssignPanel
-              students={filteredStudents}
-              onChanged={() => refresh({ bustCache: true })}
-              onViewStudent={setSelectedStudent}
-              initialCohortFilter={assignCohortFilter}
-            />
-          ) : null}
-
-          {/* FLOW STEP 3: VIEW OUTCOMES */}
-          {activeTab === "outcomes" ? (
+          {/* TAB 1: ASSESSMENT OVERVIEW */}
+          {activeTab === "overview" && (
             <div className="space-y-4">
-              {/* Category label as requested: CNHS Learn outcome categories */}
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xs">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                    CNHS Learn outcome categories
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Verified assessment and intervention outcomes for reading support cases.
-                  </p>
+              {/* Reading Profile Distribution Summary */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-[var(--card)] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                      Reading Profile Distribution
+                    </h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Breakdown of evaluated reading profiles across English and Filipino
+                    </p>
+                  </div>
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    {metrics.totalCompleteCount} Total Assessed
+                  </span>
                 </div>
 
-                {/* Filter Pills */}
-                <div className="flex flex-wrap items-center gap-1.5" role="tablist">
-                  {outcomeFilterTabs.map((item) => {
-                    const selected = outcomeFilter === item.id;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={selected}
-                        onClick={() => {
-                          setOutcomeFilter(item.id);
-                          setOutcomesPage(1);
-                        }}
-                        className={cn(
-                          "inline-flex h-8 cursor-pointer items-center rounded-full px-3 text-xs font-semibold transition-all active:scale-95",
-                          selected
-                            ? "bg-cnhs-green-dark text-white shadow-xs"
-                            : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                        )}
-                      >
-                        {item.label}
-                      </button>
-                    );
-                  })}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  {/* At Grade Level */}
+                  <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+                      At Grade Level
+                    </span>
+                    <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">
+                      {profileDistribution.atGrade}
+                    </p>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                      {profileDistribution.atGradePct}% of assessed (GST 28–40)
+                    </span>
+                  </div>
+
+                  {/* Independent */}
+                  <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+                      Independent
+                    </span>
+                    <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">
+                      {profileDistribution.independent}
+                    </p>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                      {profileDistribution.independentPct}% of assessed (Form 3)
+                    </span>
+                  </div>
+
+                  {/* Instructional */}
+                  <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+                      Instructional
+                    </span>
+                    <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">
+                      {profileDistribution.instructional}
+                    </p>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                      {profileDistribution.instructionalPct}% of assessed (Form 3)
+                    </span>
+                  </div>
+
+                  {/* Frustration */}
+                  <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+                      Frustration
+                    </span>
+                    <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">
+                      {profileDistribution.frustration}
+                    </p>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                      {profileDistribution.frustrationPct}% of assessed (Form 3)
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {outcomeFilter === "summer" && aralPeriod === "EOSY" ? (
-                <AdminAralSummerEligibilityPanel
-                  schoolYear={activeSchoolYear}
-                  onViewStudent={setSelectedStudent}
-                />
-              ) : (
-                /* Simple Read-only Outcome Table */
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs dark:border-white/5 dark:bg-[var(--card)]">
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[700px] border-collapse text-left text-xs">
-                      <thead className="border-b border-slate-100 bg-slate-50/80 font-bold uppercase tracking-wider text-slate-500 dark:border-white/5 dark:bg-white/[0.02]">
-                        <tr>
-                          <th className="px-5 py-3">Learner</th>
-                          <th className="px-5 py-3">Grade & Section</th>
-                          <th className="px-5 py-3">Latest Reading Profile</th>
-                          <th className="px-5 py-3">Outcome</th>
-                          <th className="px-5 py-3">Facilitator</th>
-                          <th className="px-5 py-3 text-right">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                        {pagedOutcomes.length === 0 ? (
-                          <tr>
-                            <td colSpan={6} className="px-5 py-10 text-center text-slate-400">
-                              No outcomes recorded under this category yet.
+              {/* Grade & Section Summary Table */}
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+                <div className="border-b border-slate-100 px-4 py-3 dark:border-white/5">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    Grade & Section Assessment Progress
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Completion and reading profile counts grouped by class section
+                  </p>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[760px] text-left text-xs">
+                    <thead className="border-b border-slate-100 bg-slate-50/75 font-bold uppercase tracking-wider text-[10px] text-slate-400 dark:border-white/5 dark:bg-slate-800/40">
+                      <tr>
+                        <th className="px-4 py-3">Grade & Section</th>
+                        <th className="px-4 py-3">Language</th>
+                        <th className="px-4 py-3 text-center">Enrolled</th>
+                        <th className="px-4 py-3 text-center">Assessed</th>
+                        <th className="px-4 py-3 text-center">Needs IRA</th>
+                        <th className="px-4 py-3 text-center">At Grade Level</th>
+                        <th className="px-4 py-3 text-center">Instructional</th>
+                        <th className="px-4 py-3 text-center">Frustration</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                      {sectionSummaries.length > 0 ? (
+                        sectionSummaries.map((s, idx) => (
+                          <tr
+                            key={`${s.grade}_${s.section}_${s.language}_${idx}`}
+                            className="hover:bg-slate-50/60 dark:hover:bg-white/[0.02] transition-colors"
+                          >
+                            <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-200">
+                              {s.grade} — {s.section}
+                            </td>
+                            <td className="px-4 py-3 font-medium text-slate-600 dark:text-slate-400">
+                              {s.language}
+                            </td>
+                            <td className="px-4 py-3 text-center font-bold text-slate-900 dark:text-white">
+                              {s.total}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className="font-semibold text-[#246f54] dark:text-emerald-400">
+                                {s.assessed}
+                              </span>
+                              <span className="text-[10px] text-slate-400 ml-1">
+                                ({s.total > 0 ? Math.round((s.assessed / s.total) * 100) : 0}%)
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center font-medium text-blue-700 dark:text-blue-400">
+                              {s.needsIra}
+                            </td>
+                            <td className="px-4 py-3 text-center font-medium text-emerald-700 dark:text-emerald-400">
+                              {s.atGrade}
+                            </td>
+                            <td className="px-4 py-3 text-center font-medium text-amber-700 dark:text-amber-400">
+                              {s.instructional}
+                            </td>
+                            <td className="px-4 py-3 text-center font-medium text-rose-700 dark:text-rose-400">
+                              {s.frustration}
                             </td>
                           </tr>
-                        ) : (
-                          pagedOutcomes.map((learner) => {
-                            const profile = formatReadingAssessmentDisplay(learner);
-                            const outcomeLabel =
-                              outcomeFilter === "completed"
-                                ? "Completed & Exited"
-                                : outcomeFilter === "continued"
-                                  ? "Needs Continued Support"
-                                  : "Summer Eligible";
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
+                            No class sections currently recorded.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
 
-                            return (
-                              <tr
-                                key={learner.studentId || learner.id}
-                                className="transition-colors hover:bg-slate-50/60 dark:hover:bg-white/[0.02]"
-                              >
-                                <td className="px-5 py-3">
-                                  <p className="font-semibold text-slate-900 dark:text-slate-100">
-                                    {learner.name}
-                                  </p>
-                                  <p className="text-[11px] text-slate-400">
-                                    LRN: {learner.studentNumber || learner.lrn || "—"}
-                                  </p>
-                                </td>
-                                <td className="px-5 py-3 font-medium text-slate-700 dark:text-slate-300">
-                                  {learner.gradeSection || "—"}
-                                </td>
-                                <td className="px-5 py-3 font-semibold text-slate-800 dark:text-slate-200">
-                                  {profile}
-                                </td>
-                                <td className="px-5 py-3">
-                                  <span
-                                    className={cn(
-                                      "inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
-                                      outcomeFilter === "completed"
-                                        ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
-                                        : outcomeFilter === "continued"
-                                          ? "bg-blue-50 text-blue-800 ring-1 ring-blue-200"
-                                          : "bg-amber-50 text-amber-800 ring-1 ring-amber-200"
-                                    )}
-                                  >
-                                    {outcomeLabel}
-                                  </span>
-                                </td>
-                                <td className="px-5 py-3 font-medium text-slate-700 dark:text-slate-300">
-                                  {learner.aralFacilitatorName || "—"}
-                                </td>
-                                <td className="px-5 py-3 text-right">
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setSelectedStudent(learner.sourceRows?.[0] || learner)
-                                    }
-                                    className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50"
-                                  >
-                                    <Eye size={12} />
-                                    View
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="border-t border-slate-100 px-5 py-3 dark:border-white/5">
-                    <AdminTablePagination
-                      page={safeOutcomesPage}
-                      pageSize={OUTCOMES_PAGE_SIZE}
-                      total={outcomeLearners.length}
-                      onPageChange={setOutcomesPage}
-                      itemLabel="outcomes"
+          {/* TAB 2: LEARNER READING RECORDS */}
+          {activeTab === "records" && (
+            <div className="space-y-4">
+              {/* Filter Bar */}
+              <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+                <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center">
+                  <input
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setRecordsPage(1);
+                    }}
+                    placeholder="Search candidate name, LRN, or section…"
+                    className="h-9 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none placeholder:text-slate-400 focus:border-[#246f54] dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <AppSelect
+                      label="School year"
+                      value={schoolYear || activeSchoolYear}
+                      onChange={(val) => {
+                        setSchoolYear(val);
+                        setRecordsPage(1);
+                      }}
+                      options={filterOptions.schoolYears}
+                      className="w-[144px]"
+                      triggerClassName="h-9 rounded-lg text-xs font-medium"
                     />
+                    <AppSelect
+                      label="Grade"
+                      value={grade}
+                      onChange={(val) => {
+                        setGrade(val);
+                        setRecordsPage(1);
+                      }}
+                      options={filterOptions.grades}
+                      className="w-[128px]"
+                      triggerClassName="h-9 rounded-lg text-xs font-medium"
+                    />
+                    <AppSelect
+                      label="Language"
+                      value={language}
+                      onChange={(val) => {
+                        setLanguage(val);
+                        setRecordsPage(1);
+                      }}
+                      options={["All Languages", "English", "Filipino"]}
+                      className="w-[130px]"
+                      triggerClassName="h-9 rounded-lg text-xs font-medium"
+                    />
+                    <AppSelect
+                      label="Status"
+                      value={stepFilter}
+                      onChange={(val) => {
+                        setStepFilter(val);
+                        setRecordsPage(1);
+                      }}
+                      options={stepFilterOptions}
+                      className="w-[160px]"
+                      triggerClassName="h-9 rounded-lg text-xs font-medium"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearch("");
+                        setGrade("All Grades");
+                        setSection("All Sections");
+                        setLanguage("All Languages");
+                        setStepFilter("All Steps");
+                        setRecordsPage(1);
+                      }}
+                      className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                    >
+                      <X size={13} />
+                      Reset
+                    </button>
                   </div>
                 </div>
-              )}
+              </div>
+
+              {/* Records Table */}
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[1000px] text-left text-xs">
+                    <thead className="border-b border-slate-100 bg-slate-50/75 font-bold uppercase tracking-wider text-[10px] text-slate-400 dark:border-white/5 dark:bg-slate-800/40">
+                      <tr>
+                        <th className="px-4 py-3">Learner</th>
+                        <th className="px-4 py-3">Grade & Section</th>
+                        <th className="px-4 py-3">Language</th>
+                        <th className="px-4 py-3">Period</th>
+                        <th className="px-4 py-3">GST Result</th>
+                        <th className="px-4 py-3">Reading Assessment</th>
+                        <th className="px-4 py-3">Current Result</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                      {pagedRecords.length > 0 ? (
+                        pagedRecords.map((row) => {
+                          const stepMeta = row.currentStepMeta || ARAL_STEP_DEFINITIONS[row.currentStepKey] || {};
+
+                          const isAbsent = Boolean(
+                            row.isAbsent ||
+                            row.candidateStatus === "Absent / For Reschedule" ||
+                            row.screeningStatus === "Absent / For Reschedule" ||
+                            row.rawPayload?.isAbsent
+                          );
+
+                          const isUnderReview = Boolean(
+                            row.candidateStatus === "For Review" &&
+                            (row.teacherReviewReason || row.rawPayload?.teacherReviewReason)
+                          );
+
+                          const isGstAtGradeLevel =
+                            !isAbsent && row.philIriScore != null && Number(row.philIriScore) >= 28;
+
+                          const hasIra = Boolean(
+                            !isAbsent &&
+                            row.readingLevel &&
+                            row.readingLevel !== "Not Screened" &&
+                            row.readingLevel !== "Not Assessed" &&
+                            row.readingLevel !== "Not Set" &&
+                            row.readingLevel !== "Pending Oral Profile" &&
+                            row.readingLevel !== "Pending Individual Assessment"
+                          );
+
+                          const gstDisplay = isAbsent
+                            ? "Absent"
+                            : isUnderReview
+                            ? `${row.philIriScore} / 40`
+                            : row.philIriScore != null
+                            ? `${row.philIriScore} / 40`
+                            : "Not Recorded";
+
+                          const iraDisplay = isAbsent
+                            ? "Pending Screening"
+                            : isGstAtGradeLevel
+                            ? "Not Required"
+                            : hasIra
+                            ? "Form 3 Completed"
+                            : row.philIriScore != null
+                            ? "Needs IRA"
+                            : "Pending Screening";
+
+                          const currentResultText = isAbsent
+                            ? "Absent"
+                            : isUnderReview
+                            ? "Under Review"
+                            : isGstAtGradeLevel
+                            ? "At Grade Level"
+                            : hasIra
+                            ? row.readingLevel
+                            : "Pending";
+
+                          const currentResultColor = isGstAtGradeLevel || row.readingLevel === "Independent"
+                            ? "text-emerald-700 dark:text-emerald-400 font-bold"
+                            : row.readingLevel === "Instructional"
+                            ? "text-amber-700 dark:text-amber-400 font-bold"
+                            : row.readingLevel === "Frustration"
+                            ? "text-rose-700 dark:text-rose-400 font-bold"
+                            : "text-slate-500 font-medium";
+
+                          return (
+                            <tr
+                              key={`${row.studentId || row.id}_${row.language}`}
+                              className="hover:bg-slate-50/60 dark:hover:bg-white/[0.02] transition-colors"
+                            >
+                              <td className="px-4 py-3">
+                                <div className="font-semibold text-slate-900 dark:text-white">
+                                  <LearnerName
+                                    firstName={row.firstName}
+                                    lastName={row.lastName}
+                                    name={row.name}
+                                  />
+                                </div>
+                                <div className="mt-0.5 font-mono text-[10px] text-slate-500 dark:text-slate-400">
+                                  {row.lrn || row.studentNumber || "—"}
+                                </div>
+                              </td>
+
+                              <td className="px-4 py-3 text-slate-700 dark:text-slate-300 font-medium">
+                                {row.gradeSectionDisplay || formatGradeSection(row.grade, row.section)}
+                              </td>
+
+                              <td className="px-4 py-3">
+                                <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-white/5 dark:text-slate-300">
+                                  {row.language || row.subject || "English"}
+                                </span>
+                              </td>
+
+                              <td className="px-4 py-3 text-slate-600 dark:text-slate-400 font-medium text-[11px]">
+                                {aralPeriodLabel(row.assessmentPeriod || aralPeriod)}
+                              </td>
+
+                              <td className="px-4 py-3">
+                                <span className="font-bold text-slate-900 dark:text-white">
+                                  {gstDisplay}
+                                </span>
+                              </td>
+
+                              <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
+                                {iraDisplay}
+                              </td>
+
+                              <td className="px-4 py-3">
+                                <span className={currentResultColor}>
+                                  {currentResultText}
+                                </span>
+                              </td>
+
+                              <td className="px-4 py-3">
+                                <span
+                                  className={cn(
+                                    "inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-semibold border",
+                                    stepMeta.badgeClass || "border-slate-200 bg-slate-50 text-slate-700"
+                                  )}
+                                >
+                                  {row.currentStepLabel || stepMeta.label || "Under Review"}
+                                </span>
+                              </td>
+
+                              <td className="px-4 py-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedStudent(row)}
+                                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
+                                >
+                                  <Eye size={12} className="text-slate-400" />
+                                  <span>View Record</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={9} className="px-4 py-10 text-center text-slate-400">
+                            No learner reading records match your criteria.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="border-t border-slate-100 px-4 py-3 dark:border-white/5">
+                  <AdminTablePagination
+                    page={safeRecordsPage}
+                    pageSize={RECORDS_PAGE_SIZE}
+                    total={filteredRecords.length}
+                    onPageChange={setRecordsPage}
+                    itemLabel="learners"
+                  />
+                </div>
+              </div>
             </div>
-          ) : null}
+          )}
+
+          {/* TAB 3: TERM PROGRESS & END-OF-YEAR REVIEW */}
+          {activeTab === "progress" && (
+            <div className="space-y-4">
+              {/* School Year Term Progress Overview */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-[var(--card)] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                      School-Year Reading Assessment Progression
+                    </h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      DepEd Phil-IRI assessment workflow across Term 1, Term 2, and Term 3
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-[#246f54] border border-emerald-200">
+                    <TrendingUp size={13} />
+                    Active: {getAralTermDisplay(aralPeriod)}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 dark:border-white/10 dark:bg-slate-800/40 space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block">
+                      Term 1 · Beginning (BOSY)
+                    </span>
+                    <p className="font-bold text-slate-900 dark:text-white text-sm">
+                      Baseline Universal Screening
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      All learners take GST. Learners scoring &lt;28 take Form 3 Individual Reading Assessment.
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 dark:border-white/10 dark:bg-slate-800/40 space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block">
+                      Term 2 · Middle (MOSY)
+                    </span>
+                    <p className="font-bold text-slate-900 dark:text-white text-sm">
+                      Midyear Reassessment
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Subject teachers update reading assessment and compare progress against Beginning baseline.
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 dark:border-white/10 dark:bg-slate-800/40 space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block">
+                      Term 3 · End (EOSY)
+                    </span>
+                    <p className="font-bold text-slate-900 dark:text-white text-sm">
+                      Final Reading Outcome
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Final outcome documented. Persistent reading needs are marked For Further Review.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* End-of-Year Cases for Further Review */}
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+                <div className="border-b border-slate-100 p-4 dark:border-white/5 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                      End-of-Year Cases Requiring Further Review
+                    </h3>
+                    <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-800 border border-rose-200">
+                      {eosyReviewCases.length} Cases
+                    </span>
+                  </div>
+                  <p className="text-[11.5px] text-slate-500 dark:text-slate-400">
+                    Learners whose final reading assessment indicates remaining reading difficulty. Flagged for school head review.
+                  </p>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[800px] text-left text-xs">
+                    <thead className="border-b border-slate-100 bg-slate-50/75 font-bold uppercase tracking-wider text-[10px] text-slate-400 dark:border-white/5 dark:bg-slate-800/40">
+                      <tr>
+                        <th className="px-4 py-3">Learner</th>
+                        <th className="px-4 py-3">Grade & Section</th>
+                        <th className="px-4 py-3">Language</th>
+                        <th className="px-4 py-3">Baseline Profile</th>
+                        <th className="px-4 py-3">Current Profile</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3">Informational Guidance</th>
+                        <th className="px-4 py-3 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                      {pagedEosyCases.length > 0 ? (
+                        pagedEosyCases.map((row) => (
+                          <tr
+                            key={`eosy_${row.studentId || row.id}_${row.language}`}
+                            className="hover:bg-slate-50/60 dark:hover:bg-white/[0.02] transition-colors"
+                          >
+                            <td className="px-4 py-3">
+                              <div className="font-semibold text-slate-900 dark:text-white">
+                                {row.name}
+                              </div>
+                              <div className="font-mono text-[10px] text-slate-400">
+                                {row.lrn || row.studentNumber || "—"}
+                              </div>
+                            </td>
+
+                            <td className="px-4 py-3 font-medium text-slate-700 dark:text-slate-300">
+                              {row.gradeSectionDisplay || formatGradeSection(row.grade, row.section)}
+                            </td>
+
+                            <td className="px-4 py-3">
+                              <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
+                                {row.language || row.subject || "English"}
+                              </span>
+                            </td>
+
+                            <td className="px-4 py-3 font-medium text-slate-600">
+                              {row.philIriScore != null ? `GST: ${row.philIriScore}/40` : "—"}
+                            </td>
+
+                            <td className="px-4 py-3">
+                              <span className="font-bold text-rose-700 dark:text-rose-400">
+                                {row.readingLevel || "Frustration"}
+                              </span>
+                            </td>
+
+                            <td className="px-4 py-3">
+                              <span className="inline-flex rounded-full bg-rose-50 px-2.5 py-0.5 text-[11px] font-semibold text-rose-800 border border-rose-200">
+                                For Further Review
+                              </span>
+                            </td>
+
+                            <td className="px-4 py-3 text-slate-500 italic text-[11px]">
+                              Possible ARAL Summer Consideration
+                            </td>
+
+                            <td className="px-4 py-3 text-right">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedStudent(row)}
+                                className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
+                              >
+                                <Eye size={12} className="text-slate-400" />
+                                <span>View Record</span>
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={8} className="px-4 py-10 text-center text-slate-400">
+                            No learners currently flagged for end-of-year review.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="border-t border-slate-100 px-4 py-3 dark:border-white/5">
+                  <AdminTablePagination
+                    page={safeEosyPage}
+                    pageSize={EOSY_PAGE_SIZE}
+                    total={eosyReviewCases.length}
+                    onPageChange={setEosyPage}
+                    itemLabel="cases"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </motion.div>
       </AnimatePresence>
 
-      {/* CENTERED ARAL LEARNER DETAIL MODAL */}
-      <AdminAralLearnerDetailPanel
-        learner={selectedStudent}
+      {/* VIEW-ONLY LEARNER READING RECORD MODAL */}
+      <AralLearnerRecordModal
         isOpen={Boolean(selectedStudent)}
         onClose={() => setSelectedStudent(null)}
-        onUpdated={() => refresh({ bustCache: true })}
-        currentTerm={currentTerm}
+        learner={selectedStudent}
+        teacherId={null} // Read-only for Principal
+        onRefresh={() => refresh({ bustCache: true })}
       />
     </motion.div>
   );

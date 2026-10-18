@@ -6,56 +6,50 @@ import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   FileSpreadsheet,
-  FileText,
   Loader2,
-  RefreshCw,
-  GraduationCap,
-  BookOpen,
   Users,
 } from "lucide-react";
+import AralClassDropdown from "@/components/teacher/aral-program/AralClassDropdown";
 import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
-import AralMonitoringSection from "@/components/teacher/monitoring/AralMonitoringSection";
 import AralLearnerRecordModal from "@/components/teacher/monitoring/AralLearnerRecordModal";
 import AralAssessmentFlowModal from "@/components/teacher/monitoring/AralAssessmentFlowModal";
+import AralClassGstSpreadsheet from "@/components/teacher/aral-program/AralClassGstSpreadsheet";
 import PageHelp from "@/components/shared/PageHelp";
 import { useTeacherMonitoring } from "@/hooks/teacher/useMonitoring";
-import { formatPersonName } from "@/lib/teacher/monitoringMappers";
 import {
   exportAralRecommendedExcel,
-  filterAralRecommendedLearners,
 } from "@/lib/reports/aralRecommendedExport";
 import { useAppToast } from "@/components/shared/AppToast";
 import { useAralAssessmentPeriod } from "@/hooks/useAralAssessmentPeriod";
-import { aralPeriodLabel } from "@/lib/monitoring/assessmentTimeline";
-import { cn } from "@/lib/utils";
+import { formatGradeSection, cleanGradeNumber } from "@/lib/monitoring/philIriEvaluation";
+import {
+  aggregateAralLearners,
+} from "@/lib/monitoring/aralLearnerAggregation";
+import {
+  normalizeTerm,
+  filterActiveLearnersForTerm,
+} from "@/lib/monitoring/aralProgression";
 
 export default function TeacherAralMonitoringPage() {
   const searchParams = useSearchParams();
   const {
     students,
-    filterOptions,
     controls,
-    teacher,
-    profile,
     teacherId,
     loading,
-    refreshing,
     error,
     refresh,
   } = useTeacherMonitoring();
 
+  const [selectedClassId, setSelectedClassId] = useState(null);
   const [selectedLearner, setSelectedLearner] = useState(null);
   const [selectedAssessmentLearner, setSelectedAssessmentLearner] = useState(null);
   const [exportingAral, setExportingAral] = useState(false);
   const { showToast } = useAppToast();
   const { period: aralPeriod } = useAralAssessmentPeriod();
 
-  const teacherDisplayName = useMemo(() => {
-    const named = formatPersonName(teacher);
-    if (named && named !== "—") return named;
-    return profile?.email || "Teacher";
-  }, [teacher, profile]);
+  const effectivePeriod = normalizeTerm(aralPeriod);
 
   // Deep-link learner selection: ?studentId=...
   useEffect(() => {
@@ -69,27 +63,108 @@ export default function TeacherAralMonitoringPage() {
     }
   }, [searchParams, loading, students]);
 
-  const aralExportCount = useMemo(
-    () => filterAralRecommendedLearners(students).length,
-    [students]
-  );
+  // 1. Authoritative aggregation of teacher's language learners
+  const languageLearners = useMemo(() => {
+    return aggregateAralLearners(students, {
+      currentTeacherId: teacherId,
+      schoolYear: controls.schoolYear,
+    });
+  }, [students, teacherId, controls.schoolYear]);
 
-  async function handleExportAral() {
-    if (exportingAral) return;
+  // 2. Group language learners into assigned language classes
+  const assignedClassesData = useMemo(() => {
+    const classMap = new Map();
+
+    for (const l of languageLearners) {
+      const cleanG = cleanGradeNumber(l.grade);
+      const cleanS = String(l.section || "").trim();
+      const lang = l.language || "English";
+      const key = `${cleanG}_${cleanS.toLowerCase()}_${lang.toLowerCase()}`;
+
+      if (!classMap.has(key)) {
+        classMap.set(key, {
+          classId: key,
+          rawClassId: l.classId || key,
+          key,
+          subject: l.subject || `${lang} ${cleanG}`,
+          language: lang,
+          grade: cleanG,
+          section: cleanS,
+          gradeSection: formatGradeSection(cleanG, cleanS),
+          schoolYear: l.schoolYear || controls.schoolYear,
+          learners: [],
+        });
+      }
+      classMap.get(key).learners.push(l);
+    }
+
+    const classesArray = Array.from(classMap.values()).map((c) => ({
+      ...c,
+      total: c.learners.length,
+    }));
+
+    return {
+      all: classesArray,
+      english: classesArray.filter((c) => c.language === "English"),
+      filipino: classesArray.filter((c) => c.language === "Filipino"),
+    };
+  }, [languageLearners, controls.schoolYear]);
+
+  // Auto-select first class if none selected or if previous selection is invalid
+  useEffect(() => {
+    if (assignedClassesData.all.length > 0) {
+      const exists = assignedClassesData.all.some(
+        (c) => c.classId === selectedClassId || c.key === selectedClassId
+      );
+      if (!selectedClassId || !exists) {
+        setSelectedClassId(assignedClassesData.all[0].classId);
+      }
+    }
+  }, [assignedClassesData, selectedClassId]);
+
+  // Active selected class object
+  const selectedClass = useMemo(() => {
+    if (!selectedClassId) return null;
+    return (
+      assignedClassesData.all.find(
+        (c) => c.classId === selectedClassId || c.key === selectedClassId
+      ) || null
+    );
+  }, [assignedClassesData, selectedClassId]);
+
+  // Active learners filtered for the current term progression
+  // Term 1 (BOSY): All enrolled learners in class
+  // Term 2 (MOSY): Only learners continuing after Term 1 (excluding Term 1 PASS)
+  // Term 3 (EOSY): Only learners continuing after Term 2 (excluding Term 1/2 PASS)
+  const activeClassLearners = useMemo(() => {
+    if (!selectedClass) return [];
+    return filterActiveLearnersForTerm(selectedClass.learners, effectivePeriod);
+  }, [selectedClass, effectivePeriod]);
+
+  // Assessment period display string
+  const periodDisplay = useMemo(() => {
+    if (effectivePeriod === "MOSY") return "Midyear Assessment (MOSY)";
+    if (effectivePeriod === "EOSY") return "End-of-Year Assessment (EOSY)";
+    return "Beginning Assessment (BOSY)";
+  }, [effectivePeriod]);
+
+  // Export summary handler
+  async function handleExportAssessmentSummary() {
+    if (languageLearners.length === 0) {
+      showToast("No reading assessment data available to export.");
+      return;
+    }
     setExportingAral(true);
     try {
-      await exportAralRecommendedExcel({
-        learners: students,
-        schoolYear: controls.schoolYear,
-        quarter: controls.quarter,
-        periodLabel: controls.quarter,
-        generatedBy: teacherDisplayName,
-        scopeLabel: "My Reading Classes",
-        includeTeacherColumn: false,
+      await exportAralRecommendedExcel(languageLearners, {
+        schoolYear: controls.schoolYear || "SY 2026-2027",
+        teacherName: "Assigned Subject Teacher",
+        quarter: controls.quarter || 1,
       });
+      showToast("Reading assessment summary exported successfully.");
     } catch (err) {
       console.error(err);
-      showToast("Unable to export ARAL recommended list.");
+      showToast("Unable to export reading assessment summary.");
     } finally {
       setExportingAral(false);
     }
@@ -100,9 +175,9 @@ export default function TeacherAralMonitoringPage() {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className="pb-6"
+      className="pb-8"
     >
-      {/* Page Header */}
+      {/* 1. HEADER */}
       <header className="mb-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1">
@@ -117,20 +192,21 @@ export default function TeacherAralMonitoringPage() {
                   </Link>
                   <span className="text-slate-300"> &gt; </span>
                   <span className="font-semibold text-slate-600">
-                    ARAL Monitoring
+                    ARAL Reading Assessment
                   </span>
                 </p>
 
-                <div className="mt-2 flex items-center gap-2">
+                <div className="mt-1 flex items-center gap-2">
                   <h1 className="text-2xl font-semibold tracking-[-0.03em] text-slate-900 sm:text-[28px] dark:text-white">
-                    ARAL Monitoring
+                    ARAL Reading Assessment
                   </h1>
                 </div>
-                <p className="mt-0.5 text-[11px] font-medium text-[#246f54] dark:text-emerald-400">
-                  {aralPeriodLabel(aralPeriod)} · {controls.schoolYear || "SY 2026–2027"}
+
+                <p className="mt-0.5 text-xs font-semibold text-[#246f54] dark:text-emerald-400">
+                  {periodDisplay} · {controls.schoolYear || "SY 2026–2027"}
                 </p>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  Reading assessment and ARAL support for assigned learners.
+                  Initial Phil-IRI Group Screening Test for enrolled learners in the selected English or Filipino class.
                 </p>
               </div>
 
@@ -140,58 +216,34 @@ export default function TeacherAralMonitoringPage() {
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          {/* Secondary Actions: Export & Help */}
+          <div className="flex items-center gap-2 shrink-0 sm:self-start">
             <PageHelp
-              summary="Teacher ARAL Monitoring for English & Filipino reading assessment and support."
+              summary="ARAL Reading Assessment: Class-based GST entry and monitoring."
               steps={[
-                "Who is assigned to me? Check the learner work queue below.",
-                "What step are they in? Review the current step (Waiting for Assessment, Needs Individual Assessment, Under ARAL Support, etc.).",
-                "What do I do next? Click Assess to record GST screening, Continue for Individual Assessment, or View for the full record.",
-                "Summary Cards at the top give you an instant tally of remaining tasks.",
+                "Select Class: Choose your assigned English or Filipino class from the dropdown.",
+                "Encode Scores: Type GST scores (0–40) and press Enter to move down, or paste a column from Excel.",
+                "Mark Absent: Click Absent to record an absence with score null (does not fail the learner).",
+                "Review & Save: Click Review Results to check tallies, then Save All Results to commit.",
+                "Learner History: Click any learner's name to view their multi-term reading history.",
+                "Continue Reading Assessment: Learners scoring below 28 receive a button to start Form 3.",
               ]}
             />
 
             <button
               type="button"
-              onClick={handleExportAral}
-              disabled={loading || exportingAral || aralExportCount === 0}
-              title="Download Eng/Fil ARAL-recommended learners list."
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-[12px] font-semibold text-[#246f54] transition-colors hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+              onClick={handleExportAssessmentSummary}
+              disabled={loading || exportingAral || languageLearners.length === 0}
+              title="Download reading assessment summary list."
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
             >
               {exportingAral ? (
                 <Loader2 size={13} className="animate-spin" />
               ) : (
-                <FileSpreadsheet size={13} />
+                <FileSpreadsheet size={13} className="text-[#246f54]" />
               )}
-              <span>Export Endorsement List</span>
-              {aralExportCount > 0 ? (
-                <span className="rounded-full bg-white/90 px-1.5 text-[10px] font-bold text-[#246f54]">
-                  {aralExportCount}
-                </span>
-              ) : null}
+              <span>Export Summary</span>
             </button>
-
-            <button
-              type="button"
-              onClick={() => refresh()}
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
-            >
-              <RefreshCw
-                size={13}
-                className={refreshing || loading ? "animate-spin" : ""}
-              />
-              <span>Refresh</span>
-            </button>
-
-            <Link
-              href="/teacher/monitoring"
-              title="Return to general Academic Monitoring across subjects"
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
-            >
-              <FileText size={13} />
-              <span>Academic Monitoring</span>
-            </Link>
           </div>
         </div>
       </header>
@@ -202,26 +254,62 @@ export default function TeacherAralMonitoringPage() {
         </div>
       ) : null}
 
-      {/* Main Content Area */}
-      {loading && students.length === 0 ? (
+      {/* 2. CLASS SELECTOR BAR */}
+      {assignedClassesData.all.length > 0 && (
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs dark:border-white/10 dark:bg-slate-900">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+            <label
+              htmlFor="aral-class-select"
+              className="text-xs font-bold uppercase tracking-wider text-slate-500 shrink-0"
+            >
+              Class:
+            </label>
+            <AralClassDropdown
+              classes={assignedClassesData.all}
+              selectedClassId={selectedClassId}
+              onSelectClass={setSelectedClassId}
+            />
+          </div>
+
+          <div className="text-xs text-slate-400">
+            {assignedClassesData.all.length} language {assignedClassesData.all.length === 1 ? "class" : "classes"} assigned
+          </div>
+        </div>
+      )}
+
+      {/* 3. LOADING OR EMPTY STATE */}
+      {loading && languageLearners.length === 0 ? (
         <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-100 bg-white py-16 text-sm text-slate-500 shadow-sm dark:border-white/10 dark:bg-slate-900">
           <Loader2 size={16} className="animate-spin text-[#246f54]" />
-          <span>Loading ARAL monitoring records…</span>
+          <span>Loading assigned reading assessment classes…</span>
         </div>
-      ) : (
-        <AralMonitoringSection
-          students={students}
-          filterOptions={filterOptions}
+      ) : assignedClassesData.all.length === 0 ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center dark:border-white/10 dark:bg-slate-900">
+          <Users size={32} className="mx-auto text-slate-300" />
+          <p className="mt-3 text-sm font-semibold text-slate-800 dark:text-slate-200">
+            No assigned English or Filipino classes found.
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            GST reading assessments are administered by assigned language subject teachers.
+          </p>
+        </div>
+      ) : selectedClass ? (
+        /* 4. CLASS WORKSPACE (FAST GST SPREADSHEET) */
+        <AralClassGstSpreadsheet
+          key={`${selectedClass.key || selectedClass.classId}_${controls.schoolYear}_${effectivePeriod}`}
+          classInfo={selectedClass}
+          learners={activeClassLearners}
           teacherId={teacherId}
           schoolYear={controls.schoolYear}
           quarter={controls.quarter}
-          aralPeriod={aralPeriod}
+          aralPeriod={effectivePeriod}
           onRefresh={refresh}
-          onViewLearner={setSelectedLearner}
+          onOpenIra={(l) => setSelectedAssessmentLearner(l)}
+          onOpenRecord={(l) => setSelectedLearner(l)}
         />
-      )}
+      ) : null}
 
-      {/* Focused 5-Part Learner Record Modal */}
+      {/* 5. FOCUSED 5-PART LEARNER RECORD MODAL */}
       <AralLearnerRecordModal
         learner={selectedLearner}
         isOpen={Boolean(selectedLearner)}
@@ -235,7 +323,7 @@ export default function TeacherAralMonitoringPage() {
         onRefresh={refresh}
       />
 
-      {/* Two-Stage Assessment Flow Modal */}
+      {/* 6. FORM 3 IRA ASSESSMENT FLOW MODAL */}
       <AralAssessmentFlowModal
         learner={selectedAssessmentLearner}
         isOpen={Boolean(selectedAssessmentLearner)}
@@ -243,7 +331,7 @@ export default function TeacherAralMonitoringPage() {
         teacherId={teacherId}
         schoolYear={controls.schoolYear}
         quarter={controls.quarter}
-        aralPeriod={aralPeriod}
+        aralPeriod={effectivePeriod}
         onSuccess={refresh}
       />
     </motion.div>

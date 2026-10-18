@@ -1,11 +1,16 @@
 import { cn } from "@/lib/utils";
 
 const STATUS_STYLES = {
-  Pending: "bg-slate-100 text-slate-600 ring-slate-200",
-  "Pending Review": "bg-slate-100 text-slate-600 ring-slate-200",
-  Monitoring: "bg-yellow-100 text-yellow-700 ring-yellow-100",
-  Approved: "bg-green-100 text-green-700 ring-green-100",
-  Completed: "bg-blue-100 text-blue-700 ring-blue-100",
+  Pending:
+    "border-slate-200/80 bg-slate-100 text-slate-700 dark:border-white/10 dark:bg-white/10 dark:text-slate-300",
+  "Pending Review":
+    "border-slate-200/80 bg-slate-100 text-slate-700 dark:border-white/10 dark:bg-white/10 dark:text-slate-300",
+  Monitoring:
+    "border-amber-200/80 bg-amber-50 text-amber-800 dark:border-amber-800/40 dark:bg-amber-950/40 dark:text-amber-300",
+  Approved:
+    "border-emerald-200/80 bg-emerald-50 text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-300",
+  Completed:
+    "border-emerald-200/80 bg-emerald-50 text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-300",
 };
 
 export default function StatusBadge({ value }) {
@@ -13,8 +18,8 @@ export default function StatusBadge({ value }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none ring-1",
-        STATUS_STYLES[displayValue] ?? STATUS_STYLES[value] ?? "bg-slate-100 text-slate-600 ring-slate-200"
+        "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium leading-tight",
+        STATUS_STYLES[displayValue] ?? STATUS_STYLES[value] ?? "border-slate-200/80 bg-slate-100 text-slate-700"
       )}
     >
       {displayValue}

@@ -273,7 +273,7 @@ export default function StudentGradesPage() {
                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
                     Overall Average
                   </p>
-                  <p className="mt-0.5 text-xl font-bold tracking-tight text-emerald-700 dark:text-emerald-300 sm:text-2xl">
+                  <p className="mt-0.5 text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
                     {summaryMetrics.average}
                   </p>
                 </div>
@@ -285,7 +285,7 @@ export default function StudentGradesPage() {
                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
                     Recorded Subjects
                   </p>
-                  <p className="mt-0.5 text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
+                  <p className="mt-0.5 text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
                     {summaryMetrics.recordedRatio}
                   </p>
                 </div>
@@ -297,14 +297,7 @@ export default function StudentGradesPage() {
                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
                     Subjects Below 75
                   </p>
-                  <p
-                    className={`mt-0.5 text-xl font-bold tracking-tight sm:text-2xl ${
-                      summaryMetrics.below75Count !== "0" &&
-                      summaryMetrics.below75Count !== "—"
-                        ? "text-red-700 dark:text-red-400"
-                        : "text-slate-900 dark:text-white"
-                    }`}
-                  >
+                  <p className="mt-0.5 text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
                     {summaryMetrics.below75Count}
                   </p>
                 </div>

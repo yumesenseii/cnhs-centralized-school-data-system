@@ -220,7 +220,7 @@ export default function ValidationWizardModal({
                 <div>
                   <h3 className="text-lg font-bold text-slate-800">Step 3: Parental Consent Check-off</h3>
                   <p className="text-sm text-slate-500">
-                    Verify that you have obtained proper authorization before onboarding the learner into ARAL Monitoring.
+                    Verify that you have obtained proper authorization before onboarding the learner into ARAL Reading Assessment.
                   </p>
                 </div>
                 

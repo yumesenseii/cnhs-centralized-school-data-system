@@ -20,7 +20,6 @@ import MonitoringTablePagination from "@/components/teacher/monitoring/Monitorin
 import AralAssessmentFlowModal from "@/components/teacher/monitoring/AralAssessmentFlowModal";
 import AralLearnerRecordModal from "@/components/teacher/monitoring/AralLearnerRecordModal";
 import AralAssessmentFilesModal from "@/components/teacher/monitoring/AralAssessmentFilesModal";
-import AralUploadAssessmentModal from "@/components/teacher/monitoring/AralUploadAssessmentModal";
 import {
   aggregateAralLearners,
   computeAralMetrics,
@@ -31,6 +30,7 @@ import {
   aralPeriodLabel,
   getAralPeriodPermissions,
   normalizeAralPeriod,
+  getAralTermDisplay,
 } from "@/lib/monitoring/assessmentTimeline";
 import { formatGradeSection } from "@/lib/monitoring/philIriEvaluation";
 import { cn } from "@/lib/utils";
@@ -65,13 +65,11 @@ export default function AralMonitoringSection({
   const [selectedLearnerForRecord, setSelectedLearnerForRecord] = useState(null);
 
   const [isFilesModalOpen, setIsFilesModalOpen] = useState(false);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   // Pagination
   const [page, setPage] = useState(1);
 
   // 1. Authoritative aggregation & deduplication (1 row per learner + language + school year)
-  // Strict eligibility: only valid ARAL cases (referral, BOSY assignment, facilitator, or active ARAL case)
   const languageLearners = useMemo(() => {
     return aggregateAralLearners(students, {
       currentTeacherId: teacherId,
@@ -79,7 +77,7 @@ export default function AralMonitoringSection({
     });
   }, [students, teacherId, schoolYear]);
 
-  // 2. Metrics calculation for the 3 primary cards (+ optional progress check)
+  // 2. Metrics calculation for pure reading assessment cards
   const metrics = useMemo(() => {
     return computeAralMetrics(languageLearners);
   }, [languageLearners]);
@@ -106,17 +104,16 @@ export default function AralMonitoringSection({
     return ["All Grades", "Grade 7", "Grade 8", "Grade 9", "Grade 10"];
   }, [filterOptions.grades]);
 
-  // Step filter options
+  // Step filter options matching simplified Phil-IRI statuses
   const stepFilterOptions = useMemo(() => [
     "All Steps",
     "Needs Screening Test",
     "Needs Reading Assessment",
-    "Assessment Complete",
-    "Waiting for Teacher Assignment",
-    "Ready for Reading Support",
-    "Receiving Reading Support",
-    "Progress Update Needed",
-    "Completed",
+    "Screening Complete — At Grade Level",
+    "Reading Assessment Complete",
+    "GST Under Review",
+    "Absent / For Reschedule",
+    "For Further Review",
   ], []);
 
   // Handlers for modal interactions
@@ -141,46 +138,36 @@ export default function AralMonitoringSection({
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 border border-slate-200/70 dark:bg-white/5 dark:text-slate-300 dark:border-white/10">
             <BookOpen size={13} className="text-[#246f54]" />
-            Reading Assessment & ARAL Queue
+            ARAL Reading Assessment
           </span>
           <span
-            title="Authoritative ARAL assessment period (system configuration)"
+            title="Active reading assessment period"
             className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-[#246f54] border border-emerald-200/70 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60"
           >
-            {aralPeriodLabel(effectivePeriod)}
+            {getAralTermDisplay(effectivePeriod)}
           </span>
         </div>
 
-        {/* Primary Action Buttons */}
+        {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setIsFilesModalOpen(true)}
-            className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
+            className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 cursor-pointer"
           >
             <FileText size={13} className="text-slate-500" />
             <span>Reading Assessment Files</span>
           </button>
-
-          <button
-            type="button"
-            onClick={() => setIsUploadModalOpen(true)}
-            disabled={!bosyEditable}
-            title={
-              bosyEditable
-                ? "Upload Phil-IRI Excel score sheet"
-                : "Excel upload is only enabled during Beginning Assessment (BOSY)"
-            }
-            className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-[#246f54] px-3 text-xs font-semibold text-white shadow-2xs hover:bg-[#1b5842] transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <FileSpreadsheet size={13} />
-            <span>Upload Assessment Excel</span>
-          </button>
         </div>
       </div>
 
-      {/* 2. THREE SUMMARY CARDS (+ Optional Progress Check Card) */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {/* 2. SUMMARY CARDS: Pure Reading Assessment Tally */}
+      <div className={cn(
+        "grid grid-cols-1 gap-3",
+        metrics.forReviewCount > 0 || effectivePeriod === "EOSY"
+          ? "sm:grid-cols-4"
+          : "sm:grid-cols-3"
+      )}>
         {/* Card 1: Needs Screening Test */}
         <button
           type="button"
@@ -193,7 +180,7 @@ export default function AralMonitoringSection({
           className={cn(
             "rounded-2xl border p-4 text-left shadow-xs transition cursor-pointer",
             currentStep === "Needs Screening Test"
-              ? "border-amber-400 bg-amber-50/70 ring-2 ring-amber-300/40 dark:bg-amber-950/20"
+              ? "border-[#166534] ring-1 ring-[#166534]/25 bg-slate-50/80"
               : "border-slate-200/80 bg-white hover:border-slate-300 dark:border-white/10 dark:bg-slate-900"
           )}
         >
@@ -201,13 +188,13 @@ export default function AralMonitoringSection({
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Needs Screening Test
             </span>
-            <Clock size={16} className="text-amber-600" />
+            <Clock size={16} className="text-slate-400" />
           </div>
           <span className="mt-2 block text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
             {metrics.waitingForAssessmentCount}
           </span>
           <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
-            Awaiting initial reading screening test
+            Awaiting initial GST screening test
           </span>
         </button>
 
@@ -223,7 +210,7 @@ export default function AralMonitoringSection({
           className={cn(
             "rounded-2xl border p-4 text-left shadow-xs transition cursor-pointer",
             currentStep === "Needs Reading Assessment"
-              ? "border-blue-400 bg-blue-50/70 ring-2 ring-blue-300/40 dark:bg-blue-950/20"
+              ? "border-[#166534] ring-1 ring-[#166534]/25 bg-slate-50/80"
               : "border-slate-200/80 bg-white hover:border-slate-300 dark:border-white/10 dark:bg-slate-900"
           )}
         >
@@ -231,7 +218,7 @@ export default function AralMonitoringSection({
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Needs Reading Assessment
             </span>
-            <AlertCircle size={16} className="text-blue-600" />
+            <AlertCircle size={16} className="text-slate-400" />
           </div>
           <span className="mt-2 block text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
             {metrics.needsIndividualAssessmentCount}
@@ -241,58 +228,68 @@ export default function AralMonitoringSection({
           </span>
         </button>
 
-        {/* Card 3: Receiving Reading Support */}
+        {/* Card 3: Completed Reading Assessments */}
         <button
           type="button"
           onClick={() => {
             setCurrentStep((prev) =>
-              prev === "Receiving Reading Support" ? "All Steps" : "Receiving Reading Support"
+              prev === "Reading Assessment Complete" ? "All Steps" : "Reading Assessment Complete"
             );
             setPage(1);
           }}
           className={cn(
             "rounded-2xl border p-4 text-left shadow-xs transition cursor-pointer",
-            currentStep === "Receiving Reading Support"
-              ? "border-emerald-400 bg-emerald-50/70 ring-2 ring-emerald-300/40 dark:bg-emerald-950/20"
+            currentStep === "Reading Assessment Complete"
+              ? "border-[#166534] ring-1 ring-[#166534]/25 bg-slate-50/80"
               : "border-slate-200/80 bg-white hover:border-slate-300 dark:border-white/10 dark:bg-slate-900"
           )}
         >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Receiving Reading Support
+              Assessment Completed
             </span>
-            <CheckCircle2 size={16} className="text-[#246f54]" />
+            <CheckCircle2 size={16} className="text-slate-400" />
           </div>
-          <span className="mt-2 block text-3xl font-bold tracking-tight text-[#246f54] dark:text-emerald-400">
-            {metrics.underAralSupportCount}
+          <span className="mt-2 block text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+            {metrics.totalCompleteCount}
           </span>
-          <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
-            Active reading support sessions in progress
+          <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400 truncate">
+            {metrics.screeningCompleteCount} At Grade Level · {metrics.assessmentCompleteCount} IRA Complete
           </span>
         </button>
-      </div>
 
-      {/* Optional Alert for Progress Checks Due */}
-      {metrics.progressCheckDueCount > 0 && (
-        <div className="flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/20 dark:text-rose-200">
-          <div className="flex items-center gap-2">
-            <AlertCircle size={15} className="text-rose-600 shrink-0" />
-            <span className="font-semibold">
-              {metrics.progressCheckDueCount} learner{metrics.progressCheckDueCount > 1 ? "s have" : " has"} a regular progress check due.
-            </span>
-          </div>
+        {/* Card 4: EOSY / For Further Review (Conditional) */}
+        {(metrics.forReviewCount > 0 || effectivePeriod === "EOSY") && (
           <button
             type="button"
             onClick={() => {
-              setCurrentStep("Progress Update Needed");
+              setCurrentStep((prev) =>
+                prev === "For Further Review" ? "All Steps" : "For Further Review"
+              );
               setPage(1);
             }}
-            className="font-bold underline hover:no-underline text-rose-800 dark:text-rose-300 cursor-pointer"
+            className={cn(
+              "rounded-2xl border p-4 text-left shadow-xs transition cursor-pointer",
+              currentStep === "For Further Review"
+                ? "border-[#166534] ring-1 ring-[#166534]/25 bg-slate-50/80"
+                : "border-slate-200/80 bg-white hover:border-slate-300 dark:border-white/10 dark:bg-slate-900"
+            )}
           >
-            Show due learners &rarr;
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                For Further Review
+              </span>
+              <AlertCircle size={16} className="text-slate-400" />
+            </div>
+            <span className="mt-2 block text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+              {metrics.forReviewCount}
+            </span>
+            <span className="mt-1 block text-[11px] text-slate-500 dark:text-slate-400">
+              Possible ARAL Summer Consideration
+            </span>
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* 3. MINIMAL FILTER BAR: Search, Current Step, Grade, Language */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-xs dark:border-white/10 dark:bg-slate-900">
@@ -312,7 +309,7 @@ export default function AralMonitoringSection({
 
         <div className="flex flex-wrap items-center gap-2">
           <AppSelect
-            label="Current Step"
+            label="Status Filter"
             value={currentStep}
             onChange={(val) => {
               setCurrentStep(val);
@@ -349,17 +346,20 @@ export default function AralMonitoringSection({
         </div>
       </div>
 
-      {/* 4. WORK QUEUE TABLE (6 Clean Columns) */}
+      {/* 4. WORK QUEUE TABLE (Primary 9 Clean Columns) */}
       <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs dark:border-white/10 dark:bg-slate-900">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[960px] text-left text-xs">
+          <table className="w-full min-w-[1020px] text-left text-xs">
             <thead className="border-b border-slate-100 bg-slate-50/75 font-bold uppercase tracking-wider text-[10px] text-slate-400 dark:border-white/5 dark:bg-slate-800/40">
               <tr>
                 <th className="px-4 py-3">Learner</th>
                 <th className="px-4 py-3">Grade & Section</th>
                 <th className="px-4 py-3">Language</th>
-                <th className="px-4 py-3">Current Step</th>
-                <th className="px-4 py-3">Reading Result</th>
+                <th className="px-4 py-3">Assessment Period</th>
+                <th className="px-4 py-3">GST Result</th>
+                <th className="px-4 py-3">Reading Assessment</th>
+                <th className="px-4 py-3">Current Result</th>
+                <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3 text-right">Action</th>
               </tr>
             </thead>
@@ -369,6 +369,93 @@ export default function AralMonitoringSection({
                 pagedRows.map((row) => {
                   const stepMeta = row.currentStepMeta || ARAL_STEP_DEFINITIONS[row.currentStepKey] || {};
                   const isAssigned = row.isAssignedToMe || !teacherId;
+
+                  const isAbsent = Boolean(
+                    row.isAbsent ||
+                    row.candidateStatus === "Absent / For Reschedule" ||
+                    row.screeningStatus === "Absent / For Reschedule" ||
+                    row.rawPayload?.isAbsent
+                  );
+
+                  const isUnderReview = Boolean(
+                    row.candidateStatus === "For Review" &&
+                    (row.teacherReviewReason || row.rawPayload?.teacherReviewReason)
+                  );
+
+                  const isGstAtGradeLevel =
+                    !isAbsent && row.philIriScore != null && Number(row.philIriScore) >= 28;
+
+                  const hasIra = Boolean(
+                    !isAbsent &&
+                    row.readingLevel &&
+                    row.readingLevel !== "Not Screened" &&
+                    row.readingLevel !== "Not Assessed" &&
+                    row.readingLevel !== "Not Set" &&
+                    row.readingLevel !== "Pending Oral Profile" &&
+                    row.readingLevel !== "Pending Individual Assessment"
+                  );
+
+                  // GST result display
+                  const gstDisplay = isAbsent
+                    ? "Absent"
+                    : isUnderReview
+                    ? `${row.philIriScore} / 40`
+                    : row.philIriScore != null
+                    ? `${row.philIriScore} / 40`
+                    : "Not Recorded";
+
+                  const gstSub = isAbsent
+                    ? "For Reschedule"
+                    : isUnderReview
+                    ? "Under Review"
+                    : row.philIriScore != null
+                    ? isGstAtGradeLevel
+                      ? "At Grade Level"
+                      : "Score < 28"
+                    : "Pending Screening";
+
+                  // Reading assessment display
+                  const iraDisplay = isAbsent
+                    ? "Pending Screening"
+                    : isGstAtGradeLevel
+                    ? "Not Required"
+                    : hasIra
+                    ? "Form 3 Completed"
+                    : row.philIriScore != null
+                    ? "Needs IRA"
+                    : "Pending Screening";
+
+                  const iraSub = isGstAtGradeLevel
+                    ? "Screening Complete"
+                    : hasIra
+                    ? (row.iraMetrics?.passageLevel || row.screeningInterpretation || "Oral Assessment")
+                    : row.philIriScore != null
+                    ? "Reading Passage Needed"
+                    : "Awaiting GST";
+
+                  // Current Result display
+                  const currentResultText = isAbsent
+                    ? "Absent"
+                    : isUnderReview
+                    ? "Under Review"
+                    : isGstAtGradeLevel
+                    ? "At Grade Level"
+                    : hasIra
+                    ? row.readingLevel
+                    : "Pending";
+
+                  const currentResultColor = isGstAtGradeLevel || row.readingLevel === "Independent"
+                    ? "text-emerald-700 dark:text-emerald-400 font-bold"
+                    : row.readingLevel === "Instructional"
+                    ? "text-amber-700 dark:text-amber-400 font-bold"
+                    : row.readingLevel === "Frustration"
+                    ? "text-rose-700 dark:text-rose-400 font-bold"
+                    : isAbsent
+                    ? "text-slate-500 font-medium"
+                    : "text-slate-500 font-medium";
+
+                  // Period display
+                  const periodDisplay = getAralTermDisplay(row.assessmentPeriod || effectivePeriod);
 
                   return (
                     <tr
@@ -401,74 +488,94 @@ export default function AralMonitoringSection({
                         </span>
                       </td>
 
-                      {/* 4. Current Step */}
+                      {/* 4. Assessment Period */}
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400 font-medium">
+                        <span className="text-[11px] block">{periodDisplay}</span>
+                      </td>
+
+                      {/* 5. GST Result */}
                       <td className="px-4 py-3">
-                        <span
-                          className={cn(
-                            "inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-semibold border",
-                            stepMeta.badgeClass || "border-slate-200 bg-slate-50 text-slate-700"
-                          )}
-                        >
-                          {row.currentStepLabel || stepMeta.label || "Under Review"}
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-bold text-slate-900 dark:text-white text-xs">
+                            {gstDisplay}
+                          </span>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                            {gstSub}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* 6. Reading Assessment */}
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-medium text-slate-800 dark:text-slate-200 text-xs">
+                            {iraDisplay}
+                          </span>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                            {iraSub}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* 7. Current Result */}
+                      <td className="px-4 py-3">
+                        <span className={cn("text-xs", currentResultColor)}>
+                          {currentResultText}
                         </span>
                       </td>
 
-                      {/* 5. Reading Result */}
+                      {/* 8. Status */}
                       <td className="px-4 py-3">
-                        {row.readingLevel && row.readingLevel !== "Not Screened" && row.readingLevel !== "Not Set" && row.readingLevel !== "Not Assessed" ? (
-                          <div className="flex flex-col gap-0.5">
-                            <span
-                              className={cn(
-                                "font-bold text-xs",
-                                row.readingLevel === "Independent"
-                                  ? "text-emerald-700 dark:text-emerald-400"
-                                  : row.readingLevel === "Instructional"
-                                  ? "text-amber-700 dark:text-amber-400"
-                                  : "text-rose-700 dark:text-rose-400"
-                              )}
-                            >
-                              {row.readingLevel}
-                            </span>
-                            {row.screeningInterpretation && (
-                              <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                                {row.screeningInterpretation}
-                              </span>
+                        <div className="flex flex-col gap-1">
+                          <span
+                            className={cn(
+                              "inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-semibold border w-fit",
+                              stepMeta.badgeClass || "border-slate-200 bg-slate-50 text-slate-700"
                             )}
-                          </div>
-                        ) : row.philIriScore != null ? (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="font-bold text-slate-900 dark:text-white text-xs">
-                              Screening: {row.philIriScore}/40
-                            </span>
-                            <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                              {Number(row.philIriScore) >= 28
-                                ? "At Grade Level"
-                                : "Needs Reading Assessment"}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 dark:text-slate-500 text-xs italic">
-                            Not yet recorded
+                          >
+                            {row.currentStepLabel || stepMeta.label || "Under Review"}
                           </span>
-                        )}
+                          {row.currentStepKey === "for_review" && (
+                            <span className="text-[9.5px] text-slate-400 italic">
+                              Possible ARAL Summer Consideration
+                            </span>
+                          )}
+                          {row.isMissingLanguageTeacher && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                              <AlertCircle size={10} className="shrink-0" />
+                              Reading assessment teacher not found
+                            </span>
+                          )}
+                        </div>
                       </td>
 
-                      {/* 6. Action */}
+                      {/* 9. Action */}
                       <td className="px-4 py-3 text-right">
                         <div className="inline-flex items-center justify-end gap-1.5">
-                          {/* Assessor actions */}
-                          {row.currentStepKey === "waiting_for_assessment" && (row.isAssessor || !teacherId) && (
+                          {/* Subject Teacher Assessment Actions */}
+                          {row.currentStepKey === "waiting_for_assessment" && row.canEditAssessment && (
                             <button
                               type="button"
                               onClick={() => handleOpenAssessment(row)}
                               className="inline-flex items-center gap-1.5 rounded-xl bg-[#246f54] px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-[#1b5842] transition cursor-pointer"
                             >
                               <Pencil size={12} />
-                              <span>Start Screening</span>
+                              <span>Start Assessment</span>
                             </button>
                           )}
 
-                          {row.currentStepKey === "needs_individual_assessment" && (row.isAssessor || !teacherId) && (
+                          {row.currentStepKey === "absent_reschedule" && row.canEditAssessment && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAssessment(row)}
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-700 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-slate-800 transition cursor-pointer"
+                            >
+                              <Pencil size={12} />
+                              <span>Reschedule Assessment</span>
+                            </button>
+                          )}
+
+                          {row.currentStepKey === "needs_individual_assessment" && row.canEditAssessment && (
                             <button
                               type="button"
                               onClick={() => handleOpenAssessment(row)}
@@ -479,27 +586,29 @@ export default function AralMonitoringSection({
                             </button>
                           )}
 
-                          {/* Facilitator actions */}
-                          {row.currentStepKey === "waiting_for_support" && (row.isFacilitator || !teacherId) && (
+                          {row.currentStepKey === "gst_under_review" && row.canEditAssessment && (
                             <button
                               type="button"
-                              onClick={() => handleOpenRecord(row)}
-                              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-emerald-700 transition cursor-pointer"
-                            >
-                              <ArrowRight size={12} />
-                              <span>Start Reading Support</span>
-                            </button>
-                          )}
-
-                          {(row.currentStepKey === "progress_check_due" || row.currentStepKey === "under_aral_support") && (row.isFacilitator || !teacherId) && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenRecord(row)}
+                              onClick={() => handleOpenAssessment(row)}
                               className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-amber-700 transition cursor-pointer"
                             >
                               <Pencil size={12} />
-                              <span>Add Progress Update</span>
+                              <span>Review Result</span>
                             </button>
+                          )}
+
+                          {/* Term 2 or Term 3 Reassessment for existing completed cases */}
+                          {(effectivePeriod === "MOSY" || effectivePeriod === "EOSY") &&
+                            (row.currentStepKey === "screening_complete_at_grade" || row.currentStepKey === "assessment_complete") &&
+                            row.canEditAssessment && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenAssessment(row)}
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-200 transition cursor-pointer"
+                              >
+                                <Pencil size={12} />
+                                <span>Update Assessment</span>
+                              </button>
                           )}
 
                           <button
@@ -513,7 +622,7 @@ export default function AralMonitoringSection({
                             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 cursor-pointer"
                           >
                             <Eye size={12} className="text-slate-400" />
-                            <span>{row.currentStepKey === "support_review" ? "View Result" : "View Reading Result"}</span>
+                            <span>View Reading Record</span>
                           </button>
                         </div>
                       </td>
@@ -522,12 +631,12 @@ export default function AralMonitoringSection({
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+                  <td colSpan={9} className="px-4 py-12 text-center text-slate-400">
                     <p className="font-semibold text-slate-700 dark:text-slate-300 text-sm">
                       No reading assessment cases match your criteria.
                     </p>
                     <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
-                      Learners appear here once they have an approved reading referral, school-assigned BOSY assessment, or active ARAL case.
+                      All learners enrolled in English or Filipino classes are monitored here.
                     </p>
                   </td>
                 </tr>
@@ -586,22 +695,6 @@ export default function AralMonitoringSection({
         isOpen={isFilesModalOpen}
         onClose={() => setIsFilesModalOpen(false)}
         schoolYear={schoolYear}
-        onOpenUpload={() => {
-          setIsFilesModalOpen(false);
-          setIsUploadModalOpen(true);
-        }}
-      />
-
-      {/* D. Upload Assessment Excel Modal */}
-      <AralUploadAssessmentModal
-        isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
-        enrolledStudents={languageLearners}
-        teacherId={teacherId}
-        schoolYear={schoolYear}
-        quarter={quarter}
-        aralPeriod={effectivePeriod}
-        onSuccess={onRefresh}
       />
     </div>
   );

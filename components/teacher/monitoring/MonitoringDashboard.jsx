@@ -220,7 +220,7 @@ export default function MonitoringDashboard() {
                 "Academic records are automatically synced from official E-Records and subject classes.",
                 "Phil-IRI screening results provide secondary diagnostic reading evidence.",
                 "Identified academic difficulties connect directly to Class Remedial recommendations.",
-                "Reading intervention screening connects eligible candidates to ARAL Monitoring.",
+                "Reading intervention screening connects eligible candidates to ARAL Reading Assessment.",
                 "Click on any learner to open their formal document-style Learner Profile and PLP direction.",
                 "AI Pattern Recognition provides secondary academic evidence without overriding official DepEd assessment rules.",
               ]}
@@ -229,11 +229,11 @@ export default function MonitoringDashboard() {
             {filterOptions.hasAralClass ? (
               <Link
                 href="/teacher/aral-monitoring"
-                title="Open dedicated ARAL Monitoring workspace for reading interventions"
+                title="Open dedicated ARAL Reading Assessment workspace"
                 className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 text-[12px] font-semibold text-blue-800 transition-colors hover:bg-blue-100"
               >
                 <GraduationCap size={14} />
-                <span>ARAL Monitoring</span>
+                <span>ARAL Reading Assessment</span>
                 {aralCandidatesCount > 0 ? (
                   <span className="rounded-full bg-blue-100 px-1.5 py-0.2 text-[10px] font-bold text-blue-900 border border-blue-200">
                     {aralCandidatesCount}

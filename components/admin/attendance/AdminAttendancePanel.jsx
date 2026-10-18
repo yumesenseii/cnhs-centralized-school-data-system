@@ -309,31 +309,31 @@ export default function AdminAttendancePanel({
       {/* Top 3 Summary Cards */}
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {/* 1. Average Attendance */}
-        <div className="flex min-h-[110px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+        <div className="flex min-h-[110px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Average Attendance
             </p>
-            <p className="mt-1.5 text-2xl font-bold leading-none tracking-tight text-slate-900 tabular-nums">
+            <p className="mt-1.5 text-2xl font-bold leading-none tracking-tight text-slate-900 dark:text-slate-100 tabular-nums">
               {formatSessionRate(daily?.sessionRate)}
             </p>
           </div>
-          <p className="mt-2 text-[11px] text-slate-500">
+          <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
             {daily?.monthName ? `${daily.monthName} attendance rate` : "Monthly attendance rate"}
           </p>
         </div>
 
         {/* 2. Sections Submitted */}
-        <div className="flex min-h-[110px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+        <div className="flex min-h-[110px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Sections Submitted
             </p>
-            <p className="mt-1.5 text-2xl font-bold leading-none tracking-tight text-slate-900 tabular-nums">
+            <p className="mt-1.5 text-2xl font-bold leading-none tracking-tight text-slate-900 dark:text-slate-100 tabular-nums">
               {totalSections > 0 ? `${sectionsSubmitted} of ${totalSections}` : "—"}
             </p>
           </div>
-          <p className="mt-2 text-[11px] text-slate-500">
+          <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
             {sectionsPending > 0
               ? `${sectionsPending} section${sectionsPending === 1 ? "" : "s"} still pending`
               : "All sections submitted"}
@@ -341,16 +341,16 @@ export default function AdminAttendancePanel({
         </div>
 
         {/* 3. Learners Needing Follow-up */}
-        <div className="flex min-h-[110px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+        <div className="flex min-h-[110px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
           <div>
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 {learnersNeedingFollowUp != null
                   ? "Learners Needing Follow-up"
                   : "Sections Needing Follow-up"}
               </p>
               {(learnersNeedingFollowUp != null ? learnersNeedingFollowUp : sectionsNeedingFollowUp) > 0 ? (
-                <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                <span className="inline-flex items-center rounded-md border border-amber-200/80 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:border-amber-800/40 dark:bg-amber-950/40 dark:text-amber-300">
                   Attention
                 </span>
               ) : null}
@@ -359,8 +359,8 @@ export default function AdminAttendancePanel({
               className={cn(
                 "mt-1.5 text-2xl font-bold leading-none tracking-tight tabular-nums",
                 (learnersNeedingFollowUp != null ? learnersNeedingFollowUp : sectionsNeedingFollowUp) > 0
-                  ? "text-amber-900"
-                  : "text-slate-900"
+                  ? "text-amber-800 dark:text-amber-400"
+                  : "text-slate-900 dark:text-slate-100"
               )}
             >
               {learnersNeedingFollowUp != null
@@ -620,18 +620,18 @@ export default function AdminAttendancePanel({
                   </p>
                 </div>
                 <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                     Present Marks
                   </p>
-                  <p className="mt-1 text-xl font-bold text-emerald-800 tabular-nums">
+                  <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">
                     {fmtAttendance(detailData?.presentSessions ?? selectedSection.present)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                     Absent Marks
                   </p>
-                  <p className="mt-1 text-xl font-bold text-amber-800 tabular-nums">
+                  <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">
                     {fmtAttendance(detailData?.absentSessions ?? selectedSection.absent)}
                   </p>
                 </div>

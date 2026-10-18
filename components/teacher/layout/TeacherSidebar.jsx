@@ -43,9 +43,9 @@ const analyticsNavigation = [
     tourId: "monitoring",
   },
   {
-    label: "ARAL Monitoring",
+    label: "ARAL Reading Assessment",
     href: "/teacher/aral-monitoring",
-    icon: GraduationCap,
+    icon: BookOpen,
     tourId: "aral-monitoring",
   },
   {

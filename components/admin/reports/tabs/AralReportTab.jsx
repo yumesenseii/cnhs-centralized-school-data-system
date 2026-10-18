@@ -48,7 +48,11 @@ export default function AralReportTab({
 
   // 1. Authoritative aggregation of canonical ARAL cases
   const canonicalLearners = useMemo(() => {
-    return aggregateAralLearners(students, { schoolYear });
+    return aggregateAralLearners(students, {
+      schoolYear,
+      role: "principal",
+      scope: "school-wide",
+    });
   }, [students, schoolYear]);
 
   // 2. Compute Principal ARAL Report Data
@@ -98,24 +102,24 @@ export default function AralReportTab({
 
     return [
       {
-        label: "Waiting for Review",
-        value: waitingReview,
-        desc: "Referrals awaiting administrative endorsement",
+        label: "Total Enrolled",
+        value: Number(aralSummary?.total ?? 0),
+        desc: "Enrolled in language classes",
       },
       {
-        label: "Waiting for Assessment",
+        label: "Needs Screening",
         value: waitingAssessment,
-        desc: `${aralPeriodLabel(aralPeriod)} assessment pending`,
+        desc: `${aralPeriodLabel(aralPeriod)} GST pending`,
       },
       {
-        label: "Under ARAL Support",
+        label: "Needs Reading Assessment",
         value: underSupport,
-        desc: "Learners actively undergoing sessions",
+        desc: "Score < 28 — Form 3 required",
       },
       {
-        label: "Outcomes",
+        label: "Assessment Complete",
         value: outcomesCount,
-        desc: outcomesCount > 0 ? `${outcomesCount} validated outcomes` : "No completed outcomes yet for this period",
+        desc: outcomesCount > 0 ? `${outcomesCount} validated reading assessments` : "Assessments in progress",
       },
     ];
   }, [canonicalLearners.length, reportData.summaryCards, aralSummary, aralPeriod]);
@@ -286,27 +290,27 @@ export default function AralReportTab({
 
             {/* Quick Metrics */}
             <div className="mt-3.5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-              <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5 text-center dark:border-white/5 dark:bg-white/[0.02]">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Cases</p>
+              <div className="rounded-lg border border-slate-200 bg-white p-2.5 text-center shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Cases</p>
                 <p className="mt-1 text-lg font-bold tabular-nums text-slate-900 dark:text-slate-100">
                   {form2Data.total.totalCases}
                 </p>
               </div>
-              <div className="rounded-lg border border-emerald-100 bg-emerald-50/40 p-2.5 text-center dark:border-emerald-950/30 dark:bg-emerald-950/10">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">At Grade Level (GST ≥ 28)</p>
+              <div className="rounded-lg border border-slate-200 bg-white p-2.5 text-center shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">At Grade Level (GST ≥ 28)</p>
                 <p className="mt-1 text-lg font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
                   {form2Data.total.atGradeLevel}
                 </p>
               </div>
-              <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-2.5 text-center dark:border-blue-950/30 dark:bg-blue-950/10">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-blue-800 dark:text-blue-300">Form 3 Instructional</p>
-                <p className="mt-1 text-lg font-bold tabular-nums text-blue-700 dark:text-blue-400">
+              <div className="rounded-lg border border-slate-200 bg-white p-2.5 text-center shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Form 3 Instructional</p>
+                <p className="mt-1 text-lg font-bold tabular-nums text-amber-800 dark:text-amber-400">
                   {form2Data.total.form3Instructional}
                 </p>
               </div>
-              <div className="rounded-lg border border-rose-100 bg-rose-50/40 p-2.5 text-center dark:border-rose-950/30 dark:bg-rose-950/10">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-rose-800 dark:text-rose-300">Form 3 Frustration</p>
-                <p className="mt-1 text-lg font-bold tabular-nums text-rose-700 dark:text-rose-400">
+              <div className="rounded-lg border border-slate-200 bg-white p-2.5 text-center shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Form 3 Frustration</p>
+                <p className="mt-1 text-lg font-bold tabular-nums text-red-700 dark:text-red-400">
                   {form2Data.total.form3Frustration}
                 </p>
               </div>
@@ -417,27 +421,27 @@ export default function AralReportTab({
 
             {/* Quick Metrics */}
             <div className="mt-3.5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-              <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5 text-center dark:border-white/5 dark:bg-white/[0.02]">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Screened</p>
+              <div className="rounded-lg border border-slate-200 bg-white p-2.5 text-center shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Screened</p>
                 <p className="mt-1 text-lg font-bold tabular-nums text-slate-900 dark:text-slate-100">
                   {form5Data.total.totalScreened}
                 </p>
               </div>
-              <div className="rounded-lg border border-emerald-100 bg-emerald-50/40 p-2.5 text-center dark:border-emerald-950/30 dark:bg-emerald-950/10">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">At Grade Level</p>
+              <div className="rounded-lg border border-slate-200 bg-white p-2.5 text-center shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">At Grade Level</p>
                 <p className="mt-1 text-lg font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
                   {form5Data.total.atGradeLevel}
                 </p>
               </div>
-              <div className="rounded-lg border border-rose-100 bg-rose-50/40 p-2.5 text-center dark:border-rose-950/30 dark:bg-rose-950/10">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-rose-800 dark:text-rose-300">Requiring ARAL Support</p>
-                <p className="mt-1 text-lg font-bold tabular-nums text-rose-700 dark:text-rose-400">
+              <div className="rounded-lg border border-slate-200 bg-white p-2.5 text-center shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Requiring ARAL Support</p>
+                <p className="mt-1 text-lg font-bold tabular-nums text-amber-800 dark:text-amber-400">
                   {form5Data.total.requiringSupport}
                 </p>
               </div>
-              <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-2.5 text-center dark:border-blue-950/30 dark:bg-blue-950/10">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-blue-800 dark:text-blue-300">Independent Readers</p>
-                <p className="mt-1 text-lg font-bold tabular-nums text-blue-700 dark:text-blue-400">
+              <div className="rounded-lg border border-slate-200 bg-white p-2.5 text-center shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Independent Readers</p>
+                <p className="mt-1 text-lg font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
                   {form5Data.total.independent}
                 </p>
               </div>
@@ -518,7 +522,7 @@ export default function AralReportTab({
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                   {card.label}
                 </p>
-                <p className="mt-1 text-2xl font-bold leading-tight tabular-nums text-[#166534] dark:text-emerald-400">
+                <p className="mt-1 text-2xl font-bold leading-tight tabular-nums text-slate-900 dark:text-slate-100">
                   {card.value}
                 </p>
                 <p className="mt-1 truncate text-[11px] text-slate-500">
@@ -758,7 +762,7 @@ export default function AralReportTab({
                 PRINCIPAL OUTCOMES
               </h3>
               <p className="mt-0.5 text-xs text-slate-500">
-                Consolidated results from Teacher ARAL Monitoring. Dispositions reflect completed assessments and resolved intervention milestones.
+                Consolidated results from ARAL Reading Assessment. Dispositions reflect completed assessments and resolved intervention milestones.
               </p>
             </div>
 

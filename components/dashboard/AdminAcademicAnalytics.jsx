@@ -248,7 +248,7 @@ export default function AdminAcademicAnalytics({
         icon: "alert",
         variant: "warning",
         href: "/aral-monitoring",
-        actionLabel: "Open ARAL Monitoring",
+        actionLabel: "Open ARAL Reading Assessment",
       },
       {
         id: "aral-waiting",
@@ -259,7 +259,7 @@ export default function AdminAcademicAnalytics({
         icon: "users",
         variant: "default",
         href: "/aral-monitoring",
-        actionLabel: "Open ARAL Monitoring",
+        actionLabel: "Open ARAL Reading Assessment",
       },
       {
         id: "aral-active",
@@ -270,7 +270,7 @@ export default function AdminAcademicAnalytics({
         icon: "users",
         variant: "default",
         href: "/aral-monitoring",
-        actionLabel: "Open ARAL Monitoring",
+        actionLabel: "Open ARAL Reading Assessment",
       },
       {
         id: "aral-completed",
@@ -281,7 +281,7 @@ export default function AdminAcademicAnalytics({
         icon: "check",
         variant: "success",
         href: "/aral-monitoring",
-        actionLabel: "Open ARAL Monitoring",
+        actionLabel: "Open ARAL Reading Assessment",
       },
     ],
     [aralPipeline]
@@ -373,15 +373,15 @@ export default function AdminAcademicAnalytics({
   }, [prevYearComparison, termTrends]);
 
   return (
-    <section className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-      <div className="border-b border-slate-100 bg-cnhs-green-soft/30 px-3 py-2.5 sm:px-4">
+    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+      <div className="border-b border-slate-100 bg-slate-50/70 px-3 py-2.5 sm:px-4 dark:border-white/5 dark:bg-white/[0.02]">
         <div className="flex flex-col gap-2 xl:flex-row xl:items-start xl:justify-between">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-cnhs-green-dark shadow-sm ring-1 ring-slate-100">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-cnhs-green-dark shadow-xs dark:border-white/10 dark:bg-white/5">
               <BarChart3 size={15} strokeWidth={1.8} aria-hidden="true" />
             </span>
             <div>
-              <h2 className="text-[13px] font-semibold text-slate-900">
+              <h2 className="text-[13px] font-semibold text-slate-900 dark:text-slate-100">
                 Academic Overview
               </h2>
               {subtitle ? (
@@ -393,7 +393,7 @@ export default function AdminAcademicAnalytics({
           <div
             role="tablist"
             aria-label="School overview views"
-            className="inline-flex w-full overflow-x-auto rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm xl:w-auto"
+            className="inline-flex w-full overflow-x-auto rounded-lg border border-slate-200 bg-white p-0.5 shadow-xs dark:border-white/10 dark:bg-[var(--card)] xl:w-auto"
           >
             {TABS.map((tab) => {
               const active = activeTab === tab.id;
@@ -407,10 +407,10 @@ export default function AdminAcademicAnalytics({
                   aria-controls={`analytics-panel-${tab.id}`}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    "min-w-max cursor-pointer rounded-md px-2.5 py-1 text-[10px] font-semibold transition-[color,background-color,box-shadow,opacity,transform] duration-160 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cnhs-green/35",
+                    "min-w-max cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cnhs-green-dark",
                     active
-                      ? "bg-cnhs-green-soft text-cnhs-green-dark"
-                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                      ? "bg-slate-100 text-slate-900 dark:bg-white/10 dark:text-white"
+                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-200"
                   )}
                 >
                   {tab.label}
@@ -460,19 +460,22 @@ export default function AdminAcademicAnalytics({
                 {attentionItems.length > 0 ? (
                   <aside
                     aria-label="Needs your attention"
-                    className="min-w-0 rounded-xl border border-amber-200/70 bg-amber-50/50 p-3"
+                    className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-xs dark:border-white/10 dark:bg-[var(--card)]"
                   >
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
-                      Needs Your Attention
-                    </h3>
+                    <div className="flex items-center gap-1.5 pb-2 border-b border-slate-100 dark:border-white/5">
+                      <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
+                      <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                        Needs Your Attention
+                      </h3>
+                    </div>
                     <ul className="mt-2 space-y-1.5">
                       {attentionItems.map((item) => (
                         <li
                           key={item.id}
-                          className="flex items-center justify-between gap-3 rounded-lg border border-amber-100 bg-white px-2.5 py-2"
+                          className="flex items-center justify-between gap-3 rounded-lg border border-slate-200/80 bg-slate-50/50 px-2.5 py-2 dark:border-white/5 dark:bg-white/[0.02]"
                         >
                           <div className="min-w-0">
-                            <span className="block text-[12px] font-medium leading-5 text-slate-700">
+                            <span className="block text-[12px] font-medium leading-5 text-slate-800 dark:text-slate-200">
                               {item.text}
                             </span>
                             {item.sub ? (
@@ -483,7 +486,7 @@ export default function AdminAcademicAnalytics({
                           </div>
                           <a
                             href={item.href}
-                            className="shrink-0 rounded-lg bg-cnhs-green-dark px-2.5 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-[#246f54]"
+                            className="shrink-0 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                           >
                             {item.action}
                           </a>
@@ -522,7 +525,7 @@ export default function AdminAcademicAnalytics({
                   href="/aral-monitoring"
                   className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white transition-colors hover:bg-[#246f54]"
                 >
-                  Open ARAL Monitoring
+                  Open ARAL Reading Assessment
                   <span aria-hidden="true">→</span>
                 </a>
               </div>
@@ -534,23 +537,26 @@ export default function AdminAcademicAnalytics({
               {aralAttentionItems.length > 0 ? (
                 <section
                   aria-label="ARAL items needing attention"
-                  className="rounded-xl border border-amber-200/70 bg-amber-50/50 p-3"
+                  className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs dark:border-white/10 dark:bg-[var(--card)]"
                 >
-                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
-                    Needs Your Attention
-                  </h3>
+                  <div className="flex items-center gap-1.5 pb-2 border-b border-slate-100 dark:border-white/5">
+                    <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                      Needs Your Attention
+                    </h3>
+                  </div>
                   <ul className="mt-2 space-y-1.5">
                     {aralAttentionItems.map((item) => (
                       <li
                         key={item.id}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-amber-100 bg-white px-2.5 py-2"
+                        className="flex items-center justify-between gap-3 rounded-lg border border-slate-200/80 bg-slate-50/50 px-2.5 py-2 dark:border-white/5 dark:bg-white/[0.02]"
                       >
-                        <span className="block min-w-0 text-[12px] font-medium leading-5 text-slate-700">
+                        <span className="block min-w-0 text-[12px] font-medium leading-5 text-slate-800 dark:text-slate-200">
                           {item.text}
                         </span>
                         <a
                           href={item.href}
-                          className="shrink-0 rounded-lg bg-cnhs-green-dark px-2.5 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-[#246f54]"
+                          className="shrink-0 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                         >
                           {item.action}
                         </a>
@@ -691,7 +697,7 @@ export default function AdminAcademicAnalytics({
                   href="/aral-monitoring"
                   className="font-semibold text-cnhs-green-dark hover:underline"
                 >
-                  ARAL Monitoring
+                  ARAL Reading Assessment
                 </a>
                 .
               </p>

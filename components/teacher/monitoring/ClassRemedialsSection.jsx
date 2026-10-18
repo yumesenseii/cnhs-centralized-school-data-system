@@ -628,7 +628,7 @@ export default function ClassRemedialsSection({
           className={cn(
             "rounded-xl border bg-white p-4 shadow-xs text-left transition sm:p-5 cursor-pointer hover:border-slate-300",
             activeSummaryCard === "for_review"
-              ? "border-amber-400 ring-2 ring-amber-400/30 bg-amber-50/20"
+              ? "border-[#166534] ring-1 ring-[#166534]/25 bg-slate-50/80"
               : "border-slate-200"
           )}
         >
@@ -639,7 +639,7 @@ export default function ClassRemedialsSection({
             <p className="mt-1 text-[26px] font-bold leading-none tracking-tight text-slate-900">
               {summaryCards.forReviewCount}
             </p>
-            <p className="mt-1.5 text-[11px] leading-4 text-slate-400">Requires teacher review</p>
+            <p className="mt-1.5 text-[11px] leading-4 text-slate-500">Requires teacher review</p>
           </div>
         </button>
 
@@ -651,7 +651,7 @@ export default function ClassRemedialsSection({
           className={cn(
             "rounded-xl border bg-white p-4 shadow-xs text-left transition sm:p-5 cursor-pointer hover:border-slate-300",
             activeSummaryCard === "high_priority"
-              ? "border-red-400 ring-2 ring-red-400/30 bg-red-50/20"
+              ? "border-[#166534] ring-1 ring-[#166534]/25 bg-slate-50/80"
               : "border-slate-200"
           )}
         >
@@ -659,10 +659,10 @@ export default function ClassRemedialsSection({
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               High Priority
             </p>
-            <p className="mt-1 text-[26px] font-bold leading-none tracking-tight text-red-700">
+            <p className="mt-1 text-[26px] font-bold leading-none tracking-tight text-slate-900">
               {summaryCards.highPriorityCount}
             </p>
-            <p className="mt-1.5 text-[11px] leading-4 text-slate-400">Immediate attention needed</p>
+            <p className="mt-1.5 text-[11px] leading-4 text-slate-500">Immediate attention needed</p>
           </div>
         </button>
 
@@ -674,7 +674,7 @@ export default function ClassRemedialsSection({
           className={cn(
             "rounded-xl border bg-white p-4 shadow-xs text-left transition sm:p-5 cursor-pointer hover:border-slate-300",
             activeSummaryCard === "under_support"
-              ? "border-blue-400 ring-2 ring-blue-400/30 bg-blue-50/20"
+              ? "border-[#166534] ring-1 ring-[#166534]/25 bg-slate-50/80"
               : "border-slate-200"
           )}
         >
@@ -682,10 +682,10 @@ export default function ClassRemedialsSection({
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               Under Support
             </p>
-            <p className="mt-1 text-[26px] font-bold leading-none tracking-tight text-blue-700">
+            <p className="mt-1 text-[26px] font-bold leading-none tracking-tight text-slate-900">
               {summaryCards.underSupportCount}
             </p>
-            <p className="mt-1.5 text-[11px] leading-4 text-slate-400">Active remediation / intervention</p>
+            <p className="mt-1.5 text-[11px] leading-4 text-slate-500">Active remediation / intervention</p>
           </div>
         </button>
 
@@ -697,7 +697,7 @@ export default function ClassRemedialsSection({
           className={cn(
             "rounded-xl border bg-white p-4 shadow-xs text-left transition sm:p-5 cursor-pointer hover:border-slate-300",
             activeSummaryCard === "improving"
-              ? "border-emerald-400 ring-2 ring-emerald-400/30 bg-emerald-50/20"
+              ? "border-[#166534] ring-1 ring-[#166534]/25 bg-slate-50/80"
               : "border-slate-200"
           )}
         >
@@ -705,10 +705,10 @@ export default function ClassRemedialsSection({
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               Improving
             </p>
-            <p className="mt-1 text-[26px] font-bold leading-none tracking-tight text-emerald-700">
+            <p className="mt-1 text-[26px] font-bold leading-none tracking-tight text-slate-900">
               {summaryCards.improvingCount}
             </p>
-            <p className="mt-1.5 text-[11px] leading-4 text-slate-400">Positive performance trend</p>
+            <p className="mt-1.5 text-[11px] leading-4 text-slate-500">Positive performance trend</p>
           </div>
         </button>
       </div>

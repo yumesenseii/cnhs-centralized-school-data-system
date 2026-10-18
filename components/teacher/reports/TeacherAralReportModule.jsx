@@ -206,11 +206,11 @@ export default function TeacherAralReportModule({
           <div>
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#166534] dark:bg-emerald-950/40 dark:text-emerald-300">
-                Assigned by Principal
+                Phil-IRI Assessment
               </span>
             </div>
             <h2 className="mt-1.5 text-lg font-bold tracking-tight text-[#166534] dark:text-emerald-400">
-              MY ARAL LEARNERS REPORT
+              MY READING ASSESSMENT REPORT
             </h2>
             <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">
               {aralPeriodLabel(selectedPeriod)} · {selectedSchoolYear}
@@ -259,11 +259,11 @@ export default function TeacherAralReportModule({
         </div>
       </div>
 
-      {/* 2. FACILITATOR SUMMARY (5 simple counts, avoid technical labels) */}
+      {/* 2. READING ASSESSMENT SUMMARY (5 simple counts) */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 text-center dark:border-white/10 dark:bg-white/[0.02]">
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            Assigned Learners
+            Enrolled Learners
           </p>
           <p className="mt-1 text-xl font-bold tabular-nums text-slate-900 dark:text-slate-100">
             {summaryCounts.assigned}
@@ -271,34 +271,34 @@ export default function TeacherAralReportModule({
         </div>
         <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 text-center dark:border-white/10 dark:bg-white/[0.02]">
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            Waiting for Assessment
+            Needs Screening
           </p>
-          <p className="mt-1 text-xl font-bold tabular-nums text-amber-700 dark:text-amber-400">
+          <p className="mt-1 text-xl font-bold tabular-nums text-slate-900 dark:text-slate-100">
             {summaryCounts.waitingForAssessment}
           </p>
         </div>
         <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 text-center dark:border-white/10 dark:bg-white/[0.02]">
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            Needs Individual Assessment
+            Needs IRA
           </p>
-          <p className="mt-1 text-xl font-bold tabular-nums text-blue-700 dark:text-blue-400">
+          <p className="mt-1 text-xl font-bold tabular-nums text-slate-900 dark:text-slate-100">
             {summaryCounts.needsIndividualAssessment}
           </p>
         </div>
         <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 text-center dark:border-white/10 dark:bg-white/[0.02]">
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            Under ARAL Support
+            At Grade Level
           </p>
-          <p className="mt-1 text-xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
-            {summaryCounts.underAralSupport}
+          <p className="mt-1 text-xl font-bold tabular-nums text-slate-900 dark:text-slate-100">
+            {summaryCounts.screeningComplete ?? 0}
           </p>
         </div>
         <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 text-center dark:border-white/10 dark:bg-white/[0.02]">
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            Completed
+            IRA Completed
           </p>
-          <p className="mt-1 text-xl font-bold tabular-nums text-slate-700 dark:text-slate-300">
-            {summaryCounts.completed}
+          <p className="mt-1 text-xl font-bold tabular-nums text-slate-900 dark:text-slate-100">
+            {summaryCounts.assessmentComplete ?? 0}
           </p>
         </div>
       </div>
@@ -471,14 +471,14 @@ export default function TeacherAralReportModule({
         )}
       </div>
 
-      {/* 7. FACILITATOR LEARNER BREAKDOWN (10 per page, read-only) */}
+      {/* 7. READING ASSESSMENT LEARNER BREAKDOWN (10 per page, read-only) */}
       <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-white/10 dark:bg-[var(--card)]">
         <div className="border-b border-slate-100 bg-slate-50/60 px-4 py-3 dark:border-white/5 dark:bg-white/[0.02]">
           <h3 className="text-xs font-bold uppercase tracking-wider text-[#166534] dark:text-emerald-400">
-            FACILITATOR LEARNER BREAKDOWN
+            READING ASSESSMENT LEARNER BREAKDOWN
           </h3>
           <p className="mt-0.5 text-[11px] text-slate-500">
-            Read-only summary of assigned learners. Assessment recording and progress updates are managed in ARAL Monitoring.
+            Read-only summary of assigned learners. Assessment recording and progress updates are managed in ARAL Reading Assessment.
           </p>
         </div>
 

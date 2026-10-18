@@ -96,10 +96,10 @@ export default function AttendanceMonitoringPanel({
   }
 
   return (
-    <section className="rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-      <div className="mb-1.5 flex items-center justify-between gap-2">
-        <h3 className="text-[13px] font-semibold text-slate-900">
-          Attendance snapshot
+    <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+      <div className="mb-2 flex items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-white/5">
+        <h3 className="text-[13px] font-semibold text-slate-900 dark:text-slate-100">
+          Attendance Snapshot
         </h3>
         <a
           href={linkHref}
@@ -108,26 +108,26 @@ export default function AttendanceMonitoringPanel({
           {linkLabel}
         </a>
       </div>
-      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <DenseKpi
           label={labelAverage}
           value={fmtAttendance(analytics.avgAda)}
-          tone="text-emerald-700"
+          tone="text-slate-900 dark:text-slate-100"
         />
         <DenseKpi
           label={labelRate}
           value={fmtAttendance(analytics.avgPa, "%")}
-          tone="text-blue-700"
+          tone="text-slate-900 dark:text-slate-100"
         />
         <DenseKpi
           label={labelAbsences}
           value={fmtAttendance(analytics.totalAbsences)}
-          tone="text-amber-800"
+          tone="text-amber-800 dark:text-amber-400"
         />
         <DenseKpi
           label={labelFlagged}
           value={analytics.flaggedSections.length}
-          tone="text-red-700"
+          tone="text-red-700 dark:text-red-400"
         />
       </div>
     </section>
@@ -136,11 +136,11 @@ export default function AttendanceMonitoringPanel({
 
 function DenseKpi({ label, value, tone }) {
   return (
-    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
       <p className="truncate text-[10px] font-bold uppercase tracking-wider text-slate-500">
         {label}
       </p>
-      <p className={cn("mt-1 text-2xl font-bold leading-none tracking-tight tabular-nums", tone ?? "text-slate-900")}>
+      <p className={cn("mt-1 text-2xl font-bold leading-none tracking-tight tabular-nums", tone ?? "text-slate-900 dark:text-slate-100")}>
         {value ?? "—"}
       </p>
     </div>

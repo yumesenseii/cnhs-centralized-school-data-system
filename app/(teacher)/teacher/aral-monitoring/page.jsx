@@ -2,9 +2,9 @@ import { Suspense } from "react";
 import TeacherAralMonitoringPage from "@/components/teacher/aral-program/TeacherAralMonitoringPage";
 
 export const metadata = {
-  title: "ARAL Monitoring | CNHS Learn",
+  title: "ARAL Reading Assessment | CNHS Learn",
   description:
-    "Specialized reading intervention monitoring, Phil-IRI diagnostic evidence, and milestone tracking.",
+    "DepEd Phil-IRI reading assessment for assigned English and Filipino classes.",
 };
 
 export default function AralMonitoringRoute() {
@@ -12,7 +12,7 @@ export default function AralMonitoringRoute() {
     <Suspense
       fallback={
         <div className="rounded-xl border border-slate-100 bg-white px-4 py-10 text-center text-sm text-slate-400">
-          Loading ARAL Monitoring…
+          Loading ARAL Reading Assessment…
         </div>
       }
     >

@@ -83,7 +83,7 @@ export default function StudentAttendancePage() {
                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
                     Present Days
                   </p>
-                  <p className="mt-0.5 text-xl font-bold tracking-tight text-emerald-700 dark:text-emerald-300 sm:text-2xl">
+                  <p className="mt-0.5 text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
                     {summary?.present ?? 0}
                   </p>
                 </div>
@@ -95,13 +95,7 @@ export default function StudentAttendancePage() {
                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
                     Absent Days
                   </p>
-                  <p
-                    className={`mt-0.5 text-xl font-bold tracking-tight sm:text-2xl ${
-                      (summary?.absent ?? 0) > 0
-                        ? "text-red-700 dark:text-red-400"
-                        : "text-slate-900 dark:text-white"
-                    }`}
-                  >
+                  <p className="mt-0.5 text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
                     {summary?.absent ?? 0}
                   </p>
                 </div>

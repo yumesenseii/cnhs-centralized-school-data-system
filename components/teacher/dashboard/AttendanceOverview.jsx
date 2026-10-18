@@ -37,10 +37,10 @@ export default function AttendanceOverview({ summary }) {
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
               Average Attendance
             </p>
-            <p className="mt-1 text-2xl font-bold tracking-tight text-emerald-700">
+            <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
               {avgPa}
             </p>
-            <p className="mt-1 text-[11px] text-slate-400">
+            <p className="mt-1 text-[11px] text-slate-500">
               Overall percentage
             </p>
           </div>
@@ -51,10 +51,10 @@ export default function AttendanceOverview({ summary }) {
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
               Learners With Attendance Issues
             </p>
-            <p className="mt-1 text-2xl font-bold tracking-tight text-amber-800">
+            <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
               {issuesCount}
             </p>
-            <p className="mt-1 text-[11px] text-slate-400">
+            <p className="mt-1 text-[11px] text-slate-500">
               Flagged for consecutive absences
             </p>
           </div>
@@ -65,10 +65,10 @@ export default function AttendanceOverview({ summary }) {
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
               Average Daily Attendance
             </p>
-            <p className="mt-1 text-2xl font-bold tracking-tight text-blue-700">
+            <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
               {avgAda}
             </p>
-            <p className="mt-1 text-[11px] text-slate-400">
+            <p className="mt-1 text-[11px] text-slate-500">
               Mean learners present per day
             </p>
           </div>

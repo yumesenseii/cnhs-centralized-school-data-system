@@ -238,7 +238,7 @@ export default function TeacherAralProgramPage() {
               Home
             </Link>
             <span className="text-slate-300"> &gt; </span>
-            <span className="font-semibold text-slate-600">ARAL Monitoring</span>
+            <span className="font-semibold text-slate-600">ARAL Reading Assessment</span>
           </p>
           <div className="flex shrink-0 items-center gap-2">
             <PageHelp

@@ -26,31 +26,31 @@ function inferTone(message, explicit) {
 
 const TONE_STYLES = {
   success: {
-    accent: "text-cnhs-green",
-    bar: "bg-cnhs-green",
-    iconWrap: "bg-cnhs-green text-white shadow-xs",
+    accent: "text-cnhs-green-dark",
+    bar: "bg-cnhs-green-dark",
+    iconWrap: "bg-cnhs-green-dark text-white shadow-xs",
     container:
-      "border-emerald-100/80 bg-gradient-to-br from-emerald-50/95 via-white to-teal-50/90 shadow-[0_12px_40px_rgba(16,185,129,0.14)] backdrop-blur-md dark:border-cnhs-green/40 dark:bg-[var(--card)] dark:bg-none dark:shadow-[0_12px_40px_rgba(0,0,0,0.55)]",
+      "border-slate-200 bg-white shadow-md dark:border-white/10 dark:bg-[var(--card)]",
     title: "text-slate-900 dark:text-card-foreground",
     desc: "text-slate-600 dark:text-muted-foreground",
     Icon: Check,
   },
   error: {
-    accent: "text-red-500",
-    bar: "bg-red-500",
-    iconWrap: "bg-red-500 text-white shadow-xs",
+    accent: "text-red-600",
+    bar: "bg-red-600",
+    iconWrap: "bg-red-600 text-white shadow-xs",
     container:
-      "border-red-200/80 bg-gradient-to-br from-red-50/95 via-white to-rose-50/90 shadow-[0_12px_40px_rgba(239,68,68,0.14)] backdrop-blur-md dark:border-red-500/30 dark:bg-[var(--card)] dark:bg-none dark:shadow-[0_12px_40px_rgba(0,0,0,0.55)]",
+      "border-red-200 bg-white shadow-md dark:border-red-500/30 dark:bg-[var(--card)]",
     title: "text-red-950 dark:text-white",
     desc: "text-red-900/80 dark:text-slate-300",
     Icon: AlertCircle,
   },
   info: {
-    accent: "text-slate-500",
+    accent: "text-slate-600",
     bar: "bg-slate-400",
     iconWrap: "bg-slate-700 text-white shadow-xs dark:bg-slate-600",
     container:
-      "border-slate-200/80 bg-gradient-to-br from-slate-50/95 via-white to-slate-100/90 shadow-[0_12px_40px_rgba(15,23,42,0.12)] backdrop-blur-md dark:border-white/10 dark:bg-[var(--card)] dark:bg-none dark:shadow-[0_12px_40px_rgba(0,0,0,0.55)]",
+      "border-slate-200 bg-white shadow-md dark:border-white/10 dark:bg-[var(--card)]",
     title: "text-slate-900 dark:text-card-foreground",
     desc: "text-slate-600 dark:text-muted-foreground",
     Icon: Info,

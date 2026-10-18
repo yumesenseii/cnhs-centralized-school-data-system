@@ -65,12 +65,11 @@ export default function WelcomeLoginToast() {
       role="status"
       aria-live="polite"
       className={cn(
-        "fixed right-4 top-4 z-[200] flex w-[min(22rem,calc(100vw-2rem))] items-start gap-3 rounded-2xl border px-3.5 py-3 shadow-[0_12px_40px_rgba(15,23,42,0.14)] backdrop-blur-md sm:right-6 sm:top-5",
-        "border-emerald-100/80 bg-gradient-to-br from-emerald-50/95 via-white to-teal-50/90",
-        "dark:border-cnhs-green/40 dark:bg-[var(--card)] dark:bg-none dark:shadow-[0_12px_40px_rgba(0,0,0,0.55)]"
+        "fixed right-4 top-4 z-[200] flex w-[min(22rem,calc(100vw-2rem))] items-start gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-3 shadow-md sm:right-6 sm:top-5",
+        "dark:border-white/10 dark:bg-[var(--card)]"
       )}
     >
-      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cnhs-green text-white shadow-sm">
+      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cnhs-green-dark text-white shadow-xs">
         <Check size={15} strokeWidth={2.5} />
       </span>
       <div className="min-w-0 flex-1 pt-0.5">

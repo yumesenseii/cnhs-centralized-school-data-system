@@ -192,7 +192,7 @@ export default function PhilIriDocumentsModal({
           <div className="flex items-center gap-2">
             <CheckCircle2 size={14} className="text-cnhs-green-dark shrink-0" />
             <span>
-              <strong>Record Once, Reuse Everywhere:</strong> Attach official school documents here. Form 1B scores link directly with Academic & ARAL monitoring.
+              <strong>Record Once, Reuse Everywhere:</strong> Attach official school documents here. Form 1B scores link directly with Academic & ARAL Reading Assessment.
             </span>
           </div>
           <span className="text-[11px] font-semibold text-cnhs-green-dark shrink-0">

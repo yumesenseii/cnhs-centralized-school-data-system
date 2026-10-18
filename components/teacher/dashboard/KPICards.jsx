@@ -6,34 +6,34 @@ import { cn } from "@/lib/utils";
 // Reference style: AdminMonitoringExecutiveSummary — white card, colored
 // value text only (no icon tiles).
 const tones = {
-  green: "text-emerald-700",
-  blue: "text-blue-700",
-  orange: "text-amber-800",
-  red: "text-red-700",
+  default: "text-slate-900 dark:text-slate-100",
+  green: "text-slate-900 dark:text-slate-100",
+  amber: "text-slate-900 dark:text-slate-100",
+  orange: "text-slate-900 dark:text-slate-100",
+  blue: "text-slate-900 dark:text-slate-100",
+  red: "text-slate-900 dark:text-slate-100",
 };
 
 /**
- * Slim horizontal KPI strip — matches Admin Academic Records SummaryCard.
+ * Slim horizontal KPI strip — matches institutional school admin styling.
  */
 export default function KPICards({ kpis }) {
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
       {kpis.map((kpi) => {
         return (
-          <motion.section
+          <section
             key={kpi.id}
-            whileHover={{ y: -2 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-            className="relative flex min-h-[56px] items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-xs transition-shadow hover:shadow-[0_8px_20px_rgba(15,23,42,0.06)]"
+            className="relative flex min-h-[56px] items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-xs transition-colors hover:border-slate-300 dark:border-white/10 dark:bg-[var(--card)] dark:hover:border-white/20"
           >
             {kpi.alert ? (
               <span
-                className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-cnhs-orange"
+                className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-amber-500"
                 aria-hidden="true"
               />
             ) : null}
             <span className="min-w-0">
-              <span className={cn("block text-base font-bold leading-5 tracking-tight", tones[kpi.tone] ?? tones.green)}>
+              <span className={cn("block text-base font-bold leading-5 tracking-tight", tones[kpi.tone] ?? tones.default)}>
                 {kpi.value}
               </span>
               <span className="mt-0.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
@@ -43,7 +43,7 @@ export default function KPICards({ kpis }) {
                 {kpi.description}
               </span>
             </span>
-          </motion.section>
+          </section>
         );
       })}
     </div>

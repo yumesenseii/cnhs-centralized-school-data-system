@@ -133,10 +133,10 @@ export function Dashboard1({ data, className }) {
               {metric.title}
             </h3>
             <div className="mt-1">
-              <p className="text-2xl font-bold tracking-tight text-emerald-700">
+              <p className="text-2xl font-bold tracking-tight text-slate-900">
                 {metric.value}
               </p>
-              <p className="mt-1 text-[11px] text-slate-400">
+              <p className="mt-1 text-[11px] text-slate-500">
                 {metric.subtitle}
               </p>
             </div>

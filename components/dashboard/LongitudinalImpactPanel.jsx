@@ -105,10 +105,10 @@ export default function LongitudinalImpactPanel({ schoolYear = "SY 2026-2027" })
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
             ARAL Overall Promotion
           </p>
-          <p className="mt-1 text-2xl font-bold tracking-tight text-emerald-700">
+          <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
             {benchmark.totalPercentage}%
           </p>
-          <p className="mt-1 text-[11px] text-slate-400">
+          <p className="mt-1 text-[11px] text-slate-500">
             {benchmark.totalPromoted} of {benchmark.totalEnd} completed learners promoted
           </p>
         </div>
@@ -118,10 +118,10 @@ export default function LongitudinalImpactPanel({ schoolYear = "SY 2026-2027" })
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
             Intervention Recovery Rate
           </p>
-          <p className="mt-1 text-2xl font-bold tracking-tight text-emerald-700">
+          <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
             {trimesterData?.recoveryRate ?? 82}%
           </p>
-          <p className="mt-1 text-[11px] text-slate-400">
+          <p className="mt-1 text-[11px] text-slate-500">
             Transitioned from High/Moderate to Low Risk post-intervention
           </p>
         </div>
@@ -131,11 +131,11 @@ export default function LongitudinalImpactPanel({ schoolYear = "SY 2026-2027" })
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
             Intervention Caseload Trend
           </p>
-          <p className="mt-1 text-2xl font-bold tracking-tight text-emerald-700">
+          <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
             -41.8%{" "}
             <span className="text-[11px] font-medium text-slate-500">over 3 SYs</span>
           </p>
-          <p className="mt-1 text-[11px] text-slate-400">
+          <p className="mt-1 text-[11px] text-slate-500">
             Caseload reduced from 148 (SY 24-25) to 86 (SY 26-27)
           </p>
         </div>
@@ -330,9 +330,9 @@ export default function LongitudinalImpactPanel({ schoolYear = "SY 2026-2027" })
                     </span>
                   </div>
                   <div className="mt-1.5 flex items-center gap-2">
-                    <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-200">
+                    <div className="h-2 flex-1 overflow-hidden rounded bg-slate-200">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-amber-500 to-emerald-500"
+                        className="h-full rounded bg-[#166534]"
                         style={{ width: `${Math.min(100, (row.approvedCount / 160) * 100)}%` }}
                       />
                     </div>

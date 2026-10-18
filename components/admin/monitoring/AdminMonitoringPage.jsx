@@ -213,7 +213,7 @@ export default function AdminMonitoringPage() {
                 "In 'School & Sections', click 'Open Section' to inspect a section's learners.",
                 "In 'Learners Needing Review', scan learners across subjects and view their records.",
                 "Formal exports and historical comparisons are available under Reports → Academic.",
-                "ARAL approvals and facilitator assignments are managed in ARAL Monitoring.",
+                "School-wide reading assessment and Phil-IRI tracking are monitored in ARAL Reading Assessment.",
               ]}
             />
             <button

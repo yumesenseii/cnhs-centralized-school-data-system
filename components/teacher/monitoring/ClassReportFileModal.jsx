@@ -414,14 +414,14 @@ export default function ClassReportFileModal({
 
                 {/* Students Passing */}
                 <div className="flex items-center gap-3.5 p-3.5">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
                     <CheckCircle2 size={18} />
                   </div>
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                       Students Passing
                     </p>
-                    <p className="text-xl font-bold tracking-tight text-emerald-700 leading-none mt-1">
+                    <p className="text-xl font-bold tracking-tight text-slate-900 leading-none mt-1">
                       {passingCount}
                       <span className="text-[11px] font-normal text-slate-400 ml-1.5">(Grade ≥ 75)</span>
                     </p>
@@ -430,14 +430,14 @@ export default function ClassReportFileModal({
 
                 {/* Students Needing Quick Support */}
                 <div className="flex items-center gap-3.5 p-3.5">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
                     <AlertCircle size={18} />
                   </div>
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                       Students Needing Quick Support
                     </p>
-                    <p className="text-xl font-bold tracking-tight text-amber-700 leading-none mt-1">
+                    <p className="text-xl font-bold tracking-tight text-slate-900 leading-none mt-1">
                       {supportCount}
                       <span className="text-[11px] font-normal text-slate-400 ml-1.5">(Grade &lt; 75)</span>
                     </p>
@@ -450,13 +450,13 @@ export default function ClassReportFileModal({
             <div className="shrink-0 border-b border-slate-100 bg-slate-50 px-5 py-4">
               <div className="w-64 max-w-sm">
                 {/* Class Summary */}
-                <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-                  <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Class Summary</h3>
+                <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
+                  <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Class Summary</h3>
                   <div className="space-y-1.5 text-[12px]">
-                    <div className="flex justify-between"><span className="text-slate-500">Total Learners</span><span className="font-semibold text-slate-700">{allLearners.length}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-500">High Risk</span><span className="font-semibold text-red-600">{allLearners.filter(l => l.academicRisk === "High Risk").length}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-500">Moderate Risk</span><span className="font-semibold text-orange-600">{allLearners.filter(l => l.academicRisk === "Moderate Risk").length}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-500">Low Risk</span><span className="font-semibold text-green-600">{allLearners.filter(l => l.academicRisk === "Low Risk").length}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Total Learners</span><span className="font-semibold text-slate-900">{allLearners.length}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">High Risk</span><span className="font-semibold text-slate-900">{allLearners.filter(l => l.academicRisk === "High Risk").length}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Moderate Risk</span><span className="font-semibold text-slate-900">{allLearners.filter(l => l.academicRisk === "Moderate Risk").length}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Low Risk</span><span className="font-semibold text-slate-900">{allLearners.filter(l => l.academicRisk === "Low Risk").length}</span></div>
                   </div>
                 </div>
               </div>

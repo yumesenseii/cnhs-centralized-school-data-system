@@ -17,7 +17,10 @@ import AppSelect from "@/components/shared/AppSelect";
 import { RiskPill } from "@/components/teacher/monitoring/shared";
 import { useAppToast } from "@/components/shared/AppToast";
 import { READING_CONCERN_OPTIONS } from "@/lib/monitoring/readingReviewSummary";
-import { createMonitoringRecord } from "@/lib/supabase/queries/monitoring";
+import {
+  createMonitoringRecord,
+  routeReadingConcernToLanguageTeacher,
+} from "@/lib/supabase/queries/monitoring";
 import {
   ARAL_WORDING,
   getHistoricalTermLabel,
@@ -33,6 +36,7 @@ import {
   deriveAcademicProgress,
   deriveCurrentSupport,
 } from "@/lib/monitoring/academicMonitoringState";
+import { evaluateAcademicAndReadingGuidance } from "@/lib/monitoring/academicAndReadingGuidance";
 
 export default function LearnerAcademicDetailModal({
   learner,
@@ -78,6 +82,13 @@ export default function LearnerAcademicDetailModal({
     );
   });
   const [updatingRemedial, setUpdatingRemedial] = useState(false);
+
+  // Non-language teacher: Flag Reading Concern state
+  const [showFlagReadingConcern, setShowFlagReadingConcern] = useState(false);
+  const [flaggedLanguage, setFlaggedLanguage] = useState("English");
+  const [flaggedConcern, setFlaggedConcern] = useState("Reading Comprehension");
+  const [flaggedNote, setFlaggedNote] = useState("");
+  const [routingConcern, setRoutingConcern] = useState(false);
 
   // Sync remedialStatus whenever activeLearner updates from parent refetch
   useEffect(() => {
@@ -237,6 +248,61 @@ export default function LearnerAcademicDetailModal({
     };
   }, [progressInfo, curGrade, prevGrade]);
 
+  const readingGstScore =
+    activeLearner.philIriScore != null ? activeLearner.philIriScore : null;
+  const readingLevelValue = activeLearner.readingLevel || null;
+  const hasReadingFlag = Boolean(
+    activeLearner.teacherRemarks?.includes("Flagged Reading Concern") ||
+    activeLearner.interventionGiven === "Flagged Reading Concern" ||
+    activeLearner.intervention_given === "Flagged Reading Concern"
+  );
+
+  const guidanceInfo = useMemo(() => {
+    return evaluateAcademicAndReadingGuidance({
+      grade: curGrade,
+      gstScore: readingGstScore,
+      readingLevel: readingLevelValue,
+      hasFlaggedConcern: hasReadingFlag,
+    });
+  }, [curGrade, readingGstScore, readingLevelValue, hasReadingFlag]);
+
+  const readingLang =
+    activeLearner.readingLanguage ||
+    (String(studentSubject).toLowerCase().includes("fil") ? "Filipino" : "English");
+
+  const readingGstDisplay =
+    readingGstScore !== null && readingGstScore !== undefined
+      ? `${readingGstScore} / 40 (${Number(readingGstScore) >= 28 ? "At Grade Level" : "Needs Individual Assessment"})`
+      : "Not yet recorded";
+
+  const readingIraStatus = useMemo(() => {
+    if (readingGstScore !== null && Number(readingGstScore) >= 28) {
+      return "Not Needed (Met GST Benchmark)";
+    }
+    if (
+      readingLevelValue &&
+      readingLevelValue !== "Not Screened" &&
+      readingLevelValue !== "Not Assessed" &&
+      readingLevelValue !== "Not Set"
+    ) {
+      return "Completed";
+    }
+    if (readingGstScore !== null) {
+      return "Pending Assessment";
+    }
+    return "Not yet assessed";
+  }, [readingGstScore, readingLevelValue]);
+
+  const readingProfileValue =
+    readingLevelValue &&
+    readingLevelValue !== "Not Screened" &&
+    readingLevelValue !== "Not Assessed" &&
+    readingLevelValue !== "Not Set"
+      ? readingLevelValue
+      : readingGstScore !== null && Number(readingGstScore) >= 28
+      ? "At Grade Level"
+      : "Not yet recorded";
+
   const isClassRemedialActive =
     currentSupport.key === "under_class_support" ||
     remedialStatus === "Active" ||
@@ -298,6 +364,63 @@ export default function LearnerAcademicDetailModal({
       showToast("error", "Failed to submit ARAL referral.");
     } finally {
       setRecommendingAral(false);
+    }
+  }
+
+  async function handleRouteReadingConcern() {
+    if (routingConcern) return;
+    const studentId = activeLearner.studentId || activeLearner.id;
+    const sectionId =
+      activeLearner.sectionId ||
+      activeLearner.section_id ||
+      activeLearner.classes?.section_id;
+
+    if (!studentId || !sectionId) {
+      showToast("error", "Missing student or section information.");
+      return;
+    }
+
+    setRoutingConcern(true);
+    try {
+      const res = await routeReadingConcernToLanguageTeacher({
+        studentId,
+        studentName: studentFullName,
+        sectionId,
+        gradeSection: studentSection,
+        language: flaggedLanguage,
+        concernCategory: flaggedConcern,
+        teacherRemarks: flaggedNote,
+        referringTeacherId: teacherId,
+        referringTeacherName: activeLearner.teacherName || "Subject Teacher",
+        schoolYear,
+        quarter: currentQuarterNumber,
+      });
+
+      if (res.error) {
+        if (res.missingTeacher) {
+          showToast(
+            "error",
+            `Reading assessment teacher not found for ${flaggedLanguage} in ${studentSection}. Case flagged for admin review.`
+          );
+        } else {
+          showToast("error", res.error.message || "Failed to route reading concern.");
+        }
+        return;
+      }
+
+      showToast(
+        "success",
+        `Reading concern routed to ${res.data.languageTeacherName} (${res.data.language} Teacher).`
+      );
+      setShowFlagReadingConcern(false);
+      setFlaggedNote("");
+      onRefresh?.();
+      onClose?.();
+    } catch (err) {
+      console.error(err);
+      showToast("error", "An unexpected error occurred while routing concern.");
+    } finally {
+      setRoutingConcern(false);
     }
   }
 
@@ -713,7 +836,7 @@ export default function LearnerAcademicDetailModal({
             <button
               type="button"
               onClick={handleContinueMonitoring}
-              disabled={updatingRemedial}
+              disabled={updatingRemedial || routingConcern}
               className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
             >
               {updatingRemedial ? <Loader2 size={13} className="animate-spin" /> : null}
@@ -722,27 +845,124 @@ export default function LearnerAcademicDetailModal({
             <button
               type="button"
               onClick={handleStartRemedial}
-              disabled={updatingRemedial}
+              disabled={updatingRemedial || routingConcern}
               className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-cnhs-green-dark px-4 text-xs font-semibold text-white shadow-xs transition hover:bg-[#1b5842] disabled:opacity-50"
             >
               {updatingRemedial ? <Loader2 size={13} className="animate-spin" /> : null}
               <span>Start Class Remedial</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setShowFlagReadingConcern((prev) => !prev)}
+              disabled={updatingRemedial || routingConcern}
+              className={cn(
+                "inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-4 text-xs font-semibold transition shadow-xs",
+                showFlagReadingConcern
+                  ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+              )}
+            >
+              <span>Flag Reading Concern</span>
+            </button>
           </div>
         </div>
 
-        <label className="block pt-1">
-          <span className="mb-1 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-            Optional Note
-          </span>
-          <textarea
-            value={reviewNote}
-            onChange={(e) => setReviewNote(e.target.value)}
-            rows={2}
-            placeholder="Enter a short note..."
-            className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-cnhs-green dark:border-white/10 dark:bg-white/5 dark:text-slate-100"
-          />
-        </label>
+        {showFlagReadingConcern ? (
+          <div className="space-y-3 rounded-xl border border-blue-200 bg-blue-50/50 p-4 text-xs dark:border-blue-900/50 dark:bg-blue-950/20">
+            <div>
+              <span className="block text-[11px] font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
+                Flag Reading Concern &amp; Route to Language Teacher
+              </span>
+              <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-400">
+                Non-language teachers do not administer the Phil-IRI Screening Test (GST) directly. This action routes your reading observation to the learner’s English or Filipino Subject Teacher.
+              </p>
+            </div>
+
+            <div>
+              <span className="mb-1.5 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                Target Language
+              </span>
+              <div className="flex items-center gap-2">
+                {["English", "Filipino"].map((lang) => (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => setFlaggedLanguage(lang)}
+                    className={cn(
+                      "inline-flex h-8 cursor-pointer items-center rounded-lg px-3 text-xs font-semibold transition border",
+                      flaggedLanguage === lang
+                        ? "border-[#246f54] bg-[#246f54] text-white"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                    )}
+                  >
+                    {lang}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <span className="mb-1 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                Main Reading Concern Focus
+              </span>
+              <AppSelect
+                label="Reading Concern Focus"
+                value={flaggedConcern}
+                onChange={setFlaggedConcern}
+                options={READING_CONCERN_OPTIONS.map((c) => ({
+                  value: c,
+                  label: c,
+                }))}
+                triggerClassName="h-9 text-xs bg-white dark:bg-slate-900"
+              />
+            </div>
+
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                Teacher Observation Note
+              </span>
+              <textarea
+                value={flaggedNote}
+                onChange={(e) => setFlaggedNote(e.target.value)}
+                rows={2}
+                placeholder={`Describe reading difficulties observed in ${studentSubject || "class"} (e.g., struggles to comprehend word problems)...`}
+                className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-cnhs-green dark:border-white/10 dark:bg-white/5 dark:text-slate-100"
+              />
+            </label>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowFlagReadingConcern(false)}
+                className="h-8 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRouteReadingConcern}
+                disabled={routingConcern}
+                className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 text-xs font-semibold text-white shadow-xs transition hover:bg-blue-700 disabled:opacity-50"
+              >
+                {routingConcern ? <Loader2 size={12} className="animate-spin" /> : null}
+                <span>Route to {flaggedLanguage} Subject Teacher</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <label className="block pt-1">
+            <span className="mb-1 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+              Optional Note
+            </span>
+            <textarea
+              value={reviewNote}
+              onChange={(e) => setReviewNote(e.target.value)}
+              rows={2}
+              placeholder="Enter a short note..."
+              className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-cnhs-green dark:border-white/10 dark:bg-white/5 dark:text-slate-100"
+            />
+          </label>
+        )}
       </div>
     );
   }
@@ -806,57 +1026,119 @@ export default function LearnerAcademicDetailModal({
             </div>
           ) : (
             <>
-              {/* SECTION 1: CURRENT ACADEMIC CONCERN */}
-              <section className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs dark:border-white/5 dark:bg-[var(--card)]">
-                <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark">
-                  1. Current Academic Concern
-                </h3>
-                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <div className="rounded-lg bg-slate-50 p-3 dark:bg-white/[0.02]">
-                    <span className="block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
-                      Subject
-                    </span>
-                    <span className="mt-1 block text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
-                      {studentSubject}
-                    </span>
-                  </div>
+              {/* SECTION 1: LEARNER PERFORMANCE OVERVIEW (ACADEMIC & READING) */}
+              <section className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs dark:border-white/5 dark:bg-[var(--card)] space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-white/5">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark">
+                    1. Learner Performance Overview
+                  </h3>
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-md border px-2.5 py-0.5 text-[11px] font-semibold",
+                      guidanceInfo.badgeStyle
+                    )}
+                  >
+                    {guidanceInfo.label}
+                  </span>
+                </div>
 
-                  <div className="rounded-lg bg-slate-50 p-3 dark:bg-white/[0.02]">
-                    <span className="block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
-                      Current Grade
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {/* Academic Performance */}
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 text-xs dark:border-white/5 dark:bg-white/[0.02] space-y-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Academic Performance
                     </span>
-                    <span
-                      className={cn(
-                        "mt-1 block text-sm font-bold",
-                        curGrade !== null && curGrade < 75
-                          ? "text-amber-800 dark:text-amber-400"
-                          : "text-slate-900 dark:text-slate-100"
-                      )}
-                    >
-                      {curGrade !== null ? curGrade : "—"}{" "}
-                      <span className="text-[11px] font-normal text-slate-400">/ 100</span>
-                    </span>
-                    <span className="text-[10px] text-slate-400">
-                      {curGrade !== null && curGrade < 75
-                        ? "Below passing standard (75)"
-                        : "Passing range"}
-                    </span>
-                  </div>
 
-                  <div className="rounded-lg bg-slate-50 p-3 dark:bg-white/[0.02]">
-                    <span className="block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
-                      Current Support
-                    </span>
-                    <div className="mt-1">
-                      <span
-                        className={cn(
-                          "inline-flex items-center rounded-md border px-2.5 py-0.5 text-[11px] font-semibold",
-                          currentSupport.badgeStyle
-                        )}
-                      >
-                        {currentSupport.label}
-                      </span>
+                    <div className="space-y-1.5 pt-0.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500 dark:text-slate-400 text-[11px]">Subject:</span>
+                        <span className="font-bold text-slate-900 dark:text-slate-100 truncate max-w-[150px] text-right">
+                          {studentSubject}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500 dark:text-slate-400 text-[11px]">Current Grade:</span>
+                        <span
+                          className={cn(
+                            "font-bold",
+                            curGrade !== null && curGrade < 75
+                              ? "text-amber-800 dark:text-amber-400"
+                              : "text-slate-900 dark:text-slate-100"
+                          )}
+                        >
+                          {curGrade !== null ? `${curGrade} / 100` : "—"}
+                          {curGrade !== null && curGrade < 75 ? (
+                            <span className="ml-1 text-[10px] font-normal text-amber-700 dark:text-amber-400">(Below 75)</span>
+                          ) : null}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500 dark:text-slate-400 text-[11px]">Academic Monitoring Status:</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">
+                          {currentSupport.label}
+                        </span>
+                      </div>
                     </div>
+                  </div>
+
+                  {/* Reading Performance */}
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 text-xs dark:border-white/5 dark:bg-white/[0.02] space-y-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Reading Performance (Phil-IRI)
+                    </span>
+
+                    <div className="space-y-1.5 pt-0.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500 dark:text-slate-400 text-[11px]">Language:</span>
+                        <span className="font-bold text-slate-900 dark:text-slate-100">{readingLang}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500 dark:text-slate-400 text-[11px]">GST Result:</span>
+                        <span className="font-bold text-slate-900 dark:text-slate-100">
+                          {readingGstDisplay}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500 dark:text-slate-400 text-[11px]">Individual Assessment:</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">
+                          {readingIraStatus}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500 dark:text-slate-400 text-[11px]">Reading Profile:</span>
+                        <span
+                          className={cn(
+                            "font-bold",
+                            readingProfileValue === "Frustration"
+                              ? "text-rose-700 dark:text-rose-400"
+                              : readingProfileValue === "Instructional"
+                              ? "text-amber-700 dark:text-amber-400"
+                              : readingProfileValue === "Independent"
+                              ? "text-emerald-700 dark:text-emerald-400"
+                              : "text-slate-600 dark:text-slate-400"
+                          )}
+                        >
+                          {readingProfileValue}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Teacher Note / Guidance: Exactly ONE short sentence */}
+                <div className="rounded-xl border border-slate-200/70 bg-slate-50/90 px-3.5 py-2.5 dark:border-white/5 dark:bg-white/[0.03]">
+                  <div className="flex items-start gap-2">
+                    <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400 shrink-0 mt-0.5">
+                      Teacher Note:
+                    </span>
+                    <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-normal">
+                      {guidanceInfo.sentence}
+                    </p>
                   </div>
                 </div>
               </section>
@@ -1029,7 +1311,7 @@ export default function LearnerAcademicDetailModal({
                                         onClick={() => onNavigateToAral?.(activeLearner)}
                                         className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-semibold text-cnhs-green-dark hover:underline"
                                       >
-                                        <span>View in ARAL Monitoring</span>
+                                        <span>View in ARAL Reading Assessment</span>
                                         <ArrowUpRight size={12} />
                                       </button>
                                     ) : null}
@@ -1107,7 +1389,7 @@ export default function LearnerAcademicDetailModal({
                             }}
                             className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-semibold text-cnhs-green-dark hover:underline"
                           >
-                            <span>View in ARAL Monitoring</span>
+                            <span>View in ARAL Reading Assessment</span>
                             <ArrowUpRight size={12} />
                           </button>
                         ) : (
@@ -1120,7 +1402,7 @@ export default function LearnerAcademicDetailModal({
                             onClick={onClose}
                             className="inline-flex items-center gap-1 text-[11px] font-semibold text-cnhs-green-dark hover:underline"
                           >
-                            <span>View in ARAL Monitoring</span>
+                            <span>View in ARAL Reading Assessment</span>
                             <ArrowUpRight size={12} />
                           </Link>
                         )}

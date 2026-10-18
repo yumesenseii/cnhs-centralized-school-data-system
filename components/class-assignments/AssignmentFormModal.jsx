@@ -57,11 +57,11 @@ export default function AssignmentFormModal({
       setQuarter(String(assignment.quarter ?? 1));
       setReassignAllTerms(true);
     } else {
-      setTeacherId("");
-      setSubjectId("");
-      setGradeLevel("7");
-      setSectionId("");
-      setSchoolYear(defaultSchoolYear || schoolYears[0] || "");
+      setTeacherId(assignment?.teacherId ?? "");
+      setSubjectId(assignment?.subjectId ?? "");
+      setGradeLevel(String(assignment?.gradeLevel ?? 7));
+      setSectionId(assignment?.sectionId ?? "");
+      setSchoolYear(assignment?.schoolYear ?? defaultSchoolYear ?? schoolYears[0] ?? "");
       setQuarter("1");
       setReassignAllTerms(true);
     }

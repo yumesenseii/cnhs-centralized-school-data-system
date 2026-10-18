@@ -1,20 +1,26 @@
 import { cn } from "@/lib/utils";
 
 const RISK_STYLES = {
-  Priority: "bg-red-100 text-red-700 ring-red-100",
-  "High Risk": "bg-red-100 text-red-700 ring-red-100",
-  Moderate: "bg-orange-100 text-orange-700 ring-orange-100",
-  "Moderate Risk": "bg-orange-100 text-orange-700 ring-orange-100",
-  Low: "bg-green-100 text-green-700 ring-green-100",
-  "Low Risk": "bg-green-100 text-green-700 ring-green-100",
+  Priority:
+    "border-red-200/80 bg-red-50 text-red-700 dark:border-red-800/40 dark:bg-red-950/40 dark:text-red-300",
+  "High Risk":
+    "border-red-200/80 bg-red-50 text-red-700 dark:border-red-800/40 dark:bg-red-950/40 dark:text-red-300",
+  Moderate:
+    "border-amber-200/80 bg-amber-50 text-amber-800 dark:border-amber-800/40 dark:bg-amber-950/40 dark:text-amber-300",
+  "Moderate Risk":
+    "border-amber-200/80 bg-amber-50 text-amber-800 dark:border-amber-800/40 dark:bg-amber-950/40 dark:text-amber-300",
+  Low:
+    "border-emerald-200/80 bg-emerald-50 text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-300",
+  "Low Risk":
+    "border-emerald-200/80 bg-emerald-50 text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-300",
 };
 
 export default function RiskBadge({ value }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none ring-1",
-        RISK_STYLES[value] ?? "bg-slate-100 text-slate-600 ring-slate-100"
+        "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium leading-tight",
+        RISK_STYLES[value] ?? "border-slate-200/80 bg-slate-100 text-slate-700"
       )}
     >
       {value}

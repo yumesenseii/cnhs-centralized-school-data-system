@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import Header from "@/components/layout/Header";
 import AssignmentFormModal from "@/components/class-assignments/AssignmentFormModal";
-import AssignmentSummaryCards from "@/components/class-assignments/AssignmentSummaryCards";
-import AssignmentsTable from "@/components/class-assignments/AssignmentsTable";
+import GroupedAssignmentsView from "@/components/class-assignments/GroupedAssignmentsView";
 import DeleteConfirmModal from "@/components/shared/DeleteConfirmModal";
 import { useAppToast } from "@/components/shared/AppToast";
 import DeleteRequestsPanel from "@/components/admin/DeleteRequestsPanel";
 import { useClassAssignments } from "@/hooks/admin/useClassAssignments";
 import { suggestCurrentSchoolYear } from "@/lib/admin/sectionMappers";
+import { cn } from "@/lib/utils";
 import {
   approveDeleteRequest,
   listPendingDeleteRequests,
@@ -25,7 +25,6 @@ export default function ClassAssignmentManagement({ embedded = false }) {
     subjects,
     sections,
     schoolYears,
-    summary,
     loading,
     refreshing,
     saving,
@@ -65,8 +64,39 @@ export default function ClassAssignmentManagement({ embedded = false }) {
 
   const defaultSchoolYear = schoolYears[0] || suggestCurrentSchoolYear();
 
-  function openCreate() {
-    setSelected(null);
+  const selectedYear =
+    filters.schoolYear === "All School Years"
+      ? (defaultSchoolYear || schoolYears[0] || "SY 2026-2027")
+      : filters.schoolYear;
+
+  const overviewStats = useMemo(() => {
+    const active = (sections ?? []).filter((s) => s.status !== "inactive");
+    const yearSections =
+      selectedYear && selectedYear !== "All School Years"
+        ? active.filter((s) => s.school_year === selectedYear)
+        : active;
+    const effectiveSecs = yearSections.length > 0 ? yearSections : active;
+
+    const totalSlots = effectiveSecs.length * (subjects ?? []).length;
+
+    const assignedSlots = new Set();
+    assignments.forEach((a) => {
+      const matchYear =
+        !selectedYear ||
+        selectedYear === "All School Years" ||
+        a.schoolYear === selectedYear;
+      if (matchYear && a.teacherName && a.teacherName !== "—") {
+        assignedSlots.add(`${a.subjectId}_${a.sectionId}`);
+      }
+    });
+
+    const assigned = assignedSlots.size;
+    const unassigned = Math.max(0, totalSlots - assigned);
+    return { assigned, unassigned, total: totalSlots };
+  }, [sections, subjects, assignments, selectedYear]);
+
+  function openCreate(initialData = null) {
+    setSelected(initialData);
     setModalMode("create");
     setModalOpen(true);
   }
@@ -202,8 +232,8 @@ export default function ClassAssignmentManagement({ embedded = false }) {
   const assignButton = (
     <button
       type="button"
-      onClick={openCreate}
-      className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-[#246f54]"
+      onClick={() => openCreate(null)}
+      className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white shadow-xs transition hover:bg-[#165a3e]"
     >
       <Plus size={13} />
       Assign Class
@@ -223,20 +253,62 @@ export default function ClassAssignmentManagement({ embedded = false }) {
       transition={{ duration: 0.3, ease: "easeOut" }}
       className={embedded ? "pb-2" : "pb-5"}
     >
+      {/* COMPACT TOP HEADER WITH EMBEDDED SUMMARY */}
       {embedded ? (
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[11px] text-slate-500">
-            Assign teachers to subjects and sections by school year and quarter. Teachers only see classes assigned to them.
-          </p>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <p className="text-[11px] text-slate-500">
+              Assign teachers to subjects and sections by school year and quarter.
+            </p>
+            <div className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-0.5 text-xs shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+              <span className="font-semibold text-slate-900 dark:text-slate-100">
+                {overviewStats.assigned} Assigned
+              </span>
+              <span className="text-slate-300 dark:text-white/20">·</span>
+              <span
+                className={cn(
+                  "font-semibold",
+                  overviewStats.unassigned > 0
+                    ? "text-amber-800 dark:text-amber-400"
+                    : "text-slate-600 dark:text-slate-400"
+                )}
+              >
+                {overviewStats.unassigned} Unassigned
+              </span>
+            </div>
+          </div>
           {headerControls}
         </div>
       ) : (
-        <Header
-          breadcrumb="Home / Classes & Sections / Class Assignments"
-          title="Class Assignments"
-          description="Assign teachers to subjects and sections by school year and quarter. Teachers only see classes assigned to them."
-          controls={headerControls}
-        />
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2.5">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-lg font-bold text-slate-900 sm:text-xl dark:text-white">
+                Class Assignments
+              </h1>
+              <div className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-0.5 text-xs shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+                <span className="font-semibold text-slate-900 dark:text-slate-100">
+                  {overviewStats.assigned} Assigned
+                </span>
+                <span className="text-slate-300 dark:text-white/20">·</span>
+                <span
+                  className={cn(
+                    "font-semibold",
+                    overviewStats.unassigned > 0
+                      ? "text-amber-800 dark:text-amber-400"
+                      : "text-slate-600 dark:text-slate-400"
+                  )}
+                >
+                  {overviewStats.unassigned} Unassigned
+                </span>
+              </div>
+            </div>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Assign teachers to subjects and sections by school year and quarter. Teachers only see classes assigned to them.
+            </p>
+          </div>
+          {headerControls}
+        </div>
       )}
 
       {error ? (
@@ -262,16 +334,24 @@ export default function ClassAssignmentManagement({ embedded = false }) {
         }}
       />
 
-      <AssignmentSummaryCards cards={summary} />
-
-      <div className="mt-4">
-        <AssignmentsTable
+      {/* PERMANENT GROUPED HIERARCHY VIEW */}
+      <div className="mt-2">
+        <GroupedAssignmentsView
           assignments={assignments}
-          filters={filters}
-          schoolYears={schoolYears}
+          subjects={subjects}
+          sections={sections}
           teachers={teachers}
-          onFiltersChange={setFilters}
+          schoolYears={schoolYears}
+          selectedSchoolYear={selectedYear}
+          onSchoolYearChange={(sy) =>
+            setFilters((prev) => ({ ...prev, schoolYear: sy }))
+          }
+          searchQuery={filters.search}
+          onSearchChange={(q) =>
+            setFilters((prev) => ({ ...prev, search: q }))
+          }
           onEdit={openEdit}
+          onAssign={openCreate}
           onDelete={onDelete}
           busy={saving}
         />
