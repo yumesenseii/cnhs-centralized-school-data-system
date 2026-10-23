@@ -341,7 +341,7 @@ export default function AralAssessmentFlowModal({
       onClose();
     } catch (err) {
       console.error("Failed to save IRA result:", err);
-      showToast(err.message || "Failed to save assessment result.");
+      showToast({ message: err.message || "Failed to save assessment result.", tone: "error" });
     } finally {
       setSaving(false);
     }

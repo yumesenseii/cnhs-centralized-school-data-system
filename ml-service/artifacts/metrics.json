@@ -3,24 +3,24 @@
   "general_average_in_features": false,
   "n_estimators": 200,
   "max_depth": 12,
-  "accuracy": 0.9916666666666667,
-  "precision_macro": 0.991662658329325,
-  "recall_macro": 0.9881983439611689,
-  "f1_macro": 0.9898584003061615,
-  "precision_weighted": 0.9917334722890279,
-  "recall_weighted": 0.9916666666666667,
-  "f1_weighted": 0.991644342390611,
+  "accuracy": 0.9944444444444445,
+  "precision_macro": 0.9941319045796657,
+  "recall_macro": 0.9924177532438692,
+  "f1_macro": 0.9932568365975651,
+  "precision_weighted": 0.9944577327040014,
+  "recall_weighted": 0.9944444444444445,
+  "f1_weighted": 0.9944371552544458,
   "cross_validation_5fold": {
-    "accuracy_mean": 0.9841666666666666,
-    "accuracy_std": 0.004444444444444476,
-    "f1_macro_mean": 0.9809617711860794,
-    "f1_macro_std": 0.005350657501023398,
+    "accuracy_mean": 0.9841666666666665,
+    "accuracy_std": 0.0028598972613853193,
+    "f1_macro_mean": 0.9809514335013058,
+    "f1_macro_std": 0.003447857935451211,
     "fold_accuracies": [
-      0.9791666666666666,
+      0.9819444444444444,
       0.9861111111111112,
-      0.9805555555555555,
-      0.9833333333333333,
-      0.9916666666666667
+      0.9819444444444444,
+      0.9819444444444444,
+      0.9888888888888889
     ]
   },
   "confusion_matrix": {
@@ -42,8 +42,8 @@
       ],
       [
         0,
-        5,
-        153
+        3,
+        155
       ]
     ]
   },
@@ -55,28 +55,28 @@
       "support": 296.0
     },
     "Low Risk": {
-      "precision": 0.9814814814814815,
+      "precision": 0.9888059701492538,
       "recall": 0.9962406015037594,
-      "f1-score": 0.9888059701492538,
+      "f1-score": 0.9925093632958801,
       "support": 266.0
     },
     "Moderate Risk": {
-      "precision": 0.9935064935064936,
-      "recall": 0.9683544303797469,
-      "f1-score": 0.9807692307692307,
+      "precision": 0.9935897435897436,
+      "recall": 0.9810126582278481,
+      "f1-score": 0.9872611464968153,
       "support": 158.0
     },
-    "accuracy": 0.9916666666666667,
+    "accuracy": 0.9944444444444445,
     "macro avg": {
-      "precision": 0.991662658329325,
-      "recall": 0.9881983439611689,
-      "f1-score": 0.9898584003061615,
+      "precision": 0.9941319045796657,
+      "recall": 0.9924177532438692,
+      "f1-score": 0.9932568365975651,
       "support": 720.0
     },
     "weighted avg": {
-      "precision": 0.9917334722890279,
-      "recall": 0.9916666666666667,
-      "f1-score": 0.991644342390611,
+      "precision": 0.9944577327040014,
+      "recall": 0.9944444444444445,
+      "f1-score": 0.9944371552544458,
       "support": 720.0
     }
   },
@@ -113,18 +113,18 @@
     "label_source": "general_average (GWA) \u2014 labels only, not an RF feature"
   },
   "feature_importances": {
-    "english_grade": 0.06523132850465764,
-    "filipino_grade": 0.07200166384285854,
-    "mathematics_grade": 0.11284295538396666,
-    "science_grade": 0.04222223016327031,
-    "mapeh_grade": 0.043875551008111885,
-    "araling_panlipunan_grade": 0.028556189434220707,
-    "tle_grade": 0.03703975378981602,
-    "values_education_grade": 0.04880159833259234,
-    "failing_subject_count": 0.1900710081792974,
-    "language_fail_count": 0.04114785341454284,
-    "non_language_fail_count": 0.13204443663129714,
-    "lowest_grade": 0.1860574328500608,
-    "available_grade_count": 0.0001079984653077844
+    "english_grade": 0.06620350563109147,
+    "filipino_grade": 0.0726053083819682,
+    "mathematics_grade": 0.11302094801278433,
+    "science_grade": 0.04178710525677771,
+    "mapeh_grade": 0.04353001983619682,
+    "araling_panlipunan_grade": 0.02776911361246555,
+    "tle_grade": 0.03658093146924063,
+    "values_education_grade": 0.04864411242619919,
+    "failing_subject_count": 0.1884796845091667,
+    "language_fail_count": 0.04105168821925183,
+    "non_language_fail_count": 0.13186725480266026,
+    "lowest_grade": 0.18833144447756353,
+    "available_grade_count": 0.00012888336463395708
   }
 }

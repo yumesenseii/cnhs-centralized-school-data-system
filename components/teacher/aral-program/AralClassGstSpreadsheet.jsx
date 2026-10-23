@@ -441,7 +441,7 @@ export default function AralClassGstSpreadsheet({
       await onRefresh?.();
     } catch (err) {
       console.error("handleSaveAllResults error:", err?.message || err);
-      showToast(err?.message || "Failed to save class GST results. Please try again.");
+      showToast({ message: err?.message || "Failed to save class GST results. Please try again.", tone: "error" });
     } finally {
       setSaving(false);
     }

@@ -1,139 +1,139 @@
 {
   "data_provenance": "synthetic",
-  "sample_count": 187,
-  "unique_students": 95,
+  "sample_count": 2400,
+  "unique_students": 1200,
   "n_splits": 5,
   "is_synthetic_evaluation": true,
   "metrics": {
     "random_forest": {
-      "accuracy": 0.9412,
-      "macro_precision": 0.9434,
-      "macro_recall": 0.9367,
-      "macro_f1": 0.9399,
-      "high_risk_recall": 0.9024,
+      "accuracy": 0.9308,
+      "macro_precision": 0.9344,
+      "macro_recall": 0.9315,
+      "macro_f1": 0.9323,
+      "high_risk_recall": 0.945,
       "per_class": {
         "High Risk": {
-          "precision": 0.9487,
-          "recall": 0.9024,
-          "f1_score": 0.925,
-          "support": 41
+          "precision": 0.9649,
+          "recall": 0.945,
+          "f1_score": 0.9548,
+          "support": 727
         },
         "Moderate Risk": {
-          "precision": 0.9277,
-          "recall": 0.939,
-          "f1_score": 0.9333,
-          "support": 82
+          "precision": 0.8722,
+          "recall": 0.9373,
+          "f1_score": 0.9036,
+          "support": 830
         },
         "Low Risk": {
-          "precision": 0.9538,
-          "recall": 0.9688,
-          "f1_score": 0.9612,
-          "support": 64
+          "precision": 0.9661,
+          "recall": 0.9122,
+          "f1_score": 0.9384,
+          "support": 843
         }
       },
       "confusion_matrix": {
         "High Risk": {
-          "High Risk": 37,
-          "Moderate Risk": 4,
+          "High Risk": 687,
+          "Moderate Risk": 40,
           "Low Risk": 0
         },
         "Moderate Risk": {
-          "High Risk": 2,
-          "Moderate Risk": 77,
-          "Low Risk": 3
+          "High Risk": 25,
+          "Moderate Risk": 778,
+          "Low Risk": 27
         },
         "Low Risk": {
           "High Risk": 0,
-          "Moderate Risk": 2,
-          "Low Risk": 62
+          "Moderate Risk": 74,
+          "Low Risk": 769
         }
       }
     },
     "persistence_baseline": {
-      "accuracy": 0.9251,
-      "macro_precision": 0.9234,
-      "macro_recall": 0.9234,
-      "macro_f1": 0.9234,
-      "high_risk_recall": 0.9024,
+      "accuracy": 0.9275,
+      "macro_precision": 0.9306,
+      "macro_recall": 0.9288,
+      "macro_f1": 0.9288,
+      "high_risk_recall": 0.9546,
       "per_class": {
         "High Risk": {
-          "precision": 0.9024,
-          "recall": 0.9024,
-          "f1_score": 0.9024,
-          "support": 41
+          "precision": 0.9455,
+          "recall": 0.9546,
+          "f1_score": 0.95,
+          "support": 727
         },
         "Moderate Risk": {
-          "precision": 0.9146,
-          "recall": 0.9146,
-          "f1_score": 0.9146,
-          "support": 82
+          "precision": 0.8694,
+          "recall": 0.9301,
+          "f1_score": 0.8987,
+          "support": 830
         },
         "Low Risk": {
-          "precision": 0.9531,
-          "recall": 0.9531,
-          "f1_score": 0.9531,
-          "support": 64
+          "precision": 0.9769,
+          "recall": 0.9015,
+          "f1_score": 0.9377,
+          "support": 843
         }
       },
       "confusion_matrix": {
         "High Risk": {
-          "High Risk": 37,
-          "Moderate Risk": 4,
+          "High Risk": 694,
+          "Moderate Risk": 33,
           "Low Risk": 0
         },
         "Moderate Risk": {
-          "High Risk": 4,
-          "Moderate Risk": 75,
-          "Low Risk": 3
+          "High Risk": 40,
+          "Moderate Risk": 772,
+          "Low Risk": 18
         },
         "Low Risk": {
           "High Risk": 0,
-          "Moderate Risk": 3,
-          "Low Risk": 61
+          "Moderate Risk": 83,
+          "Low Risk": 760
         }
       }
     },
     "majority_class_baseline": {
-      "accuracy": 0.4385,
-      "macro_precision": 0.1462,
-      "macro_recall": 0.3333,
-      "macro_f1": 0.2032,
+      "accuracy": 0.3442,
+      "macro_precision": 0.2304,
+      "macro_recall": 0.3276,
+      "macro_f1": 0.244,
       "high_risk_recall": 0.0,
       "per_class": {
         "High Risk": {
           "precision": 0.0,
           "recall": 0.0,
           "f1_score": 0.0,
-          "support": 41
+          "support": 727
         },
         "Moderate Risk": {
-          "precision": 0.4385,
-          "recall": 1.0,
-          "f1_score": 0.6097,
-          "support": 82
+          "precision": 0.3479,
+          "recall": 0.2012,
+          "f1_score": 0.255,
+          "support": 830
         },
         "Low Risk": {
-          "precision": 0.0,
-          "recall": 0.0,
-          "f1_score": 0.0,
-          "support": 64
+          "precision": 0.3432,
+          "recall": 0.7817,
+          "f1_score": 0.477,
+          "support": 843
         }
       },
       "confusion_matrix": {
         "High Risk": {
           "High Risk": 0,
-          "Moderate Risk": 41,
-          "Low Risk": 0
+          "Moderate Risk": 129,
+          "Low Risk": 598
         },
         "Moderate Risk": {
           "High Risk": 0,
-          "Moderate Risk": 82,
-          "Low Risk": 0
+          "Moderate Risk": 167,
+          "Low Risk": 663
         },
         "Low Risk": {
           "High Risk": 0,
-          "Moderate Risk": 64,
-          "Low Risk": 0
+          "Moderate Risk": 184,
+          "Low Risk": 659
         }
       }
     }

@@ -10,9 +10,9 @@
     ">=85": "Low Risk"
   },
   "ungraded_excluded": true,
-  "split": "holdout test_size=0.2 seed=42",
-  "n": 720,
-  "accuracy": 0.9916666666666667,
+  "split": "full labeled set",
+  "n": 3600,
+  "accuracy": 0.9977777777777778,
   "labels": [
     "High Risk",
     "Moderate Risk",
@@ -20,19 +20,19 @@
   ],
   "confusion_matrix": [
     [
-      296,
+      1482,
       0,
       0
     ],
     [
       0,
-      153,
-      5
+      785,
+      3
     ],
     [
       0,
-      1,
-      265
+      5,
+      1325
     ]
   ],
   "per_class": {
@@ -40,27 +40,27 @@
       "precision": 1.0,
       "recall": 1.0,
       "f1": 1.0,
-      "support": 296,
-      "predicted": 296
+      "support": 1482,
+      "predicted": 1482
     },
     "Moderate Risk": {
-      "precision": 0.9935064935064936,
-      "recall": 0.9683544303797469,
-      "f1": 0.9807692307692307,
-      "support": 158,
-      "predicted": 154
+      "precision": 0.9936708860759493,
+      "recall": 0.9961928934010152,
+      "f1": 0.9949302915082383,
+      "support": 788,
+      "predicted": 790
     },
     "Low Risk": {
-      "precision": 0.9814814814814815,
+      "precision": 0.9977409638554217,
       "recall": 0.9962406015037594,
-      "f1": 0.9888059701492538,
-      "support": 266,
-      "predicted": 270
+      "f1": 0.9969902182091799,
+      "support": 1330,
+      "predicted": 1328
     }
   },
   "macro": {
-    "precision": 0.991662658329325,
-    "recall": 0.9881983439611687,
-    "f1": 0.9898584003061615
+    "precision": 0.9971372833104569,
+    "recall": 0.9974778316349249,
+    "f1": 0.9973068365724727
   }
 }

@@ -62,7 +62,10 @@ def extract_subject_grades(record: Mapping[str, Any]) -> dict[str, float | None]
     """Extract and normalize subject grades from a record.
 
     Supports either a nested 'grades' / 'subject_grades' dict, or flat keys.
+    Only extracts fields that map to known canonical subject slugs.
     """
+    from longitudinal_contract import CORE_SUBJECT_SLUGS, normalize_subject_name
+
     raw_dict = (
         record.get("subject_grades")
         or record.get("grades")
@@ -73,6 +76,8 @@ def extract_subject_grades(record: Mapping[str, Any]) -> dict[str, float | None]
     if isinstance(raw_dict, dict):
         for subj, val in raw_dict.items():
             slug = normalize_subject_name(subj)
+            if slug not in CORE_SUBJECT_SLUGS:
+                continue
             if val is None or val == "" or val == "—":
                 extracted[slug] = None
             else:
@@ -88,6 +93,8 @@ def extract_subject_grades(record: Mapping[str, Any]) -> dict[str, float | None]
                 subj = item.get("subject") or item.get("subject_name") or ""
                 val = item.get("grade") or item.get("classSubjectGrade") or item.get("final_grade")
                 slug = normalize_subject_name(subj)
+                if slug not in CORE_SUBJECT_SLUGS:
+                    continue
                 if val is None or val == "" or val == "—":
                     extracted[slug] = None
                 else:
@@ -97,7 +104,7 @@ def extract_subject_grades(record: Mapping[str, Any]) -> dict[str, float | None]
                     except (TypeError, ValueError):
                         extracted[slug] = None
     else:
-        # Check flat fields in record
+        # Check flat fields in record - ONLY extract known subject fields
         for k, v in record.items():
             if k in (
                 "student_id",
@@ -112,7 +119,12 @@ def extract_subject_grades(record: Mapping[str, Any]) -> dict[str, float | None]
                 continue
             if isinstance(v, (int, float)) and not isinstance(v, bool):
                 slug = normalize_subject_name(k)
-                extracted[slug] = float(v)
+                if slug in CORE_SUBJECT_SLUGS:
+                    try:
+                        num = float(v)
+                        extracted[slug] = num if not math.isnan(num) else None
+                    except (TypeError, ValueError):
+                        extracted[slug] = None
 
     return extracted
 

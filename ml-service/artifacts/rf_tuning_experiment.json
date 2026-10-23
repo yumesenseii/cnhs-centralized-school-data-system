@@ -1,0 +1,930 @@
+{
+  "dataset_info": {
+    "X": "[[88.54  0.   83.7  ...  0.    0.    0.  ]\n [89.35  0.   85.1  ...  1.    0.81  0.  ]\n [76.59  2.   71.6  ...  0.    0.    0.  ]\n ...\n [81.1   0.   75.3  ...  1.    1.8   0.  ]\n [79.49  2.   73.1  ...  0.    0.    0.  ]\n [82.51  0.   78.4  ...  1.    3.02 -2.  ]]",
+    "y": "['Low Risk' 'Low Risk' 'Moderate Risk' ... 'Moderate Risk' 'Moderate Risk'\n 'Moderate Risk']",
+    "groups": "['CNHS-SYN-2526-0001' 'CNHS-SYN-2526-0001' 'CNHS-SYN-2526-0002' ...\n 'CNHS-SYN-2627-0599' 'CNHS-SYN-2627-0600' 'CNHS-SYN-2627-0600']",
+    "term_t_gwa": "[88.54 89.35 76.59 ... 81.1  79.49 82.51]",
+    "class_distribution": {
+      "High Risk": 727,
+      "Moderate Risk": 830,
+      "Low Risk": 843
+    },
+    "n_samples": 2400,
+    "n_students": 1200
+  },
+  "leakage_check": {
+    "issues_found": 1,
+    "issues": [
+      "Very high correlation with target: {'term_t_gwa': 0.9318829201464081, 'term_t_failing_count': -0.862571321447696, 'term_t_lowest_grade': 0.9135624837999131, 'term_t_highest_grade': 0.9149118363756347, 'term_t_english': 0.8742821183681411, 'term_t_filipino': 0.8757279122160101, 'term_t_mathematics': 0.8848077169914403, 'term_t_science': 0.8538681800425135, 'term_t_araling_panlipunan': 0.8594647255983139, 'term_t_mapeh': 0.8580822092570435, 'term_t_tle': 0.8540508856423709, 'term_t_values_education': 0.8500402409103581}"
+    ],
+    "feature_target_correlations": {
+      "term_t_gwa": 0.9318829201464081,
+      "term_t_failing_count": -0.862571321447696,
+      "term_t_lowest_grade": 0.9135624837999131,
+      "term_t_highest_grade": 0.9149118363756347,
+      "term_t_grade_std": -0.02522374297631323,
+      "term_t_finalized_count": -0.027802647750026582,
+      "term_t_english": 0.8742821183681411,
+      "term_t_filipino": 0.8757279122160101,
+      "term_t_mathematics": 0.8848077169914403,
+      "term_t_science": 0.8538681800425135,
+      "term_t_araling_panlipunan": 0.8594647255983139,
+      "term_t_mapeh": 0.8580822092570435,
+      "term_t_tle": 0.8540508856423709,
+      "term_t_values_education": 0.8500402409103581,
+      "has_prior_term": 0.018579067032268682,
+      "delta_gwa": 0.01929277900642689,
+      "delta_failing_count": -0.015569050813161955
+    },
+    "high_correlations": {
+      "term_t_gwa": 0.9318829201464081,
+      "term_t_failing_count": -0.862571321447696,
+      "term_t_lowest_grade": 0.9135624837999131,
+      "term_t_highest_grade": 0.9149118363756347,
+      "term_t_english": 0.8742821183681411,
+      "term_t_filipino": 0.8757279122160101,
+      "term_t_mathematics": 0.8848077169914403,
+      "term_t_science": 0.8538681800425135,
+      "term_t_araling_panlipunan": 0.8594647255983139,
+      "term_t_mapeh": 0.8580822092570435,
+      "term_t_tle": 0.8540508856423709,
+      "term_t_values_education": 0.8500402409103581
+    }
+  },
+  "synthetic_analysis": {
+    "class_distribution": {
+      "Low Risk": 843,
+      "Moderate Risk": 830,
+      "High Risk": 727
+    },
+    "feature_statistics": {
+      "term_t_gwa": {
+        "mean": 79.98024583333333,
+        "std": 9.046312953652576,
+        "min": 61.84,
+        "max": 97.49,
+        "missing_pct": 0.0
+      },
+      "term_t_failing_count": {
+        "mean": 2.5454166666666667,
+        "std": 3.2251260325023776,
+        "min": 0.0,
+        "max": 8.0,
+        "missing_pct": 0.0
+      },
+      "term_t_lowest_grade": {
+        "mean": 74.41058333333335,
+        "std": 9.131592074522311,
+        "min": 60.0,
+        "max": 93.9,
+        "missing_pct": 0.0
+      },
+      "term_t_highest_grade": {
+        "mean": 85.518875,
+        "std": 9.052980895483957,
+        "min": 64.7,
+        "max": 99.0,
+        "missing_pct": 0.0
+      },
+      "term_t_grade_std": {
+        "mean": 3.8023583333333333,
+        "std": 1.0253473372869424,
+        "min": 0.84,
+        "max": 8.42,
+        "missing_pct": 0.0
+      },
+      "term_t_finalized_count": {
+        "mean": 7.9725,
+        "std": 0.1635692448907013,
+        "min": 7.0,
+        "max": 8.0,
+        "missing_pct": 0.0
+      },
+      "term_t_english": {
+        "mean": 79.95461763476808,
+        "std": 10.40370904956175,
+        "min": 60.0,
+        "max": 99.0,
+        "missing_pct": 0.2916666666666667
+      },
+      "term_t_filipino": {
+        "mean": 79.88553511705686,
+        "std": 10.338736317300384,
+        "min": 60.0,
+        "max": 99.0,
+        "missing_pct": 0.33333333333333337
+      },
+      "term_t_mathematics": {
+        "mean": 80.19231411862991,
+        "std": 10.53824980611533,
+        "min": 60.0,
+        "max": 99.0,
+        "missing_pct": 0.25
+      },
+      "term_t_science": {
+        "mean": 79.98448996655519,
+        "std": 9.4099543868853,
+        "min": 60.0,
+        "max": 99.0,
+        "missing_pct": 0.33333333333333337
+      },
+      "term_t_araling_panlipunan": {
+        "mean": 79.9909661229611,
+        "std": 9.386115555267978,
+        "min": 60.0,
+        "max": 99.0,
+        "missing_pct": 0.375
+      },
+      "term_t_mapeh": {
+        "mean": 80.0047260560435,
+        "std": 9.445763181987747,
+        "min": 60.0,
+        "max": 99.0,
+        "missing_pct": 0.375
+      },
+      "term_t_tle": {
+        "mean": 79.84442122858337,
+        "std": 9.272211604387548,
+        "min": 60.0,
+        "max": 99.0,
+        "missing_pct": 0.2916666666666667
+      },
+      "term_t_values_education": {
+        "mean": 79.92835008375211,
+        "std": 9.233329517774168,
+        "min": 60.0,
+        "max": 99.0,
+        "missing_pct": 0.5
+      },
+      "has_prior_term": {
+        "mean": 0.5,
+        "std": 0.5001041992300569,
+        "min": 0.0,
+        "max": 1.0,
+        "missing_pct": 0.0
+      },
+      "delta_gwa": {
+        "mean": 0.1993864774624374,
+        "std": 1.5322050095475532,
+        "min": -5.88,
+        "max": 8.19,
+        "missing_pct": 0.16666666666666669
+      },
+      "delta_failing_count": {
+        "mean": 0.005364327223960662,
+        "std": 0.7070864240840873,
+        "min": -6.0,
+        "max": 4.0,
+        "missing_pct": 6.791666666666667
+      }
+    },
+    "warnings": [
+      "Feature term_t_gwa shows very large separation for High Risk (Cohen's d=3.30) - may indicate synthetic over-separation",
+      "Feature term_t_gwa shows very large separation for Low Risk (Cohen's d=2.96) - may indicate synthetic over-separation",
+      "Feature term_t_failing_count shows very large separation for High Risk (Cohen's d=4.81) - may indicate synthetic over-separation",
+      "Feature term_t_lowest_grade shows very large separation for High Risk (Cohen's d=3.16) - may indicate synthetic over-separation",
+      "Feature term_t_lowest_grade shows very large separation for Low Risk (Cohen's d=2.76) - may indicate synthetic over-separation",
+      "Feature term_t_highest_grade shows very large separation for High Risk (Cohen's d=3.06) - may indicate synthetic over-separation",
+      "Feature term_t_highest_grade shows very large separation for Low Risk (Cohen's d=2.84) - may indicate synthetic over-separation",
+      "Feature term_t_english shows very large separation for High Risk (Cohen's d=2.69) - may indicate synthetic over-separation",
+      "Feature term_t_english shows very large separation for Low Risk (Cohen's d=2.50) - may indicate synthetic over-separation",
+      "Feature term_t_filipino shows very large separation for High Risk (Cohen's d=2.73) - may indicate synthetic over-separation",
+      "Feature term_t_filipino shows very large separation for Low Risk (Cohen's d=2.48) - may indicate synthetic over-separation",
+      "Feature term_t_mathematics shows very large separation for High Risk (Cohen's d=2.78) - may indicate synthetic over-separation",
+      "Feature term_t_mathematics shows very large separation for Low Risk (Cohen's d=2.58) - may indicate synthetic over-separation",
+      "Feature term_t_science shows very large separation for High Risk (Cohen's d=2.57) - may indicate synthetic over-separation",
+      "Feature term_t_science shows very large separation for Low Risk (Cohen's d=2.34) - may indicate synthetic over-separation",
+      "Feature term_t_araling_panlipunan shows very large separation for High Risk (Cohen's d=2.59) - may indicate synthetic over-separation",
+      "Feature term_t_araling_panlipunan shows very large separation for Low Risk (Cohen's d=2.37) - may indicate synthetic over-separation",
+      "Feature term_t_mapeh shows very large separation for High Risk (Cohen's d=2.56) - may indicate synthetic over-separation",
+      "Feature term_t_mapeh shows very large separation for Low Risk (Cohen's d=2.38) - may indicate synthetic over-separation",
+      "Feature term_t_tle shows very large separation for High Risk (Cohen's d=2.62) - may indicate synthetic over-separation",
+      "Feature term_t_tle shows very large separation for Low Risk (Cohen's d=2.28) - may indicate synthetic over-separation",
+      "Feature term_t_values_education shows very large separation for High Risk (Cohen's d=2.51) - may indicate synthetic over-separation",
+      "Feature term_t_values_education shows very large separation for Low Risk (Cohen's d=2.33) - may indicate synthetic over-separation"
+    ]
+  },
+  "baseline_comparison": {
+    "original_rf": {
+      "accuracy": 0.9308,
+      "macro_precision": 0.9344,
+      "macro_recall": 0.9315,
+      "macro_f1": 0.9323,
+      "high_risk_recall": 0.945,
+      "per_class": {
+        "High Risk": {
+          "precision": 0.9649,
+          "recall": 0.945,
+          "f1": 0.9548,
+          "support": 727
+        },
+        "Moderate Risk": {
+          "precision": 0.8722,
+          "recall": 0.9373,
+          "f1": 0.9036,
+          "support": 830
+        },
+        "Low Risk": {
+          "precision": 0.9661,
+          "recall": 0.9122,
+          "f1": 0.9384,
+          "support": 843
+        }
+      },
+      "confusion_matrix": [
+        [
+          687,
+          40,
+          0
+        ],
+        [
+          25,
+          778,
+          27
+        ],
+        [
+          0,
+          74,
+          769
+        ]
+      ]
+    },
+    "persistence": {
+      "accuracy": 0.9275,
+      "macro_precision": 0.9306,
+      "macro_recall": 0.9288,
+      "macro_f1": 0.9288,
+      "high_risk_recall": 0.9546,
+      "per_class": {
+        "High Risk": {
+          "precision": 0.9455,
+          "recall": 0.9546,
+          "f1": 0.95,
+          "support": 727
+        },
+        "Moderate Risk": {
+          "precision": 0.8694,
+          "recall": 0.9301,
+          "f1": 0.8987,
+          "support": 830
+        },
+        "Low Risk": {
+          "precision": 0.9769,
+          "recall": 0.9015,
+          "f1": 0.9377,
+          "support": 843
+        }
+      },
+      "confusion_matrix": [
+        [
+          694,
+          33,
+          0
+        ],
+        [
+          40,
+          772,
+          18
+        ],
+        [
+          0,
+          83,
+          760
+        ]
+      ]
+    },
+    "majority_class": {
+      "accuracy": 0.3442,
+      "macro_precision": 0.2304,
+      "macro_recall": 0.3276,
+      "macro_f1": 0.244,
+      "high_risk_recall": 0.0,
+      "per_class": {
+        "High Risk": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 727
+        },
+        "Moderate Risk": {
+          "precision": 0.3479,
+          "recall": 0.2012,
+          "f1": 0.255,
+          "support": 830
+        },
+        "Low Risk": {
+          "precision": 0.3432,
+          "recall": 0.7817,
+          "f1": 0.477,
+          "support": 843
+        }
+      },
+      "confusion_matrix": [
+        [
+          0,
+          129,
+          598
+        ],
+        [
+          0,
+          167,
+          663
+        ],
+        [
+          0,
+          184,
+          659
+        ]
+      ]
+    }
+  },
+  "hyperparameter_tuning": {
+    "best_params": {
+      "class_weight": "balanced",
+      "max_depth": null,
+      "min_samples_leaf": 1,
+      "min_samples_split": 10,
+      "n_estimators": 100
+    },
+    "best_macro_f1": 0.9339,
+    "all_tested": [
+      {
+        "params": {
+          "class_weight": null,
+          "max_depth": 8,
+          "min_samples_leaf": 1,
+          "min_samples_split": 5,
+          "n_estimators": 100
+        },
+        "macro_f1": 0.9323,
+        "accuracy": 0.9308
+      },
+      {
+        "params": {
+          "class_weight": "balanced",
+          "max_depth": 8,
+          "min_samples_leaf": 1,
+          "min_samples_split": 5,
+          "n_estimators": 100
+        },
+        "macro_f1": 0.9331,
+        "accuracy": 0.9317
+      },
+      {
+        "params": {
+          "class_weight": "balanced",
+          "max_depth": 4,
+          "min_samples_leaf": 2,
+          "min_samples_split": 5,
+          "n_estimators": 100
+        },
+        "macro_f1": 0.932,
+        "accuracy": 0.9304
+      },
+      {
+        "params": {
+          "class_weight": null,
+          "max_depth": null,
+          "min_samples_leaf": 1,
+          "min_samples_split": 2,
+          "n_estimators": 200
+        },
+        "macro_f1": 0.9314,
+        "accuracy": 0.93
+      },
+      {
+        "params": {
+          "class_weight": "balanced_subsample",
+          "max_depth": 4,
+          "min_samples_leaf": 1,
+          "min_samples_split": 5,
+          "n_estimators": 300
+        },
+        "macro_f1": 0.9315,
+        "accuracy": 0.93
+      },
+      {
+        "params": {
+          "class_weight": "balanced",
+          "max_depth": null,
+          "min_samples_leaf": 2,
+          "min_samples_split": 10,
+          "n_estimators": 300
+        },
+        "macro_f1": 0.9335,
+        "accuracy": 0.9321
+      },
+      {
+        "params": {
+          "class_weight": "balanced",
+          "max_depth": null,
+          "min_samples_leaf": 1,
+          "min_samples_split": 10,
+          "n_estimators": 100
+        },
+        "macro_f1": 0.9339,
+        "accuracy": 0.9325
+      },
+      {
+        "params": {
+          "class_weight": "balanced",
+          "max_depth": 8,
+          "min_samples_leaf": 2,
+          "min_samples_split": 10,
+          "n_estimators": 300
+        },
+        "macro_f1": 0.9319,
+        "accuracy": 0.9304
+      },
+      {
+        "params": {
+          "class_weight": null,
+          "max_depth": 10,
+          "min_samples_leaf": 4,
+          "min_samples_split": 10,
+          "n_estimators": 300
+        },
+        "macro_f1": 0.933,
+        "accuracy": 0.9317
+      },
+      {
+        "params": {
+          "class_weight": "balanced",
+          "max_depth": 6,
+          "min_samples_leaf": 4,
+          "min_samples_split": 10,
+          "n_estimators": 200
+        },
+        "macro_f1": 0.9323,
+        "accuracy": 0.9308
+      }
+    ]
+  },
+  "class_weighting": "See console output",
+  "feature_importance": {
+    "ranked_features": [
+      {
+        "name": "term_t_gwa",
+        "importance": 0.274427,
+        "std": 0.019101
+      },
+      {
+        "name": "term_t_lowest_grade",
+        "importance": 0.148703,
+        "std": 0.027065
+      },
+      {
+        "name": "term_t_highest_grade",
+        "importance": 0.147968,
+        "std": 0.010944
+      },
+      {
+        "name": "term_t_failing_count",
+        "importance": 0.099822,
+        "std": 0.012503
+      },
+      {
+        "name": "term_t_mathematics",
+        "importance": 0.0787,
+        "std": 0.007326
+      },
+      {
+        "name": "term_t_english",
+        "importance": 0.053815,
+        "std": 0.007599
+      },
+      {
+        "name": "term_t_filipino",
+        "importance": 0.047866,
+        "std": 0.011352
+      },
+      {
+        "name": "term_t_araling_panlipunan",
+        "importance": 0.037493,
+        "std": 0.006428
+      },
+      {
+        "name": "term_t_tle",
+        "importance": 0.025011,
+        "std": 0.007272
+      },
+      {
+        "name": "term_t_mapeh",
+        "importance": 0.024287,
+        "std": 0.005608
+      },
+      {
+        "name": "term_t_science",
+        "importance": 0.023899,
+        "std": 0.007052
+      },
+      {
+        "name": "term_t_values_education",
+        "importance": 0.016902,
+        "std": 0.003422
+      },
+      {
+        "name": "delta_gwa",
+        "importance": 0.009177,
+        "std": 0.001375
+      },
+      {
+        "name": "term_t_grade_std",
+        "importance": 0.00867,
+        "std": 0.000425
+      },
+      {
+        "name": "delta_failing_count",
+        "importance": 0.002574,
+        "std": 0.000491
+      },
+      {
+        "name": "term_t_finalized_count",
+        "importance": 0.000381,
+        "std": 0.000145
+      },
+      {
+        "name": "has_prior_term",
+        "importance": 0.000303,
+        "std": 2.6e-05
+      }
+    ],
+    "top_5": [
+      "term_t_gwa",
+      "term_t_lowest_grade",
+      "term_t_highest_grade",
+      "term_t_failing_count",
+      "term_t_mathematics"
+    ],
+    "bottom_5": [
+      "delta_gwa",
+      "term_t_grade_std",
+      "delta_failing_count",
+      "term_t_finalized_count",
+      "has_prior_term"
+    ]
+  },
+  "final_model": {
+    "rf_params": {
+      "class_weight": "balanced",
+      "max_depth": null,
+      "min_samples_leaf": 1,
+      "min_samples_split": 10,
+      "n_estimators": 100
+    },
+    "rf": {
+      "accuracy": 0.9304,
+      "macro_precision": 0.9335,
+      "macro_recall": 0.9311,
+      "macro_f1": 0.9318,
+      "high_risk_recall": 0.945,
+      "per_class": {
+        "High Risk": {
+          "precision": 0.9635,
+          "recall": 0.945,
+          "f1": 0.9542,
+          "support": 727
+        },
+        "Moderate Risk": {
+          "precision": 0.8754,
+          "recall": 0.9313,
+          "f1": 0.9025,
+          "support": 830
+        },
+        "Low Risk": {
+          "precision": 0.9614,
+          "recall": 0.917,
+          "f1": 0.9387,
+          "support": 843
+        }
+      },
+      "confusion_matrix": [
+        [
+          687,
+          40,
+          0
+        ],
+        [
+          26,
+          773,
+          31
+        ],
+        [
+          0,
+          70,
+          773
+        ]
+      ]
+    },
+    "persistence": {
+      "accuracy": 0.9275,
+      "macro_precision": 0.9306,
+      "macro_recall": 0.9288,
+      "macro_f1": 0.9288,
+      "high_risk_recall": 0.9546,
+      "per_class": {
+        "High Risk": {
+          "precision": 0.9455,
+          "recall": 0.9546,
+          "f1": 0.95,
+          "support": 727
+        },
+        "Moderate Risk": {
+          "precision": 0.8694,
+          "recall": 0.9301,
+          "f1": 0.8987,
+          "support": 830
+        },
+        "Low Risk": {
+          "precision": 0.9769,
+          "recall": 0.9015,
+          "f1": 0.9377,
+          "support": 843
+        }
+      },
+      "confusion_matrix": [
+        [
+          694,
+          33,
+          0
+        ],
+        [
+          40,
+          772,
+          18
+        ],
+        [
+          0,
+          83,
+          760
+        ]
+      ]
+    },
+    "majority": {
+      "accuracy": 0.3442,
+      "macro_precision": 0.2304,
+      "macro_recall": 0.3276,
+      "macro_f1": 0.244,
+      "high_risk_recall": 0.0,
+      "per_class": {
+        "High Risk": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 727
+        },
+        "Moderate Risk": {
+          "precision": 0.3479,
+          "recall": 0.2012,
+          "f1": 0.255,
+          "support": 830
+        },
+        "Low Risk": {
+          "precision": 0.3432,
+          "recall": 0.7817,
+          "f1": 0.477,
+          "support": 843
+        }
+      },
+      "confusion_matrix": [
+        [
+          0,
+          129,
+          598
+        ],
+        [
+          0,
+          167,
+          663
+        ],
+        [
+          0,
+          184,
+          659
+        ]
+      ]
+    },
+    "fold_metrics": [
+      {
+        "accuracy": 0.9458,
+        "macro_precision": 0.9472,
+        "macro_recall": 0.946,
+        "macro_f1": 0.9459,
+        "high_risk_recall": 0.9401,
+        "per_class": {
+          "High Risk": {
+            "precision": 0.9874,
+            "recall": 0.9401,
+            "f1": 0.9632,
+            "support": 167
+          },
+          "Moderate Risk": {
+            "precision": 0.8869,
+            "recall": 0.9551,
+            "f1": 0.9198,
+            "support": 156
+          },
+          "Low Risk": {
+            "precision": 0.9673,
+            "recall": 0.9427,
+            "f1": 0.9548,
+            "support": 157
+          }
+        },
+        "confusion_matrix": [
+          [
+            157,
+            10,
+            0
+          ],
+          [
+            2,
+            149,
+            5
+          ],
+          [
+            0,
+            9,
+            148
+          ]
+        ]
+      },
+      {
+        "accuracy": 0.9104,
+        "macro_precision": 0.9111,
+        "macro_recall": 0.9122,
+        "macro_f1": 0.9115,
+        "high_risk_recall": 0.9586,
+        "per_class": {
+          "High Risk": {
+            "precision": 0.9392,
+            "recall": 0.9586,
+            "f1": 0.9488,
+            "support": 145
+          },
+          "Moderate Risk": {
+            "precision": 0.865,
+            "recall": 0.8704,
+            "f1": 0.8677,
+            "support": 162
+          },
+          "Low Risk": {
+            "precision": 0.929,
+            "recall": 0.9075,
+            "f1": 0.9181,
+            "support": 173
+          }
+        },
+        "confusion_matrix": [
+          [
+            139,
+            6,
+            0
+          ],
+          [
+            9,
+            141,
+            12
+          ],
+          [
+            0,
+            16,
+            157
+          ]
+        ]
+      },
+      {
+        "accuracy": 0.9354,
+        "macro_precision": 0.9401,
+        "macro_recall": 0.9346,
+        "macro_f1": 0.937,
+        "high_risk_recall": 0.9286,
+        "per_class": {
+          "High Risk": {
+            "precision": 0.959,
+            "recall": 0.9286,
+            "f1": 0.9435,
+            "support": 126
+          },
+          "Moderate Risk": {
+            "precision": 0.8985,
+            "recall": 0.9415,
+            "f1": 0.9195,
+            "support": 188
+          },
+          "Low Risk": {
+            "precision": 0.9627,
+            "recall": 0.9337,
+            "f1": 0.948,
+            "support": 166
+          }
+        },
+        "confusion_matrix": [
+          [
+            117,
+            9,
+            0
+          ],
+          [
+            5,
+            177,
+            6
+          ],
+          [
+            0,
+            11,
+            155
+          ]
+        ]
+      },
+      {
+        "accuracy": 0.925,
+        "macro_precision": 0.9296,
+        "macro_recall": 0.926,
+        "macro_f1": 0.9267,
+        "high_risk_recall": 0.9302,
+        "per_class": {
+          "High Risk": {
+            "precision": 0.96,
+            "recall": 0.9302,
+            "f1": 0.9449,
+            "support": 129
+          },
+          "Moderate Risk": {
+            "precision": 0.8579,
+            "recall": 0.9401,
+            "f1": 0.8971,
+            "support": 167
+          },
+          "Low Risk": {
+            "precision": 0.9709,
+            "recall": 0.9076,
+            "f1": 0.9382,
+            "support": 184
+          }
+        },
+        "confusion_matrix": [
+          [
+            120,
+            9,
+            0
+          ],
+          [
+            5,
+            157,
+            5
+          ],
+          [
+            0,
+            17,
+            167
+          ]
+        ]
+      },
+      {
+        "accuracy": 0.9354,
+        "macro_precision": 0.9382,
+        "macro_recall": 0.9358,
+        "macro_f1": 0.9357,
+        "high_risk_recall": 0.9625,
+        "per_class": {
+          "High Risk": {
+            "precision": 0.9686,
+            "recall": 0.9625,
+            "f1": 0.9655,
+            "support": 160
+          },
+          "Moderate Risk": {
+            "precision": 0.8663,
+            "recall": 0.949,
+            "f1": 0.9058,
+            "support": 157
+          },
+          "Low Risk": {
+            "precision": 0.9799,
+            "recall": 0.8957,
+            "f1": 0.9359,
+            "support": 163
+          }
+        },
+        "confusion_matrix": [
+          [
+            154,
+            6,
+            0
+          ],
+          [
+            5,
+            149,
+            3
+          ],
+          [
+            0,
+            17,
+            146
+          ]
+        ]
+      }
+    ]
+  }
+}
