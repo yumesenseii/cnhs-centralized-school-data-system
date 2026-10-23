@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
+  Download,
   FileSpreadsheet,
   FileText,
   GraduationCap,
@@ -16,6 +17,7 @@ import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import ClassReportFileModal from "@/components/teacher/monitoring/ClassReportFileModal";
 import ClassRemedialsSection from "@/components/teacher/monitoring/ClassRemedialsSection";
 import LearnerAcademicDetailModal from "@/components/monitoring/shared/LearnerAcademicDetailModal";
+import ExportAcademicMonitoringModal from "@/components/monitoring/shared/ExportAcademicMonitoringModal";
 import { useTeacherMonitoring } from "@/hooks/teacher/useMonitoring";
 import { buildClassReportFiles } from "@/lib/monitoring/classReportFiles";
 import {
@@ -23,7 +25,11 @@ import {
   filterRosterContext,
   learnerIdentityKey,
 } from "@/lib/monitoring/academicLearnerAggregation";
-import { parseTermNumber, termLabel } from "@/lib/academic/termLabels";
+import {
+  parseTermNumber,
+  termLabel,
+  resolveDefaultAcademicTerm,
+} from "@/lib/academic/termLabels";
 import { formatPersonName } from "@/lib/teacher/monitoringMappers";
 import PageHelp from "@/components/shared/PageHelp";
 import { useAppToast } from "@/components/shared/AppToast";
@@ -51,6 +57,9 @@ export default function MonitoringDashboard() {
   const [modalFile, setModalFile] = useState(null);
   const [modalMode, setModalMode] = useState("view");
   const [metaTick, setMetaTick] = useState(0);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("All sections");
+  const [activeSubject, setActiveSubject] = useState("All subjects");
   const { showToast } = useAppToast();
 
   const teacherDisplayName = useMemo(() => {
@@ -86,15 +95,12 @@ export default function MonitoringDashboard() {
       .map(([, label]) => label);
   }, [students, activeSchoolYear]);
 
-  const activeQuarterNumber = useMemo(() => {
-    let max = 0;
-    for (const s of students) {
-      if (s.schoolYear && s.schoolYear !== activeSchoolYear) continue;
-      const n = parseTermNumber(s.quarterNumber ?? s.quarter);
-      if (n != null && n > max) max = n;
-    }
-    return max || 1;
-  }, [students, activeSchoolYear]);
+  // Default term = academic Term 1–3 only. Final Grade (quarter=4) stays
+  // selectable in the dropdown but is never the automatic default.
+  const activeQuarterNumber = useMemo(
+    () => resolveDefaultAcademicTerm(students, { schoolYear: activeSchoolYear }),
+    [students, activeSchoolYear]
+  );
 
   const [quarterFilter, setQuarterFilter] = useState("All quarters");
   const [quarterInit, setQuarterInit] = useState(false);
@@ -254,6 +260,16 @@ export default function MonitoringDashboard() {
               <span>Refresh</span>
             </button>
 
+            <button
+              type="button"
+              onClick={() => setExportModalOpen(true)}
+              title="Export Academic Monitoring Report (PDF or Excel)"
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-cnhs-green/30 bg-cnhs-green-soft/40 px-3 text-[12px] font-semibold text-cnhs-green-dark transition-colors hover:border-cnhs-green hover:bg-cnhs-green-soft"
+            >
+              <Download size={13} />
+              <span>Export Report</span>
+            </button>
+
             <Link
               href="/teacher/my-classes"
               title="Open My Classes to enter or import grades"
@@ -281,10 +297,16 @@ export default function MonitoringDashboard() {
       ) : (
         <ClassRemedialsSection
           students={aggregatedStudents}
+          teacherName={teacherDisplayName}
+          schoolYear={activeSchoolYear}
           currentQuarterNumber={viewQuarterNumber}
           quarterFilter={quarterFilter}
           onQuarterFilterChange={setQuarterFilter}
           availableQuarters={availableQuarters}
+          onFilterContextChange={({ section, subject }) => {
+            setActiveSection(section);
+            setActiveSubject(subject);
+          }}
           onViewLearner={setSelectedLearner}
           onRefresh={refresh}
           onUpdateSupport={patchLearnerSupportState}
@@ -334,6 +356,38 @@ export default function MonitoringDashboard() {
           showHtActions={Boolean(filterOptions.hasAralClass)}
         />
       ) : null}
+
+      {/* Export Academic Monitoring Report Modal */}
+      <ExportAcademicMonitoringModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        role="teacher"
+        teacherName={teacherDisplayName}
+        schoolYear={activeSchoolYear}
+        quarter={quarterFilter}
+        gradeLevel="All Grades"
+        sectionName={activeSection !== "All sections" ? activeSection : "All Classes"}
+        scopeLabel={
+          activeSection !== "All sections"
+            ? `${activeSection}${activeSubject !== "All subjects" ? ` · ${activeSubject}` : ""} (${quarterFilter})`
+            : `${teacherDisplayName}'s Classes (${quarterFilter})`
+        }
+        learners={
+          activeSection !== "All sections" || activeSubject !== "All subjects"
+            ? aggregatedStudents.filter((s) => {
+                if (activeSection !== "All sections" && s.section !== activeSection) return false;
+                if (
+                  activeSubject !== "All subjects" &&
+                  !(s.subjects ?? [s.subject]).includes(activeSubject)
+                ) {
+                  return false;
+                }
+                return true;
+              })
+            : aggregatedStudents
+        }
+        classSummaries={classSummaries}
+      />
     </motion.div>
   );
 }

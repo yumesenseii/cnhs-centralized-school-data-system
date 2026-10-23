@@ -18,7 +18,7 @@ function getWhatHappensNowExplanation(stepKey, isGstAtGradeLevel) {
     case "assessment_complete":
       return "The Individual Reading Assessment (Form 3) has been completed and recorded. The learner's reading profile is documented.";
     case "for_review":
-      return "End of School Year: Reading need remains across terms. The learner is flagged For Further Review (Informational: Possible ARAL Summer Consideration). Actual summer program implementation is managed externally.";
+      return "End of School Year: Reading need remains across terms. The learner is flagged: For Further Review after EOSY (internal administrative review).";
     case "absent_reschedule":
       return "The learner was absent during the reading assessment. The assessment is scheduled for reschedule by the subject teacher.";
     case "gst_under_review":

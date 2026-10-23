@@ -11,11 +11,21 @@ import {
   ArrowUpRight,
   CheckCircle2,
   AlertCircle,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  BookOpen,
+  GraduationCap,
+  Clock,
+  Brain,
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AppSelect from "@/components/shared/AppSelect";
 import { RiskPill } from "@/components/teacher/monitoring/shared";
 import { useAppToast } from "@/components/shared/AppToast";
+import PlpDocumentModal from "@/components/monitoring/plp/PlpDocumentModal";
+import { termLabel } from "@/lib/academic/termLabels";
 import { READING_CONCERN_OPTIONS } from "@/lib/monitoring/readingReviewSummary";
 import {
   createMonitoringRecord,
@@ -89,6 +99,22 @@ export default function LearnerAcademicDetailModal({
   const [flaggedConcern, setFlaggedConcern] = useState("Reading Comprehension");
   const [flaggedNote, setFlaggedNote] = useState("");
   const [routingConcern, setRoutingConcern] = useState(false);
+  const [showPlpModal, setShowPlpModal] = useState(false);
+
+  // Expandable secondary details state
+  const [expandedSections, setExpandedSections] = useState({
+    gradeHistory: false,
+    readingDetails: false,
+    recentActivity: false,
+    advancedMl: false,
+  });
+
+  const [trendData, setTrendData] = useState(null);
+  const [loadingTrend, setLoadingTrend] = useState(false);
+
+  function toggleSection(key) {
+    setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
 
   // Sync remedialStatus whenever activeLearner updates from parent refetch
   useEffect(() => {
@@ -180,6 +206,101 @@ export default function LearnerAcademicDetailModal({
   const academicRisk = deriveAcademicRisk(monitoredLearner, curGrade);
   const progressInfo = deriveAcademicProgress(curGrade, prevGrade);
   const currentSupport = deriveCurrentSupport(monitoredLearner);
+
+  const rfData = useMemo(() => {
+    if (activeLearner?.rfAnalysis) {
+      if (
+        activeLearner.rfAnalysis.status === "available" &&
+        activeLearner.rfAnalysis.predictedRisk &&
+        activeLearner.rfAnalysis.predictedRisk !== "—" &&
+        activeLearner.rfAnalysis.source !== "rule-based-fallback"
+      ) {
+        return activeLearner.rfAnalysis;
+      }
+      if (activeLearner.rfAnalysis.status === "pending_evidence") {
+        return activeLearner.rfAnalysis;
+      }
+    }
+    return {
+      status: "unavailable",
+      predictedRisk: "—",
+      confidence: null,
+      probabilities: null,
+      source: "pattern-analysis-experimental",
+      modelDescription: "Pattern Analysis (Same-Term Model / Experimental)",
+      disclaimer:
+        "Random Forest provides experimental same-term pattern analysis for decision support and does not represent a validated next-term forecast or supersede official DepEd assessment rules.",
+      message:
+        "Random Forest ML prediction service is currently unavailable. Academic monitoring is operating on authoritative rule-based evaluation.",
+    };
+  }, [activeLearner]);
+
+  // Lazy fetch per-subject trend forecast only when Advanced ML is expanded
+  useEffect(() => {
+    if (!expandedSections.advancedMl || !activeLearner) return;
+
+    const studentId = activeLearner.studentId || activeLearner.id;
+    const subject = studentSubject;
+    const term = Number(currentQuarterNumber) || 1;
+
+    if (!studentId || !subject || subject === "—") {
+      setTrendData({
+        status: "unavailable",
+        message: "No specific subject assigned for trend forecasting.",
+      });
+      return;
+    }
+
+    if (term !== 1 && term !== 2) {
+      setTrendData({
+        status: "unavailable",
+        currentTerm: term,
+        targetTerm: null,
+        predictedTrend: "—",
+        message: `Trend forecasting is restricted to Term 1 → Term 2 and Term 2 → Term 3 transitions (current: ${termLabel(term)}).`,
+      });
+      return;
+    }
+
+    let isSubscribed = true;
+    setLoadingTrend(true);
+
+    fetch("/api/recommendations/predict_subject_trend", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        learnerId: studentId,
+        subject,
+        currentTerm: term,
+        // The server validates this request against the learner's authorized
+        // academic context; it is never trusted as-is.
+        schoolYear: activeLearner?.schoolYear || schoolYear,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!isSubscribed) return;
+        setTrendData(data);
+      })
+      .catch((err) => {
+        if (!isSubscribed) return;
+        setTrendData({
+          status: "unavailable",
+          message: err?.message || "Failed to contact forecast service.",
+        });
+      })
+      .finally(() => {
+        if (isSubscribed) setLoadingTrend(false);
+      });
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [expandedSections.advancedMl, activeLearner, studentSubject, currentQuarterNumber, schoolYear]);
 
   const subjectGradesList = Array.isArray(activeLearner.subjectGrades)
     ? activeLearner.subjectGrades
@@ -324,6 +445,20 @@ export default function LearnerAcademicDetailModal({
       activeLearner.latestObservationDate;
     return dateVal && dateVal !== "—" ? dateVal : null;
   }, [activityRecords, activeLearner]);
+
+  // Main concern headline for 5-second teacher clarity
+  const mainConcernHeadline = useMemo(() => {
+    if (curGrade !== null && curGrade < 75) {
+      return `Grade below passing in ${studentSubject}`;
+    }
+    if (academicRisk === "High Risk" || academicRisk === "Moderate Risk") {
+      return `Academic attention recommended for ${studentSubject}`;
+    }
+    if (activeLearner?.isProvisional) {
+      return "Provisional academic record";
+    }
+    return "Learner performing within grade expectations";
+  }, [curGrade, studentSubject, academicRisk, activeLearner?.isProvisional]);
 
   // Actions
   async function handleRecommendAral() {
@@ -705,18 +840,18 @@ export default function LearnerAcademicDetailModal({
     if (isClassRemedialActive) {
       return (
         <div className="space-y-3">
-          <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-3 text-xs dark:border-blue-900/20 dark:bg-blue-950/20">
+          <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-xs dark:border-blue-900/30 dark:bg-blue-950/20">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <span className="block text-[10.5px] font-semibold uppercase tracking-wider text-blue-900/70 dark:text-blue-300">
-                  Classroom Remedial
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-blue-900/70 dark:text-blue-300">
+                  Current Remedial Status
                 </span>
-                <span className="mt-0.5 block font-bold text-blue-900 dark:text-blue-200">
+                <span className="mt-0.5 block font-bold text-blue-950 dark:text-blue-100">
                   Active Support {activeStartedDate ? `· Started ${activeStartedDate}` : ""}
                 </span>
               </div>
-              <div>
-                <span className="block text-[10.5px] font-semibold uppercase tracking-wider text-blue-900/70 dark:text-blue-300">
+              <div className="text-right">
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-blue-900/70 dark:text-blue-300">
                   Academic Progress
                 </span>
                 <span className={cn("mt-0.5 block font-semibold", progressExplanation.progressStyle)}>
@@ -728,14 +863,14 @@ export default function LearnerAcademicDetailModal({
 
           <div>
             <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-              What would you like to do?
+              Update Learner Support:
             </span>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={handleAddProgressNote}
                 disabled={updatingRemedial}
-                className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+                className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-2xs transition hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
               >
                 {updatingRemedial ? <Loader2 size={13} className="animate-spin" /> : null}
                 <span>Add Progress Note</span>
@@ -744,7 +879,7 @@ export default function LearnerAcademicDetailModal({
                 type="button"
                 onClick={handleCompleteRemedial}
                 disabled={updatingRemedial}
-                className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-cnhs-green-dark px-4 text-xs font-semibold text-white shadow-xs transition hover:bg-[#1b5842] disabled:opacity-50"
+                className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-cnhs-green-dark px-3.5 text-xs font-semibold text-white shadow-2xs transition hover:bg-[#1b5842] disabled:opacity-50"
               >
                 {updatingRemedial ? <Loader2 size={13} className="animate-spin" /> : null}
                 <span>Mark Support Completed</span>
@@ -754,14 +889,14 @@ export default function LearnerAcademicDetailModal({
 
           <label className="block pt-1">
             <span className="mb-1 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-              Optional Note
+              Observation / Progress Note (Optional)
             </span>
             <textarea
               value={reviewNote}
               onChange={(e) => setReviewNote(e.target.value)}
               rows={2}
-              placeholder="Enter a short note..."
-              className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-cnhs-green dark:border-white/10 dark:bg-white/5 dark:text-slate-100"
+              placeholder="Record observation notes or next remedial milestones..."
+              className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-cnhs-green dark:border-white/10 dark:bg-white/5 dark:text-slate-100"
             />
           </label>
         </div>
@@ -771,28 +906,28 @@ export default function LearnerAcademicDetailModal({
     if (isClassRemedialCompleted) {
       return (
         <div className="space-y-3">
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs dark:border-white/10 dark:bg-white/[0.02]">
-            <span className="block text-[10.5px] font-semibold uppercase tracking-wider text-slate-500">
-              Classroom Remedial
-            </span>
-            <p className="mt-1 font-semibold text-slate-800 dark:text-slate-200">
-              Completed
-            </p>
-            <p className="mt-0.5 text-[11px] text-slate-500">
-              Learner is continuing under regular teacher observation.
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs dark:border-white/10 dark:bg-white/[0.02]">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 size={15} className="text-emerald-600 dark:text-emerald-400" />
+              <span className="font-bold text-slate-900 dark:text-slate-100">
+                Classroom Remedial Completed
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+              Learner has completed classroom remedial support and continues under regular observation.
             </p>
           </div>
 
           <div>
             <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-              What would you like to do?
+              Next Step:
             </span>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={handleContinueMonitoring}
                 disabled={updatingRemedial}
-                className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+                className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-2xs transition hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
               >
                 {updatingRemedial ? <Loader2 size={13} className="animate-spin" /> : null}
                 <span>Continue Monitoring</span>
@@ -802,14 +937,14 @@ export default function LearnerAcademicDetailModal({
 
           <label className="block pt-1">
             <span className="mb-1 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-              Optional Note
+              Observation Note (Optional)
             </span>
             <textarea
               value={reviewNote}
               onChange={(e) => setReviewNote(e.target.value)}
               rows={2}
-              placeholder="Enter a short note..."
-              className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-cnhs-green dark:border-white/10 dark:bg-white/5 dark:text-slate-100"
+              placeholder="Enter a short observation note..."
+              className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-cnhs-green dark:border-white/10 dark:bg-white/5 dark:text-slate-100"
             />
           </label>
         </div>
@@ -819,47 +954,57 @@ export default function LearnerAcademicDetailModal({
     // Default / Initial State: Not started
     return (
       <div className="space-y-3">
-        <div className="rounded-lg bg-slate-50 p-3 text-xs dark:bg-white/[0.02]">
-          <span className="block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
-            Recommended Support
-          </span>
-          <span className="mt-0.5 block text-sm font-bold text-slate-800 dark:text-slate-200">
-            {recommendedSupportText}
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 p-3 text-xs dark:bg-white/[0.02]">
+          <div>
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Recommended Support
+            </span>
+            <span className="mt-0.5 block text-xs font-bold text-slate-900 dark:text-slate-100">
+              {recommendedSupportText}
+            </span>
+          </div>
+          <span
+            className={cn(
+              "inline-flex items-center rounded-md border px-2 py-0.5 text-[10.5px] font-semibold",
+              guidanceInfo.badgeStyle
+            )}
+          >
+            {guidanceInfo.label}
           </span>
         </div>
 
         <div>
           <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-            What would you like to do?
+            Select Teacher Action:
           </span>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={handleContinueMonitoring}
-              disabled={updatingRemedial || routingConcern}
-              className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
-            >
-              {updatingRemedial ? <Loader2 size={13} className="animate-spin" /> : null}
-              <span>Continue Monitoring</span>
-            </button>
-            <button
-              type="button"
               onClick={handleStartRemedial}
               disabled={updatingRemedial || routingConcern}
-              className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-cnhs-green-dark px-4 text-xs font-semibold text-white shadow-xs transition hover:bg-[#1b5842] disabled:opacity-50"
+              className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-cnhs-green-dark px-3.5 text-xs font-semibold text-white shadow-2xs transition hover:bg-[#1b5842] disabled:opacity-50"
             >
               {updatingRemedial ? <Loader2 size={13} className="animate-spin" /> : null}
               <span>Start Class Remedial</span>
             </button>
             <button
               type="button"
+              onClick={handleContinueMonitoring}
+              disabled={updatingRemedial || routingConcern}
+              className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-2xs transition hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+            >
+              {updatingRemedial ? <Loader2 size={13} className="animate-spin" /> : null}
+              <span>Continue Monitoring</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setShowFlagReadingConcern((prev) => !prev)}
               disabled={updatingRemedial || routingConcern}
               className={cn(
-                "inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-4 text-xs font-semibold transition shadow-xs",
+                "inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-xl border px-3.5 text-xs font-semibold transition shadow-2xs",
                 showFlagReadingConcern
                   ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
-                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
               )}
             >
               <span>Flag Reading Concern</span>
@@ -873,7 +1018,7 @@ export default function LearnerAcademicDetailModal({
               <span className="block text-[11px] font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
                 Flag Reading Concern &amp; Route to Language Teacher
               </span>
-              <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-400">
+              <p className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
                 Non-language teachers do not administer the Phil-IRI Screening Test (GST) directly. This action routes your reading observation to the learner’s English or Filipino Subject Teacher.
               </p>
             </div>
@@ -926,7 +1071,7 @@ export default function LearnerAcademicDetailModal({
                 onChange={(e) => setFlaggedNote(e.target.value)}
                 rows={2}
                 placeholder={`Describe reading difficulties observed in ${studentSubject || "class"} (e.g., struggles to comprehend word problems)...`}
-                className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-cnhs-green dark:border-white/10 dark:bg-white/5 dark:text-slate-100"
+                className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-cnhs-green dark:border-white/10 dark:bg-white/5 dark:text-slate-100"
               />
             </label>
 
@@ -942,7 +1087,7 @@ export default function LearnerAcademicDetailModal({
                 type="button"
                 onClick={handleRouteReadingConcern}
                 disabled={routingConcern}
-                className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 text-xs font-semibold text-white shadow-xs transition hover:bg-blue-700 disabled:opacity-50"
+                className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 text-xs font-semibold text-white shadow-2xs transition hover:bg-blue-700 disabled:opacity-50"
               >
                 {routingConcern ? <Loader2 size={12} className="animate-spin" /> : null}
                 <span>Route to {flaggedLanguage} Subject Teacher</span>
@@ -952,14 +1097,14 @@ export default function LearnerAcademicDetailModal({
         ) : (
           <label className="block pt-1">
             <span className="mb-1 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-              Optional Note
+              Observation / Progress Note (Optional)
             </span>
             <textarea
               value={reviewNote}
               onChange={(e) => setReviewNote(e.target.value)}
               rows={2}
-              placeholder="Enter a short note..."
-              className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-cnhs-green dark:border-white/10 dark:bg-white/5 dark:text-slate-100"
+              placeholder="Enter a short observation note..."
+              className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-cnhs-green dark:border-white/10 dark:bg-white/5 dark:text-slate-100"
             />
           </label>
         )}
@@ -968,8 +1113,9 @@ export default function LearnerAcademicDetailModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-3 backdrop-blur-[1px] sm:p-4"
+    <>
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-3 backdrop-blur-[1px] sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="learner-academic-detail-title"
@@ -977,34 +1123,25 @@ export default function LearnerAcademicDetailModal({
         if (e.target === e.currentTarget) onClose?.();
       }}
     >
-      <div className="relative z-10 flex max-h-[85vh] w-[min(820px,96vw)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[var(--card)]">
-        {/* HEADER */}
+      <div className="relative z-10 flex max-h-[88vh] w-[min(780px,96vw)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[var(--card)]">
+        {/* 1. SIMPLE LEARNER HEADER */}
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 bg-white px-5 py-4 dark:border-white/5 dark:bg-transparent sm:px-6">
           <div className="min-w-0 flex-1">
-            <span className="text-[10.5px] font-bold uppercase tracking-wider text-cnhs-green-dark">
-              Academic Monitoring Record
-            </span>
-            <div className="mt-1 flex flex-wrap items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5">
               <h2
                 id="learner-academic-detail-title"
-                className="text-xl font-bold tracking-tight text-slate-900 dark:text-white"
+                className="truncate text-lg font-bold tracking-tight text-slate-900 dark:text-white sm:text-xl"
               >
                 {studentFullName}
               </h2>
-              <div className="flex items-center gap-2">
-                <RiskPill value={academicRisk} />
-                <span
-                  className={cn(
-                    "inline-flex items-center rounded-md border px-2.5 py-0.5 text-[11px] font-semibold",
-                    currentSupport.badgeStyle
-                  )}
-                >
-                  {currentSupport.label}
-                </span>
-              </div>
+              {/* Single primary authoritative attention status */}
+              <RiskPill value={academicRisk} />
             </div>
-            <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-              {studentSection}
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              <span className="font-semibold text-slate-700 dark:text-slate-200">{studentSection}</span>
+              {" · "}
+              <span>Subject: <strong className="text-slate-800 dark:text-slate-100">{studentSubject}</strong></span>
+              {studentLrn && studentLrn !== "—" ? ` · LRN: ${studentLrn}` : ""}
             </p>
           </div>
           <button
@@ -1018,7 +1155,7 @@ export default function LearnerAcademicDetailModal({
         </div>
 
         {/* MODAL BODY */}
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-slate-50/60 p-5 dark:bg-black/10 sm:p-6">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-slate-50/50 p-5 dark:bg-black/10 sm:p-6">
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500">
               <Loader2 size={16} className="animate-spin text-cnhs-green-dark" />
@@ -1026,355 +1163,176 @@ export default function LearnerAcademicDetailModal({
             </div>
           ) : (
             <>
-              {/* SECTION 1: LEARNER PERFORMANCE OVERVIEW (ACADEMIC & READING) */}
-              <section className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs dark:border-white/5 dark:bg-[var(--card)] space-y-3">
+              {/* 1. LEARNER SUMMARY */}
+              <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs dark:border-white/5 dark:bg-[var(--card)] space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-white/5">
-                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark">
-                    1. Learner Performance Overview
-                  </h3>
-                  <span
-                    className={cn(
-                      "inline-flex items-center rounded-md border px-2.5 py-0.5 text-[11px] font-semibold",
-                      guidanceInfo.badgeStyle
-                    )}
-                  >
-                    {guidanceInfo.label}
-                  </span>
+                  <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200 text-xs">
+                    <GraduationCap size={15} className="text-cnhs-green-dark" />
+                    <span>Learner Summary</span>
+                    <span className="text-[11px] font-normal text-slate-500">
+                      ({termLabel(currentQuarterNumber)})
+                    </span>
+                  </div>
+                  <RiskPill value={academicRisk} />
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {/* Academic Performance */}
-                  <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 text-xs dark:border-white/5 dark:bg-white/[0.02] space-y-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                      Academic Performance
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="rounded-lg bg-slate-50/70 p-2.5 dark:bg-white/[0.02]">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                      Learner
                     </span>
-
-                    <div className="space-y-1.5 pt-0.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500 dark:text-slate-400 text-[11px]">Subject:</span>
-                        <span className="font-bold text-slate-900 dark:text-slate-100 truncate max-w-[150px] text-right">
-                          {studentSubject}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500 dark:text-slate-400 text-[11px]">Current Grade:</span>
-                        <span
+                    <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {studentFullName}
+                    </div>
+                    <div className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                      {studentSection}
+                      {studentLrn && studentLrn !== "—" ? ` · LRN: ${studentLrn}` : ""}
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-slate-50/70 p-2.5 dark:bg-white/[0.02]">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                      Current Term Performance · {studentSubject}
+                    </span>
+                    <div className="mt-1 flex flex-wrap items-center gap-3">
+                      <div>
+                        <span className="text-[10px] text-slate-400">Grade</span>
+                        <div
                           className={cn(
-                            "font-bold",
+                            "text-base font-bold",
                             curGrade !== null && curGrade < 75
                               ? "text-amber-800 dark:text-amber-400"
                               : "text-slate-900 dark:text-slate-100"
                           )}
                         >
                           {curGrade !== null ? `${curGrade} / 100` : "—"}
-                          {curGrade !== null && curGrade < 75 ? (
-                            <span className="ml-1 text-[10px] font-normal text-amber-700 dark:text-amber-400">(Below 75)</span>
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400">Trend</span>
+                        <div className={cn("inline-flex items-center gap-1 font-semibold text-xs", progressExplanation.progressStyle)}>
+                          {progressInfo.progress === "Improving" ? (
+                            <TrendingUp size={12} className="text-emerald-600" />
+                          ) : progressInfo.progress === "Declining" ? (
+                            <TrendingDown size={12} className="text-amber-700" />
+                          ) : progressInfo.progress === "No clear change" ? (
+                            <Minus size={12} className="text-slate-400" />
                           ) : null}
-                        </span>
+                          <span>{progressExplanation.progressDisplay}</span>
+                        </div>
                       </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500 dark:text-slate-400 text-[11px]">Academic Monitoring Status:</span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      <div>
+                        <span className="text-[10px] text-slate-400">Support</span>
+                        <div className="font-semibold text-slate-800 dark:text-slate-200">
                           {currentSupport.label}
-                        </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Reading Performance */}
-                  <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 text-xs dark:border-white/5 dark:bg-white/[0.02] space-y-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                      Reading Performance (Phil-IRI)
-                    </span>
-
-                    <div className="space-y-1.5 pt-0.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500 dark:text-slate-400 text-[11px]">Language:</span>
-                        <span className="font-bold text-slate-900 dark:text-slate-100">{readingLang}</span>
+                    {(prevGrade !== null || progressInfo.hasPreviousGrade) ? (
+                      <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                        Previous: {progressExplanation.previousDisplay}
+                        {historicalLabel ? ` (${historicalLabel})` : ""}
                       </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500 dark:text-slate-400 text-[11px]">GST Result:</span>
-                        <span className="font-bold text-slate-900 dark:text-slate-100">
-                          {readingGstDisplay}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500 dark:text-slate-400 text-[11px]">Individual Assessment:</span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">
-                          {readingIraStatus}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500 dark:text-slate-400 text-[11px]">Reading Profile:</span>
-                        <span
-                          className={cn(
-                            "font-bold",
-                            readingProfileValue === "Frustration"
-                              ? "text-rose-700 dark:text-rose-400"
-                              : readingProfileValue === "Instructional"
-                              ? "text-amber-700 dark:text-amber-400"
-                              : readingProfileValue === "Independent"
-                              ? "text-emerald-700 dark:text-emerald-400"
-                              : "text-slate-600 dark:text-slate-400"
-                          )}
-                        >
-                          {readingProfileValue}
-                        </span>
-                      </div>
-                    </div>
+                    ) : null}
                   </div>
                 </div>
+              </div>
 
-                {/* Teacher Note / Guidance: Exactly ONE short sentence */}
-                <div className="rounded-xl border border-slate-200/70 bg-slate-50/90 px-3.5 py-2.5 dark:border-white/5 dark:bg-white/[0.03]">
-                  <div className="flex items-start gap-2">
-                    <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400 shrink-0 mt-0.5">
-                      Teacher Note:
-                    </span>
-                    <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-normal">
-                      {guidanceInfo.sentence}
+              {/* 2. ACADEMIC CONCERN */}
+              <div
+                className={cn(
+                  "rounded-2xl border p-4 shadow-2xs transition",
+                  curGrade !== null && curGrade < 75
+                    ? "border-amber-200/90 bg-amber-50/60 dark:border-amber-900/30 dark:bg-amber-950/20"
+                    : "border-slate-200/80 bg-white dark:border-white/5 dark:bg-[var(--card)]"
+                )}
+              >
+                <div className="flex items-start gap-2.5">
+                  <div
+                    className={cn(
+                      "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold",
+                      curGrade !== null && curGrade < 75
+                        ? "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200"
+                        : "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300"
+                    )}
+                  >
+                    <Info size={14} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-xs font-bold uppercase tracking-wide text-slate-900 dark:text-white">
+                      Academic Concern
+                    </h3>
+                    <p className="mt-1 text-xs font-semibold text-slate-800 dark:text-slate-200">
+                      {mainConcernHeadline}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+                      {attentionReason}
+                    </p>
+                    {guidanceInfo.sentence ? (
+                      <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                        {guidanceInfo.sentence}
+                      </p>
+                    ) : null}
+                    <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                      Official GWA/term risk is based on school rules; individual subject weaknesses are noted separately.
                     </p>
                   </div>
                 </div>
-              </section>
+              </div>
 
-              {/* SECTION 2: WHY THIS LEARNER NEEDS ATTENTION */}
-              <section className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs dark:border-white/5 dark:bg-[var(--card)]">
-                <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark">
-                  2. Why This Learner Needs Attention
-                </h3>
-                <p className="mt-2 text-xs leading-relaxed text-slate-700 dark:text-slate-300">
-                  {attentionReason}
-                </p>
-              </section>
-
-              {/* SECTION 3: ACADEMIC PROGRESS */}
-              <section className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs dark:border-white/5 dark:bg-[var(--card)]">
-                <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark">
-                  3. Academic Progress
-                </h3>
-
-                <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-slate-50 p-3 text-xs dark:bg-white/[0.02]">
-                  <div>
-                    <span className="block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
-                      Previous Grade
-                    </span>
-                    <span className="mt-1 block font-mono text-sm font-bold text-slate-800 dark:text-slate-200">
-                      {progressExplanation.previousDisplay}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
-                      Current Grade
-                    </span>
-                    <span className="mt-1 block font-mono text-sm font-bold text-slate-900 dark:text-slate-100">
-                      {progressExplanation.currentDisplay}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
-                      Progress
-                    </span>
-                    <span className={cn("mt-1 inline-flex items-center gap-1 text-xs", progressExplanation.progressStyle)}>
-                      {progressInfo.progress === "Improving" ? (
-                        <TrendingUp size={13} className="text-emerald-600" />
-                      ) : progressInfo.progress === "Declining" ? (
-                        <TrendingDown size={13} className="text-amber-700" />
-                      ) : progressInfo.progress === "No clear change" ? (
-                        <Minus size={13} className="text-slate-400" />
-                      ) : null}
-                      <span>{progressExplanation.progressDisplay}</span>
-                    </span>
-                  </div>
+              {/* 3. RECOMMENDED NEXT STEP */}
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-2xs dark:border-white/5 dark:bg-[var(--card)] space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-white/5">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-cnhs-green-dark">
+                    Recommended Next Step
+                  </h3>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {isPrincipal ? "For review (read-only)" : "Teacher Action"}
+                  </span>
                 </div>
 
-                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                  {progressExplanation.sentence}
-                </p>
-              </section>
-
-              {/* SECTION 4: TEACHER ACTION */}
-              <section className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs dark:border-white/5 dark:bg-[var(--card)]">
-                <h3 className="text-[11px] font-bold uppercase tracking-wider text-cnhs-green-dark border-b border-slate-100 pb-2 dark:border-white/5">
-                  4. Teacher Action
-                </h3>
-
                 {isTeacher ? (
-                  <div className="mt-3 space-y-3">
-                    {referralState.isLanguageSubject ? (
-                      <div className="space-y-3">
-                        <p className="text-xs text-slate-700 dark:text-slate-300">
-                          Does this learner show a reading-related concern in{" "}
-                          <strong className="text-slate-900 dark:text-white">
-                            {studentSubject}
-                          </strong>
-                          ?
-                        </p>
-
-                        <div
-                          className="grid grid-cols-1 gap-2 sm:grid-cols-2"
-                          role="radiogroup"
-                          aria-label="Reading concern review"
-                        >
-                          {[
-                            { id: "confirmed", label: "Reading concern confirmed" },
-                            { id: "not_reading", label: "Not related to reading" },
-                          ].map((opt) => {
-                            const isSelected = reviewDecision === opt.id;
-                            return (
-                              <button
-                                key={opt.id}
-                                type="button"
-                                role="radio"
-                                aria-checked={isSelected}
-                                onClick={() => setReviewDecision(opt.id)}
-                                className={cn(
-                                  "flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-semibold transition",
-                                  isSelected
-                                    ? "border-cnhs-green-dark bg-green-50/60 text-cnhs-green-dark dark:bg-green-950/20"
-                                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
-                                )}
-                              >
-                                <span
-                                  className={cn(
-                                    "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2",
-                                    isSelected
-                                      ? "border-cnhs-green-dark"
-                                      : "border-slate-300 dark:border-slate-600"
-                                  )}
-                                >
-                                  {isSelected ? (
-                                    <span className="h-2 w-2 rounded-full bg-cnhs-green-dark" />
-                                  ) : null}
-                                </span>
-                                {opt.label}
-                              </button>
-                            );
-                          })}
+                  <div className="space-y-3">
+                    {referralState.hasActiveReferral ? (
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50/70 px-3.5 py-2 text-xs font-semibold text-amber-900 dark:border-amber-900/30 dark:bg-amber-950/20 dark:text-amber-300">
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle2 size={14} className="text-amber-600 shrink-0" />
+                          <span>
+                            ARAL Reading Program: {referralState.isApproved ? "Approved for Assessment" : "Referral Pending Review"}
+                          </span>
                         </div>
-
-                        {reviewDecision === "confirmed" ? (
-                          <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50/60 p-3 text-xs dark:border-white/5 dark:bg-white/[0.02]">
-                            <div>
-                              <span className="mb-1 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-                                Main reading concern
-                              </span>
-                              <AppSelect
-                                label="Main reading concern"
-                                value={reviewConcern}
-                                onChange={setReviewConcern}
-                                placeholder="Select reading concern"
-                                options={[
-                                  { value: "", label: "Select reading concern" },
-                                  ...READING_CONCERN_OPTIONS.map((c) => ({
-                                    value: c,
-                                    label: c,
-                                  })),
-                                ]}
-                                triggerClassName="h-9 text-xs"
-                              />
-                            </div>
-
-                            <label className="block">
-                              <span className="mb-1 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-                                Optional Note
-                              </span>
-                              <textarea
-                                value={reviewNote}
-                                onChange={(e) => setReviewNote(e.target.value)}
-                                rows={2}
-                                placeholder="Enter a short note..."
-                                className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-cnhs-green dark:border-white/10 dark:bg-white/5 dark:text-slate-100"
-                              />
-                            </label>
-
-                            <div className="pt-1">
-                              {referralState.hasActiveReferral ? (
-                                <div className="space-y-2">
-                                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
-                                    <div className="flex items-center gap-1.5">
-                                      <CheckCircle2 size={14} />
-                                      <span>
-                                        {referralState.isApproved
-                                          ? "ARAL Referral: Approved for Assessment"
-                                          : "ARAL Referral: Pending Principal Review"}
-                                      </span>
-                                    </div>
-                                    {onNavigateToAral ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => onNavigateToAral?.(activeLearner)}
-                                        className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-semibold text-cnhs-green-dark hover:underline"
-                                      >
-                                        <span>View in ARAL Reading Assessment</span>
-                                        <ArrowUpRight size={12} />
-                                      </button>
-                                    ) : null}
-                                  </div>
-                                </div>
-                              ) : referralState.isReturned ? (
-                                <div className="space-y-2">
-                                  <div className="rounded border border-orange-200 bg-orange-50 p-2 text-xs text-orange-800 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300">
-                                    <span className="font-bold">Returned for Teacher Review:</span>{" "}
-                                    {referralState.reviewNote ||
-                                      "Please review notes and revise referral."}
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={handleRecommendAral}
-                                    disabled={recommendingAral}
-                                    className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white shadow-xs transition hover:bg-blue-700 disabled:opacity-50"
-                                  >
-                                    {recommendingAral ? (
-                                      <Loader2 size={13} className="animate-spin" />
-                                    ) : null}
-                                    <span>Resubmit for ARAL Assessment</span>
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={handleRecommendAral}
-                                  disabled={recommendingAral}
-                                  className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white shadow-xs transition hover:bg-blue-700 disabled:opacity-50"
-                                >
-                                  {recommendingAral ? (
-                                    <Loader2 size={13} className="animate-spin" />
-                                  ) : null}
-                                  <span>Recommend for ARAL Assessment</span>
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ) : reviewDecision === "not_reading" ? (
-                          renderClassRemedialActions()
+                        {onNavigateToAral ? (
+                          <button
+                            type="button"
+                            onClick={() => onNavigateToAral?.(activeLearner)}
+                            className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-semibold text-cnhs-green-dark hover:underline"
+                          >
+                            <span>Open in ARAL Reading Assessment</span>
+                            <ArrowUpRight size={12} />
+                          </button>
                         ) : null}
                       </div>
-                    ) : (
-                      renderClassRemedialActions()
-                    )}
+                    ) : null}
+
+                    {renderClassRemedialActions()}
                   </div>
                 ) : (
-                  /* PRINCIPAL ROLE (Read-only view) */
-                  <div className="mt-3 space-y-2 text-xs">
-                    <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 dark:bg-white/[0.02]">
-                      <span className="text-slate-500">Current Academic Support:</span>
-                      <span className="font-bold text-slate-800 dark:text-slate-200">
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 dark:bg-white/[0.02]">
+                      <span className="text-slate-500">Current academic support</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">
                         {currentSupport.label}
                       </span>
                     </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Recommendations are teacher-reviewed drafts. This view is for principal review only.
+                    </p>
                     {activeLearner.teacherRemarks ? (
-                      <div className="rounded-lg bg-slate-50 px-3 py-2 text-slate-600 italic dark:bg-white/[0.02] dark:text-slate-400">
-                        Teacher note: &ldquo;{activeLearner.teacherRemarks}&rdquo;
+                      <div className="rounded-xl bg-slate-50 px-3 py-2 text-slate-600 dark:bg-white/[0.02] dark:text-slate-400">
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">Teacher note:</span> {activeLearner.teacherRemarks}
                       </div>
                     ) : null}
                     {referralState.isLanguageSubject && referralState.hasActiveReferral ? (
-                      <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                      <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                         <span>
                           {referralState.isApproved
                             ? "ARAL Referral: Approved for Assessment"
@@ -1410,58 +1368,283 @@ export default function LearnerAcademicDetailModal({
                     ) : null}
                   </div>
                 )}
-              </section>
+              </div>
 
-              {/* RECENT SUPPORT ACTIVITY (Hidden if empty) */}
-              {activityRecords.length > 0 ? (
-                <section className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs dark:border-white/5 dark:bg-[var(--card)]">
-                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-2 dark:border-white/5">
-                    Recent Support Activity
-                  </h3>
-                  <div className="mt-3 divide-y divide-slate-100 text-xs dark:divide-white/5">
-                    {activityRecords.map((rec) => (
-                      <div key={rec.id} className="py-2.5 first:pt-0 last:pb-0">
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="font-semibold text-slate-800 dark:text-slate-200">
-                            {rec.interventionGiven || "Classroom Remediation"}
+              {/* 4. LEARNING PLAN */}
+              <div className="rounded-2xl border border-emerald-200/80 bg-white p-4 shadow-2xs dark:border-emerald-900/30 dark:bg-[var(--card)] space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-100/70 pb-2.5 dark:border-emerald-900/30">
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={15} className="text-emerald-700 dark:text-emerald-300" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-200">
+                      Learning Plan
+                    </h3>
+                  </div>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Teacher-reviewed draft · {isPrincipal ? "For review" : "Editable by teacher"}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
+                    View the simplified PLP with reason for support, learning goal, suggested activities, progress monitoring, and notes.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowPlpModal(true)}
+                    className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-xl bg-emerald-700 px-3.5 text-xs font-semibold text-white shadow-2xs transition hover:bg-emerald-800"
+                  >
+                    <Sparkles size={12} />
+                    <span>View Learning Plan</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* OPTIONAL COLLAPSED DETAILS */}
+              <div className="space-y-2 pt-1">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Optional Details
+                </div>
+
+                {/* ACCORDION A: GRADE & PROGRESS HISTORY */}
+                <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-white/5 dark:bg-[var(--card)]">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection("gradeHistory")}
+                    className="flex w-full cursor-pointer items-center justify-between p-3.5 text-left text-xs font-semibold text-slate-800 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/[0.02]"
+                  >
+                    <div className="flex items-center gap-2">
+                      <GraduationCap size={15} className="text-slate-500" />
+                      <span>Grade &amp; Progress History</span>
+                      <span className="text-[10.5px] font-normal text-slate-400">
+                        ({progressExplanation.progressDisplay})
+                      </span>
+                    </div>
+                    {expandedSections.gradeHistory ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </button>
+                  {expandedSections.gradeHistory ? (
+                    <div className="border-t border-slate-100 p-4 text-xs dark:border-white/5 space-y-3">
+                      <div className="grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-3 dark:bg-white/[0.02]">
+                        <div>
+                          <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            Previous Grade
                           </span>
-                          <span className="font-mono text-slate-400">
-                            {rec.observationDate || rec.observation_date || rec.createdAt || "—"}
+                          <span className="mt-1 block font-mono text-sm font-bold text-slate-800 dark:text-slate-200">
+                            {progressExplanation.previousDisplay}
                           </span>
                         </div>
-                        {rec.teacherRemarks || rec.teacher_remarks ? (
-                          <p className="mt-1 text-[11.5px] leading-relaxed text-slate-600 dark:text-slate-400">
-                            {rec.teacherRemarks || rec.teacher_remarks}
-                          </p>
-                        ) : null}
-                        {rec.studentProgress || rec.student_progress ? (
-                          <p className="mt-0.5 text-[10.5px] text-slate-400">
-                            Progress:{" "}
-                            <strong className="text-slate-600 dark:text-slate-300">
-                              {rec.studentProgress || rec.student_progress}
-                            </strong>
-                          </p>
-                        ) : null}
+                        <div>
+                          <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            Current Grade
+                          </span>
+                          <span className="mt-1 block font-mono text-sm font-bold text-slate-900 dark:text-slate-100">
+                            {progressExplanation.currentDisplay}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            Progress Trend
+                          </span>
+                          <span className={cn("mt-1 inline-flex items-center gap-1 text-xs", progressExplanation.progressStyle)}>
+                            {progressInfo.progress === "Improving" ? (
+                              <TrendingUp size={13} className="text-emerald-600" />
+                            ) : progressInfo.progress === "Declining" ? (
+                              <TrendingDown size={13} className="text-amber-700" />
+                            ) : progressInfo.progress === "No clear change" ? (
+                              <Minus size={13} className="text-slate-400" />
+                            ) : null}
+                            <span>{progressExplanation.progressDisplay}</span>
+                          </span>
+                        </div>
                       </div>
-                    ))}
+
+                      <p className="text-[11.5px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                        {progressExplanation.sentence} {historicalLabel ? `Comparison based on ${historicalLabel}.` : ""}
+                      </p>
+
+                      {subjectGradesList.length > 0 ? (
+                        <div className="pt-2 border-t border-slate-100 dark:border-white/5">
+                          <span className="block text-[10.5px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                            Quarterly Subject Breakdown
+                          </span>
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            {subjectGradesList.map((sg, idx) => (
+                              <div
+                                key={idx}
+                                className="rounded-lg border border-slate-100 bg-slate-50/50 p-2 dark:border-white/5 dark:bg-white/[0.02]"
+                              >
+                                <span className="block truncate text-[10px] text-slate-500">{sg.subject || sg.subjectName}</span>
+                                <span className="block font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
+                                  {sg.grade ?? sg.quarterGrade ?? "—"}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+
+
+
+                {/* ACCORDION C: SUPPORT & OBSERVATION LOGS */}
+                {activityRecords.length > 0 ? (
+                  <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-white/5 dark:bg-[var(--card)]">
+                    <button
+                      type="button"
+                      onClick={() => toggleSection("recentActivity")}
+                      className="flex w-full cursor-pointer items-center justify-between p-3.5 text-left text-xs font-semibold text-slate-800 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/[0.02]"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Clock size={15} className="text-slate-500" />
+                        <span>Support Activity &amp; Observation History</span>
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">
+                          {activityRecords.length}
+                        </span>
+                      </div>
+                      {expandedSections.recentActivity ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </button>
+                    {expandedSections.recentActivity ? (
+                      <div className="border-t border-slate-100 p-4 text-xs dark:border-white/5">
+                        <div className="divide-y divide-slate-100 dark:divide-white/5">
+                          {activityRecords.map((rec) => (
+                            <div key={rec.id} className="py-2.5 first:pt-0 last:pb-0">
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                  {rec.interventionGiven || "Classroom Remediation"}
+                                </span>
+                                <span className="font-mono text-slate-400">
+                                  {rec.observationDate || rec.observation_date || rec.createdAt || "—"}
+                                </span>
+                              </div>
+                              {rec.teacherRemarks || rec.teacher_remarks ? (
+                                <p className="mt-1 text-[11.5px] leading-relaxed text-slate-600 dark:text-slate-400">
+                                  {rec.teacherRemarks || rec.teacher_remarks}
+                                </p>
+                              ) : null}
+                              {rec.studentProgress || rec.student_progress ? (
+                                <p className="mt-0.5 text-[10.5px] text-slate-400">
+                                  Progress:{" "}
+                                  <strong className="text-slate-600 dark:text-slate-300">
+                                    {rec.studentProgress || rec.student_progress}
+                                  </strong>
+                                </p>
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
-                </section>
-              ) : null}
+                ) : null}
+
+                {/* ACCORDION D: NEXT-TERM SUBJECT TREND FORECAST (SELECTED) */}
+                <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-white/5 dark:bg-[var(--card)]">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection("advancedMl")}
+                    className="flex w-full cursor-pointer items-center justify-between p-3.5 text-left text-xs font-semibold text-slate-800 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/[0.02]"
+                  >
+                    <div className="flex items-center gap-2">
+                      <TrendingUp size={15} className="text-slate-500" />
+                      <span>Next-term subject trend forecast (selected)</span>
+                      <span className="text-[10.5px] font-normal text-slate-400">Optional</span>
+                    </div>
+                    {expandedSections.advancedMl ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </button>
+                  {expandedSections.advancedMl ? (
+                    <div className="border-t border-slate-100 p-4 text-xs dark:border-white/5 space-y-2">
+                      {loadingTrend ? (
+                        <div className="flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50/60 p-3 text-xs text-slate-500 dark:border-white/5 dark:bg-white/[0.02]">
+                          <Loader2 size={13} className="animate-spin text-cnhs-green-dark" />
+                          <span>Checking forecast for {studentSubject}...</span>
+                        </div>
+                      ) : trendData?.status === "available" && trendData.predictedTrend && trendData.predictedTrend !== "—" ? (
+                        <div className="rounded-lg border border-slate-100 bg-white p-3 text-xs dark:border-white/5 dark:bg-white/[0.02] space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                              {studentSubject} · Term {trendData.currentTerm} → Term {trendData.targetTerm}
+                            </span>
+                            <span
+                              className={cn(
+                                "rounded-md px-2 py-0.5 text-xs font-semibold",
+                                trendData.predictedTrend === "Improving"
+                                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                  : trendData.predictedTrend === "Declining"
+                                  ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                                  : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                              )}
+                            >
+                              {trendData.predictedTrend}
+                            </span>
+                          </div>
+                          <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                            Advisory only. Does not affect official academic risk or intervention placement.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3 text-xs dark:border-white/5 dark:bg-white/[0.02] space-y-1">
+                          <div className="flex items-center gap-1.5 font-semibold text-slate-600 dark:text-slate-400">
+                            <Info size={13} className="text-slate-400" />
+                            <span>Forecast not available for the selected term/subject</span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                            {trendData?.message || "A valid next-term trend forecast is not available with the current records for this learner, subject, and term."}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
             </>
           )}
         </div>
 
         {/* FOOTER */}
-        <div className="flex shrink-0 justify-end border-t border-slate-100 bg-white px-5 py-3 dark:border-white/5 dark:bg-transparent sm:px-6">
+        <div className="flex shrink-0 items-center justify-end border-t border-slate-100 bg-white px-5 py-3 dark:border-white/5 dark:bg-transparent sm:px-6">
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-9 cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
+            className="inline-flex h-9 cursor-pointer items-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
           >
             Close
           </button>
         </div>
       </div>
     </div>
+
+      {showPlpModal ? (
+        <PlpDocumentModal
+          isOpen={showPlpModal}
+          onClose={() => setShowPlpModal(false)}
+          learner={{
+            studentId: targetStudentId,
+            studentName: studentFullName,
+            gradeLevel: activeLearner?.gradeLevel || activeLearner?.grade || 7,
+            sectionLabel: studentSection,
+          }}
+          academicContext={{
+            classId: targetClassId || "class-preview",
+            teacherId: targetTeacherId,
+            evidencePeriod: activeLearner?.quarterNumber ?? currentQuarterNumber,
+            // legacy fallback keys for compatibility
+            term: activeLearner?.quarterNumber ?? currentQuarterNumber,
+            academicTerm: activeLearner?.quarterNumber ?? currentQuarterNumber,
+            targetTerm: null, // target term is independent from evidence period
+            subjectName: studentSubject,
+            subjectGrade: curGrade,
+            overallRisk: academicRisk,
+            gwa: activeLearner?.gwa || null,
+            failingSubjects:
+              curGrade !== null && curGrade < 75
+                ? [{ subjectName: studentSubject, grade: curGrade }]
+                : [],
+            isProvisional: activeLearner?.isProvisional || false,
+          }}
+          readingContext={null}
+          schoolYear={activeLearner?.schoolYear || schoolYear}
+        />
+      ) : null}
+    </>
   );
 }

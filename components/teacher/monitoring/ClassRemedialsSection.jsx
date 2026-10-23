@@ -10,6 +10,7 @@ import {
   ClipboardList,
   Eye,
   Check,
+  Download,
 } from "lucide-react";
 import LearnerName from "@/components/shared/LearnerName";
 import AppSelect from "@/components/shared/AppSelect";
@@ -17,6 +18,7 @@ import MonitoringTablePagination from "@/components/teacher/monitoring/Monitorin
 import { RiskPill } from "@/components/teacher/monitoring/shared";
 import ReviewRecommendedModal from "@/components/teacher/monitoring/ReviewRecommendedModal";
 import BulkActionConfirmModal from "@/components/teacher/monitoring/BulkActionConfirmModal";
+import ExportAcademicMonitoringModal from "@/components/monitoring/shared/ExportAcademicMonitoringModal";
 import { saveOrUpdateCanonicalMonitoringRecord } from "@/lib/supabase/queries/monitoring";
 import { learnerIdentityKey } from "@/lib/monitoring/academicLearnerAggregation";
 import {
@@ -128,6 +130,8 @@ const TRIAGE_META = {
 
 export default function ClassRemedialsSection({
   students = [],
+  teacherName = "Teacher",
+  schoolYear = "SY 2026-2027",
   currentQuarterNumber = 1,
   quarterFilter = "All quarters",
   onQuarterFilterChange,
@@ -136,6 +140,7 @@ export default function ClassRemedialsSection({
   onNavigateToAral,
   onRefresh,
   onUpdateSupport = null,
+  onFilterContextChange = null,
 }) {
   const { showToast } = useAppToast();
   const [search, setSearch] = useState("");
@@ -145,6 +150,12 @@ export default function ClassRemedialsSection({
   const [page, setPage] = useState(1);
   const [confirmAction, setConfirmAction] = useState(null);
   const [bulkWorking, setBulkWorking] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+
+  // Notify parent dashboard of active section/subject for dual-level export consistency
+  useEffect(() => {
+    onFilterContextChange?.({ section, subject });
+  }, [section, subject, onFilterContextChange]);
 
   // Batch reading-concern triage (UI state only — selection never creates
   // ARAL records; referrals are submitted explicitly per learner).
@@ -158,8 +169,6 @@ export default function ClassRemedialsSection({
   const summaryCards = useMemo(() => {
     return calculateMonitoringSummaryCards(students);
   }, [students]);
-
-  const [activeSummaryCard, setActiveSummaryCard] = useState(null);
 
   // Rows arrive pre-aggregated (one learner per section per quarter) from
   // MonitoringDashboard. This component filters and renders only.
@@ -193,23 +202,6 @@ export default function ClassRemedialsSection({
       );
     }
 
-    // Active summary card filter
-    if (activeSummaryCard === "for_review") {
-      list = list.filter((s) => deriveCurrentSupport(s).key === "needs_review");
-    } else if (activeSummaryCard === "high_priority") {
-      list = list.filter((s) => isHighPriority(s));
-    } else if (activeSummaryCard === "under_support") {
-      list = list.filter((s) => deriveCurrentSupport(s).isUnderSupport);
-    } else if (activeSummaryCard === "improving") {
-      list = list.filter(
-        (s) =>
-          deriveAcademicProgress(
-            s.classSubjectGrade ?? s.currentGrade,
-            s.previousGrade
-          ).progress === "Improving"
-      );
-    }
-
     if (supportFilter === "Learners for Reading Review") {
       list = list.filter((s) => isReadingReviewCandidate(s));
     } else if (supportFilter !== "All support") {
@@ -217,14 +209,14 @@ export default function ClassRemedialsSection({
     }
 
     return list;
-  }, [students, search, section, subject, activeSummaryCard, supportFilter]);
+  }, [students, search, section, subject, supportFilter]);
 
   useEffect(() => {
     setPage(1);
     setSelectedIds(new Set());
     setTriageByKey({});
     setTriageDetail({});
-  }, [search, section, quarterFilter, subject, supportFilter, activeSummaryCard]);
+  }, [search, section, quarterFilter, subject, supportFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE) || 1);
   const safePage = Math.min(Math.max(page, 1), totalPages);
@@ -618,20 +610,9 @@ export default function ClassRemedialsSection({
 
   return (
     <div className="space-y-4">
-      {/* 4 PRIMARY CARDS: FOR REVIEW, HIGH PRIORITY, UNDER SUPPORT, IMPROVING */}
+      {/* 4 PRIMARY CARDS: FOR REVIEW, HIGH PRIORITY, UNDER SUPPORT, IMPROVING (INFORMATIONAL) */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
-        <button
-          type="button"
-          onClick={() =>
-            setActiveSummaryCard((prev) => (prev === "for_review" ? null : "for_review"))
-          }
-          className={cn(
-            "rounded-xl border bg-white p-4 shadow-xs text-left transition sm:p-5 cursor-pointer hover:border-slate-300",
-            activeSummaryCard === "for_review"
-              ? "border-[#166534] ring-1 ring-[#166534]/25 bg-slate-50/80"
-              : "border-slate-200"
-          )}
-        >
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs text-left sm:p-5">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               For Review
@@ -641,20 +622,9 @@ export default function ClassRemedialsSection({
             </p>
             <p className="mt-1.5 text-[11px] leading-4 text-slate-500">Requires teacher review</p>
           </div>
-        </button>
+        </div>
 
-        <button
-          type="button"
-          onClick={() =>
-            setActiveSummaryCard((prev) => (prev === "high_priority" ? null : "high_priority"))
-          }
-          className={cn(
-            "rounded-xl border bg-white p-4 shadow-xs text-left transition sm:p-5 cursor-pointer hover:border-slate-300",
-            activeSummaryCard === "high_priority"
-              ? "border-[#166534] ring-1 ring-[#166534]/25 bg-slate-50/80"
-              : "border-slate-200"
-          )}
-        >
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs text-left sm:p-5">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               High Priority
@@ -664,20 +634,9 @@ export default function ClassRemedialsSection({
             </p>
             <p className="mt-1.5 text-[11px] leading-4 text-slate-500">Immediate attention needed</p>
           </div>
-        </button>
+        </div>
 
-        <button
-          type="button"
-          onClick={() =>
-            setActiveSummaryCard((prev) => (prev === "under_support" ? null : "under_support"))
-          }
-          className={cn(
-            "rounded-xl border bg-white p-4 shadow-xs text-left transition sm:p-5 cursor-pointer hover:border-slate-300",
-            activeSummaryCard === "under_support"
-              ? "border-[#166534] ring-1 ring-[#166534]/25 bg-slate-50/80"
-              : "border-slate-200"
-          )}
-        >
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs text-left sm:p-5">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               Under Support
@@ -687,20 +646,9 @@ export default function ClassRemedialsSection({
             </p>
             <p className="mt-1.5 text-[11px] leading-4 text-slate-500">Active remediation / intervention</p>
           </div>
-        </button>
+        </div>
 
-        <button
-          type="button"
-          onClick={() =>
-            setActiveSummaryCard((prev) => (prev === "improving" ? null : "improving"))
-          }
-          className={cn(
-            "rounded-xl border bg-white p-4 shadow-xs text-left transition sm:p-5 cursor-pointer hover:border-slate-300",
-            activeSummaryCard === "improving"
-              ? "border-[#166534] ring-1 ring-[#166534]/25 bg-slate-50/80"
-              : "border-slate-200"
-          )}
-        >
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs text-left sm:p-5">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               Improving
@@ -710,7 +658,7 @@ export default function ClassRemedialsSection({
             </p>
             <p className="mt-1.5 text-[11px] leading-4 text-slate-500">Positive performance trend</p>
           </div>
-        </button>
+        </div>
       </div>
 
       {/* MAIN CLEAN SCHOOL-RECORD TABLE */}
@@ -783,6 +731,16 @@ export default function ClassRemedialsSection({
                 size="pill"
                 triggerClassName="h-8.5 text-[11px] font-semibold"
               />
+
+              <button
+                type="button"
+                onClick={() => setExportModalOpen(true)}
+                title="Export current filtered roster (PDF or Excel)"
+                className="inline-flex h-8.5 cursor-pointer items-center gap-1.5 rounded-lg border border-cnhs-green/30 bg-cnhs-green-soft/40 px-2.5 text-[11px] font-semibold text-cnhs-green-dark transition-colors hover:border-cnhs-green hover:bg-cnhs-green-soft"
+              >
+                <Download size={13} />
+                <span>Export View</span>
+              </button>
             </div>
           </div>
         </div>
@@ -1082,6 +1040,26 @@ export default function ClassRemedialsSection({
         onCancel={() => {
           if (!bulkWorking) setConfirmAction(null);
         }}
+      />
+
+      {/* Export Filtered Academic Monitoring Modal */}
+      <ExportAcademicMonitoringModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        role="teacher"
+        teacherName={teacherName}
+        schoolYear={schoolYear}
+        quarter={quarterFilter !== "All quarters" ? quarterFilter : "All Terms"}
+        gradeLevel="All Grades"
+        sectionName={section !== "All sections" ? section : "All Sections"}
+        scopeLabel={
+          section !== "All sections"
+            ? `${section}${subject !== "All subjects" ? ` · ${subject}` : ""}`
+            : subject !== "All subjects"
+            ? `All Sections · ${subject}`
+            : "All Assigned Classes"
+        }
+        learners={filteredRows}
       />
     </div>
   );

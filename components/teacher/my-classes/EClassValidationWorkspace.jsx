@@ -526,7 +526,19 @@ export default function EClassValidationWorkspace({
 
           <button
             type="button"
-            onClick={() => onConfirmImport(readyLearners)}
+            onClick={() => {
+              if (readyLearners.length === 0) return;
+              // Extra safety: show confirmation with counts
+              const count = readyLearners.length;
+              // Use confirm to be explicit (no bypass)
+              if (typeof window !== "undefined") {
+                const ok = window.confirm(
+                  `Save ${count} grade(s) to the E-Record draft for this term? Published grades are protected by term locks and integrity checks.`
+                );
+                if (!ok) return;
+              }
+              onConfirmImport(readyLearners);
+            }}
             disabled={readyLearners.length === 0 || importing}
             className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-cnhs-green-dark px-4 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-[#1b5842] active:bg-[#144332] disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
           >

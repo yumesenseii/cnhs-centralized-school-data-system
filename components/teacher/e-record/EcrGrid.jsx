@@ -83,6 +83,7 @@ function ScoreCells({
   inputRefs,
   onNavigate,
   onPasteColumn,
+  readOnly = false,
 }) {
   const groups = ["WW", "PT", "QA"];
   const termGrade = Number(computed?.term_grade);
@@ -107,6 +108,7 @@ function ScoreCells({
             inputRefs={inputRefs}
             onNavigate={onNavigate}
             onPasteColumn={onPasteColumn}
+            readOnly={readOnly}
           />
         );
       })}
@@ -150,6 +152,7 @@ function FragmentGroupCells({
   inputRefs,
   onNavigate,
   onPasteColumn,
+  readOnly = false,
 }) {
   return (
     <>
@@ -173,13 +176,17 @@ function FragmentGroupCells({
               onChange={(e) => onScoreChange(studentId, key, e.target.value)}
               onKeyDown={(e) => onNavigate(e, studentId, key)}
               onPaste={(e) => onPasteColumn(e, studentId, key)}
+              readOnly={readOnly}
+              disabled={readOnly}
               className={`h-8 w-[52px] rounded border px-1 text-center text-[12px] transition focus:outline-none focus:ring-2 ${
                 invalid
                   ? "border-red-400 bg-red-50 focus:border-red-500 focus:ring-red-200"
-                  : "border-slate-200 bg-white focus:border-cnhs-green focus:ring-cnhs-green/25"
+                  : readOnly
+                    ? "border-slate-200 bg-slate-50 text-slate-500"
+                    : "border-slate-200 bg-white focus:border-cnhs-green focus:ring-cnhs-green/25"
               }`}
               aria-invalid={invalid}
-              title={invalid ? "Score exceeds HPS" : undefined}
+              title={invalid ? "Score exceeds HPS" : readOnly ? "Read-only" : undefined}
             />
           </td>
         );
@@ -206,6 +213,7 @@ export default function EcrGrid({
   onConfigUpdate,
   searchQuery = "",
   onImportClick,
+  readOnly = false,
 }) {
   const inputRefs = useRef({});
   const colSpan = getEcrGridColumnCount(config);
@@ -357,6 +365,7 @@ export default function EcrGrid({
                 inputRefs={inputRefs}
                 onNavigate={handleNavigate}
                 onPasteColumn={handlePasteColumn}
+                readOnly={readOnly}
               />
             </tr>
           );
@@ -408,7 +417,7 @@ export default function EcrGrid({
             <th className={stickyHeadName}>Name</th>
             <EcrSubHeaders config={config} />
           </tr>
-          <EcrHpsRow config={config} onUpdate={onConfigUpdate} />
+          <EcrHpsRow config={config} onUpdate={readOnly ? undefined : onConfigUpdate} readOnly={readOnly} />
         </thead>
         <tbody>
           {renderSection("Male", male)}

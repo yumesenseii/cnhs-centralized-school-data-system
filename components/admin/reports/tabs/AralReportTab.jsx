@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   BookOpen,
   FileText,
+  Download,
 } from "lucide-react";
 import { aralPeriodLabel } from "@/lib/monitoring/assessmentTimeline";
 import { aggregateAralLearners } from "@/lib/monitoring/aralLearnerAggregation";
@@ -30,6 +31,7 @@ import {
   computePhilIriSchoolSummaryForm5,
 } from "@/lib/reports/aralReportsAggregation";
 import PrincipalAralOutcomeModal from "@/components/admin/reports/PrincipalAralOutcomeModal";
+import ExportAralReportModal from "@/components/aral/ExportAralReportModal";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 10;
@@ -45,6 +47,7 @@ export default function AralReportTab({
 }) {
   const [viewMode, setViewMode] = useState("overview"); // 'overview' | 'form2' | 'form5'
   const [formLanguage, setFormLanguage] = useState("All Languages");
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   // 1. Authoritative aggregation of canonical ARAL cases
   const canonicalLearners = useMemo(() => {
@@ -240,26 +243,38 @@ export default function AralReportTab({
           </button>
         </div>
 
-        {viewMode !== "overview" ? (
-          <div className="flex items-center gap-1">
-            <span className="text-[11px] font-medium text-slate-400 mr-1">Language:</span>
-            {["All Languages", "English", "Filipino"].map((lang) => (
-              <button
-                key={lang}
-                type="button"
-                onClick={() => setFormLanguage(lang)}
-                className={cn(
-                  "h-7 rounded-md px-2.5 text-[11px] font-semibold transition-all cursor-pointer",
-                  formLanguage === lang
-                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
-                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10"
-                )}
-              >
-                {lang}
-              </button>
-            ))}
-          </div>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {viewMode !== "overview" ? (
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] font-medium text-slate-400 mr-1">Language:</span>
+              {["All Languages", "English", "Filipino"].map((lang) => (
+                <button
+                  key={lang}
+                  type="button"
+                  onClick={() => setFormLanguage(lang)}
+                  className={cn(
+                    "h-7 rounded-md px-2.5 text-[11px] font-semibold transition-all cursor-pointer",
+                    formLanguage === lang
+                      ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                      : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10"
+                  )}
+                >
+                  {lang}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={() => setExportModalOpen(true)}
+            disabled={canonicalLearners.length === 0}
+            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:border-[#166534]/40 hover:bg-emerald-50/40 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+          >
+            <Download size={13} className="text-[#166534] dark:text-emerald-400" />
+            <span>Export Report</span>
+          </button>
+        </div>
       </div>
 
       {viewMode === "form2" ? (
@@ -889,6 +904,28 @@ export default function AralReportTab({
           setIsModalOpen(false);
           setSelectedOutcome(null);
         }}
+      />
+
+      {/* 17. EXPORT ARAL & PHIL-IRI REPORT MODAL */}
+      <ExportAralReportModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        schoolYear={schoolYear}
+        period={aralPeriod}
+        language={formLanguage}
+        scopeLabel={
+          viewMode === "form2"
+            ? "Phil-IRI Form 2 Reading Profile"
+            : viewMode === "form5"
+            ? "Phil-IRI Form 5 Reading Summary"
+            : "ARAL Program Oversight"
+        }
+        learners={canonicalLearners}
+        form2Data={form2Data}
+        form5Data={form5Data}
+        teacherName="School Principal"
+        initialReportType={viewMode === "form5" ? "form5" : "form2"}
+        allowFormSelection={true}
       />
     </div>
   );

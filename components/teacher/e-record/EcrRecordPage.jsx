@@ -62,6 +62,8 @@ export default function EcrRecordPage({ classId }) {
     publishAve,
     loadAllTermDataForExport,
     refresh,
+    termAccessMap,
+    termAccess,
   } = useEcrRecord(classId);
 
   const [saving, setSaving] = useState(false);
@@ -80,13 +82,25 @@ export default function EcrRecordPage({ classId }) {
   }
 
   async function handleSaveDraft() {
+    if (termAccess && !termAccess.editable) {
+      showToast(termAccess.message || "This term is read-only.");
+      return;
+    }
     setSaving(true);
     const result = await saveDraft();
     setSaving(false);
+    if (result?.error && result.error !== true) {
+      showToast(result.error);
+      return;
+    }
     showToast(result.ok ? "Draft saved." : "Unable to save draft.");
   }
 
   async function handlePublish() {
+    if (activeTerm !== "summary" && termAccess && !termAccess.allowed) {
+      showToast(termAccess.message || "This term is read-only.");
+      return;
+    }
     setPublishing(true);
     if (activeTerm === "summary") {
       const result = await publishAve();
@@ -94,7 +108,7 @@ export default function EcrRecordPage({ classId }) {
       showToast(
         result.ok
           ? "Final grades published to class records. Next: open Academic Monitoring to review recommendations."
-          : "Unable to publish final grades.",
+          : result.error || "Unable to publish final grades.",
         result.ok
           ? { action: { href: "/teacher/monitoring", label: "Go to Academic Monitoring →" } }
           : undefined
@@ -103,6 +117,10 @@ export default function EcrRecordPage({ classId }) {
     }
     const result = await publishGrades();
     setPublishing(false);
+    if (result?.error && result.error !== true) {
+      showToast(result.error);
+      return;
+    }
     showToast(
       result.ok
         ? `${termLabel(activeTerm)} grades published. Next: open Academic Monitoring for risk and recommendations.`
@@ -160,8 +178,19 @@ export default function EcrRecordPage({ classId }) {
     ? `${students.length} learner${students.length === 1 ? "" : "s"}`
     : "No learners";
 
+  const isPublishedSheet = termAccess?.requiresCorrectionConfirmation === true;
+  const isReadOnlyTerm = termAccess
+    ? !termAccess.editable && !termAccess.requiresCorrectionConfirmation
+    : false;
+
   const gridSection = (
     <>
+      {isPublishedSheet ? (
+        <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-amber-800">
+          Term {activeTerm} grades are published. Editing requires the authorized
+          correction confirmation, which must be re-published to take effect.
+        </div>
+      ) : null}
       {activeTerm !== "summary" ? (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -221,10 +250,11 @@ export default function EcrRecordPage({ classId }) {
           config={config}
           studentScores={studentScores}
           computedByStudent={computedByStudent}
-          onScoreChange={setScore}
-          onConfigUpdate={updateConfig}
+          onScoreChange={isPublishedSheet || isReadOnlyTerm ? () => {} : setScore}
+          onConfigUpdate={isPublishedSheet || isReadOnlyTerm ? () => {} : updateConfig}
           searchQuery={searchQuery}
           onImportClick={openImport}
+          readOnly={isPublishedSheet || isReadOnlyTerm}
         />
       )}
     </>
@@ -260,8 +290,9 @@ export default function EcrRecordPage({ classId }) {
           <button
             type="button"
             onClick={handleSaveDraft}
-            disabled={saving || loading || activeTerm === "summary"}
+            disabled={saving || loading || activeTerm === "summary" || isReadOnlyTerm}
             className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            title={termAccess?.message}
           >
             {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
             Save Draft
@@ -269,8 +300,9 @@ export default function EcrRecordPage({ classId }) {
           <button
             type="button"
             onClick={handlePublish}
-            disabled={publishing || loading}
+            disabled={publishing || loading || (activeTerm !== "summary" && isReadOnlyTerm)}
             className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white hover:bg-[#246f54] disabled:opacity-60"
+            title={termAccess?.message}
           >
             {publishing ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
             {activeTerm === "summary" ? "Publish Final" : "Publish Grades"}
@@ -287,8 +319,13 @@ export default function EcrRecordPage({ classId }) {
           <button
             type="button"
             onClick={openImport}
-            disabled={loading}
+            disabled={loading || activeTerm === "summary" || isReadOnlyTerm}
             className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 text-[11px] font-semibold text-violet-700 hover:bg-violet-100 disabled:opacity-60"
+            title={
+              activeTerm === "summary"
+                ? "Import to term sheets"
+                : termAccess?.message
+            }
           >
             <Upload size={13} />
             Import ECR
@@ -325,7 +362,11 @@ export default function EcrRecordPage({ classId }) {
       <EcrDepedHeader classItem={classItem} activeTerm={activeTerm} />
 
       <div className="mb-3">
-        <EcrTermTabs activeTerm={activeTerm} onChange={setActiveTerm} />
+        <EcrTermTabs
+          activeTerm={activeTerm}
+          onChange={setActiveTerm}
+          termAccessMap={termAccessMap}
+        />
       </div>
 
       {gridSection}

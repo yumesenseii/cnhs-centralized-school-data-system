@@ -51,11 +51,13 @@ function allowedRedirectTo(redirectTo: string) {
     if (allowed.has(redirectTo.replace(/\/$/, "")) || allowed.has(redirectTo)) {
       return true;
     }
-    // Allow any https host that ends with vercel.app for this project previews
+    // Allow custom domain and any preview vercel hosts
     if (
       url.protocol === "https:" &&
       (url.hostname.endsWith(".vercel.app") ||
-        url.hostname === "cnhs-centralized-school-data-system.vercel.app")
+        url.hostname === "cnhs-centralized-school-data-system.vercel.app" ||
+        url.hostname === "www.cnhs-learn.com" ||
+        url.hostname === "cnhs-learn.com")
     ) {
       return true;
     }

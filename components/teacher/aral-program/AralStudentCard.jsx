@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, CheckCircle2, ChevronRight, AlertTriangle, Sparkles, Loader2, Award, Calendar } from "lucide-react";
 import { generatePlpPrescription } from "@/lib/monitoring/plpRules";
 import { cn } from "@/lib/utils";
+import PlpDocumentModal from "@/components/monitoring/plp/PlpDocumentModal";
 
 const DEFAULT_MILESTONES = [
   { id: "diagnostic", label: "Diagnostic / Initial Assessment verified" },
@@ -19,6 +20,7 @@ export default function AralStudentCard({
   archiveOutcome = "proficient",
 }) {
   const [submitting, setSubmitting] = useState(false);
+  const [showPlpModal, setShowPlpModal] = useState(false);
   const [completedMilestones, setCompletedMilestones] = useState(() => {
     // If archived, all milestones are completed
     if (isArchive) return new Set(["diagnostic", "formative", "midline", "review"]);
@@ -105,9 +107,19 @@ export default function AralStudentCard({
 
       {/* 1. Rule-Based PLP Prescription */}
       <div className="mt-4 rounded-xl bg-emerald-50/50 border border-emerald-100 p-3">
-        <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-900">
-          <Sparkles size={13} className="text-emerald-600 shrink-0" />
-          <span>Personalized Learning Plan (PLP)</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-900">
+            <Sparkles size={13} className="text-emerald-600 shrink-0" />
+            <span>Personalized Learning Plan (PLP)</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowPlpModal(true)}
+            className="inline-flex cursor-pointer items-center gap-1 rounded bg-white px-2 py-0.5 text-[10.5px] font-semibold text-emerald-800 shadow-2xs hover:bg-emerald-100/60 ring-1 ring-emerald-200"
+            title="Preview full structured PLP document"
+          >
+            <span>Preview Document</span>
+          </button>
         </div>
         <p className="mt-1.5 text-[11px] font-medium leading-relaxed text-emerald-950">
           {plpPrescription}
@@ -216,6 +228,28 @@ export default function AralStudentCard({
           </div>
         )}
       </div>
+
+      {showPlpModal ? (
+        <PlpDocumentModal
+          isOpen={showPlpModal}
+          onClose={() => setShowPlpModal(false)}
+          learner={{
+            studentId: learner.studentId || learner.student_id || learner.id,
+            studentName: learner.studentName || learner.name,
+            gradeLevel: learner.gradeLevel || learner.grade || 7,
+            sectionLabel: learner.section || learner.sectionLabel,
+          }}
+          readingContext={{
+            readingPeriod: learner.readingPeriod || "BOSY",
+            language: learner.subject || learner.language || "English",
+            gstScore: learner.philIriScore ?? null,
+            needsIndividualAssessment: false,
+            form3ReadingProfile: learner.readingLevel || "Frustration",
+            gradeLevel: learner.gradeLevel || 7,
+          }}
+          schoolYear={learner.schoolYear || "2026-2027"}
+        />
+      ) : null}
     </div>
   );
 }

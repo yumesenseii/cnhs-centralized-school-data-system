@@ -31,10 +31,11 @@ export default function EClassUploadDialog({
   const [previewing, setPreviewing] = useState(false);
   const [workbookBuffer, setWorkbookBuffer] = useState(null);
 
-  // Validation step state: 'upload' | 'validation'
-  const [step, setStep] = useState("upload");
+  // Validation step state: 'term' | 'upload' | 'validation'
+  const [step, setStep] = useState("term");
   const [validationResult, setValidationResult] = useState(null);
   const [validationError, setValidationError] = useState(null);
+  const [selectedTerm, setSelectedTerm] = useState(null);
 
   if (!open || !classItem) return null;
 
@@ -48,8 +49,9 @@ export default function EClassUploadDialog({
     setPreviewMeta(null);
     setPreviewing(false);
     setWorkbookBuffer(null);
-    setStep("upload");
+    setStep("term");
     setValidationResult(null);
+    setSelectedTerm(null);
   }
 
   function handleClose() {
@@ -58,7 +60,16 @@ export default function EClassUploadDialog({
     onClose?.();
   }
 
+  function handleChooseTerm(term) {
+    setSelectedTerm(term);
+    setStep("upload");
+  }
+
   async function handleSelected(selected) {
+    if (!selectedTerm) {
+      setError("Please choose the grading term first.");
+      return;
+    }
     const fileCheck = validateEClassFile(selected);
     if (!fileCheck.ok) {
       setError(fileCheck.error);
@@ -99,10 +110,11 @@ export default function EClassUploadDialog({
       setPreviewMeta(parsed.metadata);
       setStatusLabel("Validating against official section roster…");
 
-      // Automated Centralized Validation
+      // Automated Centralized Validation — scoped to the selected term.
       const valResult = await validateEClassRoster({
         learners: parsed.learners ?? [],
-        classItem,
+        classItem: { ...classItem, quarter: selectedTerm, targetTerm: selectedTerm },
+        quarter: selectedTerm,
       });
 
       setValidationResult(valResult);
@@ -119,6 +131,10 @@ export default function EClassUploadDialog({
 
   async function handleConfirmImport(confirmedLearners) {
     if (!confirmedLearners?.length) return;
+    if (!selectedTerm) {
+      setError("Please choose the grading term first.");
+      return;
+    }
     setUploading(true);
     setError("");
     setProgress(10);
@@ -138,7 +154,8 @@ export default function EClassUploadDialog({
           teacherId: classItem.teacherId || teacherId,
           teacher: classItem.teacher,
           quarter: classItem.quarter,
-          currentQuarter: classItem.currentQuarter || classItem.quarterLabel,
+          targetTerm: selectedTerm,
+          currentQuarter: selectedTerm,
           quarterLabel: classItem.quarterLabel,
         },
         validatedLearners: confirmedLearners,
@@ -188,6 +205,67 @@ export default function EClassUploadDialog({
             }}
             importing={uploading}
           />
+        ) : step === "term" ? (
+          <div>
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
+              <div>
+                <h2
+                  id="eclass-upload-title"
+                  className="text-base font-semibold text-slate-900"
+                >
+                  Import E-Class Record
+                </h2>
+                <p className="mt-0.5 text-[11px] text-slate-500">
+                  Choose the grading term this file belongs to.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-700"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-4 px-4 py-4">
+              <div className="rounded-xl bg-slate-50 p-3 text-[11px]">
+                <p className="font-semibold text-slate-800">
+                  {classItem.gradeSection}
+                </p>
+                <p className="mt-0.5 text-slate-500">
+                  {classItem.subject} · SY {classItem.schoolYear}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-2 text-[11px] font-semibold text-slate-600">
+                  Grading Term
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 1, label: "Term 1" },
+                    { id: 2, label: "Term 2" },
+                    { id: 3, label: "Term 3" },
+                  ].map((term) => (
+                    <button
+                      key={term.id}
+                      type="button"
+                      onClick={() => handleChooseTerm(term.id)}
+                      className="flex h-14 cursor-pointer flex-col items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:border-cnhs-green hover:bg-green-50/50 transition-colors"
+                    >
+                      <span className="text-xs font-semibold">{term.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-[10px] text-slate-400">
+                  Quarter 4 (Final Grade / Average) is published from the E-Record
+                  Summary after Terms 1–3 are published. Imports save to the ECR
+                  draft first — you review before publishing.
+                </p>
+              </div>
+            </div>
+          </div>
         ) : (
           <div>
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
@@ -236,7 +314,11 @@ export default function EClassUploadDialog({
                 <div>
                   <p className="text-slate-400">Term</p>
                   <p className="mt-0.5 font-semibold text-slate-800">
-                    {classItem.quarterLabel || classItem.currentQuarter}
+                    Term {selectedTerm}
+                    {classItem.quarter &&
+                    Number(classItem.quarter) !== Number(selectedTerm)
+                      ? ` (class page: Term ${classItem.quarter})`
+                      : ""}
                   </p>
                 </div>
               </div>

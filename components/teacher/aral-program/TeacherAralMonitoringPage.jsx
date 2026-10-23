@@ -17,6 +17,7 @@ import AralAssessmentFlowModal from "@/components/teacher/monitoring/AralAssessm
 import AralClassGstSpreadsheet from "@/components/teacher/aral-program/AralClassGstSpreadsheet";
 import PageHelp from "@/components/shared/PageHelp";
 import { useTeacherMonitoring } from "@/hooks/teacher/useMonitoring";
+import ExportAralReportModal from "@/components/aral/ExportAralReportModal";
 import {
   exportAralRecommendedExcel,
 } from "@/lib/reports/aralRecommendedExport";
@@ -45,6 +46,7 @@ export default function TeacherAralMonitoringPage() {
   const [selectedClassId, setSelectedClassId] = useState(null);
   const [selectedLearner, setSelectedLearner] = useState(null);
   const [selectedAssessmentLearner, setSelectedAssessmentLearner] = useState(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportingAral, setExportingAral] = useState(false);
   const { showToast } = useAppToast();
   const { period: aralPeriod } = useAralAssessmentPeriod();
@@ -205,9 +207,6 @@ export default function TeacherAralMonitoringPage() {
                 <p className="mt-0.5 text-xs font-semibold text-[#246f54] dark:text-emerald-400">
                   {periodDisplay} · {controls.schoolYear || "SY 2026–2027"}
                 </p>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  Initial Phil-IRI Group Screening Test for enrolled learners in the selected English or Filipino class.
-                </p>
               </div>
 
               <MobileNavSheet ariaLabel="Open teacher menu" title="Teacher navigation">
@@ -219,30 +218,29 @@ export default function TeacherAralMonitoringPage() {
           {/* Secondary Actions: Export & Help */}
           <div className="flex items-center gap-2 shrink-0 sm:self-start">
             <PageHelp
+              triggerLabel="Help"
+              title="ARAL Reading Assessment Guide"
               summary="ARAL Reading Assessment: Class-based GST entry and monitoring."
               steps={[
                 "Select Class: Choose your assigned English or Filipino class from the dropdown.",
                 "Encode Scores: Type GST scores (0–40) and press Enter to move down, or paste a column from Excel.",
-                "Mark Absent: Click Absent to record an absence with score null (does not fail the learner).",
+                "Mark Absent: Check the Absent box to record an absence with score null (does not fail the learner).",
                 "Review & Save: Click Review Results to check tallies, then Save All Results to commit.",
                 "Learner History: Click any learner's name to view their multi-term reading history.",
                 "Continue Reading Assessment: Learners scoring below 28 receive a button to start Form 3.",
               ]}
+              className="h-8.5 rounded-lg border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-600 shadow-2xs hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
             />
 
             <button
               type="button"
-              onClick={handleExportAssessmentSummary}
-              disabled={loading || exportingAral || languageLearners.length === 0}
-              title="Download reading assessment summary list."
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
+              onClick={() => setExportModalOpen(true)}
+              disabled={loading || languageLearners.length === 0}
+              title="Export reading assessment and Phil-IRI reports."
+              className="inline-flex h-8.5 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
             >
-              {exportingAral ? (
-                <Loader2 size={13} className="animate-spin" />
-              ) : (
-                <FileSpreadsheet size={13} className="text-[#246f54]" />
-              )}
-              <span>Export Summary</span>
+              <FileSpreadsheet size={13} className="text-[#246f54]" />
+              <span>Export Report</span>
             </button>
           </div>
         </div>
@@ -254,37 +252,14 @@ export default function TeacherAralMonitoringPage() {
         </div>
       ) : null}
 
-      {/* 2. CLASS SELECTOR BAR */}
-      {assignedClassesData.all.length > 0 && (
-        <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs dark:border-white/10 dark:bg-slate-900">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
-            <label
-              htmlFor="aral-class-select"
-              className="text-xs font-bold uppercase tracking-wider text-slate-500 shrink-0"
-            >
-              Class:
-            </label>
-            <AralClassDropdown
-              classes={assignedClassesData.all}
-              selectedClassId={selectedClassId}
-              onSelectClass={setSelectedClassId}
-            />
-          </div>
-
-          <div className="text-xs text-slate-400">
-            {assignedClassesData.all.length} language {assignedClassesData.all.length === 1 ? "class" : "classes"} assigned
-          </div>
-        </div>
-      )}
-
-      {/* 3. LOADING OR EMPTY STATE */}
+      {/* LOADING OR EMPTY STATE */}
       {loading && languageLearners.length === 0 ? (
-        <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-100 bg-white py-16 text-sm text-slate-500 shadow-sm dark:border-white/10 dark:bg-slate-900">
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-100 bg-white py-16 text-sm text-slate-500 shadow-2xs dark:border-white/10 dark:bg-slate-900">
           <Loader2 size={16} className="animate-spin text-[#246f54]" />
           <span>Loading assigned reading assessment classes…</span>
         </div>
       ) : assignedClassesData.all.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center dark:border-white/10 dark:bg-slate-900">
+        <div className="rounded-xl border border-slate-200 bg-white p-12 text-center dark:border-white/10 dark:bg-slate-900">
           <Users size={32} className="mx-auto text-slate-300" />
           <p className="mt-3 text-sm font-semibold text-slate-800 dark:text-slate-200">
             No assigned English or Filipino classes found.
@@ -294,10 +269,13 @@ export default function TeacherAralMonitoringPage() {
           </p>
         </div>
       ) : selectedClass ? (
-        /* 4. CLASS WORKSPACE (FAST GST SPREADSHEET) */
+        /* CLASS WORKSPACE (FAST GST SPREADSHEET) */
         <AralClassGstSpreadsheet
           key={`${selectedClass.key || selectedClass.classId}_${controls.schoolYear}_${effectivePeriod}`}
           classInfo={selectedClass}
+          classes={assignedClassesData.all}
+          selectedClassId={selectedClassId}
+          onSelectClass={setSelectedClassId}
           learners={activeClassLearners}
           teacherId={teacherId}
           schoolYear={controls.schoolYear}
@@ -333,6 +311,26 @@ export default function TeacherAralMonitoringPage() {
         quarter={controls.quarter}
         aralPeriod={effectivePeriod}
         onSuccess={refresh}
+      />
+
+      {/* 7. EXPORT READING ASSESSMENT MODAL */}
+      <ExportAralReportModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        schoolYear={controls.schoolYear || "SY 2026-2027"}
+        period={effectivePeriod}
+        language={selectedClass?.language || "English"}
+        scopeLabel={
+          selectedClass
+            ? `${selectedClass.subject} · ${selectedClass.gradeSection}`
+            : "Assigned Reading Classes"
+        }
+        learners={
+          activeClassLearners.length > 0 ? activeClassLearners : languageLearners
+        }
+        teacherName={controls.teacherName || "Assigned Subject Teacher"}
+        initialReportType="assessment_summary"
+        allowFormSelection={true}
       />
     </motion.div>
   );

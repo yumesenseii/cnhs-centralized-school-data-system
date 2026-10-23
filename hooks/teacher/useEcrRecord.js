@@ -32,6 +32,10 @@ import {
 import { formatSf2LearnerName } from "@/lib/attendance/sf2Daily";
 import { parseTermNumber } from "@/lib/academic/termLabels";
 import { useSoftLoadState } from "@/hooks/useSoftLoadState";
+import {
+  buildTermSheetAccessMap,
+  resolveTermSheetAccess,
+} from "@/lib/academic/academicTermPolicy";
 
 function buildSiblingClassMap(classItem, teacherClasses = []) {
   const subjectId = classItem?.subjectId ?? classItem?.subject_id;
@@ -89,6 +93,7 @@ export function useEcrRecord(classId) {
   const [dirty, setDirty] = useState(false);
   const [autoSaving, setAutoSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState(null);
+  const [termAccessMap, setTermAccessMap] = useState({});
   const suppressDirtyRef = useRef(true);
   const autoSaveTimerRef = useRef(null);
   const { loading, refreshing, beginLoad, endLoad } = useSoftLoadState(true);
@@ -280,15 +285,35 @@ export function useEcrRecord(classId) {
         return;
       }
 
+      // P0-04E: per-sheet publication permissions (no global current term).
+      const sheetStatuses = {};
+      for (const sheet of wb.data.ecr_term_sheets ?? []) {
+        const t = Number(sheet.term);
+        if (t >= 1 && t <= 3) sheetStatuses[t] = sheet.status;
+      }
+      const accessMap = buildTermSheetAccessMap({ sheetStatuses });
+      setTermAccessMap(accessMap);
+
       setClassItem(mappedClass);
       setStudents(roster);
       setWorkbook(wb.data);
       setSiblingClassMap(siblingMap);
 
+      let nextActiveTerm = activeTerm;
+      if (nextActiveTerm !== "summary") {
+        const at = Number(nextActiveTerm);
+        // Every Term 1–3 sheet is viewable; drafts are editable, published
+        // sheets are read-only pending correction. No term is hidden.
+        if (!Number.isFinite(at) || at < 1 || at > 3) {
+          nextActiveTerm = 1;
+        }
+      }
+      if (nextActiveTerm !== activeTerm) setActiveTerm(nextActiveTerm);
+
       const termSheet = (wb.data.ecr_term_sheets ?? []).find(
-        (s) => Number(s.term) === Number(activeTerm)
+        (s) => Number(s.term) === Number(nextActiveTerm)
       );
-      if (termSheet?.id) {
+      if (termSheet?.id && nextActiveTerm !== "summary") {
         const sheetResult = await loadEcrTermSheet(termSheet.id);
         if (!sheetResult.error && sheetResult.data) {
           setConfig(sheetResult.data.config ?? []);
@@ -318,6 +343,8 @@ export function useEcrRecord(classId) {
           }
           setImportedComputed(computedMap);
         }
+      } else if (nextActiveTerm === "summary") {
+        setImportedComputed({});
       } else {
         setImportedComputed({});
       }
@@ -379,7 +406,18 @@ export function useEcrRecord(classId) {
   }, []);
 
   const saveDraft = useCallback(async () => {
+    if (activeTerm === "summary") return { ok: false, error: "summary" };
     if (!activeTermSheet?.id || !classItem) return { ok: false };
+    const t = Number(activeTerm);
+    const access = resolveTermSheetAccess({
+      term: t,
+      sheetStatus: activeTermSheet?.status,
+    });
+    if (!access.editable) {
+      const message = access.message || "This term is read-only.";
+      setError(message);
+      return { ok: false, error: message };
+    }
     setError("");
     const result = await saveEcrTermSheet({
       termSheetId: activeTermSheet.id,
@@ -422,7 +460,18 @@ export function useEcrRecord(classId) {
   }, [dirty, studentScores, config, loading, activeTerm, saveDraft]);
 
   const publishGrades = useCallback(async () => {
+    if (activeTerm === "summary") return { ok: false };
     if (!activeTermSheet?.id || !classItem) return { ok: false };
+    const t = Number(activeTerm);
+    const access = resolveTermSheetAccess({
+      term: t,
+      sheetStatus: activeTermSheet?.status,
+    });
+    if (!access.allowed) {
+      const message = access.message || "This term is read-only.";
+      setError(message);
+      return { ok: false, error: message };
+    }
     setError("");
     const result = await saveEcrTermSheet({
       termSheetId: activeTermSheet.id,
@@ -496,6 +545,12 @@ export function useEcrRecord(classId) {
     return { ok: true };
   }, [workbook, classItem, summaryRows, siblingClassMap]);
 
+  const termAccess =
+    activeTerm !== "summary"
+      ? termAccessMap[Number(activeTerm)] ??
+        resolveTermSheetAccess({ term: activeTerm, sheetStatus: activeTermSheet?.status })
+      : null;
+
   return {
     loading,
     refreshing,
@@ -520,5 +575,7 @@ export function useEcrRecord(classId) {
     publishAve,
     loadAllTermDataForExport,
     refresh,
+    termAccessMap,
+    termAccess,
   };
 }

@@ -404,10 +404,10 @@ export default function AdminAralSummerRegistryPanel({
                               ? "bg-rose-50 text-rose-700 border border-rose-200"
                               : "bg-blue-50 text-blue-700 border border-blue-200"
                           )}
-                          title={`Analytical Decision Support: ${row.rfRiskLevel} Risk (${row.rfConfidence}% confidence)`}
+                          title={`Analytical Decision Support: ${row.rfRiskLevel} Risk (${row.rfConfidence != null ? `${row.rfConfidence}% confidence` : "Not evaluated"})`}
                         >
                           <Sparkles size={10} />
-                          {row.rfRiskLevel} ({row.rfConfidence}%)
+                          {row.rfRiskLevel} {row.rfConfidence != null ? `(${row.rfConfidence}%)` : "(Not evaluated)"}
                         </span>
                       </td>
 
@@ -633,11 +633,11 @@ export default function AdminAralSummerRegistryPanel({
                   <div className="flex items-center gap-2">
                     <Sparkles size={15} className="text-blue-700" />
                     <h5 className="font-bold text-blue-950">
-                      Random Forest Risk Classification (Analytical Decision Support)
+                      Random Forest Pattern Analysis (Experimental Decision Support)
                     </h5>
                   </div>
                   <span className="rounded bg-blue-100 px-2 py-0.5 text-[9.5px] font-bold text-blue-800">
-                    Decision Support Only
+                    Experimental Layer
                   </span>
                 </div>
 
@@ -648,7 +648,9 @@ export default function AdminAralSummerRegistryPanel({
                   </div>
                   <div className="rounded-lg bg-white p-2.5 border border-blue-100">
                     <p className="text-[10px] uppercase font-bold text-slate-400">Model Confidence</p>
-                    <p className="mt-1 font-bold text-blue-800 text-sm">{selectedRecord.rfConfidence}%</p>
+                    <p className="mt-1 font-bold text-blue-800 text-sm">
+                      {selectedRecord.rfConfidence != null ? `${selectedRecord.rfConfidence}%` : "Not evaluated"}
+                    </p>
                   </div>
                 </div>
 
@@ -664,7 +666,7 @@ export default function AdminAralSummerRegistryPanel({
                 {/* Explicit Disclaimer required by DepEd ARAL Framework */}
                 <div className="pt-2 border-t border-blue-100">
                   <p className="text-[10px] text-blue-950 font-medium italic">
-                    "Random Forest serves as analytical decision support and does not supersede official DepEd assessment rules."
+                    "Random Forest provides experimental same-term pattern analysis for decision support and does not represent a next-term forecast or supersede official DepEd assessment rules."
                   </p>
                 </div>
               </div>

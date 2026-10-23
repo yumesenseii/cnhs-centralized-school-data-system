@@ -11,7 +11,7 @@ const td =
 const stickyHpsLabel =
   "sticky left-0 z-[25] border border-slate-200 bg-slate-100 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 whitespace-nowrap box-border w-[332px] min-w-[332px] max-w-[332px] shadow-[4px_0_10px_-2px_rgba(15,23,42,0.14)]";
 
-export default function EcrHpsRow({ config = [], onUpdate }) {
+export default function EcrHpsRow({ config = [], onUpdate, readOnly = false }) {
   const groups = ["WW", "PT", "QA"];
 
   return (
@@ -28,12 +28,19 @@ export default function EcrHpsRow({ config = [], onUpdate }) {
               min="1"
               step="1"
               value={row.highest_possible_score ?? ""}
-              onChange={(e) =>
+              onChange={(e) => {
+                if (readOnly || !onUpdate) return;
                 onUpdate(row.id, {
                   highest_possible_score: Number(e.target.value) || 0,
-                })
-              }
-              className="h-8 w-[52px] rounded border border-slate-200 bg-white px-1 text-center text-[11px] focus:border-cnhs-green focus:outline-none focus:ring-2 focus:ring-cnhs-green/20"
+                });
+              }}
+              readOnly={readOnly}
+              disabled={readOnly}
+              className={`h-8 w-[52px] rounded border px-1 text-center text-[11px] focus:outline-none focus:ring-2 ${
+                readOnly
+                  ? "border-slate-200 bg-slate-50 text-slate-500"
+                  : "border-slate-200 bg-white focus:border-cnhs-green focus:ring-cnhs-green/20"
+              }`}
               title={`${COMPONENT_LABELS[component]} item ${row.item_label} HPS`}
             />
           </td>,
@@ -52,12 +59,19 @@ export default function EcrHpsRow({ config = [], onUpdate }) {
                     max="1"
                     step="0.05"
                     value={row.component_weight ?? ""}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      if (readOnly || !onUpdate) return;
                       onUpdate(row.id, {
                         component_weight: Number(e.target.value) || 0,
-                      })
-                    }
-                    className="h-8 w-[52px] rounded border border-slate-200 bg-white px-1 text-center text-[11px] focus:border-cnhs-green focus:outline-none focus:ring-2 focus:ring-cnhs-green/20"
+                      });
+                    }}
+                    readOnly={readOnly}
+                    disabled={readOnly}
+                    className={`h-8 w-[52px] rounded border px-1 text-center text-[11px] focus:outline-none focus:ring-2 ${
+                      readOnly
+                        ? "border-slate-200 bg-slate-50 text-slate-500"
+                        : "border-slate-200 bg-white focus:border-cnhs-green focus:ring-cnhs-green/20"
+                    }`}
                     title={`${COMPONENT_LABELS[component]} weight`}
                   />
                 </td>,

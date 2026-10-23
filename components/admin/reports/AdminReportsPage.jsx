@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { CalendarDays, FileText, Layers3, Loader2 } from "lucide-react";
+import { CalendarDays, FileSpreadsheet, FileText, Layers3, Loader2 } from "lucide-react";
 import AppSelect from "@/components/shared/AppSelect";
 import Header from "@/components/layout/Header";
 import PageHelp from "@/components/shared/PageHelp";
@@ -13,7 +13,11 @@ import AttendanceReportTab from "@/components/admin/reports/tabs/AttendanceRepor
 import { useAppToast } from "@/components/shared/AppToast";
 import { useAdminReports } from "@/hooks/admin/useAdminReports";
 import { useAralAssessmentPeriod } from "@/hooks/useAralAssessmentPeriod";
-import { exportDynamicSchoolReportPdf } from "@/lib/admin/reportsExport";
+import {
+  exportDynamicSchoolReportPdf,
+  exportAdminReportsExcel,
+  buildDailyAttendanceExportSummary,
+} from "@/lib/admin/reportsExport";
 import { getSchoolDailyMonth } from "@/lib/supabase/queries/attendanceDaily";
 import { todayIsoDateManila } from "@/lib/attendance/sf2Daily";
 import { cn } from "@/lib/utils";
@@ -108,6 +112,27 @@ export default function AdminReportsPage() {
     }
   }
 
+  async function handleExportExcel() {
+    setExportBusy(true);
+    try {
+      await exportAdminReportsExcel({
+        classReports,
+        summary,
+        schoolSummary,
+        charts,
+        dailyAttendance: daily ? buildDailyAttendanceExportSummary(daily) : null,
+        schoolYear,
+        quarter,
+        generatedBy: "Principal / Admin",
+      });
+      showToast("School executive report Excel spreadsheet downloaded.");
+    } catch (err) {
+      showToast(err?.message ?? "Unable to export Excel.");
+    } finally {
+      setExportBusy(false);
+    }
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -158,7 +183,22 @@ export default function AdminReportsPage() {
                 triggerClassName="rounded-lg"
               />
             </div>
-            <div className="ml-auto flex items-center justify-end">
+            <div className="ml-auto flex items-center justify-end gap-2">
+              <button
+                type="button"
+                id="export-school-report-excel-btn"
+                disabled={loading || exportBusy}
+                onClick={handleExportExcel}
+                className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors disabled:opacity-60 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
+              >
+                {exportBusy ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <FileSpreadsheet size={12} className="text-[#246f54]" />
+                )}
+                Export Excel
+              </button>
+
               <button
                 type="button"
                 id="export-school-report-pdf-btn"

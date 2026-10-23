@@ -769,7 +769,8 @@ export default function AdminAralFacilitatorAssignPanel({
                             </div>
                           </div>
                         </div>
-                      )}
+                      )
+                      
 
                       {/* Summary Counts (4 clean boxes) */}
                       <div className="mt-3 grid grid-cols-2 gap-2 text-center text-xs">

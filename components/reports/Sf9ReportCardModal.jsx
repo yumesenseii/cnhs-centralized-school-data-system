@@ -7,20 +7,20 @@ import {
   Printer,
   Loader2,
   CheckCircle2,
-  Clock,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Minus,
   Plus,
   AlertTriangle,
   Lock,
+  FileSpreadsheet,
 } from "lucide-react";
 import {
   generateSf9PdfDocument,
   generateSf9SinglePageDocument,
   downloadSingleStudentSf9Pdf,
 } from "@/lib/reports/sf9PdfGenerator";
+import { downloadSingleStudentSf9Excel } from "@/lib/reports/sf9ExcelExporter";
 import {
   formatDepEdLearnerName,
   validateSf9ReleaseEligibility,
@@ -43,10 +43,10 @@ export default function Sf9ReportCardModal({
   const [selectedStudent, setSelectedStudent] = useState(studentData);
   const [currentPage, setCurrentPage] = useState(1);
   const [zoom, setZoom] = useState(100);
-  const [showPendingDetails, setShowPendingDetails] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generationError, setGenerationError] = useState("");
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
 
   const effectiveSectionName =
     section?.sectionName || sectionName || "Advisory Section";
@@ -63,7 +63,6 @@ export default function Sf9ReportCardModal({
       setSelectedStudent(formatStudentForSf9(studentData));
       setCurrentPage(1);
       setZoom(100);
-      setShowPendingDetails(false);
     }
   }, [studentData, isOpen]);
 
@@ -127,30 +126,6 @@ export default function Sf9ReportCardModal({
   const gradeLevel = selectedStudent.gradeLevel || section?.gradeLevel || "7";
   const hasMultipleStudents = Array.isArray(studentsList) && studentsList.length > 1;
 
-  // Map pending requirements with assigned teacher names from section curriculum
-  const pendingItemsWithTeachers = (validation.missing || []).map((item) => {
-    const cleanLabel = item.replace(", Term ", " — Term ");
-    const itemLower = item.toLowerCase();
-    let matchedTeacher = "";
-
-    if (Array.isArray(subjectsList) && subjectsList.length > 0) {
-      const found = subjectsList.find((s) => {
-        const sName = String(s.label || s.subject_name || s.subjectName || "").toLowerCase();
-        return itemLower.includes(sName) || (sName && itemLower.startsWith(sName.slice(0, 5)));
-      });
-      if (found?.teacherName) {
-        matchedTeacher = found.teacherName;
-      }
-    }
-
-    return {
-      label: cleanLabel,
-      teacherName: matchedTeacher || "Unassigned",
-    };
-  });
-
-  const pendingCount = pendingItemsWithTeachers.length;
-
   const studentSelectOptions = (studentsList || []).map((s) => ({
     value: String(s.id || s.studentId),
     label: `${formatDepEdLearnerName(s)} (${s.lrn || s.studentNumber || "—"})`,
@@ -161,7 +136,6 @@ export default function Sf9ReportCardModal({
     if (found) {
       setSelectedStudent(formatStudentForSf9(found));
       setCurrentPage(1);
-      setShowPendingDetails(false);
     }
   };
 
@@ -169,6 +143,18 @@ export default function Sf9ReportCardModal({
     if (!validation.isEligible) return;
     downloadSingleStudentSf9Pdf(selectedStudent, cleanSy);
     onStatusChange?.(selectedStudent.id || selectedStudent.studentId, "completed");
+  };
+
+  const handleExportExcel = async () => {
+    if (!validation.isEligible) return;
+    setIsExportingExcel(true);
+    try {
+      await downloadSingleStudentSf9Excel(selectedStudent, cleanSy);
+    } catch (err) {
+      console.error("[Sf9Modal] Excel export failed:", err);
+    } finally {
+      setIsExportingExcel(false);
+    }
   };
 
   const handlePrint = () => {
@@ -251,77 +237,6 @@ export default function Sf9ReportCardModal({
           </div>
         </div>
 
-        {/* SLIM CONTEXTUAL STATUS STRIP (Compact 40px) */}
-        {!validation.isEligible ? (
-          <div className="border-b border-amber-200/70 bg-amber-50/80 px-6 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200 shrink-0">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-amber-100/90 px-2 py-0.5 text-[11px] font-bold text-amber-900 dark:bg-amber-900/50 dark:text-amber-200">
-                  <Clock size={12} />
-                  <span>Preview only</span>
-                </span>
-                <span className="text-amber-800 dark:text-amber-300 hidden sm:inline text-xs">
-                  Some required grades are still pending.
-                </span>
-                <span className="font-semibold text-amber-950 dark:text-amber-100 shrink-0 text-xs">
-                  ({pendingCount} required grade{pendingCount === 1 ? "" : "s"} pending)
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowPendingDetails(!showPendingDetails)}
-                className="inline-flex shrink-0 cursor-pointer items-center gap-1 font-semibold text-amber-900 hover:text-amber-950 hover:underline dark:text-amber-300 dark:hover:text-amber-100 text-xs"
-              >
-                <span>{showPendingDetails ? "Hide Details" : "View Pending Grades"}</span>
-                <ChevronDown
-                  size={13}
-                  className={cn(
-                    "transition-transform duration-200",
-                    showPendingDetails && "rotate-180"
-                  )}
-                />
-              </button>
-            </div>
-
-            {/* EXPANDABLE PENDING GRADES WITH ASSIGNED CO-TEACHERS */}
-            {showPendingDetails && (
-              <div className="mt-2.5 pt-2.5 border-t border-amber-200/70 dark:border-amber-900/40">
-                <p className="text-[11px] font-bold text-amber-900 dark:text-amber-200 mb-2">
-                  Pending Learning Areas & Assigned Subject Teachers:
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-40 overflow-y-auto pr-1">
-                  {pendingItemsWithTeachers.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="rounded-lg border border-amber-200/90 bg-white/95 px-3 py-1.5 shadow-2xs dark:border-amber-900/60 dark:bg-slate-900/80"
-                    >
-                      <span className="font-semibold text-slate-800 dark:text-slate-100 block truncate text-[11.5px]">
-                        {item.label}
-                      </span>
-                      <span className="text-[10.5px] text-slate-500 dark:text-slate-400 block truncate">
-                        Teacher: <strong className="text-slate-700 dark:text-slate-300">{item.teacherName}</strong>
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="border-b border-emerald-200/70 bg-emerald-50/80 px-6 py-2.5 text-xs text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200 shrink-0">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100/90 px-2 py-0.5 text-[11px] font-bold text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-200">
-                <CheckCircle2 size={12} />
-                <span>SF9 is ready</span>
-              </span>
-              <span className="text-emerald-800 dark:text-emerald-300 text-xs">
-                All required grades are complete. This report card is ready for final download.
-              </span>
-            </div>
-          </div>
-        )}
-
         {/* SF9 DOCUMENT DESK CANVAS */}
         <div className="flex-1 bg-slate-100/80 p-4 relative overflow-auto flex flex-col items-center dark:bg-slate-950">
           {/* FLOATING NAVIGATION & ZOOM DOCK */}
@@ -398,8 +313,8 @@ export default function Sf9ReportCardModal({
           ) : pdfBlobUrl ? (
             <div
               style={{
-                width: `${Math.round(620 * (zoom / 100))}px`,
-                height: `${Math.round(820 * (zoom / 100))}px`,
+                width: `${Math.round(595 * (zoom / 100))}px`,
+                height: `${Math.round(842 * (zoom / 100))}px`,
                 minHeight: "540px",
               }}
               className="bg-white rounded-xs shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200/90 overflow-hidden shrink-0 transition-all duration-150"
@@ -447,8 +362,23 @@ export default function Sf9ReportCardModal({
               <>
                 <button
                   type="button"
+                  onClick={handleExportExcel}
+                  disabled={isExportingExcel}
+                  title="Download filled official Report Card 2026-2027.xlsx"
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 shadow-2xs transition dark:border-emerald-700/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+                >
+                  {isExportingExcel ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <FileSpreadsheet size={13} className="text-emerald-700 dark:text-emerald-400" />
+                  )}
+                  <span>Export Excel (.xlsx)</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={handlePrint}
-                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
                 >
                   <Printer size={13} />
                   <span>Print</span>
@@ -460,7 +390,7 @@ export default function Sf9ReportCardModal({
                   className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-cnhs-green-dark px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#1b5842] transition"
                 >
                   <Download size={13} />
-                  <span>Download Final SF9</span>
+                  <span>Download Final SF9 (PDF)</span>
                 </button>
               </>
             ) : (

@@ -3,20 +3,19 @@
 import { useState, useMemo, useEffect } from "react";
 import {
   Save,
-  CheckCircle2,
-  AlertCircle,
   Eye,
   ArrowRight,
   Bookmark,
-  CalendarX2,
   Loader2,
-  Info,
 } from "lucide-react";
-import { evaluateGstScore, formatGradeSection } from "@/lib/monitoring/philIriEvaluation";
+import { formatGradeSection } from "@/lib/monitoring/philIriEvaluation";
 import { saveBatchClassGstScores } from "@/lib/supabase/queries/monitoring";
 import { useAppToast } from "@/components/shared/AppToast";
 import StatCard from "@/components/dashboard/StatCard";
+import AralClassDropdown from "@/components/teacher/aral-program/AralClassDropdown";
 import LearnerName from "@/components/shared/LearnerName";
+import { useAralAssessmentPeriod } from "@/hooks/useAralAssessmentPeriod";
+import { isAralPeriodEditable } from "@/lib/monitoring/assessmentTimeline";
 import { cn } from "@/lib/utils";
 
 // Helper to build initial row edits synchronously from learners or saved local draft
@@ -60,6 +59,9 @@ function buildInitialRowEdits(learners, classId, schoolYear, aralPeriod) {
 
 export default function AralClassGstSpreadsheet({
   classInfo = {},
+  classes = [],
+  selectedClassId = null,
+  onSelectClass,
   learners = [],
   teacherId = null,
   schoolYear = "SY 2026-2027",
@@ -72,6 +74,10 @@ export default function AralClassGstSpreadsheet({
   const { showToast } = useAppToast();
   const [saving, setSaving] = useState(false);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
+
+  const { period: currentAralPeriod, fromConfig } = useAralAssessmentPeriod();
+  // Safe lock: If unconfigured, do not silently default to editable BOSY.
+  const isPeriodEditable = Boolean(fromConfig) && isAralPeriodEditable(aralPeriod, currentAralPeriod);
 
   // Draft state initialized synchronously (prevents empty-render flicker)
   const [rowEdits, setRowEdits] = useState(() =>
@@ -105,6 +111,7 @@ export default function AralClassGstSpreadsheet({
 
   // Handle score change for a learner (automatically clears absent state)
   function handleScoreChange(studentId, val) {
+    if (!isPeriodEditable) return;
     setRowEdits((prev) => {
       const current = prev[studentId] || {};
       return {
@@ -122,6 +129,7 @@ export default function AralClassGstSpreadsheet({
 
   // Handle absent toggle for a learner (clears score input and sets absent)
   function handleAbsentToggle(studentId, currentAbsent) {
+    if (!isPeriodEditable) return;
     const nextAbsent = !currentAbsent;
     setRowEdits((prev) => {
       const current = prev[studentId] || {};
@@ -158,10 +166,10 @@ export default function AralClassGstSpreadsheet({
 
   // Handle Paste: paste column of scores down consecutive rows
   function handlePaste(e, startIndex) {
+    if (!isPeriodEditable) return;
     const clipboardText = e.clipboardData?.getData("text") || "";
     if (!clipboardText) return;
 
-    // Check if paste contains line breaks (column paste)
     const lines = clipboardText
       .split(/\r?\n/)
       .map((line) => line.trim())
@@ -205,10 +213,6 @@ export default function AralClassGstSpreadsheet({
   }
 
   // 1. Authoritative 4 compact counters based on officially saved records:
-  // - Total Learners
-  // - Completed This Term (only officially saved records, not unsaved browser drafts)
-  // - Needs Reading Assessment (saved score < 28)
-  // - Pending / For Reschedule (unassessed + absent)
   const finalizedStats = useMemo(() => {
     let completedThisTerm = 0;
     let needsReadingAssessment = 0;
@@ -242,7 +246,7 @@ export default function AralClassGstSpreadsheet({
     };
   }, [learners]);
 
-  // 2. Dashboard-matched 4 KPI stat definitions (reusing Teacher Dashboard StatCard style)
+  // 2. Dashboard-matched 4 KPI stat definitions (reusing standard StatCard with neutral default styling)
   const kpiStats = useMemo(
     () => [
       {
@@ -261,23 +265,23 @@ export default function AralClassGstSpreadsheet({
       },
       {
         id: "needs-ira",
-        label: "Needs Reading Assessment",
+        label: "Needs Further Assessment",
         value: finalizedStats.needsReadingAssessment,
-        subtext: "Requires individual assessment",
-        variant: finalizedStats.needsReadingAssessment > 0 ? "warning" : "default",
+        subtext: "Score below 28 benchmark",
+        variant: "default",
       },
       {
         id: "pending-reschedule",
-        label: "Pending / For Reschedule",
+        label: "Pending / Reschedule",
         value: finalizedStats.pendingOrReschedule,
-        subtext: "Not yet completed",
+        subtext: "Awaiting assessment or absent",
         variant: "default",
       },
     ],
     [finalizedStats]
   );
 
-  // 2. Draft/Live tallies used inside the Review Results summary modal:
+  // 3. Draft/Live tallies used inside Review Results modal
   const draftSummary = useMemo(() => {
     let enteredCount = 0;
     let atGradeCount = 0;
@@ -318,6 +322,10 @@ export default function AralClassGstSpreadsheet({
 
   // Action: Save Draft (saves locally to state / localStorage)
   function handleSaveDraft() {
+    if (!isPeriodEditable) {
+      showToast("Cannot save draft: Assessment period is locked for editing.");
+      return;
+    }
     try {
       const draftKey = `aral_gst_draft_${classInfo.classId}_${schoolYear}_${aralPeriod}`;
       localStorage.setItem(draftKey, JSON.stringify(rowEdits));
@@ -340,6 +348,11 @@ export default function AralClassGstSpreadsheet({
 
   // Action: Save All Results (commits validated records to database)
   async function handleSaveAllResults() {
+    if (!isPeriodEditable) {
+      showToast("Cannot save: Assessment period is locked for editing.");
+      return;
+    }
+
     // Validate score ranges (0 to 40)
     const hasInvalidScores = learners.some((l) => {
       const edit = rowEdits[l.studentId];
@@ -386,6 +399,7 @@ export default function AralClassGstSpreadsheet({
         assessmentPeriod: aralPeriod || "BOSY",
         subject: classInfo.subject || "English",
         scores: scoresPayload,
+        currentAssessmentPeriod: currentAralPeriod,
       });
 
       if (error) {
@@ -400,7 +414,7 @@ export default function AralClassGstSpreadsheet({
       showToast(`Successfully saved GST results for ${data?.count || 0} learners.`);
       await onRefresh?.();
     } catch (err) {
-      console.error(err);
+      console.error("handleSaveAllResults error:", err?.message || err);
       showToast(err?.message || "Failed to save class GST results. Please try again.");
     } finally {
       setSaving(false);
@@ -411,28 +425,38 @@ export default function AralClassGstSpreadsheet({
 
   return (
     <div className="space-y-4">
-      {/* 1. Header Bar: Class Info & Batch Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-slate-900">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300">
-              {classInfo.language || "English"}
-            </span>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-              {gradeSectionLabel}
-            </h2>
-          </div>
-          <p className="mt-0.5 text-xs text-slate-500">
-            GST Screening · {schoolYear} · {aralPeriod} · {learners.length} Enrolled Learners
-          </p>
+      {/* Locked Notice Banner */}
+      {!isPeriodEditable && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
+          {!fromConfig
+            ? "Reading assessment period is not configured. Records are view-only."
+            : `Assessment period "${aralPeriod}" is locked for editing. Viewing historical records only.`}
+        </div>
+      )}
+
+      {/* 1. Class Selector & Batch Actions Row (Simple horizontal section with thin divider, no large rounded card) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-white/10">
+        <div className="flex items-center gap-2.5">
+          <label
+            htmlFor="aral-class-select"
+            className="text-xs font-semibold text-slate-600 dark:text-slate-400 shrink-0"
+          >
+            Class:
+          </label>
+          <AralClassDropdown
+            classes={classes}
+            selectedClassId={selectedClassId}
+            onSelectClass={onSelectClass}
+          />
         </div>
 
-        {/* Batch Action Buttons */}
+        {/* Batch Action Buttons: Save Draft (secondary), Review (secondary), Save All Results (primary CNHS green) */}
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={handleSaveDraft}
-            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
+            disabled={!isPeriodEditable}
+            className="inline-flex h-8.5 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Bookmark size={13} className="text-slate-400" />
             <span>Save Draft</span>
@@ -441,7 +465,7 @@ export default function AralClassGstSpreadsheet({
           <button
             type="button"
             onClick={() => setIsReviewOpen(true)}
-            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
+            className="inline-flex h-8.5 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
           >
             <Eye size={13} className="text-slate-400" />
             <span>Review Results</span>
@@ -450,8 +474,8 @@ export default function AralClassGstSpreadsheet({
           <button
             type="button"
             onClick={handleSaveAllResults}
-            disabled={saving}
-            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl bg-[#246f54] px-4 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-[#1e5d46] disabled:opacity-60"
+            disabled={!isPeriodEditable || saving}
+            className="inline-flex h-8.5 cursor-pointer items-center gap-1.5 rounded-lg bg-[#246f54] px-3.5 text-xs font-semibold text-white shadow-2xs transition-colors hover:bg-[#1b5842] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? (
               <Loader2 size={13} className="animate-spin" />
@@ -463,34 +487,30 @@ export default function AralClassGstSpreadsheet({
         </div>
       </div>
 
-      {/* 2. 4 Dashboard-Matched Summary Cards */}
+      {/* 2. 4 Standard Dashboard-Matched Summary Cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {kpiStats.map((stat) => (
           <StatCard key={stat.id} stat={stat} />
         ))}
       </div>
 
-      {/* 3. Fast Entry Instruction */}
-      <div className="flex items-center gap-2 rounded-xl border border-slate-200/80 bg-slate-50/70 px-3.5 py-2 text-[11px] text-slate-600 dark:border-white/10 dark:bg-slate-800/40 dark:text-slate-300">
-        <Info size={14} className="shrink-0 text-slate-400" />
-        <span>
-          <strong>Fast Entry:</strong> Type score (0–40) and press <kbd className="rounded border border-slate-200 bg-white px-1 py-0.5 font-mono text-[10px] shadow-2xs dark:border-white/10 dark:bg-slate-800">Enter</kbd> to move down. You can also paste a vertical column from Excel or Sheets. Click a learner's name to view their complete reading history.
-        </span>
-      </div>
+      {/* 3. Fast Entry Instruction (Muted helper text, no blue banner) */}
+      <p className="text-[11.5px] text-slate-500 dark:text-slate-400">
+        Type score (0–40) and press <kbd className="rounded border border-slate-200 bg-slate-50 px-1 py-0.5 font-mono text-[10.5px] text-slate-700 shadow-2xs dark:border-white/10 dark:bg-slate-800 dark:text-slate-300">Enter</kbd> to move down, or paste a vertical column from Excel or Sheets. Click a learner&apos;s name to view their complete reading history.
+      </p>
 
-      {/* 4. Main Spreadsheet Table */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs dark:border-white/10 dark:bg-slate-900">
+      {/* 4. Main Spreadsheet Table (Visually dominant school record sheet style) */}
+      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xs dark:border-white/10 dark:bg-slate-900">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="border-b border-slate-200/80 bg-slate-50/75 font-semibold uppercase tracking-wider text-[10px] text-slate-500 dark:border-white/5 dark:bg-slate-800/40">
+            <thead className="border-b border-slate-200 bg-slate-50/80 font-semibold uppercase tracking-wider text-[10px] text-slate-500 dark:border-white/5 dark:bg-slate-800/40">
               <tr>
-                <th className="w-10 px-3 py-2.5 text-center whitespace-nowrap">#</th>
-                <th className="px-4 py-2.5 whitespace-nowrap">Learner</th>
-                <th className="w-28 px-4 py-2.5 whitespace-nowrap">LRN</th>
-                <th className="w-48 px-4 py-2.5 whitespace-nowrap">GST Score / 40</th>
-                <th className="w-36 px-4 py-2.5 whitespace-nowrap">Result</th>
-                <th className="w-24 px-4 py-2.5 whitespace-nowrap">Status</th>
-                <th className="w-32 px-4 py-2.5 text-right whitespace-nowrap">Action</th>
+                <th className="w-10 px-3 py-2 text-center whitespace-nowrap">#</th>
+                <th className="px-3 py-2 whitespace-nowrap">Learner</th>
+                <th className="w-36 px-3 py-2 whitespace-nowrap">GST Score / 40</th>
+                <th className="w-24 px-3 py-2 text-center whitespace-nowrap">Absent</th>
+                <th className="w-44 px-3 py-2 whitespace-nowrap">Result</th>
+                <th className="w-28 px-3 py-2 text-right whitespace-nowrap">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
@@ -509,29 +529,28 @@ export default function AralClassGstSpreadsheet({
                 const isOutOfRange =
                   hasScore && (isNaN(numScore) || numScore < 0 || numScore > 40);
 
-                // 1. Result = Reading interpretation only
-                // Allowed values: "At Grade Level", "Needs Assessment", "Not Recorded", "For Reschedule"
+                // 1. Result: Neutral dark text by default
+                // - At Grade Level → dark neutral text
+                // - Needs Assessment → dark neutral text
+                // - For Reschedule → amber
+                // - Not Recorded → muted gray
                 let resultText = "Not Recorded";
-                let resultBadgeClass = null;
+                let resultClass = "text-slate-400 dark:text-slate-500";
 
                 if (edit.isAbsent) {
                   resultText = "For Reschedule";
-                  resultBadgeClass = "border-slate-200 bg-slate-100 text-slate-700";
+                  resultClass = "font-medium text-amber-700 dark:text-amber-400";
                 } else if (isValidScore) {
                   if (numScore >= 28) {
                     resultText = "At Grade Level";
-                    resultBadgeClass = "border-emerald-200 bg-emerald-50 text-emerald-800";
+                    resultClass = "font-medium text-slate-800 dark:text-slate-200";
                   } else {
-                    resultText = "Needs Assessment";
-                    resultBadgeClass = "border-amber-200 bg-amber-50 text-amber-800";
+                    resultText = "Needs Further Assessment";
+                    resultClass = "font-medium text-slate-800 dark:text-slate-200";
                   }
                 }
 
-                // 2. Status = Save state only
-                // Allowed values: "Saved", "Unsaved", "Draft", "Pending"
-                let statusText = "Pending";
-                let statusBadgeClass = null;
-
+                // 2. Status indicator
                 const isSavedInDb =
                   !edit.isDirty &&
                   (learner.philIriScore != null ||
@@ -540,21 +559,30 @@ export default function AralClassGstSpreadsheet({
                     learner.screeningStatus === "Absent / For Reschedule" ||
                     learner.rawPayload?.isAbsent);
 
+                let statusBadge = null;
                 if (edit.isDirty) {
-                  statusText = "Unsaved";
-                  statusBadgeClass = "border-amber-200 bg-amber-50 text-amber-800";
+                  statusBadge = (
+                    <span className="ml-1.5 text-[10px] font-normal text-amber-600 dark:text-amber-400">
+                      · Unsaved
+                    </span>
+                  );
                 } else if (edit.isDraft) {
-                  statusText = "Draft";
-                  statusBadgeClass = "border-slate-200 bg-slate-100 text-slate-700";
+                  statusBadge = (
+                    <span className="ml-1.5 text-[10px] font-normal text-slate-400 dark:text-slate-500">
+                      · Draft
+                    </span>
+                  );
                 } else if (isSavedInDb) {
-                  statusText = "Saved";
-                  statusBadgeClass = "border-emerald-200 bg-emerald-50 text-emerald-800";
+                  statusBadge = (
+                    <span className="ml-1.5 text-[10px] font-normal text-slate-400 dark:text-slate-500">
+                      · Saved
+                    </span>
+                  );
                 }
 
-                // 3. Action = Next step only
-                // Blank score: no action (dash)
-                // Score 28–40 or Absent: "View Record"
-                // Score 0–27: "Continue"
+                // 3. Action:
+                // - View Record = text link
+                // - Continue = small outlined/text action, not a filled button
                 let actionElement = (
                   <span className="text-slate-300 text-xs">—</span>
                 );
@@ -565,21 +593,28 @@ export default function AralClassGstSpreadsheet({
                       <button
                         type="button"
                         onClick={() => onOpenRecord?.(learner)}
-                        className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 text-[11px] font-medium text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 transition-colors cursor-pointer whitespace-nowrap shrink-0 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
+                        className="text-xs font-medium text-slate-600 hover:text-slate-900 hover:underline underline-offset-2 transition-colors cursor-pointer dark:text-slate-400 dark:hover:text-slate-200 whitespace-nowrap"
                       >
-                        <Eye size={12} className="text-slate-400" />
-                        <span>View Record</span>
+                        View Record
                       </button>
                     );
                   } else if (isValidScore && numScore < 28) {
                     actionElement = (
                       <button
                         type="button"
-                        onClick={() => onOpenIra?.(learner)}
-                        className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 text-[11px] font-medium text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 transition-colors cursor-pointer whitespace-nowrap shrink-0 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
+                        onClick={() =>
+                          onOpenIra?.({
+                            ...learner,
+                            philIriScore:
+                              edit.score !== "" && edit.score != null
+                                ? Number(edit.score)
+                                : learner.philIriScore,
+                          })
+                        }
+                        className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors cursor-pointer shadow-2xs dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 whitespace-nowrap"
                       >
                         <span>Continue</span>
-                        <ArrowRight size={12} className="text-slate-400" />
+                        <ArrowRight size={11} className="text-slate-400" />
                       </button>
                     );
                   }
@@ -591,128 +626,102 @@ export default function AralClassGstSpreadsheet({
                     className="hover:bg-slate-50/50 transition-colors"
                   >
                     {/* Index */}
-                    <td className="px-3 py-2 text-center font-mono text-[11px] text-slate-400 whitespace-nowrap">
+                    <td className="px-3 py-1.5 text-center font-mono text-[11px] text-slate-400 whitespace-nowrap">
                       {idx + 1}
                     </td>
 
-                    {/* Learner Name (Clickable to open reading record modal) */}
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <button
-                        type="button"
-                        onClick={() => onOpenRecord?.(learner)}
-                        className="font-semibold text-slate-900 hover:text-[#246f54] hover:underline text-left cursor-pointer dark:text-white transition-colors truncate block max-w-[220px] sm:max-w-none"
-                        title="Click to view complete reading assessment history"
-                      >
-                        <LearnerName
-                          firstName={learner.firstName}
-                          lastName={learner.lastName}
-                          name={learner.name}
-                        />
-                      </button>
-                    </td>
-
-                    {/* LRN */}
-                    <td className="px-4 py-2 font-mono text-[11px] text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                      {learner.lrn || learner.studentNumber || "—"}
-                    </td>
-
-                    {/* GST Score / 40 + Inline Absent Toggle */}
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <div className="relative flex items-center">
-                          <input
-                            type="number"
-                            data-row-idx={idx}
-                            min={0}
-                            max={40}
-                            value={edit.score}
-                            disabled={edit.isAbsent}
-                            placeholder={edit.isAbsent ? "Absent" : "—"}
-                            onChange={(e) =>
-                              handleScoreChange(learner.studentId, e.target.value)
-                            }
-                            onKeyDown={(e) => handleKeyDown(e, idx)}
-                            onPaste={(e) => handlePaste(e, idx)}
-                            className={cn(
-                              "h-7 w-16 rounded-md border px-2 font-mono text-xs font-semibold tabular-nums text-slate-800 shadow-2xs transition focus:outline-hidden dark:text-white",
-                              edit.isAbsent
-                                ? "border-slate-200 bg-slate-100 text-slate-400 opacity-60 cursor-not-allowed dark:border-white/10 dark:bg-slate-800/60"
-                                : isOutOfRange
-                                ? "border-red-400 bg-red-50/20 text-red-900 focus:border-red-500 focus:ring-1 focus:ring-red-200 dark:border-red-500 dark:bg-red-950/20 dark:text-red-300"
-                                : edit.isDirty
-                                ? "border-amber-400 bg-amber-50/20 text-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-200 dark:border-amber-500 dark:bg-amber-950/20"
-                                : "border-slate-200 bg-white focus:border-slate-400 focus:ring-1 focus:ring-slate-200 dark:border-white/10 dark:bg-slate-800"
-                            )}
-                          />
-                          <span className="ml-1 font-mono text-[10px] text-slate-400">
-                            / 40
-                          </span>
-                        </div>
-
+                    {/* Learner Name + LRN underneath */}
+                    <td className="px-3 py-1.5 whitespace-nowrap">
+                      <div>
                         <button
                           type="button"
-                          onClick={() =>
-                            handleAbsentToggle(learner.studentId, edit.isAbsent)
-                          }
-                          title={edit.isAbsent ? "Click to clear absent status" : "Mark learner as Absent / For Reschedule"}
-                          className={cn(
-                            "inline-flex h-7 items-center gap-1 rounded-md border px-2 text-[10.5px] font-medium transition cursor-pointer shrink-0",
-                            edit.isAbsent
-                              ? "border-slate-400 bg-slate-200 text-slate-800 font-semibold dark:border-white/20 dark:bg-slate-700 dark:text-white"
-                              : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 dark:border-white/10 dark:bg-slate-800 dark:text-slate-400"
-                          )}
+                          onClick={() => onOpenRecord?.(learner)}
+                          className="font-medium text-slate-900 hover:text-[#246f54] hover:underline text-left cursor-pointer dark:text-white transition-colors truncate block max-w-[220px] sm:max-w-none text-xs"
+                          title="Click to view complete reading assessment history"
                         >
-                          <CalendarX2 size={11} className={edit.isAbsent ? "text-slate-700 dark:text-white" : "text-slate-400"} />
-                          <span>Absent</span>
+                          <LearnerName
+                            firstName={learner.firstName}
+                            lastName={learner.lastName}
+                            name={learner.name}
+                          />
                         </button>
+                        <div className="font-mono text-[10.5px] text-slate-400 dark:text-slate-500">
+                          {learner.lrn || learner.studentNumber ? (
+                            `LRN: ${learner.lrn || learner.studentNumber}`
+                          ) : (
+                            "—"
+                          )}
+                        </div>
+                      </div>
+                    </td>
 
-                        {/* Inline validation message */}
+                    {/* GST Score / 40 Input */}
+                    <td className="px-3 py-1.5 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          data-row-idx={idx}
+                          min={0}
+                          max={40}
+                          value={edit.score}
+                          disabled={!isPeriodEditable || edit.isAbsent}
+                          placeholder={edit.isAbsent ? "—" : "—"}
+                          onChange={(e) =>
+                            handleScoreChange(learner.studentId, e.target.value)
+                          }
+                          onKeyDown={(e) => handleKeyDown(e, idx)}
+                          onPaste={(e) => handlePaste(e, idx)}
+                          className={cn(
+                            "h-7 w-14 rounded border px-2 text-center font-mono text-xs font-semibold tabular-nums text-slate-800 shadow-2xs transition focus:outline-hidden dark:text-white",
+                            !isPeriodEditable
+                              ? "border-slate-200 bg-slate-100 text-slate-400 opacity-70 cursor-not-allowed dark:border-white/10 dark:bg-slate-800/60"
+                              : edit.isAbsent
+                              ? "border-slate-200 bg-slate-100 text-slate-400 opacity-60 cursor-not-allowed dark:border-white/10 dark:bg-slate-800/60"
+                              : isOutOfRange
+                              ? "border-red-400 bg-red-50/20 text-red-900 focus:border-red-500 focus:ring-1 focus:ring-red-200 dark:border-red-500 dark:bg-red-950/20 dark:text-red-300"
+                              : edit.isDirty
+                              ? "border-amber-400 bg-amber-50/20 text-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-200 dark:border-amber-500 dark:bg-amber-950/20"
+                              : "border-slate-200 bg-white focus:border-slate-400 focus:ring-1 focus:ring-slate-200 dark:border-white/10 dark:bg-slate-800"
+                          )}
+                        />
+                        <span className="font-mono text-[10px] text-slate-400">
+                          / 40
+                        </span>
+
                         {isOutOfRange && (
-                          <span className="ml-1 text-[10px] font-medium text-red-600 dark:text-red-400 whitespace-nowrap">
-                            Enter 0–40 only
+                          <span className="text-[10px] font-medium text-red-600 dark:text-red-400 whitespace-nowrap ml-1">
+                            0–40 only
                           </span>
                         )}
                       </div>
                     </td>
 
-                    {/* Result (reading interpretation only) */}
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      {resultBadgeClass ? (
-                        <span
-                          className={cn(
-                            "inline-flex h-6 items-center rounded-md border px-2 text-[11px] font-medium whitespace-nowrap",
-                            resultBadgeClass
-                          )}
-                        >
-                          {resultText}
-                        </span>
-                      ) : (
-                        <span className="text-[11px] text-slate-400 whitespace-nowrap">
-                          {resultText}
-                        </span>
-                      )}
+                    {/* Dedicated Absent Checkbox Column */}
+                    <td className="px-3 py-1.5 text-center whitespace-nowrap">
+                      <label className={cn("inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 select-none", isPeriodEditable ? "cursor-pointer" : "cursor-not-allowed opacity-60")}>
+                        <input
+                          type="checkbox"
+                          checked={edit.isAbsent}
+                          disabled={!isPeriodEditable}
+                          onChange={() =>
+                            handleAbsentToggle(learner.studentId, edit.isAbsent)
+                          }
+                          className="h-3.5 w-3.5 rounded border-slate-300 text-[#246f54] focus:ring-[#246f54] cursor-pointer disabled:cursor-not-allowed"
+                        />
+                        <span className="text-[11px]">Absent</span>
+                      </label>
                     </td>
 
-                    {/* Status (save state only) */}
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      {statusBadgeClass ? (
-                        <span
-                          className={cn(
-                            "inline-flex h-6 items-center rounded-md border px-2 text-[11px] font-medium whitespace-nowrap",
-                            statusBadgeClass
-                          )}
-                        >
-                          {statusText}
-                        </span>
-                      ) : (
-                        <span className="text-[11px] text-slate-400 whitespace-nowrap">
-                          {statusText}
-                        </span>
-                      )}
+                    {/* Result (with subtle saved/unsaved status) */}
+                    <td className="px-3 py-1.5 whitespace-nowrap">
+                      <span className={cn("text-xs", resultClass)}>
+                        {resultText}
+                      </span>
+                      {statusBadge}
                     </td>
 
-                    {/* Action (next step only) */}
-                    <td className="px-4 py-2 text-right whitespace-nowrap">
+                    {/* Action (Continue button or View Record text link) */}
+                    <td className="px-3 py-1.5 text-right whitespace-nowrap">
                       {actionElement}
                     </td>
                   </tr>
@@ -726,7 +735,7 @@ export default function AralClassGstSpreadsheet({
       {/* 5. Review Results Dialog */}
       {isReviewOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-white/10 dark:bg-slate-900">
+          <div className="w-full max-w-lg rounded-lg border border-slate-200 bg-white p-5 shadow-xl dark:border-white/10 dark:bg-slate-900">
             <h3 className="text-base font-bold text-slate-900 dark:text-white">
               Review Class GST Results
             </h3>
@@ -734,22 +743,22 @@ export default function AralClassGstSpreadsheet({
               {gradeSectionLabel} · {classInfo.language || "English"} ({learners.length} learners)
             </p>
 
-            <div className="mt-4 space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-4 text-xs dark:border-white/5 dark:bg-slate-800/40">
+            <div className="mt-4 space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3.5 text-xs dark:border-white/5 dark:bg-slate-800/40">
               <div className="flex justify-between py-1 border-b border-slate-200/60 dark:border-white/5">
                 <span className="text-slate-600 dark:text-slate-400">Total Enrolled:</span>
                 <span className="font-bold text-slate-900 dark:text-white">{draftSummary.total}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200/60 dark:border-white/5">
-                <span className="text-[#246f54] font-medium dark:text-emerald-400">At Grade Level (28–40):</span>
-                <span className="font-bold text-[#246f54]">{draftSummary.atGradeCount}</span>
+                <span className="text-slate-700 dark:text-slate-300">At Grade Level (28–40):</span>
+                <span className="font-bold text-slate-900 dark:text-white">{draftSummary.atGradeCount}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200/60 dark:border-white/5">
-                <span className="text-amber-800 font-medium dark:text-amber-400">Needs Assessment (0–27):</span>
-                <span className="font-bold text-amber-800 dark:text-amber-400">{draftSummary.needsIraCount}</span>
+                <span className="text-slate-700 dark:text-slate-300">Needs Further Assessment (0–27):</span>
+                <span className="font-bold text-slate-900 dark:text-white">{draftSummary.needsIraCount}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200/60 dark:border-white/5">
-                <span className="text-slate-700 font-medium dark:text-slate-300">For Reschedule:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">{draftSummary.absentCount}</span>
+                <span className="text-amber-700 dark:text-amber-400">For Reschedule:</span>
+                <span className="font-bold text-amber-700 dark:text-amber-400">{draftSummary.absentCount}</span>
               </div>
               <div className="flex justify-between py-1">
                 <span className="text-slate-500 dark:text-slate-400">Not Recorded:</span>
@@ -757,15 +766,15 @@ export default function AralClassGstSpreadsheet({
               </div>
             </div>
 
-            <p className="mt-3 text-[11px] text-slate-400">
-              Saving will commit scores for {draftSummary.enteredCount} learners and record {draftSummary.absentCount} absences with null scores. Learners with scores 28–40 complete screening.
+            <p className="mt-3 text-[11px] text-slate-500">
+              Saving will commit scores for {draftSummary.enteredCount} learners and record {draftSummary.absentCount} absences with null scores.
             </p>
 
             <div className="mt-5 flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setIsReviewOpen(false)}
-                className="inline-flex h-9 cursor-pointer items-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
+                className="inline-flex h-8.5 cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50 transition dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
               >
                 Back to Editing
               </button>
@@ -773,7 +782,7 @@ export default function AralClassGstSpreadsheet({
                 type="button"
                 onClick={handleSaveAllResults}
                 disabled={saving}
-                className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl bg-[#246f54] px-4 text-xs font-semibold text-white shadow-xs hover:bg-[#1e5d46] transition disabled:opacity-60"
+                className="inline-flex h-8.5 cursor-pointer items-center gap-1.5 rounded-lg bg-[#246f54] px-4 text-xs font-semibold text-white shadow-2xs hover:bg-[#1b5842] transition disabled:opacity-60"
               >
                 {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
                 <span>Confirm & Save All</span>

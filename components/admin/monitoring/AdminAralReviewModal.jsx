@@ -55,6 +55,8 @@ export default function AdminAralReviewModal({
   const primaryGrade = subjects[0]?.grade ?? learner.classSubjectGrade ?? learner.academic_grade ?? null;
   const teacherConcern = formatTeacherReadingConcern(learner);
 
+  const canApprove = (learner.displayStatus === "submitted" || learner.status === "submitted");
+
   const handleReturnClick = () => {
     if (!returning) {
       setReturning(true);
@@ -165,6 +167,12 @@ export default function AdminAralReviewModal({
             </div>
           ) : null}
 
+          {!canApprove && !locked ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
+              <span className="font-semibold">Awaiting Teacher Review:</span> This learner was flagged by academic screening, but the teacher has not yet submitted an official ARAL referral. Approval is restricted until the referral is submitted.
+            </div>
+          ) : null}
+
           {locked ? (
             <div className="rounded-xl bg-emerald-50 px-3.5 py-2.5 text-center text-xs font-semibold text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
               ✓ Approved for Assessment
@@ -216,9 +224,10 @@ export default function AdminAralReviewModal({
                   </button>
                   <button
                     type="button"
-                    disabled={busy}
+                    disabled={busy || !canApprove}
                     onClick={onApprove}
-                    className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl bg-cnhs-green-dark px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-[#246f54] active:scale-95 disabled:opacity-50"
+                    title={!canApprove ? "Referral must be submitted by teacher before principal approval" : undefined}
+                    className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl bg-cnhs-green-dark px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-[#246f54] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {busy ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
                     Approve for Assessment

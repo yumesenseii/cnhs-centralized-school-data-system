@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, X } from "lucide-react";
+import { Download, Loader2, X } from "lucide-react";
 import {
   invalidateAttendanceAnalyticsCache,
 } from "@/lib/supabase/queries/attendance";
@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import AppSelect from "@/components/shared/AppSelect";
 import AdminTablePagination from "@/components/shared/AdminTablePagination";
 import { fmtAttendance } from "@/components/attendance/attendanceUiShared";
+import ExportAttendanceReportModal from "@/components/attendance/ExportAttendanceReportModal";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -55,6 +56,10 @@ export default function AdminAttendancePanel({
   const [detailData, setDetailData] = useState(null);
   const [detailFilter, setDetailFilter] = useState("follow_up"); // 'follow_up' | 'all'
   const detailPanelRef = useRef(null);
+
+  // Export report modal state
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [sectionExportModalOpen, setSectionExportModalOpen] = useState(false);
 
   const reload = useCallback(
     async (override = null) => {
@@ -301,6 +306,16 @@ export default function AdminAttendancePanel({
               className="inline-flex h-9 cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
             >
               Reset
+            </button>
+            <button
+              type="button"
+              onClick={() => setExportModalOpen(true)}
+              disabled={loading || refreshing || !daily}
+              title="Export School-Wide Attendance Report (PDF or Excel)"
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-cnhs-green/30 bg-cnhs-green-soft/40 px-3 text-[11px] font-semibold text-cnhs-green-dark transition-colors hover:border-cnhs-green hover:bg-cnhs-green-soft disabled:opacity-50"
+            >
+              <Download size={13} />
+              <span>Export Report</span>
             </button>
           </div>
         </div>
@@ -574,17 +589,29 @@ export default function AdminAttendancePanel({
                 {daily?.monthName || "Month"} {detailData?.year || filters.schoolYear} · Read-only Principal View
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedSection(null);
-                setDetailData(null);
-              }}
-              className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
-            >
-              <X size={13} />
-              Close Details
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSectionExportModalOpen(true)}
+                disabled={detailLoading || !detailData}
+                title="Export section attendance report"
+                className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-cnhs-green/30 bg-cnhs-green-soft/40 px-2.5 text-[11px] font-semibold text-cnhs-green-dark transition-colors hover:border-cnhs-green hover:bg-cnhs-green-soft disabled:opacity-50"
+              >
+                <Download size={13} />
+                <span>Export Section</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedSection(null);
+                  setDetailData(null);
+                }}
+                className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                <X size={13} />
+                Close Details
+              </button>
+            </div>
           </div>
 
           {detailLoading ? (
@@ -736,6 +763,29 @@ export default function AdminAttendancePanel({
             </>
           )}
         </section>
+      ) : null}
+
+      {/* School-Wide Attendance Export Modal */}
+      <ExportAttendanceReportModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        scope="school"
+        schoolYear={filters.schoolYear}
+        monthName={MONTH_LABELS[Number(filters.month) - 1] || "Month"}
+        summary={daily}
+      />
+
+      {/* Section Attendance Export Modal */}
+      {selectedSection && detailData ? (
+        <ExportAttendanceReportModal
+          open={sectionExportModalOpen}
+          onClose={() => setSectionExportModalOpen(false)}
+          scope="section"
+          section={selectedSection}
+          schoolYear={filters.schoolYear}
+          monthName={MONTH_LABELS[Number(filters.month) - 1] || "Month"}
+          summary={detailData}
+        />
       ) : null}
     </div>
   );

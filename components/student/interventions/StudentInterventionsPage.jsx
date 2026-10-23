@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ClipboardList, Loader2, RotateCw } from "lucide-react";
 import StudentPageHeader from "@/components/student/layout/StudentPageHeader";
 import StudentSectionCard from "@/components/student/layout/StudentSectionCard";
+import StudentPlpCard from "@/components/student/interventions/StudentPlpCard";
 import {
   Pill,
   RiskPill,
@@ -125,6 +126,9 @@ export default function StudentInterventionsPage() {
               )}
             </div>
           </StudentSectionCard>
+
+          {/* Read-Only Personalized Learning Plan */}
+          <StudentPlpCard plp={data.plp || null} />
 
           {data.recordedProgress?.checkCount ? (
             <StudentSectionCard

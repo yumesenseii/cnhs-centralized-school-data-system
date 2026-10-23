@@ -234,7 +234,10 @@ export default function UserManagementPage() {
     const nextLabel = isActive ? "deactivate" : "activate";
     const result = await toggleManagedUserStatus(user);
     if (result.error) {
+      // Status may already be applied partially (profile + account synced);
+      // keep the directory in sync with the database either way.
       setError(result.error.message || `Unable to ${nextLabel} user.`);
+      await refreshStaff();
       return;
     }
     showToast(isActive ? "User deactivated." : "User activated.");
@@ -257,7 +260,14 @@ export default function UserManagementPage() {
 
   async function handleUpdateUser(payload) {
     const result = await updateManagedUser(payload);
-    if (!result.error) await refreshStaff();
+    if (!result.error) {
+      showToast(
+        result.data?.emailSynced
+          ? "User updated. Login email changed — the user should sign in with the new address."
+          : "User updated."
+      );
+      await refreshStaff();
+    }
     return result;
   }
 

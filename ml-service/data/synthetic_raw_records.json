@@ -1,0 +1,5802 @@
+[
+  {
+    "student_id": "SYN-STU-0001",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 85.4,
+      "filipino": 77.4,
+      "mathematics": 78.4,
+      "science": 80.7,
+      "araling_panlipunan": 81.6,
+      "mapeh": 80.0,
+      "tle": 80.8,
+      "values_education": 85.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0001",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 86.1,
+      "filipino": 75.0,
+      "mathematics": 81.1,
+      "science": 83.3,
+      "araling_panlipunan": 81.2,
+      "mapeh": 82.4,
+      "tle": 81.3,
+      "values_education": 87.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0001",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 88.5,
+      "filipino": 78.4,
+      "mathematics": 84.1,
+      "science": 84.0,
+      "araling_panlipunan": 82.2,
+      "mapeh": 82.7,
+      "tle": 82.6,
+      "values_education": 89.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0002",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 66.8,
+      "filipino": 72.9,
+      "mathematics": 72.0,
+      "science": 71.8,
+      "araling_panlipunan": 68.2,
+      "mapeh": 67.2,
+      "tle": 69.1,
+      "values_education": 69.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0002",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 66.4,
+      "filipino": 72.3,
+      "mathematics": 76.2,
+      "science": 70.8,
+      "araling_panlipunan": 70.2,
+      "mapeh": 68.0,
+      "tle": 70.3,
+      "values_education": 71.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0002",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 70.2,
+      "filipino": 75.6,
+      "mathematics": 76.1,
+      "science": 73.1,
+      "araling_panlipunan": 68.6,
+      "mapeh": 74.4,
+      "tle": 71.9,
+      "values_education": 70.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0003",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 67.3,
+      "filipino": 67.6,
+      "mathematics": 67.0,
+      "science": 67.1,
+      "araling_panlipunan": 69.7,
+      "mapeh": 67.4,
+      "tle": 70.0,
+      "values_education": 66.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0003",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 67.3,
+      "filipino": 68.6,
+      "mathematics": 65.3,
+      "science": 64.2,
+      "araling_panlipunan": 66.3,
+      "mapeh": 63.3,
+      "tle": 66.6,
+      "values_education": 65.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0003",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 65.1,
+      "filipino": 68.1,
+      "mathematics": 67.5,
+      "science": 66.3,
+      "araling_panlipunan": 70.1,
+      "mapeh": 63.5,
+      "tle": 67.6,
+      "values_education": 62.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0004",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 86.3,
+      "filipino": 90.2,
+      "mathematics": 88.0,
+      "science": 87.5,
+      "araling_panlipunan": 84.6,
+      "mapeh": 92.2,
+      "tle": 89.0,
+      "values_education": 90.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0004",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 86.1,
+      "filipino": 88.4,
+      "mathematics": 88.8,
+      "science": 85.3,
+      "araling_panlipunan": 83.4,
+      "mapeh": 86.7,
+      "tle": 88.6,
+      "values_education": 89.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0004",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 80.3,
+      "filipino": 88.7,
+      "mathematics": 90.7,
+      "science": 88.9,
+      "araling_panlipunan": 88.2,
+      "mapeh": 95.3,
+      "tle": 88.2,
+      "values_education": 88.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0005",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 76.8,
+      "filipino": 79.7,
+      "mathematics": 78.1,
+      "science": 84.0,
+      "araling_panlipunan": 77.9,
+      "mapeh": 75.4,
+      "tle": 72.8,
+      "values_education": 71.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0005",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 9,
+    "section_name": "G9-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 80.4,
+      "filipino": 73.8,
+      "mathematics": 78.8,
+      "science": 79.5,
+      "araling_panlipunan": 80.0,
+      "mapeh": 77.8,
+      "tle": 73.7,
+      "values_education": 71.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0005",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 9,
+    "section_name": "G9-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 74.1,
+      "filipino": 75.6,
+      "mathematics": 75.5,
+      "science": 78.1,
+      "araling_panlipunan": 74.9,
+      "mapeh": 76.7,
+      "tle": 76.4,
+      "values_education": 71.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0006",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 97.5,
+      "filipino": 93.8,
+      "mathematics": 87.8,
+      "science": 92.7,
+      "araling_panlipunan": 94.1,
+      "mapeh": 92.8,
+      "tle": 88.5,
+      "values_education": 86.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0006",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 91.4,
+      "filipino": 88.3,
+      "mathematics": 85.8,
+      "science": 92.1,
+      "araling_panlipunan": 91.9,
+      "mapeh": 93.1,
+      "tle": 89.5,
+      "values_education": 79.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0006",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 90.0,
+      "filipino": 84.6,
+      "mathematics": 81.7,
+      "science": 87.6,
+      "araling_panlipunan": 86.4,
+      "mapeh": 92.7,
+      "tle": 83.5,
+      "values_education": 81.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0007",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 85.5,
+      "filipino": 92.5,
+      "mathematics": 91.1,
+      "science": 98.5,
+      "araling_panlipunan": 92.0,
+      "mapeh": 84.6,
+      "tle": 87.4,
+      "values_education": 86.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0007",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 86.7,
+      "filipino": 93.2,
+      "mathematics": 93.3,
+      "science": 92.3,
+      "araling_panlipunan": 87.2,
+      "mapeh": 82.3,
+      "tle": 87.9,
+      "values_education": 87.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0007",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 87.1,
+      "filipino": 91.1,
+      "mathematics": 91.0,
+      "science": 90.5,
+      "araling_panlipunan": 85.8,
+      "mapeh": 91.1,
+      "tle": 86.0,
+      "values_education": 88.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0008",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 82.4,
+      "filipino": 82.7,
+      "mathematics": 87.5,
+      "science": 92.3,
+      "araling_panlipunan": 83.7,
+      "mapeh": 84.8,
+      "tle": 90.4,
+      "values_education": 90.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0008",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 82.4,
+      "filipino": 85.6,
+      "mathematics": 87.5,
+      "science": 92.2,
+      "araling_panlipunan": 81.3,
+      "mapeh": 85.9,
+      "tle": 88.7,
+      "values_education": 91.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0008",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 84.7,
+      "filipino": 85.1,
+      "mathematics": 85.3,
+      "science": 89.4,
+      "araling_panlipunan": 84.5,
+      "mapeh": 85.3,
+      "tle": 89.3,
+      "values_education": 83.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0009",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 90.7,
+      "filipino": 94.1,
+      "mathematics": 93.6,
+      "science": 91.1,
+      "araling_panlipunan": 89.0,
+      "mapeh": 92.6,
+      "tle": 96.8,
+      "values_education": 94.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0009",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 89.1,
+      "filipino": 89.3,
+      "mathematics": 89.1,
+      "science": 85.9,
+      "araling_panlipunan": 88.0,
+      "mapeh": 90.7,
+      "tle": 90.7,
+      "values_education": 97.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0009",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 85.9,
+      "filipino": 87.0,
+      "mathematics": 88.8,
+      "science": 85.0,
+      "araling_panlipunan": 86.5,
+      "mapeh": 83.7,
+      "tle": 85.8,
+      "values_education": 88.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0010",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 89.1,
+      "filipino": 89.8,
+      "mathematics": 92.8,
+      "science": 88.6,
+      "araling_panlipunan": 91.8,
+      "mapeh": 90.0,
+      "tle": 79.5,
+      "values_education": 85.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0010",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 89.0,
+      "filipino": 87.3,
+      "mathematics": 91.0,
+      "science": 83.7,
+      "araling_panlipunan": 92.6,
+      "mapeh": 88.4,
+      "tle": 81.0,
+      "values_education": 88.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0010",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 82.5,
+      "filipino": 82.1,
+      "mathematics": 89.2,
+      "science": 83.4,
+      "araling_panlipunan": 93.2,
+      "mapeh": 87.2,
+      "tle": 80.1,
+      "values_education": 82.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0011",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 86.1,
+      "filipino": 81.7,
+      "mathematics": 77.6,
+      "science": 82.2,
+      "araling_panlipunan": 83.4,
+      "mapeh": 83.7,
+      "tle": 88.4,
+      "values_education": 80.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0011",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 84.6,
+      "filipino": 84.2,
+      "mathematics": 83.7,
+      "science": 81.2,
+      "araling_panlipunan": 77.6,
+      "mapeh": 86.7,
+      "tle": 84.7,
+      "values_education": 78.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0011",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 85.4,
+      "filipino": 79.7,
+      "mathematics": 76.4,
+      "science": 78.2,
+      "araling_panlipunan": 79.8,
+      "mapeh": 84.1,
+      "tle": 86.5,
+      "values_education": 78.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0012",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 73.8,
+      "filipino": 72.7,
+      "mathematics": 77.2,
+      "science": 75.6,
+      "araling_panlipunan": 75.5,
+      "mapeh": 76.1,
+      "tle": 74.5,
+      "values_education": 77.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0012",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 9,
+    "section_name": "G9-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 69.1,
+      "filipino": 68.7,
+      "mathematics": 71.6,
+      "science": 70.7,
+      "araling_panlipunan": 72.0,
+      "mapeh": 77.1,
+      "tle": 73.1,
+      "values_education": 75.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0012",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 9,
+    "section_name": "G9-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 74.2,
+      "filipino": 72.9,
+      "mathematics": 73.3,
+      "science": 77.0,
+      "araling_panlipunan": 72.5,
+      "mapeh": 72.8,
+      "tle": 71.5,
+      "values_education": 70.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0013",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 85.9,
+      "filipino": 74.0,
+      "mathematics": 81.0,
+      "science": 78.2,
+      "araling_panlipunan": 82.3,
+      "mapeh": 81.2,
+      "tle": 75.3,
+      "values_education": 86.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0013",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 85.4,
+      "filipino": 72.3,
+      "mathematics": 83.6,
+      "science": 75.8,
+      "araling_panlipunan": 84.0,
+      "mapeh": 80.4,
+      "tle": 73.4,
+      "values_education": 84.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0013",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 89.1,
+      "filipino": 78.5,
+      "mathematics": 80.7,
+      "science": 75.8,
+      "araling_panlipunan": 83.0,
+      "mapeh": 77.0,
+      "tle": 73.4,
+      "values_education": 82.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0014",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 72.5,
+      "filipino": 71.0,
+      "mathematics": 75.3,
+      "science": 78.5,
+      "araling_panlipunan": 77.2,
+      "mapeh": 87.8,
+      "tle": 80.4,
+      "values_education": 75.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0014",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 79.0,
+      "filipino": 72.6,
+      "mathematics": 78.3,
+      "science": 78.0,
+      "araling_panlipunan": 79.5,
+      "mapeh": 86.0,
+      "tle": 82.9,
+      "values_education": 74.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0014",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 75.2,
+      "filipino": 70.9,
+      "mathematics": 77.3,
+      "science": 80.5,
+      "araling_panlipunan": 79.6,
+      "mapeh": 86.1,
+      "tle": 84.7,
+      "values_education": 75.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0015",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 80.0,
+      "filipino": 79.8,
+      "mathematics": 91.8,
+      "science": 86.1,
+      "araling_panlipunan": 83.0,
+      "mapeh": 81.0,
+      "tle": 75.6,
+      "values_education": 85.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0015",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 83.5,
+      "filipino": 85.8,
+      "mathematics": 93.1,
+      "science": 94.7,
+      "araling_panlipunan": 90.5,
+      "mapeh": 82.5,
+      "tle": null,
+      "values_education": 86.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0015",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 89.1,
+      "filipino": 87.7,
+      "mathematics": 99.0,
+      "science": 95.6,
+      "araling_panlipunan": 93.8,
+      "mapeh": 88.4,
+      "tle": 83.5,
+      "values_education": 94.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0016",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 63.4,
+      "filipino": 68.7,
+      "mathematics": 60.8,
+      "science": 68.4,
+      "araling_panlipunan": 64.4,
+      "mapeh": 71.1,
+      "tle": 60.0,
+      "values_education": 65.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0016",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 63.9,
+      "filipino": 66.5,
+      "mathematics": 60.0,
+      "science": 66.9,
+      "araling_panlipunan": 66.3,
+      "mapeh": 67.9,
+      "tle": 60.0,
+      "values_education": 60.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0016",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 60.0,
+      "filipino": 60.7,
+      "mathematics": 60.0,
+      "science": 63.7,
+      "araling_panlipunan": 60.4,
+      "mapeh": 65.7,
+      "tle": 60.0,
+      "values_education": 60.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0017",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 77.8,
+      "filipino": 73.5,
+      "mathematics": 69.0,
+      "science": 68.3,
+      "araling_panlipunan": 72.0,
+      "mapeh": 69.6,
+      "tle": 71.9,
+      "values_education": 69.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0017",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 81.3,
+      "filipino": 73.7,
+      "mathematics": 68.6,
+      "science": 75.6,
+      "araling_panlipunan": 79.5,
+      "mapeh": 69.8,
+      "tle": 76.5,
+      "values_education": 73.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0017",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 76.0,
+      "filipino": 75.5,
+      "mathematics": 71.4,
+      "science": 76.1,
+      "araling_panlipunan": 79.9,
+      "mapeh": 74.7,
+      "tle": 74.5,
+      "values_education": 73.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0018",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 81.5,
+      "filipino": 85.3,
+      "mathematics": 86.9,
+      "science": 86.7,
+      "araling_panlipunan": 89.6,
+      "mapeh": 81.2,
+      "tle": 87.2,
+      "values_education": 85.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0018",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 83.9,
+      "filipino": 84.8,
+      "mathematics": 89.4,
+      "science": 88.4,
+      "araling_panlipunan": 89.5,
+      "mapeh": 80.0,
+      "tle": 88.0,
+      "values_education": 86.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0018",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 83.0,
+      "filipino": 80.2,
+      "mathematics": 92.4,
+      "science": 95.1,
+      "araling_panlipunan": 88.1,
+      "mapeh": 77.5,
+      "tle": 88.6,
+      "values_education": 83.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0019",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 67.9,
+      "filipino": 60.0,
+      "mathematics": 71.9,
+      "science": 72.6,
+      "araling_panlipunan": 69.7,
+      "mapeh": 62.4,
+      "tle": 66.4,
+      "values_education": 68.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0019",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 63.3,
+      "filipino": 60.0,
+      "mathematics": 68.0,
+      "science": 69.7,
+      "araling_panlipunan": 60.4,
+      "mapeh": 62.0,
+      "tle": 60.9,
+      "values_education": 64.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0019",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 62.2,
+      "filipino": 60.0,
+      "mathematics": 60.0,
+      "science": 68.7,
+      "araling_panlipunan": 60.1,
+      "mapeh": 60.0,
+      "tle": 61.6,
+      "values_education": 63.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0020",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 79.6,
+      "filipino": 78.0,
+      "mathematics": 85.1,
+      "science": 80.7,
+      "araling_panlipunan": 82.0,
+      "mapeh": 76.2,
+      "tle": 79.7,
+      "values_education": 80.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0021",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 70.6,
+      "filipino": 73.0,
+      "mathematics": 63.6,
+      "science": 68.4,
+      "araling_panlipunan": 71.6,
+      "mapeh": 72.5,
+      "tle": 78.8,
+      "values_education": 72.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0021",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 70.6,
+      "filipino": 67.3,
+      "mathematics": 63.9,
+      "science": 68.3,
+      "araling_panlipunan": 66.5,
+      "mapeh": 68.3,
+      "tle": 77.4,
+      "values_education": 70.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0021",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 65.6,
+      "filipino": 67.6,
+      "mathematics": 64.7,
+      "science": 62.6,
+      "araling_panlipunan": 64.3,
+      "mapeh": 68.0,
+      "tle": 77.4,
+      "values_education": 70.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0022",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 79.2,
+      "filipino": 83.4,
+      "mathematics": 88.5,
+      "science": 90.6,
+      "araling_panlipunan": 83.6,
+      "mapeh": 83.6,
+      "tle": 87.1,
+      "values_education": 90.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0022",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 87.2,
+      "filipino": 90.2,
+      "mathematics": 87.0,
+      "science": 87.7,
+      "araling_panlipunan": 86.9,
+      "mapeh": 87.9,
+      "tle": 86.1,
+      "values_education": 94.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0022",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 88.4,
+      "filipino": 92.6,
+      "mathematics": 87.1,
+      "science": 92.4,
+      "araling_panlipunan": 89.4,
+      "mapeh": 90.6,
+      "tle": 91.8,
+      "values_education": 92.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0023",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 60.0,
+      "filipino": 66.0,
+      "mathematics": 61.1,
+      "science": 61.6,
+      "araling_panlipunan": 71.3,
+      "mapeh": 68.7,
+      "tle": 69.9,
+      "values_education": 66.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0023",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 64.6,
+      "filipino": 69.4,
+      "mathematics": 65.4,
+      "science": 63.3,
+      "araling_panlipunan": 73.3,
+      "mapeh": 72.9,
+      "tle": 69.9,
+      "values_education": 67.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0023",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 61.6,
+      "filipino": 67.1,
+      "mathematics": 68.4,
+      "science": 65.6,
+      "araling_panlipunan": 71.6,
+      "mapeh": 75.1,
+      "tle": 76.1,
+      "values_education": 72.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0024",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 85.3,
+      "filipino": 83.6,
+      "mathematics": 87.8,
+      "science": 89.6,
+      "araling_panlipunan": 91.3,
+      "mapeh": 90.4,
+      "tle": 87.9,
+      "values_education": 82.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0024",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 84.8,
+      "filipino": 84.1,
+      "mathematics": 86.2,
+      "science": 87.7,
+      "araling_panlipunan": 94.7,
+      "mapeh": 88.8,
+      "tle": 82.6,
+      "values_education": 79.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0024",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 83.9,
+      "filipino": 83.1,
+      "mathematics": 87.8,
+      "science": 90.6,
+      "araling_panlipunan": 86.0,
+      "mapeh": 91.5,
+      "tle": 89.5,
+      "values_education": 80.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0025",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 91.2,
+      "filipino": 99.0,
+      "mathematics": 99.0,
+      "science": 89.0,
+      "araling_panlipunan": 99.0,
+      "mapeh": 91.0,
+      "tle": 96.7,
+      "values_education": 93.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0025",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 90.7,
+      "filipino": 97.3,
+      "mathematics": 98.2,
+      "science": 91.3,
+      "araling_panlipunan": 99.0,
+      "mapeh": 88.0,
+      "tle": 99.0,
+      "values_education": 89.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0025",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": false,
+    "subject_grades": {
+      "english": 88.0,
+      "filipino": 96.9,
+      "mathematics": 98.6,
+      "science": 89.4,
+      "araling_panlipunan": 99.0,
+      "mapeh": 89.4,
+      "tle": 97.3,
+      "values_education": 90.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0026",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 73.2,
+      "filipino": 80.7,
+      "mathematics": 74.3,
+      "science": 67.4,
+      "araling_panlipunan": 67.3,
+      "mapeh": 76.9,
+      "tle": 78.0,
+      "values_education": 75.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0026",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 67.7,
+      "filipino": 75.4,
+      "mathematics": 74.8,
+      "science": 68.5,
+      "araling_panlipunan": 68.6,
+      "mapeh": 76.3,
+      "tle": 74.9,
+      "values_education": 78.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0026",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 71.4,
+      "filipino": 77.0,
+      "mathematics": 77.4,
+      "science": 66.5,
+      "araling_panlipunan": 70.2,
+      "mapeh": 76.4,
+      "tle": 75.2,
+      "values_education": 79.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0027",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 71.5,
+      "filipino": 74.4,
+      "mathematics": 72.0,
+      "science": 66.7,
+      "araling_panlipunan": 73.8,
+      "mapeh": 73.3,
+      "tle": 71.1,
+      "values_education": 75.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0027",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 70.0,
+      "filipino": 78.8,
+      "mathematics": 70.7,
+      "science": 73.0,
+      "araling_panlipunan": 75.7,
+      "mapeh": 76.9,
+      "tle": 72.6,
+      "values_education": 79.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0027",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 74.4,
+      "filipino": 80.1,
+      "mathematics": 73.4,
+      "science": 75.1,
+      "araling_panlipunan": 75.6,
+      "mapeh": 78.3,
+      "tle": 76.2,
+      "values_education": 81.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0028",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 90.9,
+      "filipino": 93.4,
+      "mathematics": 86.9,
+      "science": 85.6,
+      "araling_panlipunan": 92.2,
+      "mapeh": 77.0,
+      "tle": 94.1,
+      "values_education": 75.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0028",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 88.2,
+      "filipino": 93.1,
+      "mathematics": 86.9,
+      "science": 82.4,
+      "araling_panlipunan": 86.6,
+      "mapeh": 75.3,
+      "tle": 84.3,
+      "values_education": 72.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0028",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 83.3,
+      "filipino": 89.1,
+      "mathematics": 84.2,
+      "science": 81.3,
+      "araling_panlipunan": 84.0,
+      "mapeh": 73.3,
+      "tle": 85.7,
+      "values_education": 68.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0029",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 76.3,
+      "filipino": 81.6,
+      "mathematics": 81.3,
+      "science": 77.0,
+      "araling_panlipunan": 84.4,
+      "mapeh": 86.8,
+      "tle": 84.6,
+      "values_education": 82.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0029",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 74.3,
+      "filipino": 81.6,
+      "mathematics": 80.4,
+      "science": 73.4,
+      "araling_panlipunan": 81.0,
+      "mapeh": 81.0,
+      "tle": 78.4,
+      "values_education": 79.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0029",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 72.7,
+      "filipino": 78.0,
+      "mathematics": 78.7,
+      "science": 72.4,
+      "araling_panlipunan": 76.5,
+      "mapeh": 80.5,
+      "tle": 78.5,
+      "values_education": 76.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0030",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 67.0,
+      "filipino": 69.6,
+      "mathematics": 64.2,
+      "science": 71.5,
+      "araling_panlipunan": 66.7,
+      "mapeh": 70.9,
+      "tle": 74.2,
+      "values_education": 75.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0030",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 9,
+    "section_name": "G9-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 69.1,
+      "filipino": 69.2,
+      "mathematics": 67.9,
+      "science": 73.6,
+      "araling_panlipunan": 70.5,
+      "mapeh": 71.3,
+      "tle": null,
+      "values_education": 75.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0030",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 9,
+    "section_name": "G9-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 66.0,
+      "filipino": 70.9,
+      "mathematics": 70.7,
+      "science": 71.2,
+      "araling_panlipunan": 73.9,
+      "mapeh": 73.2,
+      "tle": 75.3,
+      "values_education": 72.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0031",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 89.9,
+      "filipino": 94.2,
+      "mathematics": 89.0,
+      "science": 91.4,
+      "araling_panlipunan": 95.8,
+      "mapeh": 99.0,
+      "tle": 89.9,
+      "values_education": 96.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0031",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 89.2,
+      "filipino": 92.1,
+      "mathematics": 89.3,
+      "science": 94.9,
+      "araling_panlipunan": 92.9,
+      "mapeh": 99.0,
+      "tle": 85.6,
+      "values_education": 97.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0031",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 86.4,
+      "filipino": 92.6,
+      "mathematics": 89.0,
+      "science": 94.8,
+      "araling_panlipunan": 98.9,
+      "mapeh": 99.0,
+      "tle": 91.0,
+      "values_education": 98.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0032",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 73.9,
+      "filipino": 72.9,
+      "mathematics": 69.4,
+      "science": 69.7,
+      "araling_panlipunan": 69.9,
+      "mapeh": 75.4,
+      "tle": 73.1,
+      "values_education": 72.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0032",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 74.6,
+      "filipino": 73.7,
+      "mathematics": 71.9,
+      "science": 68.3,
+      "araling_panlipunan": 64.5,
+      "mapeh": 75.8,
+      "tle": 68.4,
+      "values_education": 68.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0032",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 75.0,
+      "filipino": 74.2,
+      "mathematics": 73.7,
+      "science": 66.7,
+      "araling_panlipunan": 64.4,
+      "mapeh": 73.9,
+      "tle": 71.4,
+      "values_education": 70.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0033",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 65.9,
+      "filipino": 67.2,
+      "mathematics": 68.0,
+      "science": 66.7,
+      "araling_panlipunan": 67.6,
+      "mapeh": 71.9,
+      "tle": 68.5,
+      "values_education": 78.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0033",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 66.3,
+      "filipino": 71.3,
+      "mathematics": 69.5,
+      "science": 67.0,
+      "araling_panlipunan": 72.3,
+      "mapeh": 64.4,
+      "tle": 64.7,
+      "values_education": 74.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0033",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 66.1,
+      "filipino": 72.5,
+      "mathematics": 70.5,
+      "science": 66.1,
+      "araling_panlipunan": 70.7,
+      "mapeh": 70.9,
+      "tle": 68.9,
+      "values_education": 77.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0034",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 70.3,
+      "filipino": 69.3,
+      "mathematics": 69.2,
+      "science": 81.0,
+      "araling_panlipunan": 65.9,
+      "mapeh": 65.1,
+      "tle": 66.0,
+      "values_education": 67.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0034",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 69.1,
+      "filipino": 70.7,
+      "mathematics": 68.5,
+      "science": 75.5,
+      "araling_panlipunan": 60.0,
+      "mapeh": 64.0,
+      "tle": 66.6,
+      "values_education": 70.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0034",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 73.4,
+      "filipino": 67.9,
+      "mathematics": 71.8,
+      "science": 73.7,
+      "araling_panlipunan": 62.8,
+      "mapeh": 65.1,
+      "tle": 63.2,
+      "values_education": 68.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0035",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 76.3,
+      "filipino": 73.9,
+      "mathematics": 71.1,
+      "science": 76.5,
+      "araling_panlipunan": 79.6,
+      "mapeh": 78.6,
+      "tle": 67.4,
+      "values_education": 68.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0035",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 78.8,
+      "filipino": 83.3,
+      "mathematics": 74.9,
+      "science": 79.6,
+      "araling_panlipunan": 81.0,
+      "mapeh": 81.7,
+      "tle": 69.5,
+      "values_education": 66.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0035",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 80.1,
+      "filipino": 77.4,
+      "mathematics": 72.1,
+      "science": 77.7,
+      "araling_panlipunan": 86.9,
+      "mapeh": 84.2,
+      "tle": 75.8,
+      "values_education": 75.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0036",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 88.8,
+      "filipino": 87.3,
+      "mathematics": 84.3,
+      "science": 89.4,
+      "araling_panlipunan": 89.5,
+      "mapeh": 87.5,
+      "tle": 84.9,
+      "values_education": 80.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0036",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 9,
+    "section_name": "G9-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 91.6,
+      "filipino": 87.9,
+      "mathematics": 86.5,
+      "science": 88.5,
+      "araling_panlipunan": 87.6,
+      "mapeh": 80.9,
+      "tle": 82.2,
+      "values_education": 79.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0036",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 9,
+    "section_name": "G9-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 90.3,
+      "filipino": 92.2,
+      "mathematics": 83.0,
+      "science": 89.1,
+      "araling_panlipunan": 87.1,
+      "mapeh": 83.4,
+      "tle": 84.2,
+      "values_education": 82.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0037",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 74.9,
+      "filipino": 77.2,
+      "mathematics": 69.2,
+      "science": 72.1,
+      "araling_panlipunan": 69.9,
+      "mapeh": 68.6,
+      "tle": 72.6,
+      "values_education": 77.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0037",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 9,
+    "section_name": "G9-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 73.5,
+      "filipino": 74.7,
+      "mathematics": 73.2,
+      "science": 67.9,
+      "araling_panlipunan": 68.0,
+      "mapeh": 71.1,
+      "tle": 74.8,
+      "values_education": 75.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0037",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 9,
+    "section_name": "G9-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 71.0,
+      "filipino": 76.0,
+      "mathematics": 75.7,
+      "science": 74.8,
+      "araling_panlipunan": 73.2,
+      "mapeh": 69.5,
+      "tle": 74.8,
+      "values_education": 71.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0038",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 72.3,
+      "filipino": 78.5,
+      "mathematics": 81.2,
+      "science": 73.8,
+      "araling_panlipunan": 82.3,
+      "mapeh": 73.1,
+      "tle": 86.5,
+      "values_education": 84.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0038",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 77.7,
+      "filipino": 81.2,
+      "mathematics": 82.0,
+      "science": 78.6,
+      "araling_panlipunan": 83.3,
+      "mapeh": 72.1,
+      "tle": 86.9,
+      "values_education": 83.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0038",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 75.4,
+      "filipino": 79.6,
+      "mathematics": 74.8,
+      "science": 79.1,
+      "araling_panlipunan": 84.1,
+      "mapeh": 75.3,
+      "tle": 81.0,
+      "values_education": 84.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0039",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 80.6,
+      "filipino": 78.5,
+      "mathematics": 77.1,
+      "science": 81.1,
+      "araling_panlipunan": 82.9,
+      "mapeh": 79.6,
+      "tle": 84.7,
+      "values_education": 77.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0039",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 78.3,
+      "filipino": 75.9,
+      "mathematics": 78.0,
+      "science": 79.4,
+      "araling_panlipunan": 77.8,
+      "mapeh": 81.6,
+      "tle": 85.9,
+      "values_education": 74.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0039",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 76.3,
+      "filipino": 74.4,
+      "mathematics": 75.2,
+      "science": 80.0,
+      "araling_panlipunan": 77.8,
+      "mapeh": 73.1,
+      "tle": 85.5,
+      "values_education": 72.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0040",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 88.5,
+      "filipino": 87.5,
+      "mathematics": 86.7,
+      "science": 80.4,
+      "araling_panlipunan": 88.1,
+      "mapeh": 78.4,
+      "tle": 76.5,
+      "values_education": 82.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0041",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 74.0,
+      "filipino": 77.4,
+      "mathematics": 74.6,
+      "science": 71.5,
+      "araling_panlipunan": 84.2,
+      "mapeh": 74.1,
+      "tle": 77.8,
+      "values_education": 69.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0041",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 74.5,
+      "filipino": 82.0,
+      "mathematics": 76.7,
+      "science": 78.4,
+      "araling_panlipunan": 84.6,
+      "mapeh": 78.5,
+      "tle": 80.2,
+      "values_education": 77.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0041",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 75.3,
+      "filipino": 85.9,
+      "mathematics": 81.7,
+      "science": 78.2,
+      "araling_panlipunan": 91.8,
+      "mapeh": 82.3,
+      "tle": 85.8,
+      "values_education": 75.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0042",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 89.3,
+      "filipino": 93.0,
+      "mathematics": 87.1,
+      "science": 87.1,
+      "araling_panlipunan": 92.5,
+      "mapeh": 92.1,
+      "tle": 86.2,
+      "values_education": 89.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0042",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 93.0,
+      "filipino": 93.0,
+      "mathematics": 90.7,
+      "science": 83.4,
+      "araling_panlipunan": 95.1,
+      "mapeh": 92.3,
+      "tle": 92.2,
+      "values_education": 96.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0042",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 93.4,
+      "filipino": 93.3,
+      "mathematics": 88.4,
+      "science": 85.1,
+      "araling_panlipunan": 92.9,
+      "mapeh": 92.0,
+      "tle": 90.5,
+      "values_education": 94.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0043",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 93.9,
+      "filipino": 88.8,
+      "mathematics": 90.3,
+      "science": 88.1,
+      "araling_panlipunan": 89.7,
+      "mapeh": 92.0,
+      "tle": 89.4,
+      "values_education": 90.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0043",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 94.4,
+      "filipino": 93.9,
+      "mathematics": 88.9,
+      "science": 85.2,
+      "araling_panlipunan": 88.9,
+      "mapeh": 91.0,
+      "tle": 93.1,
+      "values_education": 88.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0043",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 93.5,
+      "filipino": 89.4,
+      "mathematics": 88.3,
+      "science": 85.8,
+      "araling_panlipunan": 80.8,
+      "mapeh": 88.8,
+      "tle": 90.4,
+      "values_education": 85.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0044",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 68.9,
+      "filipino": 69.4,
+      "mathematics": 65.7,
+      "science": 72.1,
+      "araling_panlipunan": 61.7,
+      "mapeh": 72.4,
+      "tle": 69.8,
+      "values_education": 68.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0044",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 9,
+    "section_name": "G9-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 65.4,
+      "filipino": 68.9,
+      "mathematics": 66.9,
+      "science": 66.2,
+      "araling_panlipunan": 61.6,
+      "mapeh": 71.9,
+      "tle": 63.5,
+      "values_education": 69.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0044",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 9,
+    "section_name": "G9-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 63.7,
+      "filipino": 63.0,
+      "mathematics": 61.7,
+      "science": 63.7,
+      "araling_panlipunan": 63.6,
+      "mapeh": 70.2,
+      "tle": 63.1,
+      "values_education": 68.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0045",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 69.6,
+      "filipino": 74.3,
+      "mathematics": 69.9,
+      "science": 74.4,
+      "araling_panlipunan": 65.7,
+      "mapeh": 76.1,
+      "tle": 68.7,
+      "values_education": 71.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0045",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 65.4,
+      "filipino": 67.1,
+      "mathematics": 68.9,
+      "science": 71.0,
+      "araling_panlipunan": 60.0,
+      "mapeh": 72.3,
+      "tle": null,
+      "values_education": 68.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0045",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 65.7,
+      "filipino": 63.4,
+      "mathematics": 64.1,
+      "science": 66.2,
+      "araling_panlipunan": 61.7,
+      "mapeh": 72.9,
+      "tle": 60.6,
+      "values_education": 66.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0046",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 67.8,
+      "filipino": 67.8,
+      "mathematics": 66.0,
+      "science": 64.5,
+      "araling_panlipunan": 71.7,
+      "mapeh": 75.7,
+      "tle": 61.1,
+      "values_education": 71.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0046",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 69.1,
+      "filipino": 67.2,
+      "mathematics": 69.6,
+      "science": 65.3,
+      "araling_panlipunan": 71.1,
+      "mapeh": 70.1,
+      "tle": 60.5,
+      "values_education": 72.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0046",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 64.5,
+      "filipino": 66.2,
+      "mathematics": 65.4,
+      "science": 63.5,
+      "araling_panlipunan": 70.7,
+      "mapeh": 71.5,
+      "tle": 65.6,
+      "values_education": 71.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0047",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 83.5,
+      "filipino": 86.8,
+      "mathematics": 92.3,
+      "science": 91.6,
+      "araling_panlipunan": 82.7,
+      "mapeh": 86.8,
+      "tle": 91.1,
+      "values_education": 90.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0047",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 90.1,
+      "filipino": 84.3,
+      "mathematics": 92.6,
+      "science": 90.9,
+      "araling_panlipunan": 84.2,
+      "mapeh": 87.0,
+      "tle": 94.3,
+      "values_education": 92.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0047",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 85.0,
+      "filipino": 90.4,
+      "mathematics": 87.6,
+      "science": 95.9,
+      "araling_panlipunan": 84.1,
+      "mapeh": 89.4,
+      "tle": 90.6,
+      "values_education": 88.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0048",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 89.2,
+      "filipino": 87.7,
+      "mathematics": 80.8,
+      "science": 90.1,
+      "araling_panlipunan": 89.3,
+      "mapeh": 85.8,
+      "tle": 80.4,
+      "values_education": 87.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0048",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 86.8,
+      "filipino": 88.1,
+      "mathematics": 76.3,
+      "science": 86.2,
+      "araling_panlipunan": 80.2,
+      "mapeh": 83.3,
+      "tle": 74.6,
+      "values_education": 86.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0048",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 80.9,
+      "filipino": 88.2,
+      "mathematics": 71.3,
+      "science": 82.9,
+      "araling_panlipunan": 83.3,
+      "mapeh": 81.3,
+      "tle": 73.1,
+      "values_education": 81.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0049",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 80.6,
+      "filipino": 72.9,
+      "mathematics": 79.9,
+      "science": 82.0,
+      "araling_panlipunan": 83.2,
+      "mapeh": 74.6,
+      "tle": 86.3,
+      "values_education": 81.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0049",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 9,
+    "section_name": "G9-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 80.6,
+      "filipino": 74.5,
+      "mathematics": 82.6,
+      "science": 80.9,
+      "araling_panlipunan": 76.5,
+      "mapeh": 72.0,
+      "tle": 82.8,
+      "values_education": 79.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0049",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 9,
+    "section_name": "G9-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 79.8,
+      "filipino": 72.8,
+      "mathematics": 84.6,
+      "science": 77.4,
+      "araling_panlipunan": 78.9,
+      "mapeh": 71.4,
+      "tle": 81.8,
+      "values_education": 80.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0050",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 94.4,
+      "filipino": 88.4,
+      "mathematics": 89.5,
+      "science": 92.3,
+      "araling_panlipunan": 90.4,
+      "mapeh": 85.0,
+      "tle": 83.9,
+      "values_education": 89.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0050",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 94.9,
+      "filipino": 91.8,
+      "mathematics": 92.7,
+      "science": 93.3,
+      "araling_panlipunan": 87.1,
+      "mapeh": 86.5,
+      "tle": 81.7,
+      "values_education": 91.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0050",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": false,
+    "subject_grades": {
+      "english": 95.9,
+      "filipino": 87.7,
+      "mathematics": 89.9,
+      "science": 90.1,
+      "araling_panlipunan": 87.8,
+      "mapeh": 89.2,
+      "tle": 78.7,
+      "values_education": 91.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0051",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 80.7,
+      "filipino": 77.6,
+      "mathematics": 71.2,
+      "science": 78.3,
+      "araling_panlipunan": 76.6,
+      "mapeh": 76.3,
+      "tle": 81.6,
+      "values_education": 79.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0051",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 81.5,
+      "filipino": 80.3,
+      "mathematics": 71.5,
+      "science": 79.2,
+      "araling_panlipunan": 74.4,
+      "mapeh": 74.3,
+      "tle": 77.4,
+      "values_education": 76.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0051",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 82.5,
+      "filipino": 83.2,
+      "mathematics": 73.3,
+      "science": 87.7,
+      "araling_panlipunan": 76.1,
+      "mapeh": 77.9,
+      "tle": 78.3,
+      "values_education": 81.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0052",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 80.2,
+      "filipino": 85.5,
+      "mathematics": 75.4,
+      "science": 88.2,
+      "araling_panlipunan": 87.4,
+      "mapeh": 79.5,
+      "tle": 74.0,
+      "values_education": 79.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0052",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 78.2,
+      "filipino": 80.6,
+      "mathematics": 79.0,
+      "science": 88.0,
+      "araling_panlipunan": 86.1,
+      "mapeh": 82.7,
+      "tle": 74.1,
+      "values_education": 80.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0052",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 80.7,
+      "filipino": 84.7,
+      "mathematics": 79.8,
+      "science": 89.9,
+      "araling_panlipunan": 83.5,
+      "mapeh": 85.8,
+      "tle": 76.0,
+      "values_education": 81.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0053",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 90.1,
+      "filipino": 90.0,
+      "mathematics": 89.5,
+      "science": 84.2,
+      "araling_panlipunan": 91.2,
+      "mapeh": 92.6,
+      "tle": 92.4,
+      "values_education": 84.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0053",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 84.9,
+      "filipino": 85.9,
+      "mathematics": 85.1,
+      "science": 80.6,
+      "araling_panlipunan": 87.6,
+      "mapeh": 88.8,
+      "tle": 86.3,
+      "values_education": 83.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0053",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 81.7,
+      "filipino": 84.2,
+      "mathematics": 80.0,
+      "science": 78.5,
+      "araling_panlipunan": 83.6,
+      "mapeh": 86.3,
+      "tle": 79.9,
+      "values_education": 77.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0054",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 77.1,
+      "filipino": 82.1,
+      "mathematics": 84.4,
+      "science": 76.3,
+      "araling_panlipunan": 83.4,
+      "mapeh": 78.1,
+      "tle": 86.5,
+      "values_education": 85.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0054",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 76.9,
+      "filipino": 79.2,
+      "mathematics": 82.2,
+      "science": 79.4,
+      "araling_panlipunan": 80.3,
+      "mapeh": 79.7,
+      "tle": 84.4,
+      "values_education": 80.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0054",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 74.1,
+      "filipino": 75.5,
+      "mathematics": 79.4,
+      "science": 73.3,
+      "araling_panlipunan": 81.5,
+      "mapeh": 81.8,
+      "tle": 84.4,
+      "values_education": 77.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0055",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 79.1,
+      "filipino": 69.6,
+      "mathematics": 81.4,
+      "science": 76.1,
+      "araling_panlipunan": 78.6,
+      "mapeh": 76.4,
+      "tle": 82.0,
+      "values_education": 82.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0055",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 79.1,
+      "filipino": 74.9,
+      "mathematics": 81.9,
+      "science": 75.8,
+      "araling_panlipunan": 81.7,
+      "mapeh": 72.0,
+      "tle": 81.8,
+      "values_education": 83.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0055",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 78.0,
+      "filipino": 72.5,
+      "mathematics": 78.0,
+      "science": 75.9,
+      "araling_panlipunan": 80.4,
+      "mapeh": 67.3,
+      "tle": 82.9,
+      "values_education": 76.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0056",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 76.9,
+      "filipino": 76.6,
+      "mathematics": 77.6,
+      "science": 80.2,
+      "araling_panlipunan": 72.5,
+      "mapeh": 82.2,
+      "tle": 82.4,
+      "values_education": 73.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0056",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 81.2,
+      "filipino": 73.9,
+      "mathematics": 73.0,
+      "science": 81.4,
+      "araling_panlipunan": 70.8,
+      "mapeh": 80.5,
+      "tle": 79.1,
+      "values_education": 72.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0056",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 72.8,
+      "filipino": 72.4,
+      "mathematics": 70.8,
+      "science": 80.3,
+      "araling_panlipunan": 69.7,
+      "mapeh": 80.5,
+      "tle": 82.1,
+      "values_education": 74.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0057",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 82.2,
+      "filipino": 76.9,
+      "mathematics": 86.1,
+      "science": 78.2,
+      "araling_panlipunan": 80.7,
+      "mapeh": 79.0,
+      "tle": 84.1,
+      "values_education": 79.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0057",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 81.7,
+      "filipino": 78.1,
+      "mathematics": 88.1,
+      "science": 74.6,
+      "araling_panlipunan": 82.1,
+      "mapeh": 75.7,
+      "tle": 82.5,
+      "values_education": 82.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0057",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 82.8,
+      "filipino": 77.9,
+      "mathematics": 83.2,
+      "science": 77.0,
+      "araling_panlipunan": 79.6,
+      "mapeh": 77.5,
+      "tle": 81.1,
+      "values_education": 79.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0058",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 73.1,
+      "filipino": 84.7,
+      "mathematics": 80.0,
+      "science": 78.4,
+      "araling_panlipunan": 83.2,
+      "mapeh": 79.8,
+      "tle": 77.5,
+      "values_education": 82.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0058",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 73.9,
+      "filipino": 78.0,
+      "mathematics": 83.1,
+      "science": 80.9,
+      "araling_panlipunan": 79.7,
+      "mapeh": 82.7,
+      "tle": 81.5,
+      "values_education": 79.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0058",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 77.1,
+      "filipino": 80.4,
+      "mathematics": 80.5,
+      "science": 78.2,
+      "araling_panlipunan": 83.2,
+      "mapeh": 79.9,
+      "tle": 80.1,
+      "values_education": 78.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0059",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 77.1,
+      "filipino": 85.5,
+      "mathematics": 72.0,
+      "science": 84.7,
+      "araling_panlipunan": 78.4,
+      "mapeh": 87.2,
+      "tle": 82.1,
+      "values_education": 85.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0059",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 80.1,
+      "filipino": 81.9,
+      "mathematics": 69.6,
+      "science": 80.2,
+      "araling_panlipunan": 81.1,
+      "mapeh": 87.0,
+      "tle": 79.9,
+      "values_education": 81.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0059",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 77.2,
+      "filipino": 80.4,
+      "mathematics": 74.0,
+      "science": 87.3,
+      "araling_panlipunan": 79.9,
+      "mapeh": 86.6,
+      "tle": 78.1,
+      "values_education": 79.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0060",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 85.5,
+      "filipino": 96.3,
+      "mathematics": 89.1,
+      "science": 88.4,
+      "araling_panlipunan": 89.4,
+      "mapeh": 90.5,
+      "tle": 91.8,
+      "values_education": 90.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0061",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 80.7,
+      "filipino": 80.0,
+      "mathematics": 75.5,
+      "science": 79.1,
+      "araling_panlipunan": 83.5,
+      "mapeh": 81.2,
+      "tle": 79.5,
+      "values_education": 78.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0061",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 77.2,
+      "filipino": 75.1,
+      "mathematics": 76.4,
+      "science": 78.4,
+      "araling_panlipunan": 77.5,
+      "mapeh": 78.6,
+      "tle": 78.6,
+      "values_education": 75.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0061",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 76.8,
+      "filipino": 80.6,
+      "mathematics": 70.3,
+      "science": 75.4,
+      "araling_panlipunan": 80.4,
+      "mapeh": 79.9,
+      "tle": 77.1,
+      "values_education": 76.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0062",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 77.8,
+      "filipino": 79.4,
+      "mathematics": 83.5,
+      "science": 78.5,
+      "araling_panlipunan": 82.3,
+      "mapeh": 82.8,
+      "tle": 79.1,
+      "values_education": 80.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0062",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 77.2,
+      "filipino": 79.7,
+      "mathematics": 77.6,
+      "science": 78.9,
+      "araling_panlipunan": 82.1,
+      "mapeh": 82.5,
+      "tle": 79.6,
+      "values_education": 78.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0062",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 77.9,
+      "filipino": 78.5,
+      "mathematics": 84.7,
+      "science": 80.5,
+      "araling_panlipunan": 80.2,
+      "mapeh": 79.5,
+      "tle": 77.2,
+      "values_education": 78.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0063",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 79.3,
+      "filipino": 73.0,
+      "mathematics": 76.6,
+      "science": 79.9,
+      "araling_panlipunan": 81.1,
+      "mapeh": 81.5,
+      "tle": 80.6,
+      "values_education": 76.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0063",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 77.8,
+      "filipino": 72.5,
+      "mathematics": 71.2,
+      "science": 75.3,
+      "araling_panlipunan": 78.2,
+      "mapeh": 75.4,
+      "tle": 74.5,
+      "values_education": 79.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0063",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 79.1,
+      "filipino": 73.6,
+      "mathematics": 73.0,
+      "science": 75.6,
+      "araling_panlipunan": 81.9,
+      "mapeh": 77.2,
+      "tle": 69.0,
+      "values_education": 75.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0064",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 88.0,
+      "filipino": 90.1,
+      "mathematics": 99.0,
+      "science": 93.6,
+      "araling_panlipunan": 93.0,
+      "mapeh": 87.8,
+      "tle": 88.3,
+      "values_education": 92.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0064",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 93.2,
+      "filipino": 92.9,
+      "mathematics": 98.8,
+      "science": 93.4,
+      "araling_panlipunan": 95.8,
+      "mapeh": 90.4,
+      "tle": 88.0,
+      "values_education": 94.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0064",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 94.2,
+      "filipino": 93.6,
+      "mathematics": 99.0,
+      "science": 92.8,
+      "araling_panlipunan": 95.2,
+      "mapeh": 89.4,
+      "tle": 89.0,
+      "values_education": 91.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0065",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 78.4,
+      "filipino": 74.9,
+      "mathematics": 79.6,
+      "science": 79.3,
+      "araling_panlipunan": 78.7,
+      "mapeh": 82.2,
+      "tle": 87.8,
+      "values_education": 79.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0065",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 80.7,
+      "filipino": 80.7,
+      "mathematics": 75.6,
+      "science": 79.0,
+      "araling_panlipunan": 83.4,
+      "mapeh": 84.0,
+      "tle": 87.4,
+      "values_education": 78.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0065",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 80.6,
+      "filipino": 78.9,
+      "mathematics": 80.2,
+      "science": 80.5,
+      "araling_panlipunan": 82.1,
+      "mapeh": 85.1,
+      "tle": 84.6,
+      "values_education": 84.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0066",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 81.7,
+      "filipino": 83.0,
+      "mathematics": 77.9,
+      "science": 70.4,
+      "araling_panlipunan": 77.7,
+      "mapeh": 78.0,
+      "tle": 80.2,
+      "values_education": 83.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0066",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 82.0,
+      "filipino": 78.5,
+      "mathematics": 80.2,
+      "science": 76.3,
+      "araling_panlipunan": 77.0,
+      "mapeh": 77.4,
+      "tle": 82.6,
+      "values_education": 82.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0066",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 85.1,
+      "filipino": 86.4,
+      "mathematics": 84.9,
+      "science": 74.4,
+      "araling_panlipunan": 80.7,
+      "mapeh": 87.1,
+      "tle": 83.3,
+      "values_education": 80.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0067",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 64.5,
+      "filipino": 74.8,
+      "mathematics": 75.5,
+      "science": 79.6,
+      "araling_panlipunan": 72.8,
+      "mapeh": 69.8,
+      "tle": 73.1,
+      "values_education": 70.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0067",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 70.4,
+      "filipino": 74.9,
+      "mathematics": 76.2,
+      "science": 79.3,
+      "araling_panlipunan": 68.6,
+      "mapeh": 69.2,
+      "tle": 68.6,
+      "values_education": 69.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0067",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 71.9,
+      "filipino": 72.4,
+      "mathematics": 73.0,
+      "science": 80.4,
+      "araling_panlipunan": 68.5,
+      "mapeh": 67.1,
+      "tle": 63.0,
+      "values_education": 68.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0068",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 92.5,
+      "filipino": 95.8,
+      "mathematics": 88.7,
+      "science": 87.7,
+      "araling_panlipunan": 90.7,
+      "mapeh": 86.0,
+      "tle": 88.1,
+      "values_education": 92.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0068",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 93.0,
+      "filipino": 97.5,
+      "mathematics": 89.8,
+      "science": 91.9,
+      "araling_panlipunan": 96.8,
+      "mapeh": 95.6,
+      "tle": 93.9,
+      "values_education": 94.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0068",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 99.0,
+      "filipino": 99.0,
+      "mathematics": 91.0,
+      "science": 93.4,
+      "araling_panlipunan": 99.0,
+      "mapeh": 99.0,
+      "tle": 99.0,
+      "values_education": 99.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0069",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 91.8,
+      "filipino": 84.2,
+      "mathematics": 78.8,
+      "science": 79.4,
+      "araling_panlipunan": 75.3,
+      "mapeh": 82.6,
+      "tle": 75.7,
+      "values_education": 78.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0069",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 90.0,
+      "filipino": 81.7,
+      "mathematics": 82.5,
+      "science": 79.6,
+      "araling_panlipunan": 75.3,
+      "mapeh": 79.1,
+      "tle": 77.1,
+      "values_education": 81.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0069",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 88.2,
+      "filipino": 80.7,
+      "mathematics": 84.7,
+      "science": 74.7,
+      "araling_panlipunan": 76.9,
+      "mapeh": 80.4,
+      "tle": 73.2,
+      "values_education": 77.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0070",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 77.4,
+      "filipino": 77.4,
+      "mathematics": 81.7,
+      "science": 84.2,
+      "araling_panlipunan": 74.2,
+      "mapeh": 74.2,
+      "tle": 76.5,
+      "values_education": 83.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0070",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 80.1,
+      "filipino": 76.7,
+      "mathematics": 84.2,
+      "science": 75.9,
+      "araling_panlipunan": 73.4,
+      "mapeh": 76.0,
+      "tle": 76.9,
+      "values_education": 79.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0070",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 81.3,
+      "filipino": 79.7,
+      "mathematics": 86.7,
+      "science": 78.8,
+      "araling_panlipunan": 76.5,
+      "mapeh": 79.6,
+      "tle": 70.2,
+      "values_education": 82.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0071",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 79.7,
+      "filipino": 83.2,
+      "mathematics": 81.6,
+      "science": 84.0,
+      "araling_panlipunan": 82.5,
+      "mapeh": 83.3,
+      "tle": 82.3,
+      "values_education": 77.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0071",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 80.2,
+      "filipino": 77.4,
+      "mathematics": 82.7,
+      "science": 86.2,
+      "araling_panlipunan": 84.1,
+      "mapeh": 81.6,
+      "tle": 80.8,
+      "values_education": 75.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0071",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 77.8,
+      "filipino": 77.6,
+      "mathematics": 84.3,
+      "science": 84.7,
+      "araling_panlipunan": 81.8,
+      "mapeh": 82.3,
+      "tle": 84.7,
+      "values_education": 82.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0072",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 78.2,
+      "filipino": 82.5,
+      "mathematics": 79.8,
+      "science": 82.9,
+      "araling_panlipunan": 77.1,
+      "mapeh": 80.3,
+      "tle": 73.0,
+      "values_education": 81.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0072",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 81.6,
+      "filipino": 82.8,
+      "mathematics": 82.7,
+      "science": 85.2,
+      "araling_panlipunan": 76.9,
+      "mapeh": 83.2,
+      "tle": 72.9,
+      "values_education": 84.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0072",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 85.5,
+      "filipino": 80.9,
+      "mathematics": 79.4,
+      "science": 83.6,
+      "araling_panlipunan": 82.0,
+      "mapeh": 83.9,
+      "tle": 76.1,
+      "values_education": 85.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0073",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 84.9,
+      "filipino": 82.0,
+      "mathematics": 86.8,
+      "science": 80.8,
+      "araling_panlipunan": 75.2,
+      "mapeh": 86.3,
+      "tle": 85.1,
+      "values_education": 83.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0073",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 82.7,
+      "filipino": 86.0,
+      "mathematics": 85.5,
+      "science": 79.7,
+      "araling_panlipunan": 78.1,
+      "mapeh": 89.1,
+      "tle": 80.6,
+      "values_education": 86.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0073",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 87.5,
+      "filipino": 82.9,
+      "mathematics": 84.6,
+      "science": 79.7,
+      "araling_panlipunan": 81.1,
+      "mapeh": 85.4,
+      "tle": 78.6,
+      "values_education": 85.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0074",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 90.7,
+      "filipino": 91.3,
+      "mathematics": 94.5,
+      "science": 88.3,
+      "araling_panlipunan": 91.7,
+      "mapeh": 90.8,
+      "tle": 95.5,
+      "values_education": 88.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0074",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 97.7,
+      "filipino": 95.3,
+      "mathematics": 96.9,
+      "science": 93.3,
+      "araling_panlipunan": 94.4,
+      "mapeh": 95.7,
+      "tle": 99.0,
+      "values_education": 85.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0074",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 96.0,
+      "filipino": 93.9,
+      "mathematics": 93.3,
+      "science": 94.9,
+      "araling_panlipunan": 97.0,
+      "mapeh": 94.3,
+      "tle": 99.0,
+      "values_education": 88.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0075",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 75.8,
+      "filipino": 86.3,
+      "mathematics": 84.4,
+      "science": 76.8,
+      "araling_panlipunan": 80.7,
+      "mapeh": 83.0,
+      "tle": 81.1,
+      "values_education": 82.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0075",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 73.9,
+      "filipino": 83.3,
+      "mathematics": 87.8,
+      "science": 77.6,
+      "araling_panlipunan": 80.1,
+      "mapeh": 82.3,
+      "tle": null,
+      "values_education": 81.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0075",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": false,
+    "subject_grades": {
+      "english": 81.4,
+      "filipino": 86.2,
+      "mathematics": 87.2,
+      "science": 80.9,
+      "araling_panlipunan": 83.6,
+      "mapeh": 79.7,
+      "tle": 82.8,
+      "values_education": 85.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0076",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 80.8,
+      "filipino": 75.8,
+      "mathematics": 81.0,
+      "science": 73.2,
+      "araling_panlipunan": 75.8,
+      "mapeh": 78.9,
+      "tle": 85.2,
+      "values_education": 79.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0076",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 9,
+    "section_name": "G9-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 83.0,
+      "filipino": 79.6,
+      "mathematics": 80.6,
+      "science": 73.3,
+      "araling_panlipunan": 79.3,
+      "mapeh": 81.7,
+      "tle": 87.3,
+      "values_education": 81.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0076",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 9,
+    "section_name": "G9-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 86.5,
+      "filipino": 81.7,
+      "mathematics": 84.2,
+      "science": 76.6,
+      "araling_panlipunan": 83.0,
+      "mapeh": 84.0,
+      "tle": 85.6,
+      "values_education": 79.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0077",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 86.3,
+      "filipino": 86.7,
+      "mathematics": 95.6,
+      "science": 84.8,
+      "araling_panlipunan": 79.0,
+      "mapeh": 90.7,
+      "tle": 84.0,
+      "values_education": 84.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0077",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 84.1,
+      "filipino": 88.0,
+      "mathematics": 94.3,
+      "science": 82.5,
+      "araling_panlipunan": 80.0,
+      "mapeh": 89.9,
+      "tle": 85.2,
+      "values_education": 89.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0077",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 83.1,
+      "filipino": 87.8,
+      "mathematics": 93.7,
+      "science": 82.9,
+      "araling_panlipunan": 82.3,
+      "mapeh": 91.4,
+      "tle": 79.4,
+      "values_education": 86.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0078",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 73.3,
+      "filipino": 69.3,
+      "mathematics": 66.0,
+      "science": 75.2,
+      "araling_panlipunan": 67.6,
+      "mapeh": 72.0,
+      "tle": 76.7,
+      "values_education": 66.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0078",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 71.7,
+      "filipino": 69.3,
+      "mathematics": 62.5,
+      "science": 72.1,
+      "araling_panlipunan": 66.2,
+      "mapeh": 69.5,
+      "tle": 74.1,
+      "values_education": 64.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0078",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 65.8,
+      "filipino": 66.2,
+      "mathematics": 62.6,
+      "science": 68.4,
+      "araling_panlipunan": 63.3,
+      "mapeh": 67.1,
+      "tle": 70.3,
+      "values_education": 61.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0079",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 80.2,
+      "filipino": 76.8,
+      "mathematics": 75.0,
+      "science": 79.1,
+      "araling_panlipunan": 68.3,
+      "mapeh": 81.0,
+      "tle": 74.0,
+      "values_education": 75.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0079",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 78.4,
+      "filipino": 69.9,
+      "mathematics": 75.7,
+      "science": 85.0,
+      "araling_panlipunan": 72.3,
+      "mapeh": 74.5,
+      "tle": 74.8,
+      "values_education": 72.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0079",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 9,
+    "section_name": "G9-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 74.3,
+      "filipino": 72.5,
+      "mathematics": 77.2,
+      "science": 80.8,
+      "araling_panlipunan": 67.2,
+      "mapeh": 74.5,
+      "tle": 73.7,
+      "values_education": 73.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0080",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 69.4,
+      "filipino": 75.6,
+      "mathematics": 64.8,
+      "science": 70.9,
+      "araling_panlipunan": 67.5,
+      "mapeh": 76.2,
+      "tle": 74.7,
+      "values_education": 69.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0081",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 90.9,
+      "filipino": 91.1,
+      "mathematics": 99.0,
+      "science": 92.6,
+      "araling_panlipunan": 88.9,
+      "mapeh": 92.0,
+      "tle": 85.8,
+      "values_education": 94.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0081",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 91.9,
+      "filipino": 87.8,
+      "mathematics": 97.2,
+      "science": 90.4,
+      "araling_panlipunan": 90.1,
+      "mapeh": 92.5,
+      "tle": 87.1,
+      "values_education": 94.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0081",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 89.1,
+      "filipino": 85.7,
+      "mathematics": 97.2,
+      "science": 92.4,
+      "araling_panlipunan": 88.6,
+      "mapeh": 88.2,
+      "tle": 83.3,
+      "values_education": 94.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0082",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 81.7,
+      "filipino": 75.9,
+      "mathematics": 78.7,
+      "science": 74.8,
+      "araling_panlipunan": 78.3,
+      "mapeh": 78.7,
+      "tle": 77.2,
+      "values_education": 77.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0082",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 77.8,
+      "filipino": 75.9,
+      "mathematics": 78.6,
+      "science": 72.4,
+      "araling_panlipunan": 80.5,
+      "mapeh": 73.3,
+      "tle": 79.0,
+      "values_education": 77.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0082",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 73.8,
+      "filipino": 71.0,
+      "mathematics": 72.4,
+      "science": 74.6,
+      "araling_panlipunan": 73.8,
+      "mapeh": 75.3,
+      "tle": 75.0,
+      "values_education": 72.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0083",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 71.5,
+      "filipino": 68.0,
+      "mathematics": 74.5,
+      "science": 71.0,
+      "araling_panlipunan": 76.3,
+      "mapeh": 76.0,
+      "tle": 71.0,
+      "values_education": 75.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0083",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 74.3,
+      "filipino": 70.1,
+      "mathematics": 79.5,
+      "science": 71.0,
+      "araling_panlipunan": 75.6,
+      "mapeh": 79.8,
+      "tle": 77.9,
+      "values_education": 80.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0083",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 76.2,
+      "filipino": 70.1,
+      "mathematics": 74.1,
+      "science": 73.1,
+      "araling_panlipunan": 76.4,
+      "mapeh": 81.1,
+      "tle": 72.4,
+      "values_education": 79.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0084",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 87.8,
+      "filipino": 87.6,
+      "mathematics": 88.7,
+      "science": 90.7,
+      "araling_panlipunan": 91.0,
+      "mapeh": 85.8,
+      "tle": 86.9,
+      "values_education": 86.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0084",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 90.7,
+      "filipino": 88.6,
+      "mathematics": 88.8,
+      "science": 91.6,
+      "araling_panlipunan": 90.3,
+      "mapeh": 84.6,
+      "tle": 90.5,
+      "values_education": 88.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0084",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 88.2,
+      "filipino": 88.8,
+      "mathematics": 93.0,
+      "science": 90.3,
+      "araling_panlipunan": 89.2,
+      "mapeh": 88.7,
+      "tle": 87.7,
+      "values_education": 93.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0085",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 83.4,
+      "filipino": 85.3,
+      "mathematics": 86.0,
+      "science": 74.9,
+      "araling_panlipunan": 78.4,
+      "mapeh": 74.8,
+      "tle": 77.2,
+      "values_education": 75.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0085",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 9,
+    "section_name": "G9-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 86.1,
+      "filipino": 84.6,
+      "mathematics": 81.9,
+      "science": 67.9,
+      "araling_panlipunan": 76.6,
+      "mapeh": 77.3,
+      "tle": 77.0,
+      "values_education": 71.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0085",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 9,
+    "section_name": "G9-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 86.1,
+      "filipino": 84.1,
+      "mathematics": 82.5,
+      "science": 71.9,
+      "araling_panlipunan": 78.9,
+      "mapeh": 73.9,
+      "tle": 80.0,
+      "values_education": 72.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0086",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 92.4,
+      "filipino": 92.7,
+      "mathematics": 91.6,
+      "science": 84.4,
+      "araling_panlipunan": 83.7,
+      "mapeh": 89.1,
+      "tle": 91.3,
+      "values_education": 95.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0086",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 87.5,
+      "filipino": 99.0,
+      "mathematics": 91.8,
+      "science": 86.2,
+      "araling_panlipunan": 85.4,
+      "mapeh": 89.3,
+      "tle": 93.6,
+      "values_education": 93.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0086",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 89.7,
+      "filipino": 94.3,
+      "mathematics": 91.9,
+      "science": 83.2,
+      "araling_panlipunan": 90.3,
+      "mapeh": 89.4,
+      "tle": 98.1,
+      "values_education": 93.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0087",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 83.5,
+      "filipino": 78.7,
+      "mathematics": 82.6,
+      "science": 84.9,
+      "araling_panlipunan": 86.0,
+      "mapeh": 81.0,
+      "tle": 87.7,
+      "values_education": 80.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0087",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 92.0,
+      "filipino": 80.7,
+      "mathematics": 88.1,
+      "science": 82.9,
+      "araling_panlipunan": 83.9,
+      "mapeh": 87.4,
+      "tle": 88.2,
+      "values_education": 84.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0087",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 96.3,
+      "filipino": 86.7,
+      "mathematics": 91.3,
+      "science": 87.7,
+      "araling_panlipunan": 93.5,
+      "mapeh": 87.7,
+      "tle": 91.1,
+      "values_education": 88.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0088",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 87.5,
+      "filipino": 83.3,
+      "mathematics": 88.4,
+      "science": 97.2,
+      "araling_panlipunan": 94.7,
+      "mapeh": 87.0,
+      "tle": 92.2,
+      "values_education": 94.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0088",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 92.3,
+      "filipino": 86.3,
+      "mathematics": 88.7,
+      "science": 96.8,
+      "araling_panlipunan": 94.5,
+      "mapeh": 93.1,
+      "tle": 92.4,
+      "values_education": 91.5
+    }
+  },
+  {
+    "student_id": "SYN-STU-0088",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 91.5,
+      "filipino": 87.6,
+      "mathematics": 89.3,
+      "science": 99.0,
+      "araling_panlipunan": 96.8,
+      "mapeh": 93.4,
+      "tle": 96.6,
+      "values_education": 96.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0089",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 75.7,
+      "filipino": 72.3,
+      "mathematics": 75.4,
+      "science": 75.8,
+      "araling_panlipunan": 75.4,
+      "mapeh": 80.0,
+      "tle": 79.3,
+      "values_education": 79.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0089",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 9,
+    "section_name": "G9-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 79.4,
+      "filipino": 73.5,
+      "mathematics": 80.6,
+      "science": 81.5,
+      "araling_panlipunan": 76.5,
+      "mapeh": 79.5,
+      "tle": 81.3,
+      "values_education": 78.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0089",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 9,
+    "section_name": "G9-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 84.8,
+      "filipino": 79.4,
+      "mathematics": 80.6,
+      "science": 83.1,
+      "araling_panlipunan": 80.9,
+      "mapeh": 82.3,
+      "tle": 89.9,
+      "values_education": 82.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0090",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 94.4,
+      "filipino": 92.5,
+      "mathematics": 82.6,
+      "science": 89.2,
+      "araling_panlipunan": 85.8,
+      "mapeh": 95.5,
+      "tle": 82.9,
+      "values_education": 91.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0090",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 90.9,
+      "filipino": 90.6,
+      "mathematics": 81.1,
+      "science": 87.7,
+      "araling_panlipunan": 83.7,
+      "mapeh": 94.8,
+      "tle": null,
+      "values_education": 93.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0090",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 90.0,
+      "filipino": 89.9,
+      "mathematics": 84.2,
+      "science": 87.0,
+      "araling_panlipunan": 82.0,
+      "mapeh": 89.8,
+      "tle": 78.6,
+      "values_education": 90.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0091",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 76.3,
+      "filipino": 77.6,
+      "mathematics": 74.3,
+      "science": 80.6,
+      "araling_panlipunan": 76.2,
+      "mapeh": 79.0,
+      "tle": 82.9,
+      "values_education": 73.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0091",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 83.6,
+      "filipino": 78.2,
+      "mathematics": 77.1,
+      "science": 77.4,
+      "araling_panlipunan": 74.9,
+      "mapeh": 79.7,
+      "tle": 78.8,
+      "values_education": 77.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0091",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 78.1,
+      "filipino": 79.3,
+      "mathematics": 74.8,
+      "science": 79.1,
+      "araling_panlipunan": 74.0,
+      "mapeh": 76.9,
+      "tle": 77.6,
+      "values_education": 79.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0092",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 72.4,
+      "filipino": 74.1,
+      "mathematics": 80.7,
+      "science": 80.0,
+      "araling_panlipunan": 81.0,
+      "mapeh": 74.5,
+      "tle": 79.4,
+      "values_education": 70.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0092",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 75.1,
+      "filipino": 75.9,
+      "mathematics": 78.9,
+      "science": 78.5,
+      "araling_panlipunan": 76.2,
+      "mapeh": 70.5,
+      "tle": 75.5,
+      "values_education": 73.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0092",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 73.8,
+      "filipino": 71.9,
+      "mathematics": 74.8,
+      "science": 75.3,
+      "araling_panlipunan": 76.5,
+      "mapeh": 69.9,
+      "tle": 73.2,
+      "values_education": 70.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0093",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 91.5,
+      "filipino": 81.7,
+      "mathematics": 87.2,
+      "science": 91.2,
+      "araling_panlipunan": 87.6,
+      "mapeh": 83.9,
+      "tle": 91.1,
+      "values_education": 85.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0093",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 93.8,
+      "filipino": 82.0,
+      "mathematics": 89.9,
+      "science": 93.2,
+      "araling_panlipunan": 84.5,
+      "mapeh": 89.0,
+      "tle": 97.2,
+      "values_education": 89.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0093",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 96.9,
+      "filipino": 85.9,
+      "mathematics": 86.2,
+      "science": 90.2,
+      "araling_panlipunan": 89.3,
+      "mapeh": 87.1,
+      "tle": 92.5,
+      "values_education": 89.1
+    }
+  },
+  {
+    "student_id": "SYN-STU-0094",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 94.7,
+      "filipino": 87.8,
+      "mathematics": 87.2,
+      "science": 98.5,
+      "araling_panlipunan": 85.6,
+      "mapeh": 94.6,
+      "tle": 89.9,
+      "values_education": 93.9
+    }
+  },
+  {
+    "student_id": "SYN-STU-0094",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 95.5,
+      "filipino": 85.9,
+      "mathematics": 88.4,
+      "science": 99.0,
+      "araling_panlipunan": 89.3,
+      "mapeh": 98.0,
+      "tle": 90.9,
+      "values_education": 91.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0094",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 98.4,
+      "filipino": 88.5,
+      "mathematics": 93.4,
+      "science": 98.3,
+      "araling_panlipunan": 93.8,
+      "mapeh": 95.6,
+      "tle": 92.0,
+      "values_education": 96.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0095",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 10,
+    "section_name": "G10-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 75.9,
+      "filipino": 75.9,
+      "mathematics": 66.5,
+      "science": 80.2,
+      "araling_panlipunan": 73.1,
+      "mapeh": 74.0,
+      "tle": 81.4,
+      "values_education": 80.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0095",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 10,
+    "section_name": "G10-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 77.9,
+      "filipino": 78.4,
+      "mathematics": 71.1,
+      "science": 76.5,
+      "araling_panlipunan": 79.0,
+      "mapeh": 72.5,
+      "tle": 84.0,
+      "values_education": 76.2
+    }
+  },
+  {
+    "student_id": "SYN-STU-0095",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 10,
+    "section_name": "G10-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 74.1,
+      "filipino": 78.8,
+      "mathematics": 68.8,
+      "science": 76.7,
+      "araling_panlipunan": 77.9,
+      "mapeh": 73.8,
+      "tle": 82.9,
+      "values_education": 77.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0096",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 77.5,
+      "filipino": 80.0,
+      "mathematics": 85.2,
+      "science": 83.6,
+      "araling_panlipunan": 82.0,
+      "mapeh": 90.1,
+      "tle": 83.0,
+      "values_education": 82.4
+    }
+  },
+  {
+    "student_id": "SYN-STU-0096",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 80.2,
+      "filipino": 80.6,
+      "mathematics": 89.5,
+      "science": 84.9,
+      "araling_panlipunan": 80.2,
+      "mapeh": 90.2,
+      "tle": 82.2,
+      "values_education": 83.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0096",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 83.4,
+      "filipino": 83.6,
+      "mathematics": 89.5,
+      "science": 84.5,
+      "araling_panlipunan": 83.2,
+      "mapeh": 91.4,
+      "tle": 82.9,
+      "values_education": 82.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0097",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 83.0,
+      "filipino": 85.6,
+      "mathematics": 89.2,
+      "science": 83.5,
+      "araling_panlipunan": 82.3,
+      "mapeh": 83.9,
+      "tle": 89.7,
+      "values_education": 93.7
+    }
+  },
+  {
+    "student_id": "SYN-STU-0097",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 9,
+    "section_name": "G9-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 88.8,
+      "filipino": 85.6,
+      "mathematics": 89.1,
+      "science": 78.9,
+      "araling_panlipunan": 81.2,
+      "mapeh": 85.8,
+      "tle": 88.7,
+      "values_education": 94.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0097",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 9,
+    "section_name": "G9-SectionB",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 88.2,
+      "filipino": 83.9,
+      "mathematics": 91.4,
+      "science": 83.7,
+      "araling_panlipunan": 84.6,
+      "mapeh": 85.5,
+      "tle": 92.0,
+      "values_education": 94.6
+    }
+  },
+  {
+    "student_id": "SYN-STU-0098",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 89.8,
+      "filipino": 86.4,
+      "mathematics": 86.8,
+      "science": 93.0,
+      "araling_panlipunan": 89.9,
+      "mapeh": 89.0,
+      "tle": 94.3,
+      "values_education": 90.3
+    }
+  },
+  {
+    "student_id": "SYN-STU-0098",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 88.0,
+      "filipino": 81.4,
+      "mathematics": 83.7,
+      "science": 85.7,
+      "araling_panlipunan": 86.4,
+      "mapeh": 86.1,
+      "tle": 89.9,
+      "values_education": 90.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0098",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 7,
+    "section_name": "G7-SectionC",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 88.7,
+      "filipino": 81.2,
+      "mathematics": 82.7,
+      "science": 82.6,
+      "araling_panlipunan": 87.4,
+      "mapeh": 87.1,
+      "tle": 92.2,
+      "values_education": 86.0
+    }
+  },
+  {
+    "student_id": "SYN-STU-0099",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 8,
+    "section_name": "G8-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 92.6,
+      "filipino": 96.0,
+      "mathematics": 93.6,
+      "science": 90.1,
+      "araling_panlipunan": 84.7,
+      "mapeh": 82.9,
+      "tle": 90.2,
+      "values_education": 90.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0099",
+    "school_year": "2025-2026",
+    "quarter": 2,
+    "term": 2,
+    "grade_level": 8,
+    "section_name": "G8-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 88.8,
+      "filipino": 99.0,
+      "mathematics": 90.8,
+      "science": 88.9,
+      "araling_panlipunan": 81.6,
+      "mapeh": 85.0,
+      "tle": 90.3,
+      "values_education": 83.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0099",
+    "school_year": "2025-2026",
+    "quarter": 3,
+    "term": 3,
+    "grade_level": 8,
+    "section_name": "G8-SectionD",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 91.9,
+      "filipino": 91.8,
+      "mathematics": 88.6,
+      "science": 83.9,
+      "araling_panlipunan": 80.0,
+      "mapeh": 78.2,
+      "tle": 87.3,
+      "values_education": 84.8
+    }
+  },
+  {
+    "student_id": "SYN-STU-0100",
+    "school_year": "2025-2026",
+    "quarter": 1,
+    "term": 1,
+    "grade_level": 9,
+    "section_name": "G9-SectionA",
+    "data_provenance": "synthetic",
+    "is_finalized": true,
+    "subject_grades": {
+      "english": 83.8,
+      "filipino": 88.4,
+      "mathematics": 89.3,
+      "science": 92.1,
+      "araling_panlipunan": 88.5,
+      "mapeh": 83.6,
+      "tle": 90.7,
+      "values_education": 83.0
+    }
+  }
+]

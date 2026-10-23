@@ -33,6 +33,7 @@ export default function PageHelp({
   summary,
   steps = [],
   className = "",
+  triggerLabel = "Getting started",
 }) {
   const [mounted, setMounted] = useState(false);
   const narrow = useNarrowViewport(mounted);
@@ -51,7 +52,7 @@ export default function PageHelp({
         className={cn(triggerClassName, "opacity-90", className)}
       >
         <CircleHelp size={15} strokeWidth={2} aria-hidden />
-        Getting started
+        {triggerLabel}
       </button>
     );
   }
@@ -64,7 +65,7 @@ export default function PageHelp({
         className={cn(triggerClassName, className)}
       >
         <CircleHelp size={15} strokeWidth={2} aria-hidden />
-        Getting started
+        {triggerLabel}
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Backdrop className="fixed inset-0 z-50 bg-slate-900/20 transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0" />

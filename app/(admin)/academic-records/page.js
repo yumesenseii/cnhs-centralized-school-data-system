@@ -26,6 +26,7 @@ import AppSelect from "@/components/shared/AppSelect";
 import { useAppToast } from "@/components/shared/AppToast";
 import { useAcademicRecords } from "@/hooks/admin/useAcademicRecords";
 import { exportAcademicRecordsExcel } from "@/lib/admin/academicRecordsExport";
+import ExportAcademicRecordsModal from "@/components/academic-records/ExportAcademicRecordsModal";
 
 export default function AcademicRecordsPage() {
   const {
@@ -72,6 +73,7 @@ export default function AcademicRecordsPage() {
 
   const { showToast } = useAppToast();
   const [exporting, setExporting] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
   const [page, setPage] = useState(1);
 
   const quarterLabel = useMemo(() => {
@@ -191,15 +193,11 @@ export default function AcademicRecordsPage() {
             </button>
             <button
               type="button"
-              onClick={handleExportRecords}
-              disabled={exporting || loading || (!classOpen && !classes.length)}
+              onClick={() => setExportModalOpen(true)}
+              disabled={loading || (!classOpen && !classes.length)}
               className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-cnhs-green-dark px-3 text-[11px] font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-[#246f54] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {exporting ? (
-                <Loader2 size={12} className="animate-spin" aria-hidden="true" />
-              ) : (
-                <Download size={12} aria-hidden="true" />
-              )}
+              <Download size={12} aria-hidden="true" />
               Export
             </button>
           </>
@@ -389,6 +387,27 @@ export default function AcademicRecordsPage() {
         </>
       )}
 
+      {/* Export Academic Records Modal */}
+      <ExportAcademicRecordsModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        schoolYear={schoolYear}
+        quarter={quarterLabel}
+        periodLabel={periodLabel}
+        classTitle={
+          selectedClass
+            ? `${selectedClass.subject} · ${selectedClass.gradeSection} · ${selectedClass.termLabel}`
+            : gradeFocused && sectionFocused
+            ? `${gradeFilter} · ${sectionFilter}`
+            : gradeFocused
+            ? `${gradeFilter} Consolidated`
+            : "School-Wide Classes"
+        }
+        teacherName={selectedClass?.teacherName || "Subject Teacher"}
+        students={classOpen ? students : []}
+        classes={classOpen ? [selectedClass] : classes}
+        summaryCards={summaryCards}
+      />
     </motion.div>
   );
 }

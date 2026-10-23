@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import {
   AlertTriangle,
   ChevronDown,
+  Download,
   Loader2,
   RefreshCw,
   X,
@@ -33,6 +34,8 @@ import { cn } from "@/lib/utils";
 import AppSelect from "@/components/shared/AppSelect";
 
 import LearnerAcademicDetailModal from "@/components/monitoring/shared/LearnerAcademicDetailModal";
+import ExportAcademicMonitoringModal from "@/components/monitoring/shared/ExportAcademicMonitoringModal";
+import { SF9_SCHOOL_INFO } from "@/lib/reports/sf9DataService";
 
 const MONITORING_TABS = [
   { id: "matrix", label: "School & Sections" },
@@ -62,6 +65,7 @@ export default function AdminMonitoringPage() {
   const [grade, setGrade] = useState("All Grades");
   const [section, setSection] = useState("All Sections");
   const [activeTab, setActiveTab] = useState("matrix");
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   useEffect(() => {
     const tabParam = searchParams.get("tab");
@@ -227,6 +231,15 @@ export default function AdminMonitoringPage() {
                 className={refreshing || loading ? "animate-spin" : ""}
               />
               Refresh
+            </button>
+            <button
+              type="button"
+              onClick={() => setExportModalOpen(true)}
+              title="Export Academic Monitoring Report (PDF or Excel)"
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-cnhs-green/30 bg-cnhs-green-soft/40 px-3 text-xs font-semibold text-cnhs-green-dark shadow-xs transition-colors hover:border-cnhs-green hover:bg-cnhs-green-soft dark:border-white/10 dark:bg-[var(--card)] dark:text-slate-200"
+            >
+              <Download size={13} />
+              Export Report
             </button>
           </>
         }
@@ -446,6 +459,28 @@ export default function AdminMonitoringPage() {
           currentQuarterNumber={quarter === "All Terms" ? 1 : Number(quarter.replace(/\D/g, "")) || 1}
         />
       )}
+
+      {/* EXPORT ACADEMIC MONITORING REPORT MODAL */}
+      <ExportAcademicMonitoringModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        role="principal"
+        teacherName={SF9_SCHOOL_INFO.defaultSchoolHead || "School Head"}
+        schoolYear={activeSchoolYear}
+        quarter={quarter}
+        gradeLevel={grade}
+        sectionName={section}
+        scopeLabel={
+          section !== "All Sections"
+            ? `${grade !== "All Grades" ? grade + " - " : ""}${section}`
+            : grade !== "All Grades"
+            ? `${grade} Consolidated`
+            : "School-Wide Consolidated"
+        }
+        learners={dedupedMonitored}
+        classSummaries={classSummaries}
+        summaryCounts={summaryCounts}
+      />
     </motion.div>
   );
 }

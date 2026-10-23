@@ -77,14 +77,10 @@ export default function PhilIriEnterResultModal({
 
     if (score < 28) {
       setIndividualAssessment("Required");
-      if (score >= 0 && score <= 15) {
-        setReadingLevel("Frustration");
-      } else if (score >= 16 && score <= 27) {
-        setReadingLevel("Instructional");
-      }
+      setReadingLevel("Not Assessed");
     } else {
       setIndividualAssessment("Not Required");
-      setReadingLevel("Independent");
+      setReadingLevel("Not Assessed");
     }
   }, [gstScore]);
 

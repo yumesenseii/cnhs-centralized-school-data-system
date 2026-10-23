@@ -207,9 +207,20 @@ export default function AralLearnerProfileModal({
     }
   };
 
-  // Derive supportive RF risk details
-  const rfRiskLevel = learner.riskLevel || (learner.academicRiskLevel === "High Risk" ? "High" : "Moderate");
-  const rfConfidence = learner.confidence ? Math.round(learner.confidence * 100) : 87;
+  // Derive supportive RF risk details strictly from verified RF outputs
+  const rfData = learner.rfAnalysis;
+  const isRfAvailable = Boolean(
+    rfData?.status === "available" &&
+      rfData?.predictedRisk &&
+      rfData.predictedRisk !== "—" &&
+      rfData?.source !== "rule-based-fallback"
+  );
+
+  const rfRiskLevel = isRfAvailable ? rfData.predictedRisk : null;
+
+  const rfConfidence = isRfAvailable && rfData.confidence != null
+    ? Math.round(rfData.confidence * 100)
+    : null;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
@@ -337,46 +348,66 @@ export default function AralLearnerProfileModal({
                   <div className="flex items-center gap-2">
                     <Sparkles size={16} className="text-blue-700" />
                     <h3 className="text-sm font-bold text-blue-950">
-                      Random Forest Risk Classification (Analytical Decision Support)
+                      Random Forest Pattern Analysis (Experimental Decision Support)
                     </h3>
                   </div>
                   <span className="rounded-md bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800">
-                    Supportive Layer
+                    Experimental Layer
                   </span>
                 </div>
 
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                   <div className="rounded-lg bg-white p-3 border border-blue-100">
                     <p className="text-[10px] uppercase font-bold text-slate-400">Risk Classification</p>
-                    <p className="mt-1 font-bold text-rose-700 text-sm">
-                      {rfRiskLevel} Risk
+                    <p className={cn(
+                      "mt-1 font-bold text-sm",
+                      isRfAvailable && rfRiskLevel === "High Risk"
+                        ? "text-rose-700"
+                        : isRfAvailable && rfRiskLevel === "Moderate Risk"
+                        ? "text-amber-700"
+                        : isRfAvailable && rfRiskLevel
+                        ? "text-emerald-700"
+                        : "text-slate-400"
+                    )}>
+                      {isRfAvailable && rfRiskLevel ? `${rfRiskLevel} Risk` : "—"}
                     </p>
                   </div>
                   <div className="rounded-lg bg-white p-3 border border-blue-100">
                     <p className="text-[10px] uppercase font-bold text-slate-400">Model Confidence</p>
-                    <p className="mt-1 font-bold text-blue-800 text-sm">
-                      {rfConfidence}%
+                    <p className={cn(
+                      "mt-1 font-bold text-sm font-mono",
+                      isRfAvailable && rfConfidence != null ? "text-blue-800" : "text-slate-400"
+                    )}>
+                      {isRfAvailable && rfConfidence != null ? `${rfConfidence}%` : "—"}
                     </p>
                   </div>
                   <div className="rounded-lg bg-white p-3 border border-blue-100">
-                    <p className="text-[10px] uppercase font-bold text-slate-400">Recommended Action</p>
-                    <p className="mt-1 font-semibold text-slate-800">
-                      Prioritize for intervention review
+                    <p className="text-[10px] uppercase font-bold text-slate-400">ML Status</p>
+                    <p className={cn(
+                      "mt-1 text-xs font-semibold",
+                      isRfAvailable ? "text-slate-800" : "text-amber-800"
+                    )}>
+                      {isRfAvailable ? "Decision Support Available" : "ML Prediction Unavailable"}
                     </p>
                   </div>
                 </div>
 
                 <div className="mt-3 text-[11px] text-blue-900 leading-relaxed">
-                  <p className="font-semibold">Contributing Indicators:</p>
+                  <p className="font-semibold">Academic Evidence Basis (Model B):</p>
                   <ul className="list-disc list-inside mt-0.5 space-y-0.5 text-blue-800">
-                    <li>Phil-IRI screening score below Grade benchmark ({learner.philIriScore || "Low"})</li>
-                    <li>Quarterly class grade below 75% ({learner.classSubjectGrade || learner.academicGrade || "73%"})</li>
-                    <li>Low performance trajectory detected in formative reading quizzes</li>
+                    <li>Quarterly academic performance in {learner.subject || "curriculum learning area"}</li>
+                    {learner.classSubjectGrade && Number(learner.classSubjectGrade) < 75 ? (
+                      <li>Class grade ({learner.classSubjectGrade}) below standard passing threshold (75)</li>
+                    ) : null}
+                    <li>ECR finalized grade records evaluated for academic vulnerability patterns</li>
                   </ul>
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    Phil-IRI scores govern statutory ARAL eligibility; Random Forest operates on finalized academic records only.
+                  </p>
                 </div>
 
                 <p className="mt-3 text-[10px] text-slate-400 italic">
-                  Note: Random Forest classification serves exclusively as advisory decision support. Official assessment rules and teacher discretion govern placement.
+                  Note: Random Forest Model B serves exclusively as experimental same-term pattern analysis for decision support. It is trained on synthetic cohort data, is not a validated next-term forecast, and does not supersede official DepEd assessment rules.
                 </p>
               </div>
 

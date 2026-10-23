@@ -33,7 +33,6 @@ export default function EditUserModal({ open, user, options, onClose, onSubmit }
       fullName: form.get("fullName"),
       email: form.get("email"),
       learningArea: form.get("learningArea"),
-      phone: form.get("phone"),
       status: form.get("status"),
     });
 
@@ -104,31 +103,18 @@ export default function EditUserModal({ open, user, options, onClose, onSubmit }
             </label>
 
             {isTeacher ? (
-              <>
-                <div className="block">
-                  <span className="mb-1.5 block text-[11px] font-semibold text-slate-600">
-                    Learning Area
-                  </span>
-                  <AppSelect
-                    label="Learning Area"
-                    name="learningArea"
-                    defaultValue={user.learningArea}
-                    options={learningAreas}
-                    triggerClassName="bg-slate-50/80 text-xs focus:bg-white"
-                  />
-                </div>
-                <label className="block">
-                  <span className="mb-1.5 block text-[11px] font-semibold text-slate-600">
-                    Phone
-                  </span>
-                  <input
-                    name="phone"
-                    defaultValue={user.phone === "—" ? "" : user.phone}
-                    placeholder="09XXXXXXXXX"
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs text-slate-700 outline-none transition-colors focus:border-cnhs-green focus:bg-white"
-                  />
-                </label>
-              </>
+              <div className="block">
+                <span className="mb-1.5 block text-[11px] font-semibold text-slate-600">
+                  Learning Area
+                </span>
+                <AppSelect
+                  label="Learning Area"
+                  name="learningArea"
+                  defaultValue={user.learningArea}
+                  options={learningAreas}
+                  triggerClassName="bg-slate-50/80 text-xs focus:bg-white"
+                />
+              </div>
             ) : (
               <input type="hidden" name="learningArea" value="Administration" />
             )}

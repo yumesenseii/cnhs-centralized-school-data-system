@@ -16,6 +16,7 @@ import {
   ARAL_APPROVAL_STATUS,
   aralApprovalDisplayLabel,
   isAralHtTrackedLearner,
+  isPendingPrincipal,
 } from "@/lib/monitoring/aralApproval";
 import {
   reviewAralRecommendation,
@@ -64,16 +65,6 @@ function gradeSortKey(grade) {
 
 function isApprovedLocked(learner) {
   return learner?.displayStatus === ARAL_APPROVAL_STATUS.APPROVED;
-}
-
-function isPendingPrincipal(status) {
-  return (
-    !status ||
-    status === ARAL_APPROVAL_STATUS.SUGGESTED ||
-    status === ARAL_APPROVAL_STATUS.SUBMITTED ||
-    String(status).toLowerCase().includes("submitted") ||
-    String(status).toLowerCase().includes("suggested")
-  );
 }
 
 function buildApprovalSectionGroups(aralRows = []) {
@@ -260,8 +251,8 @@ export default function AdminAralApprovalPanel({
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  function toggleOne(selectKey, locked = false) {
-    if (locked) return;
+  function toggleOne(selectKey, locked = false, isActionable = true) {
+    if (locked || !isActionable) return;
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(selectKey)) next.delete(selectKey);
@@ -272,7 +263,7 @@ export default function AdminAralApprovalPanel({
 
   function toggleSectionAll(group) {
     const keys = group.learners
-      .filter((l) => !isApprovedLocked(l))
+      .filter((l) => !isApprovedLocked(l) && isPendingPrincipal(l.displayStatus))
       .map((l) => l.selectKey);
     if (!keys.length) return;
     const allSelected = keys.every((k) => selected.has(k));
@@ -289,6 +280,14 @@ export default function AdminAralApprovalPanel({
 
   async function handleSingleApprove(learner) {
     if (!learner) return;
+    if (!isPendingPrincipal(learner.displayStatus)) {
+      showToast({
+        title: "Cannot Approve",
+        message: "Only referrals submitted by the teacher may be approved.",
+        tone: "warning",
+      });
+      return;
+    }
     setBusyKey(learner.selectKey);
     const session = await getAdminSession();
     const profileId = session.data?.id ?? null;
@@ -379,8 +378,20 @@ export default function AdminAralApprovalPanel({
     const allLearners = [];
     for (const group of visibleGroups) {
       for (const l of group.learners) {
-        if (selected.has(l.selectKey)) allLearners.push(l);
+        if (selected.has(l.selectKey) && isPendingPrincipal(l.displayStatus)) {
+          allLearners.push(l);
+        }
       }
+    }
+
+    if (!allLearners.length) {
+      showToast({
+        title: "No Submitted Referrals",
+        message: "Only referrals submitted by the teacher may be approved.",
+        tone: "warning",
+      });
+      setBatchBusy(false);
+      return;
     }
 
     const session = await getAdminSession();
@@ -655,8 +666,8 @@ export default function AdminAralApprovalPanel({
                                     <input
                                       type="checkbox"
                                       checked={isChecked}
-                                      disabled={locked}
-                                      onChange={() => toggleOne(learner.selectKey, locked)}
+                                      disabled={locked || !isPendingPrincipal(learner.displayStatus)}
+                                      onChange={() => toggleOne(learner.selectKey, locked, isPendingPrincipal(learner.displayStatus))}
                                       className="rounded border-slate-300 text-cnhs-green focus:ring-cnhs-green disabled:opacity-30"
                                     />
                                   </td>
@@ -686,9 +697,13 @@ export default function AdminAralApprovalPanel({
                                       <span className="inline-flex rounded-full bg-orange-50 px-2.5 py-0.5 text-[11px] font-semibold text-orange-700 ring-1 ring-orange-200">
                                         Returned
                                       </span>
-                                    ) : (
+                                    ) : learner.displayStatus === ARAL_APPROVAL_STATUS.SUBMITTED ? (
                                       <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200">
-                                        Waiting for Review
+                                        Submitted for Approval
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-600 ring-1 ring-slate-200">
+                                        Awaiting Teacher Review
                                       </span>
                                     )}
                                   </td>

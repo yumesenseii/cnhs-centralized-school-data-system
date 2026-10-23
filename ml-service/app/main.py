@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from .feature_contract import FEATURE_NAMES, to_feature_list
 from .model_loader import get_model_bundle, model_ready
+from .trend_loader import get_trend_bundle, trend_model_ready
 
 app = FastAPI(
     title="CNHS LEARN Academic Risk ML Service",
@@ -315,5 +316,90 @@ def get_historical_dataset_summary() -> dict[str, Any]:
             "features_used": FEATURE_NAMES,
         },
     }
+
+
+class SubjectTrendPredictRequest(BaseModel):
+    student_id: str | None = None
+    subject: str
+    term: int
+    feature_vector: dict[str, Any]
+    feature_names: list[str] | None = None
+
+
+@app.post("/predict_subject_trend")
+def predict_subject_trend(req: SubjectTrendPredictRequest) -> dict[str, Any]:
+    """
+    Experimental per-subject next-term trend forecast (Checkpoint 2).
+    Transitions: Term 1 -> Term 2 and Term 2 -> Term 3 exclusively.
+    Returns advisory status and prediction: Improving | Stable | Declining.
+    Confidence percentages and probabilities are strictly suppressed.
+    """
+    if not trend_model_ready():
+        raise HTTPException(
+            status_code=503,
+            detail="Experimental trend model artifact not found.",
+        )
+
+    if req.term not in (1, 2):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Unsupported term {req.term}. "
+                "Forecast is restricted to Term 1 -> Term 2 and Term 2 -> Term 3 transitions."
+            ),
+        )
+
+    bundle = get_trend_bundle()
+    subj_map = bundle.get("subject_mapping") or {}
+    clean_subj = str(req.subject or "").strip().lower()
+
+    if clean_subj not in subj_map:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid subject '{req.subject}'. Supported subjects: {list(subj_map.keys())}.",
+        )
+
+    expected_features = bundle.get("feature_names") or []
+    if len(expected_features) != 9:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Trend model bundle expects 9 features, found {len(expected_features)}.",
+        )
+
+    vector: list[float] = []
+    for feat_name in expected_features:
+        if feat_name not in req.feature_vector:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Missing required trend feature '{feat_name}' in feature_vector.",
+            )
+        val = req.feature_vector[feat_name]
+        try:
+            val_f = float(val)
+        except (ValueError, TypeError) as err:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Feature '{feat_name}' must be numeric (got {val}).",
+            ) from err
+        vector.append(val_f)
+
+    model = bundle["model"]
+    pred = model.predict([vector])[0]
+    target_term = req.term + 1
+
+    return {
+        "status": "available",
+        "subject": clean_subj,
+        "currentTerm": req.term,
+        "targetTerm": target_term,
+        "predictedTrend": str(pred),
+        "source": "pattern-analysis-experimental",
+        "disclaimer": (
+            "Experimental Subject Trend Forecast — Advisory Only (Synthetic-Data Model). "
+            "Does not determine official academic risk, ARAL qualification, teacher remediation decisions, or PLP generation."
+        ),
+        "message": f"Successfully predicted {pred} trend for {clean_subj} in Term {target_term}.",
+    }
+
 
 

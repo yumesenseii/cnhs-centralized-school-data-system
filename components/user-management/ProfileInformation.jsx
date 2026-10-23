@@ -15,7 +15,6 @@ const avatarTones = {
 const fields = [
   { key: "employeeId", label: "Employee ID" },
   { key: "email", label: "Email" },
-  { key: "phone", label: "Phone Number" },
 ];
 
 export default function ProfileInformation({ user }) {

@@ -38,20 +38,20 @@ function previousSchoolYearLabel(schoolYear) {
 
 const CARD_COPY = {
   "high-risk": {
-    label: "Needs Immediate Review",
-    meaning: "Learners far below passing",
+    label: "High Risk",
+    meaning: "Below 75",
   },
   "moderate-risk": {
-    label: "Needs Monitoring",
-    meaning: "Learners to watch closely",
+    label: "Moderate Risk",
+    meaning: "75–80",
   },
   "low-risk": {
-    label: "Doing Well",
-    meaning: "Learners meeting expectations",
+    label: "Low Risk",
+    meaning: "Above 80",
   },
-  aral: {
-    label: "ARAL Learners",
-    meaning: "English / Filipino only",
+  "incomplete-records": {
+    label: "Incomplete Records",
+    meaning: "No complete published GWA",
   },
 };
 
@@ -63,7 +63,11 @@ function formatSchoolYearLabel(schoolYear) {
 
 function learnerCountFromStats(stats = []) {
   const sum = stats
-    .filter((s) => ["high-risk", "moderate-risk", "low-risk"].includes(s.id))
+    .filter((s) =>
+      ["high-risk", "moderate-risk", "low-risk", "incomplete-records"].includes(
+        s.id
+      )
+    )
     .reduce((acc, s) => acc + (Number(s.value) || 0), 0);
   return sum > 0 ? sum : null;
 }
@@ -182,14 +186,14 @@ export default function AdminAcademicAnalytics({
       items.push({
         id: "aral-referrals",
         text: `${pendingAralReferrals} ARAL referral${pendingAralReferrals === 1 ? "" : "s"} waiting for review`,
-        action: "View",
+        action: "Review",
         href: "/aral-monitoring",
       });
     }
     if (Number(highRiskStat?.value) > 0 && highRiskStat?.href) {
       items.push({
         id: "high-risk",
-        text: `${highRiskStat.value} learner${highRiskStat.value === 1 ? "" : "s"} need${highRiskStat.value === 1 ? "s" : ""} immediate review`,
+        text: `${highRiskStat.value} learner${highRiskStat.value === 1 ? "" : "s"} need immediate review`,
         action: "View",
         href: highRiskStat.href,
       });
@@ -200,11 +204,10 @@ export default function AdminAcademicAnalytics({
       (sum, section) => sum + (Number(section.count) || 0),
       0
     );
-    if (watchedSectionCount > 0) {
+    if (watchedSectionCount > 0 && watchedLearnersAffected > 0) {
       items.push({
         id: "sections-needing-monitoring",
-        text: `${watchedSectionCount} Section${watchedSectionCount === 1 ? "" : "s"} Need Closer Monitoring`,
-        sub: `${watchedLearnersAffected} learner${watchedLearnersAffected === 1 ? "" : "s"} affected`,
+        text: `${watchedLearnersAffected} learner${watchedLearnersAffected === 1 ? "" : "s"} in ${watchedSectionCount} section${watchedSectionCount === 1 ? "" : "s"} need closer monitoring`,
         action: "View",
         href: "/class-organization",
       });
@@ -213,11 +216,20 @@ export default function AdminAcademicAnalytics({
       items.push({
         id: "lesson-plans",
         text: `${pendingLessonPlans} lesson plan${pendingLessonPlans === 1 ? "" : "s"} waiting for review`,
-        action: "View",
+        action: "Review",
         href: "/lesson-plan-review",
       });
     }
-    return items;
+    // Remove duplicates by href+text
+    const seen = new Set();
+    const unique = [];
+    for (const item of items) {
+      const key = `${item.href}|${item.text.toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(item);
+    }
+    return unique;
   }, [pendingAralReferrals, pendingLessonPlans, highRiskStat, watchSections]);
 
   const latestTerm =
