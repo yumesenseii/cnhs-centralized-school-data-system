@@ -297,9 +297,11 @@ export async function POST(request) {
     const ecrSheets = sheetRows ?? [];
 
     // --- Publication evidence (published / draft / missing) ---------------
+    // Verify whether an authoritative publication record exists for the current
+    // term, class, and subject. Explicit drafts and unverifiable states remain blocked.
     const evidence = evaluatePublicationEvidence({
       sheets: ecrSheets,
-      requiredTerms: requiredQuarters,
+      requiredTerms: [requestedTerm],
     });
 
     if (evidence.state !== "published") {

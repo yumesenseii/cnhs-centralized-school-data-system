@@ -15,6 +15,10 @@ export const riskStyles = {
   Moderate: "bg-amber-50 text-amber-700",
   "Low Risk": "bg-green-50 text-cnhs-green-dark",
   Low: "bg-green-50 text-cnhs-green-dark",
+  "Pending Academic Risk": "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300",
+  "Pending Full-Term Evaluation": "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300",
+  Pending: "bg-slate-100 text-slate-500",
+  "—": "bg-slate-100 text-slate-400",
 };
 
 export const interventionStyles = {

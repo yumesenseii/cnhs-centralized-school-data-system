@@ -180,8 +180,8 @@ test("6. ECR Publication Guard: Draft / unpublished ECR sheets reject forecast",
   assert.match(result.reason, /draft \/ unpublished state in ECR/i);
 });
 
-test("7. Term 2 requires verified Term 1 records: missing Term 1 grades rejects forecast", () => {
-  const gradesT2Only = makeTermGrades(2); // Only Term 2 grades, no Term 1
+test("7. Term 2 -> Term 3 forecasting: missing Term 1 records safely uses feat_has_prior_term = 0 with zero prior-term deltas", () => {
+  const gradesT2Only = makeTermGrades(2); // Complete Term 2 grades, no Term 1
   const result = verifyAndBuildTrendFeatures({
     learnerId: "std-006",
     subjectIdentifier: "mathematics",
@@ -190,8 +190,45 @@ test("7. Term 2 requires verified Term 1 records: missing Term 1 grades rejects 
     ecrTermSheets: [{ term: 2, status: "published" }],
   });
 
+  assert.equal(result.eligible, true);
+  assert.equal(result.features.feat_has_prior_term, 0.0);
+  assert.equal(result.features.feat_prior_subject_grade_delta, 0.0);
+  assert.equal(result.features.feat_prior_gwa_delta, 0.0);
+  assert.equal(result.features.feat_current_subject_grade, 82);
+});
+
+test("7b. Term 2 -> Term 3 forecasting: draft Term 1 sheet safely falls back to feat_has_prior_term = 0 without using draft grades", () => {
+  const gradesT1AndT2 = [...makeTermGrades(1), ...makeTermGrades(2)];
+  const result = verifyAndBuildTrendFeatures({
+    learnerId: "std-006b",
+    subjectIdentifier: "mathematics",
+    currentTerm: 2,
+    gradesRecords: gradesT1AndT2,
+    ecrTermSheets: [
+      { term: 1, status: "draft" },
+      { term: 2, status: "published" },
+    ],
+  });
+
+  assert.equal(result.eligible, true);
+  // Draft Term 1 grades must not be used: prior deltas stay zero
+  assert.equal(result.features.feat_has_prior_term, 0.0);
+  assert.equal(result.features.feat_prior_subject_grade_delta, 0.0);
+  assert.equal(result.features.feat_prior_gwa_delta, 0.0);
+});
+
+test("7c. Term 2 -> Term 3 forecasting: draft Term 2 sheet rejects forecast", () => {
+  const gradesT2Only = makeTermGrades(2);
+  const result = verifyAndBuildTrendFeatures({
+    learnerId: "std-006c",
+    subjectIdentifier: "mathematics",
+    currentTerm: 2,
+    gradesRecords: gradesT2Only,
+    ecrTermSheets: [{ term: 2, status: "draft" }],
+  });
+
   assert.equal(result.eligible, false);
-  assert.match(result.reason, /Missing finalized published grades in prior Term 1/i);
+  assert.match(result.reason, /draft \/ unpublished state in ECR/i);
 });
 
 test("8. MAPEH Component Resolution: averages components and rounds to official grade", () => {

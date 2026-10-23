@@ -203,7 +203,15 @@ export default function LearnerAcademicDetailModal({
     };
   }, [activeLearner, remedialStatus]);
 
-  const academicRisk = deriveAcademicRisk(monitoredLearner, curGrade);
+  // Overall academic risk must strictly be derived from the authoritative complete per-term GWA,
+  // NEVER from an individual subject grade.
+  const authoritativeGwa = parseRecordedGrade(
+    activeLearner.authoritativeGwa ??
+      activeLearner.finalGwa ??
+      (activeLearner.evaluationStatus === "complete" ? activeLearner.generalAverage : null)
+  );
+
+  const academicRisk = deriveAcademicRisk(monitoredLearner, authoritativeGwa);
   const progressInfo = deriveAcademicProgress(curGrade, prevGrade);
   const currentSupport = deriveCurrentSupport(monitoredLearner);
 
@@ -449,13 +457,13 @@ export default function LearnerAcademicDetailModal({
   // Main concern headline for 5-second teacher clarity
   const mainConcernHeadline = useMemo(() => {
     if (curGrade !== null && curGrade < 75) {
-      return `Grade below passing in ${studentSubject}`;
+      return `Needs Academic Support: Grade below passing in ${studentSubject}`;
     }
     if (academicRisk === "High Risk" || academicRisk === "Moderate Risk") {
       return `Academic attention recommended for ${studentSubject}`;
     }
-    if (activeLearner?.isProvisional) {
-      return "Provisional academic record";
+    if (activeLearner?.isProvisional || academicRisk === "Pending Academic Risk") {
+      return "Pending full-term evaluation";
     }
     return "Learner performing within grade expectations";
   }, [curGrade, studentSubject, academicRisk, activeLearner?.isProvisional]);
@@ -1195,7 +1203,14 @@ export default function LearnerAcademicDetailModal({
                     </span>
                     <div className="mt-1 flex flex-wrap items-center gap-3">
                       <div>
-                        <span className="text-[10px] text-slate-400">Grade</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-slate-400">Grade</span>
+                          {curGrade !== null && curGrade < 75 ? (
+                            <span className="inline-flex items-center rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                              Needs Academic Support
+                            </span>
+                          ) : null}
+                        </div>
                         <div
                           className={cn(
                             "text-base font-bold",
