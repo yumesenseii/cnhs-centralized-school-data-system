@@ -24,7 +24,7 @@ export default function PhilIriImportModal({
   teacherId = null,
   schoolYear = "SY 2026-2027",
   quarter = 1,
-  // Authoritative ARAL period; baseline imports are BOSY-gated in the backend.
+  // Imports belong to the selected reading period.
   aralPeriod = null,
   onSuccess,
 }) {

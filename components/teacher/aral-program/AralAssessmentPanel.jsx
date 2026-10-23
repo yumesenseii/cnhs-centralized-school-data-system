@@ -29,8 +29,6 @@ export default function AralAssessmentPanel({
   group,
   teacherId = null,
   phase = ARAL_ASSESSMENT_PHASE.PRE,
-  // Authoritative ARAL period; score saves are period-gated in the backend.
-  assessmentPeriod = null,
 }) {
   const resolvedPhase = normalizeAralAssessmentPhase(phase);
   const phaseLabel = aralAssessmentPhaseLabel(resolvedPhase);
@@ -173,7 +171,6 @@ export default function AralAssessmentPanel({
       maxScore,
       passPercent,
       teacherId,
-      assessmentPeriod,
     });
     setStarting(false);
     if (result.error) {
@@ -216,7 +213,6 @@ export default function AralAssessmentPanel({
       phase: resolvedPhase,
       teacherId,
       rows,
-      assessmentPeriod,
     });
     setSaving(false);
     if (result.error) {

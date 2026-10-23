@@ -49,8 +49,7 @@ export default function StudentMonitoringSidePanel({
   // Workflow context: "academic" (risk detection, remedial, referral) or
   // "aral" (approved reading cases, assessment, intervention progress).
   context = "academic",
-  // Authoritative ARAL assessment period (BOSY/MOSY/EOSY). Baseline saves
-  // are BOSY-gated in the backend; null preserves legacy behavior.
+  // Selected reading period, independent of academic term editing permissions.
   aralPeriod = null,
 }) {
   const pathname = usePathname();
@@ -97,11 +96,8 @@ export default function StudentMonitoringSidePanel({
     permissions[ASSESSMENT_STAGES.MID]?.editable === true ||
     permissions[ASSESSMENT_STAGES.END]?.editable === true;
 
-  // Baseline screening belongs to BOSY. Once the authoritative period
-  // advances, the baseline is historical and read-only here.
-  const baselineEditable =
-    canEditAssessment &&
-    (!aralPeriod || normalizeAralPeriod(aralPeriod) === "BOSY");
+  // Reading entry is independent of academic term editing permissions.
+  const baselineEditable = Boolean(normalizeAralPeriod(aralPeriod));
   const assessmentPeriodLabel = aralPeriod
     ? aralPeriodLabel(aralPeriod)
     : currentPhase;

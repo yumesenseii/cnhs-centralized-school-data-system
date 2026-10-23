@@ -14,8 +14,7 @@ import { useAppToast } from "@/components/shared/AppToast";
 import StatCard from "@/components/dashboard/StatCard";
 import AralClassDropdown from "@/components/teacher/aral-program/AralClassDropdown";
 import LearnerName from "@/components/shared/LearnerName";
-import { useAralAssessmentPeriod } from "@/hooks/useAralAssessmentPeriod";
-import { isAralPeriodEditable } from "@/lib/monitoring/assessmentTimeline";
+import { normalizeAralPeriod } from "@/lib/monitoring/assessmentTimeline";
 import { cn } from "@/lib/utils";
 
 // Helper to build initial row edits synchronously from learners or saved local draft
@@ -75,9 +74,10 @@ export default function AralClassGstSpreadsheet({
   const [saving, setSaving] = useState(false);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
 
-  const { period: currentAralPeriod, fromConfig } = useAralAssessmentPeriod();
-  // Safe lock: If unconfigured, do not silently default to editable BOSY.
-  const isPeriodEditable = Boolean(fromConfig) && isAralPeriodEditable(aralPeriod, currentAralPeriod);
+  const canEncode = Boolean(teacherId && normalizeAralPeriod(aralPeriod));
+  const hasScreeningRows = learners.some((learner) => !learner.readingWorkflow || learner.readingWorkflow.mode === "screening");
+  const canEditScreening = (learner) => !learner.readingWorkflow || learner.readingWorkflow.mode === "screening";
+  const [correctionReason, setCorrectionReason] = useState("");
 
   // Draft state initialized synchronously (prevents empty-render flicker)
   const [rowEdits, setRowEdits] = useState(() =>
@@ -96,7 +96,7 @@ export default function AralClassGstSpreadsheet({
           l.rawPayload?.isAbsent
         );
         // Only update row if not currently dirty with teacher's unsaved keystrokes
-        if (!next[l.studentId]?.isDirty) {
+        if (!next[l.studentId]?.isDirty && !next[l.studentId]?.isDraft) {
           next[l.studentId] = {
             score: isAbsentFromDb ? "" : (l.philIriScore != null ? String(l.philIriScore) : ""),
             isAbsent: isAbsentFromDb,
@@ -109,9 +109,16 @@ export default function AralClassGstSpreadsheet({
     });
   }, [learners]);
 
+  // Preserve only local drafts across period/class switches; database writes remain explicit.
+  useEffect(() => {
+    if (Object.values(rowEdits).some((row) => row.isDirty || row.isDraft)) {
+      try { localStorage.setItem(`aral_gst_draft_${classInfo.classId}_${schoolYear}_${aralPeriod}`, JSON.stringify(rowEdits)); } catch {}
+    }
+  }, [rowEdits, classInfo.classId, schoolYear, aralPeriod]);
+
   // Handle score change for a learner (automatically clears absent state)
   function handleScoreChange(studentId, val) {
-    if (!isPeriodEditable) return;
+    if (!canEncode || !canEditScreening(learners.find((l) => l.studentId === studentId) || {})) return;
     setRowEdits((prev) => {
       const current = prev[studentId] || {};
       return {
@@ -129,7 +136,7 @@ export default function AralClassGstSpreadsheet({
 
   // Handle absent toggle for a learner (clears score input and sets absent)
   function handleAbsentToggle(studentId, currentAbsent) {
-    if (!isPeriodEditable) return;
+    if (!canEncode || !canEditScreening(learners.find((l) => l.studentId === studentId) || {})) return;
     const nextAbsent = !currentAbsent;
     setRowEdits((prev) => {
       const current = prev[studentId] || {};
@@ -166,7 +173,7 @@ export default function AralClassGstSpreadsheet({
 
   // Handle Paste: paste column of scores down consecutive rows
   function handlePaste(e, startIndex) {
-    if (!isPeriodEditable) return;
+    if (!canEncode) return;
     const clipboardText = e.clipboardData?.getData("text") || "";
     if (!clipboardText) return;
 
@@ -184,7 +191,7 @@ export default function AralClassGstSpreadsheet({
       const next = { ...prev };
       lines.forEach((lineVal, idx) => {
         const targetLearner = learners[startIndex + idx];
-        if (!targetLearner) return;
+        if (!targetLearner || !canEditScreening(targetLearner)) return;
 
         const isAbsentWord = /absent|excused/i.test(lineVal);
         if (isAbsentWord) {
@@ -219,6 +226,13 @@ export default function AralClassGstSpreadsheet({
     let pendingOrReschedule = 0;
 
     for (const l of learners) {
+      if (l.readingWorkflow && l.readingWorkflow.mode !== "screening") {
+        if (l.readingWorkflow.hasIndividualResult || l.readingWorkflow.mode === "complete" ||
+            (l.readingWorkflow.current?.philIriScore >= 28)) completedThisTerm++;
+        else pendingOrReschedule++;
+        if (l.readingWorkflow.requiresIndividual && !l.readingWorkflow.hasIndividualResult) needsReadingAssessment++;
+        continue;
+      }
       const isAbsent = Boolean(
         l.isAbsent ||
         l.candidateStatus === "Absent / For Reschedule" ||
@@ -229,10 +243,9 @@ export default function AralClassGstSpreadsheet({
       if (isAbsent) {
         pendingOrReschedule++;
       } else if (l.philIriScore != null && !Number.isNaN(Number(l.philIriScore))) {
-        completedThisTerm++;
-        if (Number(l.philIriScore) < 28) {
+        if (Number(l.philIriScore) < 28 && !l.iraMetrics && !l.readingWorkflow?.hasIndividualResult) {
           needsReadingAssessment++;
-        }
+        } else completedThisTerm++;
       } else {
         pendingOrReschedule++;
       }
@@ -258,16 +271,16 @@ export default function AralClassGstSpreadsheet({
       },
       {
         id: "completed-term",
-        label: "Completed This Term",
+        label: "Assessment Complete",
         value: finalizedStats.completedThisTerm,
-        subtext: "Assessment completed",
+        subtext: "Complete or no further assessment needed",
         variant: "default",
       },
       {
         id: "needs-ira",
         label: "Needs Further Assessment",
         value: finalizedStats.needsReadingAssessment,
-        subtext: "Score below 28 benchmark",
+        subtext: "Individual assessment or reassessment",
         variant: "default",
       },
       {
@@ -322,10 +335,11 @@ export default function AralClassGstSpreadsheet({
 
   // Action: Save Draft (saves locally to state / localStorage)
   function handleSaveDraft() {
-    if (!isPeriodEditable) {
-      showToast("Cannot save draft: Assessment period is locked for editing.");
+    if (!canEncode) {
+      showToast("Sign in as the assigned teacher and choose an assessment period.");
       return;
     }
+
     try {
       const draftKey = `aral_gst_draft_${classInfo.classId}_${schoolYear}_${aralPeriod}`;
       localStorage.setItem(draftKey, JSON.stringify(rowEdits));
@@ -348,8 +362,8 @@ export default function AralClassGstSpreadsheet({
 
   // Action: Save All Results (commits validated records to database)
   async function handleSaveAllResults() {
-    if (!isPeriodEditable) {
-      showToast("Cannot save: Assessment period is locked for editing.");
+    if (!canEncode) {
+      showToast("Sign in as the assigned teacher and choose an assessment period.");
       return;
     }
 
@@ -370,7 +384,11 @@ export default function AralClassGstSpreadsheet({
     setIsReviewOpen(false);
 
     try {
-      const scoresPayload = learners.map((l) => {
+      // Preserve saved individual assessments when saving the remaining screening rows.
+      const scoresPayload = learners.filter((learner) => {
+        const edit = rowEdits[learner.studentId];
+        return canEditScreening(learner) && (edit?.isDirty || edit?.isDraft);
+      }).map((l) => {
         const edit = rowEdits[l.studentId] || {};
         const hasValidScore =
           !edit.isAbsent &&
@@ -391,6 +409,11 @@ export default function AralClassGstSpreadsheet({
         };
       });
 
+      if (!scoresPayload.length) {
+        showToast("No new screening results to save.");
+        return;
+      }
+
       const { data, error } = await saveBatchClassGstScores({
         classId: classInfo.classId,
         teacherId,
@@ -399,7 +422,7 @@ export default function AralClassGstSpreadsheet({
         assessmentPeriod: aralPeriod || "BOSY",
         subject: classInfo.subject || "English",
         scores: scoresPayload,
-        currentAssessmentPeriod: currentAralPeriod,
+        correctionReason,
       });
 
       if (error) {
@@ -412,6 +435,9 @@ export default function AralClassGstSpreadsheet({
       } catch {}
 
       showToast(`Successfully saved GST results for ${data?.count || 0} learners.`);
+      setRowEdits((previous) => Object.fromEntries(Object.entries(previous).map(([id, edit]) =>
+        [id, { ...edit, isDirty: false, isDraft: false }]
+      )));
       await onRefresh?.();
     } catch (err) {
       console.error("handleSaveAllResults error:", err?.message || err);
@@ -425,15 +451,6 @@ export default function AralClassGstSpreadsheet({
 
   return (
     <div className="space-y-4">
-      {/* Locked Notice Banner */}
-      {!isPeriodEditable && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
-          {!fromConfig
-            ? "Reading assessment period is not configured. Records are view-only."
-            : `Assessment period "${aralPeriod}" is locked for editing. Viewing historical records only.`}
-        </div>
-      )}
-
       {/* 1. Class Selector & Batch Actions Row (Simple horizontal section with thin divider, no large rounded card) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-white/10">
         <div className="flex items-center gap-2.5">
@@ -451,11 +468,11 @@ export default function AralClassGstSpreadsheet({
         </div>
 
         {/* Batch Action Buttons: Save Draft (secondary), Review (secondary), Save All Results (primary CNHS green) */}
-        <div className="flex items-center gap-2">
+        {hasScreeningRows && <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={handleSaveDraft}
-            disabled={!isPeriodEditable}
+            disabled={!canEncode}
             className="inline-flex h-8.5 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Bookmark size={13} className="text-slate-400" />
@@ -474,7 +491,7 @@ export default function AralClassGstSpreadsheet({
           <button
             type="button"
             onClick={handleSaveAllResults}
-            disabled={!isPeriodEditable || saving}
+            disabled={!canEncode || saving}
             className="inline-flex h-8.5 cursor-pointer items-center gap-1.5 rounded-lg bg-[#246f54] px-3.5 text-xs font-semibold text-white shadow-2xs transition-colors hover:bg-[#1b5842] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? (
@@ -484,7 +501,7 @@ export default function AralClassGstSpreadsheet({
             )}
             <span>Save All Results</span>
           </button>
-        </div>
+        </div>}
       </div>
 
       {/* 2. 4 Standard Dashboard-Matched Summary Cards */}
@@ -494,9 +511,18 @@ export default function AralClassGstSpreadsheet({
         ))}
       </div>
 
+      {hasScreeningRows && <label className="block text-xs text-slate-600 dark:text-slate-300">
+        Reason for correcting saved scores (required for corrections)
+        <input value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value)} maxLength={500}
+          className="mt-1 block w-full rounded-lg border border-slate-200 bg-transparent px-3 py-2 text-sm" placeholder="Explain the correction" />
+        <span className="mt-1 block text-[11px] text-slate-500">A changed GST score clears this period’s individual result for reassessment. Earlier values remain in the correction history. Later assessments and progress are kept.</span>
+      </label>}
       {/* 3. Fast Entry Instruction (Muted helper text, no blue banner) */}
       <p className="text-[11.5px] text-slate-500 dark:text-slate-400">
-        Type score (0–40) and press <kbd className="rounded border border-slate-200 bg-slate-50 px-1 py-0.5 font-mono text-[10.5px] text-slate-700 shadow-2xs dark:border-white/10 dark:bg-slate-800 dark:text-slate-300">Enter</kbd> to move down, or paste a vertical column from Excel or Sheets. Click a learner&apos;s name to view their complete reading history.
+        {hasScreeningRows
+          ? "Record GST scores (0–40), then save before opening an individual reading assessment. Press Enter to move down, or paste a column from Excel."
+          : "Open the reading reassessment for learners who need follow-up. Earlier screening scores are shown for reference."}
+        {" "}Click a learner&apos;s name to view their complete reading history.
       </p>
 
       {/* 4. Main Spreadsheet Table (Visually dominant school record sheet style) */}
@@ -507,14 +533,16 @@ export default function AralClassGstSpreadsheet({
               <tr>
                 <th className="w-10 px-3 py-2 text-center whitespace-nowrap">#</th>
                 <th className="px-3 py-2 whitespace-nowrap">Learner</th>
-                <th className="w-36 px-3 py-2 whitespace-nowrap">GST Score / 40</th>
-                <th className="w-24 px-3 py-2 text-center whitespace-nowrap">Absent</th>
+                <th className="w-36 px-3 py-2 whitespace-nowrap">{hasScreeningRows ? "GST Score / 40" : "Screening Reference"}</th>
+                {hasScreeningRows && <th className="w-24 px-3 py-2 text-center whitespace-nowrap">Absent</th>}
                 <th className="w-44 px-3 py-2 whitespace-nowrap">Result</th>
                 <th className="w-28 px-3 py-2 text-right whitespace-nowrap">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
               {learners.map((learner, idx) => {
+                const workflow = learner.readingWorkflow;
+                const screeningEditable = canEncode && canEditScreening(learner);
                 const edit = rowEdits[learner.studentId] || {
                   score: "",
                   isAbsent: false,
@@ -548,6 +576,11 @@ export default function AralClassGstSpreadsheet({
                     resultText = "Needs Further Assessment";
                     resultClass = "font-medium text-slate-800 dark:text-slate-200";
                   }
+                }
+
+                if (workflow && !canEditScreening(learner)) {
+                  resultText = workflow.hasIndividualResult ? learner.readingLevel : workflow.message;
+                  resultClass = "text-slate-700 dark:text-slate-300";
                 }
 
                 // 2. Status indicator
@@ -588,7 +621,7 @@ export default function AralClassGstSpreadsheet({
                 );
 
                 if (!isOutOfRange) {
-                  if (edit.isAbsent || (isValidScore && numScore >= 28)) {
+                  if (workflow?.mode === "blocked" || workflow?.mode === "complete" || (edit.isAbsent && !workflow?.requiresIndividual) || (isValidScore && numScore >= 28)) {
                     actionElement = (
                       <button
                         type="button"
@@ -598,22 +631,15 @@ export default function AralClassGstSpreadsheet({
                         View Record
                       </button>
                     );
-                  } else if (isValidScore && numScore < 28) {
+                  } else if (workflow?.requiresIndividual || (isValidScore && numScore < 28)) {
                     actionElement = (
                       <button
                         type="button"
-                        onClick={() =>
-                          onOpenIra?.({
-                            ...learner,
-                            philIriScore:
-                              edit.score !== "" && edit.score != null
-                                ? Number(edit.score)
-                                : learner.philIriScore,
-                          })
-                        }
-                        className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors cursor-pointer shadow-2xs dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 whitespace-nowrap"
+                        onClick={() => onOpenIra?.(learner)}
+                        disabled={!canEncode || edit.isDirty || edit.isDraft || (workflow && !workflow.requiresIndividual)}
+                        className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors cursor-pointer shadow-2xs dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <span>Continue</span>
+                        <span>{edit.isDirty || edit.isDraft ? "Save screening first" : workflow?.hasIndividualResult ? "Review Assessment" : hasScreeningRows ? "Individual Assessment" : "Reassess Reading"}</span>
                         <ArrowRight size={11} className="text-slate-400" />
                       </button>
                     );
@@ -657,14 +683,19 @@ export default function AralClassGstSpreadsheet({
 
                     {/* GST Score / 40 Input */}
                     <td className="px-3 py-1.5 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
+                      {workflow && workflow.mode !== "screening" ? (
+                        <span className="text-xs text-slate-500">
+                          {workflow.screening ? `${workflow.screening.philIriScore} / 40 · ${workflow.screening.screeningPeriod}` : "—"}
+                        </span>
+                      ) : <div className="flex items-center gap-1.5">
                         <input
                           type="number"
                           data-row-idx={idx}
+                          aria-label={`GST score for ${learner.name || learner.studentNumber}`}
                           min={0}
                           max={40}
                           value={edit.score}
-                          disabled={!isPeriodEditable || edit.isAbsent}
+                          disabled={!screeningEditable || edit.isAbsent}
                           placeholder={edit.isAbsent ? "—" : "—"}
                           onChange={(e) =>
                             handleScoreChange(learner.studentId, e.target.value)
@@ -673,7 +704,7 @@ export default function AralClassGstSpreadsheet({
                           onPaste={(e) => handlePaste(e, idx)}
                           className={cn(
                             "h-7 w-14 rounded border px-2 text-center font-mono text-xs font-semibold tabular-nums text-slate-800 shadow-2xs transition focus:outline-hidden dark:text-white",
-                            !isPeriodEditable
+                            !canEncode
                               ? "border-slate-200 bg-slate-100 text-slate-400 opacity-70 cursor-not-allowed dark:border-white/10 dark:bg-slate-800/60"
                               : edit.isAbsent
                               ? "border-slate-200 bg-slate-100 text-slate-400 opacity-60 cursor-not-allowed dark:border-white/10 dark:bg-slate-800/60"
@@ -693,16 +724,16 @@ export default function AralClassGstSpreadsheet({
                             0–40 only
                           </span>
                         )}
-                      </div>
+                      </div>}
                     </td>
 
                     {/* Dedicated Absent Checkbox Column */}
-                    <td className="px-3 py-1.5 text-center whitespace-nowrap">
-                      <label className={cn("inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 select-none", isPeriodEditable ? "cursor-pointer" : "cursor-not-allowed opacity-60")}>
+                    {hasScreeningRows && <td className="px-3 py-1.5 text-center whitespace-nowrap">
+                      <label className={cn("inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 select-none", canEncode ? "cursor-pointer" : "cursor-not-allowed opacity-60")}>
                         <input
                           type="checkbox"
                           checked={edit.isAbsent}
-                          disabled={!isPeriodEditable}
+                          disabled={!screeningEditable}
                           onChange={() =>
                             handleAbsentToggle(learner.studentId, edit.isAbsent)
                           }
@@ -710,7 +741,7 @@ export default function AralClassGstSpreadsheet({
                         />
                         <span className="text-[11px]">Absent</span>
                       </label>
-                    </td>
+                    </td>}
 
                     {/* Result (with subtle saved/unsaved status) */}
                     <td className="px-3 py-1.5 whitespace-nowrap">
@@ -781,7 +812,7 @@ export default function AralClassGstSpreadsheet({
               <button
                 type="button"
                 onClick={handleSaveAllResults}
-                disabled={saving}
+                disabled={saving || !canEncode}
                 className="inline-flex h-8.5 cursor-pointer items-center gap-1.5 rounded-lg bg-[#246f54] px-4 text-xs font-semibold text-white shadow-2xs hover:bg-[#1b5842] transition disabled:opacity-60"
               >
                 {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}

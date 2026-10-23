@@ -1,0 +1,1 @@
+Superseded by ARAL_WORKFLOW_VERIFICATION.md. Live diagnostics confirmed schema drift (PGRST205 and a missing assessment_period column), rather than establishing a GRANT/RLS-only cause. See the current report for implementation, test results and migrations 058/059.

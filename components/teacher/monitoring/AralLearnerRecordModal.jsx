@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import AralCorrectionHistory from "@/components/aral/AralCorrectionHistory";
 import { X, BookOpen, AlertCircle, CheckCircle2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { evaluateAcademicAndReadingGuidance } from "@/lib/monitoring/academicAndReadingGuidance";
@@ -61,6 +62,7 @@ export default function AralLearnerRecordModal({
   learner = null,
   teacherId = null,
   onOpenAssessment,
+  assessmentWorkflow = null,
 }) {
   if (!isOpen || !learner) return null;
 
@@ -167,7 +169,7 @@ export default function AralLearnerRecordModal({
                 stepMeta.badgeClass || "border-slate-200 bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
               )}
             >
-              {learner.currentStepLabel || "Under Review"}
+              {assessmentWorkflow?.period || learner.currentStepLabel || "Under Review"}
             </span>
             <button
               type="button"
@@ -182,13 +184,14 @@ export default function AralLearnerRecordModal({
 
         {/* BODY */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          <AralCorrectionHistory learner={learner} />
           {/* 2. CURRENT STATUS GUIDANCE */}
           <section className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 dark:border-blue-900/30 dark:bg-blue-950/20">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-900 dark:text-blue-300">
               Assessment Guidance
             </span>
             <p className="mt-1.5 text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-normal">
-              {getWhatHappensNowExplanation(learner.currentStepKey, isGstAtGradeLevel)}
+              {assessmentWorkflow?.message || getWhatHappensNowExplanation(learner.currentStepKey, isGstAtGradeLevel)}
             </p>
           </section>
 
@@ -517,7 +520,7 @@ export default function AralLearnerRecordModal({
               Next Action
             </span>
             <p className="mt-1 text-xs font-semibold text-slate-800 dark:text-slate-200">
-              {getNextActionText(learner.currentStepKey, isGstAtGradeLevel)}
+              {assessmentWorkflow?.message || getNextActionText(learner.currentStepKey, isGstAtGradeLevel)}
             </p>
           </section>
         </div>
@@ -526,10 +529,10 @@ export default function AralLearnerRecordModal({
         <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-3.5 bg-slate-50/50 dark:border-white/5 dark:bg-slate-800/40">
           {onOpenAssessment &&
             learner.canEditAssessment &&
-            (learner.currentStepKey === "waiting_for_assessment" ||
+            (assessmentWorkflow ? assessmentWorkflow.requiresIndividual : (learner.currentStepKey === "waiting_for_assessment" ||
               learner.currentStepKey === "absent_reschedule" ||
               learner.currentStepKey === "needs_individual_assessment" ||
-              learner.currentStepKey === "gst_under_review") && (
+              learner.currentStepKey === "gst_under_review")) && (
               <button
                 type="button"
                 onClick={() => {
@@ -539,7 +542,7 @@ export default function AralLearnerRecordModal({
                 className="inline-flex items-center gap-1.5 rounded-xl bg-[#246f54] px-4 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-[#1b5842] transition cursor-pointer"
               >
                 <span>
-                  {learner.currentStepKey === "waiting_for_assessment"
+                  {assessmentWorkflow ? assessmentWorkflow.period === "BOSY" ? "Individual Assessment" : "Reassess Reading" : learner.currentStepKey === "waiting_for_assessment"
                     ? "Start Assessment"
                     : learner.currentStepKey === "absent_reschedule"
                     ? "Reschedule Assessment"

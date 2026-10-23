@@ -21,7 +21,7 @@ import {
   isAralPeriodEditable,
   getAralPeriodPermissions,
 } from "../lib/monitoring/assessmentTimeline.js";
-import { getAralAssessmentPeriod } from "../lib/supabase/queries/aralAssessmentPeriod.js";
+import { philIriMemoryClient } from "./test-support/phil-iri-memory-client.mjs";
 
 // 4. Supabase queries (with mock client for persistence tests)
 import {
@@ -272,282 +272,50 @@ test("5. English and Filipino assessment outcomes are independent and isolated",
 // 6. BOSY / MOSY / EOSY RECORD ISOLATION & UNIQUE CONSTRAINT VERIFICATION
 // ============================================================================
 
-test("6. BOSY / MoSY / EOSY record isolation: save queries scope strictly by (student_id, school_year, subject, assessment_period)", async () => {
-  let capturedUpsert = null;
-
-  // Mock Supabase client mimicking Migration 055 table schema
-  const mockSupabase = {
-    from: (table) => {
-      if (table === "monitoring_records") {
-        return {
-          update: () => ({
-            eq: () => ({
-              eq: () => ({
-                eq: () => Promise.resolve({ data: null, error: null }),
-              }),
-            }),
-          }),
-        };
-      }
-      assert.equal(table, "phil_iri_baseline_records");
-      return {
-        upsert: (rows, options) => {
-          capturedUpsert = { rows, options };
-          return { data: rows, error: null };
-        },
-        select: () => ({
-          eq: () => ({
-            eq: () => ({
-              eq: () => ({
-                eq: () => ({
-                  maybeSingle: async () => ({ data: null, error: null }),
-                }),
-              }),
-            }),
-          }),
-        }),
-      };
-    },
-  };
-
-  // Save BOSY result
-  const bosyResult = await saveSinglePhilIriResult({
-    studentId: "student-101",
-    schoolYear: "2026-2027",
-    subject: "English",
-    assessmentPeriod: "BOSY",
-    gstScore: 24,
-    iraMetrics: { wordReadingPct: 88, comprehensionPct: 60, readingProfile: "Frustration" },
-    supabaseClient: mockSupabase,
-    currentAssessmentPeriod: "BOSY",
-  });
-
-  assert.equal(bosyResult.error, null);
-  assert.equal(capturedUpsert.options.onConflict, "student_id,school_year,subject,assessment_period");
-  const bosyRow = Array.isArray(capturedUpsert.rows) ? capturedUpsert.rows[0] : capturedUpsert.rows;
-  assert.equal(bosyRow.assessment_period, "BOSY");
-  assert.equal(bosyRow.subject, "English");
-  assert.equal(bosyRow.total_score, 24);
-
-  // Save MOSY result for same student and subject: must NOT conflict with or overwrite BOSY
-  const mosyResult = await saveSinglePhilIriResult({
-    studentId: "student-101",
-    schoolYear: "2026-2027",
-    subject: "English",
-    assessmentPeriod: "MOSY",
-    gstScore: 30,
-    iraMetrics: { wordReadingPct: 95, comprehensionPct: 80, readingProfile: "Independent" },
-    supabaseClient: mockSupabase,
-    currentAssessmentPeriod: "MOSY",
-  });
-
-  assert.equal(mosyResult.error, null);
-  assert.equal(capturedUpsert.options.onConflict, "student_id,school_year,subject,assessment_period");
-  const mosyRow = Array.isArray(capturedUpsert.rows) ? capturedUpsert.rows[0] : capturedUpsert.rows;
-  assert.equal(mosyRow.assessment_period, "MOSY");
-  assert.equal(mosyRow.total_score, 30);
+test("6. BOSY/MOSY/EOSY save independently without activation", async () => {
+  const { client, rows, calls } = philIriMemoryClient();
+  for (const assessmentPeriod of ["EOSY", "BOSY", "MOSY"]) {
+    const result = await saveSinglePhilIriResult({ studentId: "s1", subject: "English", schoolYear: "2026-2027",
+      assessmentPeriod, gstScore: 24, supabaseClient: client });
+    assert.equal(result.error, null);
+  }
+  assert.equal(rows.length, 3);
+  assert.ok(calls.filter((call) => call.payload).every((call) => call.options.onConflict === "student_id,school_year,subject,assessment_period"));
 });
 
-test("6b. Legacy fallback safety: allows 3-column fallback strictly for BOSY on missing column, rejects MOSY/EOSY and unrelated errors", async () => {
-  // Case A: BOSY with explicit 'column "assessment_period" does not exist' error -> fallback succeeds
-  let bosyUpsertCalls = [];
-  const mockBOSYMissingColumn = {
-    from: (table) => {
-      if (table === "monitoring_records") {
-        return {
-          update: () => ({ eq: () => ({ eq: () => ({ eq: () => Promise.resolve({ data: null, error: null }) }) }) }),
-        };
-      }
-      return {
-        upsert: (payload, options) => {
-          bosyUpsertCalls.push({ payload, options });
-          if (bosyUpsertCalls.length === 1) {
-            // First call with 4-column conflict fails because column is missing
-            return { data: null, error: new Error('column "assessment_period" does not exist') };
-          }
-          // Second call (legacy 3-column fallback) succeeds
-          return { data: payload, error: null };
-        },
-        select: () => ({
-          eq: () => ({ eq: () => ({ eq: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }) }),
-        }),
-      };
-    },
-  };
-
-  const resBosyFallback = await saveSinglePhilIriResult({
-    studentId: "student-bosy",
-    schoolYear: "2026-2027",
-    subject: "English",
-    assessmentPeriod: "BOSY",
-    gstScore: 25,
-    supabaseClient: mockBOSYMissingColumn,
-    currentAssessmentPeriod: "BOSY",
-  });
-
-  assert.equal(resBosyFallback.error, null);
-  assert.equal(bosyUpsertCalls.length, 2, "BOSY must attempt fallback upsert when column is missing");
-  assert.equal(bosyUpsertCalls[1].options.onConflict, "student_id,school_year,subject");
-  assert.equal(bosyUpsertCalls[1].payload.assessment_period, undefined, "Fallback payload must omit missing column");
-
-  // Case B: MOSY with 'column "assessment_period" does not exist' -> MUST NOT use legacy fallback, must fail closed
-  let mosyUpsertCalls = [];
-  const mockMOSYMissingColumn = {
-    from: (table) => {
-      if (table === "monitoring_records") {
-        return {
-          update: () => ({ eq: () => ({ eq: () => ({ eq: () => Promise.resolve({ data: null, error: null }) }) }) }),
-        };
-      }
-      return {
-        upsert: (payload, options) => {
-          mosyUpsertCalls.push({ payload, options });
-          return { data: null, error: new Error('column "assessment_period" does not exist') };
-        },
-        select: () => ({
-          eq: () => ({ eq: () => ({ eq: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }) }),
-        }),
-      };
-    },
-  };
-
-  const resMosyFallback = await saveSinglePhilIriResult({
-    studentId: "student-mosy",
-    schoolYear: "2026-2027",
-    subject: "English",
-    assessmentPeriod: "MOSY",
-    gstScore: 32,
-    supabaseClient: mockMOSYMissingColumn,
-    currentAssessmentPeriod: "MOSY",
-  });
-
-  assert.ok(resMosyFallback.error, "MOSY must fail closed without fallback");
-  assert.match(resMosyFallback.error.message, /column "assessment_period" does not exist/i);
-  assert.equal(mosyUpsertCalls.length, 1, "MOSY must NEVER attempt 3-column legacy fallback");
-
-  // Case C: BOSY with an unrelated error (e.g. check constraint or foreign key) -> MUST NOT trigger fallback
-  let unrelatedUpsertCalls = [];
-  const mockUnrelatedError = {
-    from: (table) => {
-      if (table === "monitoring_records") {
-        return {
-          update: () => ({ eq: () => ({ eq: () => ({ eq: () => Promise.resolve({ data: null, error: null }) }) }) }),
-        };
-      }
-      return {
-        upsert: (payload, options) => {
-          unrelatedUpsertCalls.push({ payload, options });
-          return { data: null, error: new Error("violates foreign key constraint") };
-        },
-        select: () => ({
-          eq: () => ({ eq: () => ({ eq: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }) }),
-        }),
-      };
-    },
-  };
-
-  const resUnrelated = await saveSinglePhilIriResult({
-    studentId: "student-bosy-fk",
-    schoolYear: "2026-2027",
-    subject: "English",
-    assessmentPeriod: "BOSY",
-    gstScore: 25,
-    supabaseClient: mockUnrelatedError,
-    currentAssessmentPeriod: "BOSY",
-  });
-
-  assert.ok(resUnrelated.error);
-  assert.match(resUnrelated.error.message, /violates foreign key constraint/i);
-  assert.equal(unrelatedUpsertCalls.length, 1, "Unrelated errors must not trigger legacy fallback");
+test("6b. Missing period schema fails clearly; no legacy fallback can overwrite records", async () => {
+  for (const assessmentPeriod of ["BOSY", "MOSY", "EOSY"]) {
+    const { client, calls } = philIriMemoryClient({ schemaMissing: true });
+    const result = await saveSinglePhilIriResult({ studentId: "s1", assessmentPeriod, gstScore: 25, supabaseClient: client });
+    assert.match(result.error.message, /migration 058/);
+    assert.equal(calls.filter((call) => call.payload).length, 0);
+  }
 });
 
-// ============================================================================
-// 7. LOCKED ASSESSMENT PERIOD WRITE REJECTION
-// ============================================================================
-
-test("7. Locked assessment periods reject writes before persisting to database", async () => {
-  let dbCalled = false;
-  const mockSupabase = {
-    from: () => {
-      dbCalled = true;
-      return {
-        upsert: () => ({ data: [], error: null }),
-      };
-    },
-  };
-
-  // When active period is BOSY, writing to MOSY must be rejected
-  const resMosyWhenBosy = await saveSinglePhilIriResult({
-    studentId: "student-101",
-    schoolYear: "2026-2027",
-    subject: "English",
-    assessmentPeriod: "MOSY",
-    gstScore: 25,
-    supabaseClient: mockSupabase,
-    currentAssessmentPeriod: "BOSY",
-  });
-
-  assert.equal(dbCalled, false, "Database must not be called when period is locked");
-  assert.ok(resMosyWhenBosy.error, "Must return an error for locked period");
-  assert.match(resMosyWhenBosy.error.message, /locked for editing/i);
-
-  // When active period is MOSY, writing to closed BOSY must be rejected
-  const resBosyWhenMosy = await saveBatchClassGstScores({
-    classId: "class-1",
-    schoolYear: "2026-2027",
-    subject: "English",
-    assessmentPeriod: "BOSY",
-    scores: [{ studentId: "s1", gstScore: 25 }],
-    supabaseClient: mockSupabase,
-    currentAssessmentPeriod: "MOSY",
-  });
-
-  assert.equal(dbCalled, false);
-  assert.ok(resBosyWhenMosy.error);
-  assert.match(resBosyWhenMosy.error.message, /locked for editing/i);
+test("7. Prior and later periods are writable while database authorization remains enforced", async () => {
+  const { client, rows } = philIriMemoryClient();
+  for (const assessmentPeriod of ["BOSY", "MOSY", "EOSY"]) {
+    assert.equal(isAralPeriodEditable(assessmentPeriod), true);
+    const result = await saveBatchClassGstScores({ classId: "c1", teacherId: "t1", assessmentPeriod,
+      scores: [{ studentId: "s1", gstScore: 25 }], supabaseClient: client });
+    assert.equal(result.error, null);
+  }
+  assert.equal(rows.length, 3);
+  const denied = philIriMemoryClient({ denied: true });
+  const result = await saveSinglePhilIriResult({ studentId: "s1", classId: "unassigned", teacherId: "t1",
+    assessmentPeriod: "BOSY", gstScore: 24, supabaseClient: denied.client });
+  assert.match(result.error.message, /row-level security/);
+  assert.equal(denied.rows.length, 0);
 });
 
-// ============================================================================
-// 8. MISSING / UNCONFIGURED PERIOD SAFELY LOCKED
-// ============================================================================
-
-test("8. Missing or unconfigured assessment periods safely lock all writes without defaulting to editable BOSY", async () => {
-  // Permission matrix when unconfigured
-  const unconfiguredPerms = getAralPeriodPermissions(null);
-  assert.equal(unconfiguredPerms.BOSY.editable, false);
-  assert.equal(unconfiguredPerms.BOSY.readonly, true);
-  assert.equal(unconfiguredPerms.MOSY.editable, false);
-  assert.equal(unconfiguredPerms.EOSY.editable, false);
-
-  // isAralPeriodEditable safely returns false
-  assert.equal(isAralPeriodEditable("BOSY", null), false);
-  assert.equal(isAralPeriodEditable("MOSY", null), false);
-  assert.equal(isAralPeriodEditable("EOSY", null), false);
-  assert.equal(isAralPeriodEditable("BOSY", undefined), false);
-  assert.equal(isAralPeriodEditable("BOSY", ""), false);
-
-  // Mock write with unconfigured period
-  let dbCalled = false;
-  const mockSupabase = {
-    from: () => {
-      dbCalled = true;
-      return {};
-    },
-  };
-
-  const writeResult = await saveSinglePhilIriResult({
-    studentId: "s1",
-    schoolYear: "2026-2027",
-    subject: "English",
-    assessmentPeriod: "BOSY",
-    gstScore: 25,
-    supabaseClient: mockSupabase,
-    currentAssessmentPeriod: null,
-  });
-
-  assert.equal(dbCalled, false);
-  assert.ok(writeResult.error);
-  assert.match(writeResult.error.message, /not configured/i);
+test("8. No global configuration is needed; invalid selected periods still reject saves", async () => {
+  assert.ok(Object.values(getAralPeriodPermissions()).every((permission) => permission.editable && !permission.hidden));
+  for (const assessmentPeriod of [null, "Term 1", "invalid"]) {
+    const { client, calls } = philIriMemoryClient();
+    const result = await saveSinglePhilIriResult({ studentId: "s1", assessmentPeriod, gstScore: 25, supabaseClient: client });
+    assert.ok(result.error);
+    assert.equal(calls.length, 0);
+  }
 });
 
 // ============================================================================

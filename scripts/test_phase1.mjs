@@ -48,29 +48,10 @@ test("Phase 1 - assessmentTimeline: normalizeAralPeriod normalizes valid reading
   assert.equal(normalizeAralPeriod("UNKNOWN_PERIOD"), null);
 });
 
-test("Phase 1 - assessmentTimeline: getAralPeriodPermissions never defaults unconfigured periods to editable BOSY", () => {
-  const unconfiguredPerms = getAralPeriodPermissions(null);
-  assert.equal(unconfiguredPerms.BOSY.editable, false);
-  assert.equal(unconfiguredPerms.BOSY.readonly, true);
-  assert.equal(unconfiguredPerms.MOSY.editable, false);
-  assert.equal(unconfiguredPerms.EOSY.editable, false);
-
-  const invalidPerms = getAralPeriodPermissions("INVALID");
-  assert.equal(invalidPerms.BOSY.editable, false);
-  assert.equal(invalidPerms.BOSY.readonly, true);
-
-  // Valid BOSY opens only BOSY for editing
-  const bosyPerms = getAralPeriodPermissions("BOSY");
-  assert.equal(bosyPerms.BOSY.editable, true);
-  assert.equal(bosyPerms.MOSY.hidden, true);
-  assert.equal(bosyPerms.EOSY.hidden, true);
-
-  // Valid MOSY makes BOSY readonly and MOSY editable
-  const mosyPerms = getAralPeriodPermissions("MOSY");
-  assert.equal(mosyPerms.BOSY.editable, false);
-  assert.equal(mosyPerms.BOSY.readonly, true);
-  assert.equal(mosyPerms.MOSY.editable, true);
-  assert.equal(mosyPerms.EOSY.hidden, true);
+test("Phase 1 - assessmentTimeline: all reading periods are independently available", () => {
+  for (const selection of [null, "BOSY", "MOSY", "EOSY"]) {
+    assert.ok(Object.values(getAralPeriodPermissions(selection)).every((permission) => permission.editable && !permission.hidden && !permission.readonly));
+  }
 });
 
 test("Phase 1 - assessmentTimeline: resolveAralPeriod does not fall back to academic term number", () => {

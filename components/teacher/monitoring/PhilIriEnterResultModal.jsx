@@ -27,7 +27,7 @@ export default function PhilIriEnterResultModal({
   teacherId = null,
   schoolYear = "SY 2026-2027",
   quarter = 1,
-  // Authoritative ARAL period; baseline saves are BOSY-gated in the backend.
+  // Results belong to the selected reading period.
   aralPeriod = null,
   onSuccess,
 }) {

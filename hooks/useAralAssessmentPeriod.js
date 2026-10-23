@@ -1,71 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import {
-  getAralAssessmentPeriod,
-  setAralAssessmentPeriod,
-} from "@/lib/supabase/queries/aralAssessmentPeriod";
-import {
-  getAralPeriodPermissions,
-  normalizeAralPeriod,
-} from "@/lib/monitoring/assessmentTimeline";
+import { useCallback, useState } from "react";
+import { getAralPeriodPermissions, normalizeAralPeriod } from "@/lib/monitoring/assessmentTimeline";
 
-/**
- * Authoritative ARAL assessment period (BOSY/MOSY/EOSY) shared by teacher
- * and principal ARAL screens. Defaults to BOSY while loading or when the
- * setting is unavailable — never blocks rendering.
- */
-export function useAralAssessmentPeriod() {
-  const [period, setPeriod] = useState("BOSY");
-  const [periodSchoolYear, setPeriodSchoolYear] = useState(null);
-  const [fromConfig, setFromConfig] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    const result = await getAralAssessmentPeriod();
-    const next = normalizeAralPeriod(result.data?.period) || "BOSY";
+/** Local view selection only; no activation or settings-table dependency. */
+export function useAralAssessmentPeriod(initialPeriod = "BOSY") {
+  const [period, setPeriod] = useState(() => normalizeAralPeriod(initialPeriod) || "BOSY");
+  const updatePeriod = useCallback((nextPeriod) => {
+    const next = normalizeAralPeriod(nextPeriod);
+    if (!next) return { ok: false, error: "Choose BOSY, MOSY, or EOSY." };
     setPeriod(next);
-    setPeriodSchoolYear(result.data?.schoolYear ?? null);
-    setFromConfig(Boolean(result.data?.fromConfig));
-    setLoading(false);
-    return next;
+    return { ok: true, period: next };
   }, []);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
-
-  const updatePeriod = useCallback(
-    async (nextPeriod, options) => {
-      setSaving(true);
-      setError("");
-      const result = await setAralAssessmentPeriod(nextPeriod, options);
-      setSaving(false);
-      if (result.error) {
-        setError(result.error.message || "Unable to update assessment period.");
-        return { ok: false, error: result.error.message };
-      }
-      const next = normalizeAralPeriod(result.data?.period) || "BOSY";
-      setPeriod(next);
-      setPeriodSchoolYear(result.data?.schoolYear ?? null);
-      setFromConfig(true);
-      return { ok: true, period: next };
-    },
-    []
-  );
-
-  return {
-    period,
-    periodSchoolYear,
-    fromConfig,
-    loading,
-    saving,
-    error,
-    permissions: getAralPeriodPermissions(period),
-    updatePeriod,
-    refresh,
-  };
+  return { period, updatePeriod, permissions: getAralPeriodPermissions(), loading: false, saving: false, error: "" };
 }

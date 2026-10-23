@@ -8,10 +8,10 @@ import {
   formatGradeSection,
 } from "@/lib/monitoring/philIriEvaluation";
 import { useAppToast } from "@/components/shared/AppToast";
-import { useAralAssessmentPeriod } from "@/hooks/useAralAssessmentPeriod";
-import { isAralPeriodEditable } from "@/lib/monitoring/assessmentTimeline";
+import { normalizeAralPeriod } from "@/lib/monitoring/assessmentTimeline";
 import LearnerName from "@/components/shared/LearnerName";
 import { cn } from "@/lib/utils";
+import { getAralReadingWorkflow } from "@/lib/monitoring/aralReadingWorkflow";
 
 /**
  * Standard Phil-IRI Form 3 graded passage word counts.
@@ -68,7 +68,7 @@ function getPassageLevelOptions(grade) {
 export default function AralAssessmentFlowModal({
   isOpen,
   onClose,
-  learner = null,
+  learner: sourceLearner = null,
   teacherId = null,
   schoolYear = "SY 2026-2027",
   quarter = 1,
@@ -77,10 +77,11 @@ export default function AralAssessmentFlowModal({
 }) {
   const { showToast } = useAppToast();
   const [saving, setSaving] = useState(false);
+  const workflow = useMemo(() => getAralReadingWorkflow(sourceLearner || {}, aralPeriod, schoolYear), [sourceLearner, aralPeriod, schoolYear]);
+  const learner = sourceLearner ? workflow.assessmentLearner : null;
 
-  const { period: currentAralPeriod, fromConfig } = useAralAssessmentPeriod();
-  // Safe lock: If unconfigured, do not silently default to editable BOSY.
-  const isPeriodEditable = Boolean(fromConfig) && isAralPeriodEditable(aralPeriod, currentAralPeriod);
+  const canEncode = Boolean(teacherId && normalizeAralPeriod(aralPeriod));
+  const [correctionReason, setCorrectionReason] = useState("");
 
   // Essential raw assessment inputs
   const [passageLevel, setPassageLevel] = useState("");
@@ -108,6 +109,7 @@ export default function AralAssessmentFlowModal({
   // Initialize or prefill state when learner opens
   useEffect(() => {
     if (!isOpen || !learner) return;
+    setCorrectionReason("");
 
     const existingMetrics =
       learner.iraMetrics || learner.rawPayload?.iraMetrics || null;
@@ -241,8 +243,13 @@ export default function AralAssessmentFlowModal({
   async function handleSave() {
     if (!learner?.studentId) return;
 
-    if (!isPeriodEditable) {
-      showToast("Cannot save: Assessment period is locked for editing.");
+    if (!canEncode) {
+      showToast("Sign in as the assigned teacher and choose an assessment period.");
+      return;
+    }
+
+    if (!workflow.requiresIndividual) {
+      showToast(workflow.message);
       return;
     }
 
@@ -297,12 +304,15 @@ export default function AralAssessmentFlowModal({
         schoolYear,
         quarter,
         assessmentPeriod: aralPeriod || "BOSY",
-        currentAssessmentPeriod: currentAralPeriod,
+        correctionReason,
         subject: learner.subject || "English",
         gstScore: learner.philIriScore,
+        documents: learner.rawPayload?.documents || [],
         readingLevel: computedMetrics.readingProfile || "Not Assessed",
         individualAssessmentRequired: true,
         iraMetrics: {
+          screeningPeriod: learner.screeningPeriod,
+          assessmentKind: aralPeriod === "BOSY" ? "individual" : "reassessment",
           passageLevel,
           totalWords: numWords,
           miscues: numMiscues,
@@ -348,6 +358,7 @@ export default function AralAssessmentFlowModal({
       onClick={onClose}
     >
       <div
+        role="dialog" aria-modal="true" aria-label={aralPeriod === "BOSY" ? "Individual Reading Assessment" : "Reading Reassessment"}
         className="w-full max-w-lg rounded-lg border border-slate-200 bg-white shadow-xl dark:border-white/10 dark:bg-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
@@ -355,10 +366,10 @@ export default function AralAssessmentFlowModal({
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3 dark:border-white/10">
           <div>
             <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
-              Individual Reading Assessment
+              {aralPeriod === "BOSY" ? "Individual Reading Assessment" : "Reading Reassessment"}
             </h2>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Form 3 · {aralPeriod} · SY {schoolYear}
+              Form {learner.language === "Filipino" ? "3A" : "3B"} · {aralPeriod} · {schoolYear}
             </p>
           </div>
           <button
@@ -370,13 +381,8 @@ export default function AralAssessmentFlowModal({
           </button>
         </div>
 
-        {/* Locked Notice Banner */}
-        {!isPeriodEditable && (
-          <div className="border-b border-amber-200 bg-amber-50 px-5 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
-            {!fromConfig
-              ? "Reading assessment period is not configured. Records are view-only."
-              : `Assessment period "${aralPeriod}" is locked for editing. Viewing historical records only.`}
-          </div>
+        {!workflow.requiresIndividual && (
+          <p className="border-b border-amber-200 bg-amber-50 px-5 py-2 text-xs text-amber-800">{workflow.message}</p>
         )}
 
         {/* Compact Learner Bar: Learner name, Grade & Section, GST Score only */}
@@ -393,7 +399,7 @@ export default function AralAssessmentFlowModal({
               </span>
             </div>
             <div className="text-slate-600 dark:text-slate-300 text-[11.5px]">
-              GST Score:{" "}
+              GST Score {learner.screeningPeriod ? `(${learner.screeningPeriod})` : ""}:{" "}
               <strong className="font-mono text-slate-900 dark:text-white">
                 {gstScore != null ? `${gstScore} / 40` : "—"}
               </strong>
@@ -402,7 +408,7 @@ export default function AralAssessmentFlowModal({
         </div>
 
         {/* Form Body: Raw Inputs Only */}
-        <div className="p-5 space-y-3.5 max-h-[calc(85vh-130px)] overflow-y-auto">
+        <fieldset disabled={!canEncode || !workflow.requiresIndividual || saving} className="p-5 space-y-3.5 max-h-[calc(85vh-130px)] overflow-y-auto">
           {/* 1. Passage Level & Auto-filled Total Words */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2">
@@ -410,6 +416,7 @@ export default function AralAssessmentFlowModal({
                 Passage Level
               </label>
               <select
+                aria-label="Passage Level"
                 value={passageLevel}
                 onChange={(e) => {
                   const newLvl = e.target.value;
@@ -436,6 +443,7 @@ export default function AralAssessmentFlowModal({
                 min={1}
                 placeholder="155"
                 value={totalWords}
+                aria-label="Total Words"
                 onChange={(e) => setTotalWords(e.target.value)}
                 className="w-full h-8.5 rounded-md border border-slate-200 bg-white px-2.5 font-mono text-xs text-slate-800 shadow-2xs focus:border-[#246f54] focus:outline-hidden dark:border-white/10 dark:bg-slate-800 dark:text-white"
               />
@@ -453,6 +461,7 @@ export default function AralAssessmentFlowModal({
                 min={0}
                 placeholder="0"
                 value={miscues}
+                aria-label="Miscues / Errors"
                 onChange={(e) => setMiscues(e.target.value)}
                 className="w-full h-8.5 rounded-md border border-slate-200 bg-white px-2.5 font-mono text-xs text-slate-800 shadow-2xs focus:border-[#246f54] focus:outline-hidden dark:border-white/10 dark:bg-slate-800 dark:text-white"
               />
@@ -469,6 +478,7 @@ export default function AralAssessmentFlowModal({
                     min={0}
                     placeholder="0"
                     value={readingMinutes}
+                    aria-label="Reading minutes"
                     onChange={(e) => setReadingMinutes(e.target.value)}
                     className="w-full h-8.5 rounded-md border border-slate-200 bg-white px-2 font-mono text-xs text-slate-800 text-center shadow-2xs focus:border-[#246f54] focus:outline-hidden dark:border-white/10 dark:bg-slate-800 dark:text-white"
                   />
@@ -482,6 +492,7 @@ export default function AralAssessmentFlowModal({
                     max={59}
                     placeholder="00"
                     value={readingSeconds}
+                    aria-label="Reading seconds"
                     onChange={(e) => setReadingSeconds(e.target.value)}
                     className="w-full h-8.5 rounded-md border border-slate-200 bg-white px-2 font-mono text-xs text-slate-800 text-center shadow-2xs focus:border-[#246f54] focus:outline-hidden dark:border-white/10 dark:bg-slate-800 dark:text-white"
                   />
@@ -503,6 +514,7 @@ export default function AralAssessmentFlowModal({
                   min={0}
                   placeholder="0"
                   value={comprehensionCorrect}
+                  aria-label="Comprehension correct"
                   onChange={(e) => setComprehensionCorrect(e.target.value)}
                   className="w-full h-8.5 rounded-md border border-slate-200 bg-white px-2.5 font-mono text-xs text-slate-800 text-center shadow-2xs focus:border-[#246f54] focus:outline-hidden dark:border-white/10 dark:bg-slate-800 dark:text-white"
                 />
@@ -515,6 +527,7 @@ export default function AralAssessmentFlowModal({
                   min={1}
                   placeholder="8"
                   value={comprehensionTotal}
+                  aria-label="Comprehension total"
                   onChange={(e) => setComprehensionTotal(e.target.value)}
                   className="w-full h-8.5 rounded-md border border-slate-200 bg-white px-2.5 font-mono text-xs text-slate-800 text-center shadow-2xs focus:border-[#246f54] focus:outline-hidden dark:border-white/10 dark:bg-slate-800 dark:text-white"
                 />
@@ -592,7 +605,13 @@ export default function AralAssessmentFlowModal({
               </div>
             </div>
           </div>
-        </div>
+        </fieldset>
+
+        {workflow.hasIndividualResult && <label className="block px-5 pb-3 text-xs text-slate-600 dark:text-slate-300">
+          Reason for correction
+          <input value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value)} maxLength={500}
+            className="mt-1 block w-full rounded-lg border border-slate-200 bg-transparent px-3 py-2 text-sm" placeholder="Explain any changes to the saved result" />
+        </label>}
 
         {/* Modal Footer */}
         <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-5 py-3 dark:border-white/10 bg-slate-50/50 dark:bg-slate-800/30">
@@ -607,7 +626,7 @@ export default function AralAssessmentFlowModal({
           <button
             type="button"
             onClick={handleSave}
-            disabled={!isPeriodEditable || saving}
+            disabled={!canEncode || !workflow.requiresIndividual || saving}
             className="inline-flex h-8.5 cursor-pointer items-center gap-1.5 rounded-lg bg-[#246f54] px-4 text-xs font-semibold text-white shadow-2xs transition-colors hover:bg-[#1b5842] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? (

@@ -32,6 +32,8 @@ import {
   getAralTermDisplay,
 } from "@/lib/monitoring/assessmentTimeline";
 import { formatGradeSection } from "@/lib/monitoring/philIriEvaluation";
+import AralPeriodTabs from "@/components/aral/AralPeriodTabs";
+import { getAralReadingWorkflow } from "@/lib/monitoring/aralReadingWorkflow";
 import { useAralAssessmentPeriod } from "@/hooks/useAralAssessmentPeriod";
 import { cn } from "@/lib/utils";
 import ExportAralReportModal from "@/components/aral/ExportAralReportModal";
@@ -43,12 +45,6 @@ import {
 const ADMIN_READING_TABS = [
   { id: "overview", label: "Overview" },
   { id: "records", label: "Learner Records" },
-];
-
-const ARAL_PERIOD_OPTIONS = [
-  { value: "BOSY", label: "Beginning Assessment (BOSY)" },
-  { value: "MOSY", label: "Mid-Year Assessment (MOSY)" },
-  { value: "EOSY", label: "End-of-Year Assessment (EOSY)" },
 ];
 
 const RECORDS_PAGE_SIZE = 10;
@@ -78,11 +74,7 @@ export default function AdminAralMonitoringDashboard() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [exportModalOpen, setExportModalOpen] = useState(false);
 
-  const {
-    period: aralPeriod,
-    updatePeriod,
-    saving: savingPeriod,
-  } = useAralAssessmentPeriod();
+  const { period: aralPeriod, updatePeriod } = useAralAssessmentPeriod();
 
   const activeSchoolYear =
     schoolYear || filterOptions.schoolYears?.[0] || "SY 2026-2027";
@@ -93,8 +85,8 @@ export default function AdminAralMonitoringDashboard() {
       schoolYear: activeSchoolYear,
       role: "principal",
       scope: "school-wide",
-    });
-  }, [students, activeSchoolYear]);
+    }).map((learner) => getAralReadingWorkflow(learner, aralPeriod, activeSchoolYear).learner);
+  }, [students, activeSchoolYear, aralPeriod]);
 
   // Phil-IRI Form 2 & Form 5 Data
   const form2Data = useMemo(() => {
@@ -309,18 +301,6 @@ export default function AdminAralMonitoringDashboard() {
               ]}
             />
 
-            <AppSelect
-              label="Assessment period"
-              value={aralPeriod}
-              onChange={(next) =>
-                updatePeriod(next, { schoolYear: activeSchoolYear })
-              }
-              options={ARAL_PERIOD_OPTIONS}
-              disabled={savingPeriod}
-              className="w-[190px] sm:w-[220px]"
-              triggerClassName="h-9 rounded-xl text-xs font-semibold"
-            />
-
             <button
               type="button"
               onClick={() => refresh({ bustCache: true })}
@@ -366,6 +346,13 @@ export default function AdminAralMonitoringDashboard() {
         </div>
       ) : null}
 
+      <AralPeriodTabs period={aralPeriod} onChange={(next) => {
+        setSelectedStudent(null);
+        setRecordsPage(1);
+        setEosyPage(1);
+        updatePeriod(next);
+      }} />
+      <div id="aral-period-panel" role="tabpanel" aria-labelledby={`aral-tab-${aralPeriod}`} className="space-y-4">
       {/* 1. PRINCIPAL OVERSIGHT SUMMARY CARDS (4 NEUTRAL WHITE CARDS) */}
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Total Learners */}
@@ -988,6 +975,7 @@ export default function AdminAralMonitoringDashboard() {
         initialReportType="form2"
         allowFormSelection={true}
       />
+      </div>
     </motion.div>
   );
 }

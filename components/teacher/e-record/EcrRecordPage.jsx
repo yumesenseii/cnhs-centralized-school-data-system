@@ -45,6 +45,7 @@ export default function EcrRecordPage({ classId }) {
     error,
     classItem,
     students,
+    exportStudents,
     activeTerm,
     setActiveTerm,
     config,
@@ -64,6 +65,7 @@ export default function EcrRecordPage({ classId }) {
     refresh,
     termAccessMap,
     termAccess,
+    sourceWarnings,
   } = useEcrRecord(classId);
 
   const [saving, setSaving] = useState(false);
@@ -144,18 +146,10 @@ export default function EcrRecordPage({ classId }) {
       }
 
       const termDataByTerm = await loadAllTermDataForExport();
-      if (activeTerm !== "summary") {
-        termDataByTerm[activeTerm] = {
-          config,
-          studentScores,
-          computedByStudent,
-        };
-      }
-
       await exportEcrTermExcel({
         classItem,
         term: activeTerm,
-        students,
+        students: exportStudents,
         config,
         studentScores,
         computedByStudent,
@@ -198,8 +192,9 @@ export default function EcrRecordPage({ classId }) {
               {rosterLabel}
             </span>
             <span className="inline-flex items-center rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
-              {gradedProgress.graded}/{gradedProgress.total} with scores
+              {gradedProgress.withAssessments}/{gradedProgress.total} with assessment scores
             </span>
+            <span className="text-[11px] text-slate-600">{gradedProgress.withTermGrades}/{gradedProgress.total} with term grades</span>
             {dirty ? (
               <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">
                 {autoSaving ? "Auto-saving…" : "Unsaved changes"}
@@ -238,6 +233,13 @@ export default function EcrRecordPage({ classId }) {
         </div>
       ) : null}
 
+      {activeTerm !== "summary" && gradedProgress.gradeOnly > 0 && !loading ? (
+        <p className="mb-3 rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-xs text-slate-700">
+          {gradedProgress.gradeOnly} learner(s) have a recorded term grade, but detailed WW, PT and examination scores are unavailable.
+          Their grades appear in the Term Grade column and Excel export. Assessment cells stay blank until actual scores are entered or imported.
+        </p>
+      ) : null}
+      {(sourceWarnings || []).map((warning) => <p key={warning} className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">{warning}</p>)}
       {loading ? (
         <div className="rounded-xl border border-slate-100 bg-white px-4 py-16 text-center text-sm text-slate-400">
           Loading E-Record…
@@ -383,7 +385,7 @@ export default function EcrRecordPage({ classId }) {
                 teacher: classItem.teacherName ?? "",
                 subjectId: classItem.subjectId,
                 sectionId: classItem.sectionId,
-                quarter: classItem.quarter,
+                quarter: activeTerm === "summary" ? classItem.quarter : Number(activeTerm),
               }
             : null
         }

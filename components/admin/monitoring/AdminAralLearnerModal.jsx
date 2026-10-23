@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import AralCorrectionHistory from "@/components/aral/AralCorrectionHistory";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronDown, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -218,6 +219,7 @@ export default function AdminAralLearnerModal({
 
         {/* MODAL BODY (SIMPLE ROWS LAYOUT) */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          <AralCorrectionHistory learner={learner} />
           {/* Attention Banner if review note exists */}
           {isUnderReview && (learner.teacherReviewReason || learner.rawPayload?.teacherReviewReason) && (
             <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">

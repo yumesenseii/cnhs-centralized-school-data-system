@@ -9,12 +9,12 @@ import {
   Loader2,
   Users,
 } from "lucide-react";
-import AralClassDropdown from "@/components/teacher/aral-program/AralClassDropdown";
 import MobileNavSheet from "@/components/layout/MobileNavSheet";
 import TeacherSidebar from "@/components/teacher/layout/TeacherSidebar";
 import AralLearnerRecordModal from "@/components/teacher/monitoring/AralLearnerRecordModal";
 import AralAssessmentFlowModal from "@/components/teacher/monitoring/AralAssessmentFlowModal";
 import AralClassGstSpreadsheet from "@/components/teacher/aral-program/AralClassGstSpreadsheet";
+import AralWeeklyGridPanel from "@/components/teacher/aral-program/AralWeeklyGridPanel";
 import PageHelp from "@/components/shared/PageHelp";
 import { useTeacherMonitoring } from "@/hooks/teacher/useMonitoring";
 import ExportAralReportModal from "@/components/aral/ExportAralReportModal";
@@ -22,15 +22,13 @@ import {
   exportAralRecommendedExcel,
 } from "@/lib/reports/aralRecommendedExport";
 import { useAppToast } from "@/components/shared/AppToast";
+import AralPeriodTabs from "@/components/aral/AralPeriodTabs";
 import { useAralAssessmentPeriod } from "@/hooks/useAralAssessmentPeriod";
 import { formatGradeSection, cleanGradeNumber } from "@/lib/monitoring/philIriEvaluation";
 import {
   aggregateAralLearners,
 } from "@/lib/monitoring/aralLearnerAggregation";
-import {
-  normalizeTerm,
-  filterActiveLearnersForTerm,
-} from "@/lib/monitoring/aralProgression";
+import { getAralReadingWorkflow } from "@/lib/monitoring/aralReadingWorkflow";
 
 export default function TeacherAralMonitoringPage() {
   const searchParams = useSearchParams();
@@ -49,9 +47,7 @@ export default function TeacherAralMonitoringPage() {
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportingAral, setExportingAral] = useState(false);
   const { showToast } = useAppToast();
-  const { period: aralPeriod } = useAralAssessmentPeriod();
-
-  const effectivePeriod = normalizeTerm(aralPeriod);
+  const { period: effectivePeriod, updatePeriod } = useAralAssessmentPeriod();
 
   // Deep-link learner selection: ?studentId=...
   useEffect(() => {
@@ -61,9 +57,9 @@ export default function TeacherAralMonitoringPage() {
       (s) => s.studentId === studentId || s.id === studentId
     );
     if (hit) {
-      setSelectedLearner(hit);
+      setSelectedLearner(getAralReadingWorkflow(hit, effectivePeriod, controls.schoolYear).learner);
     }
-  }, [searchParams, loading, students]);
+  }, [searchParams, loading, students, effectivePeriod, controls.schoolYear]);
 
   // 1. Authoritative aggregation of teacher's language learners
   const languageLearners = useMemo(() => {
@@ -134,17 +130,40 @@ export default function TeacherAralMonitoringPage() {
     );
   }, [assignedClassesData, selectedClassId]);
 
-  // Active learners filtered for the current term progression
-  // Term 1 (BOSY): All enrolled learners in class
-  // Term 2 (MOSY): Only learners continuing after Term 1 (excluding Term 1 PASS)
-  // Term 3 (EOSY): Only learners continuing after Term 2 (excluding Term 1/2 PASS)
+  // Keep history accessible, but route each learner using saved period-specific evidence.
   const activeClassLearners = useMemo(() => {
     if (!selectedClass) return [];
-    return filterActiveLearnersForTerm(selectedClass.learners, effectivePeriod);
-  }, [selectedClass, effectivePeriod]);
+    return selectedClass.learners.map((learner) => {
+      const workflow = getAralReadingWorkflow(learner, effectivePeriod, controls.schoolYear);
+      return { ...workflow.learner, readingWorkflow: workflow };
+    });
+  }, [selectedClass, effectivePeriod, controls.schoolYear]);
+
+  const progressGroups = useMemo(() => {
+    if (!selectedClass || !["MOSY", "EOSY"].includes(effectivePeriod)) return [];
+    const enrolled = selectedClass.learners.filter((learner) =>
+      learner.inAralProgram || learner.aralFacilitatorAssigned
+    ).map((learner) => ({ ...learner, sourceClassId: learner.sourceClassId || learner.classId }));
+    return [true, false].map((canWrite) => ({
+      canWrite,
+      group: { ...selectedClass, learners: enrolled.filter((learner) =>
+        Boolean(teacherId && learner.aralFacilitatorTeacherId === teacherId) === canWrite
+      ) },
+    })).filter(({ group }) => group.learners.length);
+  }, [selectedClass, effectivePeriod, teacherId]);
+
+  function openAssessment(learner) {
+    const workflow = learner.readingWorkflow || getAralReadingWorkflow(learner, effectivePeriod, controls.schoolYear);
+    if (!workflow.requiresIndividual || !effectivePeriod) {
+      showToast(workflow.message);
+      return;
+    }
+    setSelectedAssessmentLearner(workflow.assessmentLearner);
+  }
 
   // Assessment period display string
   const periodDisplay = useMemo(() => {
+    if (!effectivePeriod) return "Assessment period not yet available";
     if (effectivePeriod === "MOSY") return "Midyear Assessment (MOSY)";
     if (effectivePeriod === "EOSY") return "End-of-Year Assessment (EOSY)";
     return "Beginning Assessment (BOSY)";
@@ -220,14 +239,17 @@ export default function TeacherAralMonitoringPage() {
             <PageHelp
               triggerLabel="Help"
               title="ARAL Reading Assessment Guide"
-              summary="ARAL Reading Assessment: Class-based GST entry and monitoring."
+              summary="Choose BOSY, MOSY, or EOSY. The forms you need appear automatically."
               steps={[
+                "Select Period: Open BOSY, MOSY, or EOSY to enter or correct results.",
                 "Select Class: Choose your assigned English or Filipino class from the dropdown.",
                 "Encode Scores: Type GST scores (0–40) and press Enter to move down, or paste a column from Excel.",
                 "Mark Absent: Check the Absent box to record an absence with score null (does not fail the learner).",
                 "Review & Save: Click Review Results to check tallies, then Save All Results to commit.",
                 "Learner History: Click any learner's name to view their multi-term reading history.",
-                "Continue Reading Assessment: Learners scoring below 28 receive a button to start Form 3.",
+                "Individual Assessment: Save the GST results first. Learners scoring below 28 receive a button to open Form 3.",
+                "Midyear and End-of-Year: Learners needing follow-up receive a reassessment button. Earlier results remain in their reading history.",
+                "Intervention Progress: Weekly records appear for learners with an existing ARAL intervention. Only the assigned facilitator can save progress.",
               ]}
               className="h-8.5 rounded-lg border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-600 shadow-2xs hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
             />
@@ -252,6 +274,12 @@ export default function TeacherAralMonitoringPage() {
         </div>
       ) : null}
 
+      <AralPeriodTabs period={effectivePeriod} onChange={(next) => {
+        setSelectedLearner(null);
+        setSelectedAssessmentLearner(null);
+        updatePeriod(next);
+      }} />
+      <div id="aral-period-panel" role="tabpanel" aria-labelledby={`aral-tab-${effectivePeriod}`} className="mt-4">
       {/* LOADING OR EMPTY STATE */}
       {loading && languageLearners.length === 0 ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-100 bg-white py-16 text-sm text-slate-500 shadow-2xs dark:border-white/10 dark:bg-slate-900">
@@ -282,20 +310,36 @@ export default function TeacherAralMonitoringPage() {
           quarter={controls.quarter}
           aralPeriod={effectivePeriod}
           onRefresh={refresh}
-          onOpenIra={(l) => setSelectedAssessmentLearner(l)}
+          onOpenIra={openAssessment}
           onOpenRecord={(l) => setSelectedLearner(l)}
         />
       ) : null}
 
+      {progressGroups.map(({ group, canWrite }) => (
+        <section key={`${selectedClassId}_${effectivePeriod}_${canWrite}`} className="mt-6 space-y-3">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Intervention Progress</h2>
+          <p className="text-xs text-slate-500">Record reading activities and progress for learners receiving ARAL support. {canWrite ? "You are the assigned facilitator." : "The assigned facilitator updates these records."}</p>
+          <AralWeeklyGridPanel group={group} teacherId={teacherId} canWrite={canWrite && Boolean(effectivePeriod)} recordSchoolYear={controls.schoolYear} recordAssessmentPeriod={effectivePeriod} />
+          <details className="rounded-lg border border-slate-200 p-3 text-xs dark:border-white/10">
+            <summary className="cursor-pointer font-medium text-slate-600 dark:text-slate-300">Earlier progress records without an assessment period</summary>
+            <p className="my-2 text-slate-500">These records are preserved for reference. New progress is saved under the selected period.</p>
+            <AralWeeklyGridPanel group={group} teacherId={teacherId} canWrite={false} recordSchoolYear={controls.schoolYear} recordAssessmentPeriod="legacy" />
+          </details>
+        </section>
+      ))}
+
+      </div>
+
       {/* 5. FOCUSED 5-PART LEARNER RECORD MODAL */}
       <AralLearnerRecordModal
         learner={selectedLearner}
+        assessmentWorkflow={selectedLearner ? getAralReadingWorkflow(selectedLearner, effectivePeriod, controls.schoolYear) : null}
         isOpen={Boolean(selectedLearner)}
         onClose={() => setSelectedLearner(null)}
         teacherId={teacherId}
         schoolYear={controls.schoolYear}
         onOpenAssessment={(l) => {
-          setSelectedAssessmentLearner(l);
+          openAssessment(l);
           setSelectedLearner(null);
         }}
         onRefresh={refresh}

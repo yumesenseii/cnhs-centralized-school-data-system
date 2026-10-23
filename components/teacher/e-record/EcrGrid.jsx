@@ -4,6 +4,7 @@ import { Upload } from "lucide-react";
 import { useCallback, useMemo, useRef } from "react";
 import { scoreKey } from "@/lib/ecr/constants";
 import { termGradeDescription } from "@/lib/ecr/computeGrades";
+import { parseValidGrade } from "@/lib/ecr/gradeIntegrity";
 import { formatSf2LearnerName } from "@/lib/attendance/sf2Daily";
 import EcrHpsRow, {
   EcrHeaderGroups,
@@ -63,7 +64,7 @@ function RowStatusBadge({ status }) {
     empty: "Empty",
     partial: "Partial",
     complete: "Done",
-    imported: "Imported",
+    imported: "Final grade only",
   };
   return (
     <span
@@ -86,8 +87,8 @@ function ScoreCells({
   readOnly = false,
 }) {
   const groups = ["WW", "PT", "QA"];
-  const termGrade = Number(computed?.term_grade);
-  const hasTermGrade = Number.isFinite(termGrade);
+  const termGrade = parseValidGrade(computed?.term_grade);
+  const hasTermGrade = termGrade !== null;
   const desc = termGradeDescription(computed?.term_grade);
 
   return (
@@ -170,7 +171,9 @@ function FragmentGroupCells({
                 else delete inputRefs.current[refKey];
               }}
               type="number"
+              aria-label={`${studentId} ${key}`}
               min="0"
+              max={row.highest_possible_score}
               step="0.01"
               value={value}
               onChange={(e) => onScoreChange(studentId, key, e.target.value)}

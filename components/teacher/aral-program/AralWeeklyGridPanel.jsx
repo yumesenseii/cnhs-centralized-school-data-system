@@ -116,6 +116,8 @@ export default function AralWeeklyGridPanel({
   teacherId = null,
   canWrite = false,
   onDirtyChange,
+  recordSchoolYear = null,
+  recordAssessmentPeriod = null,
 }) {
   const learners = group?.learners ?? [];
   const schoolYear = group?.schoolYear || learners[0]?.schoolYear || "";
@@ -161,6 +163,7 @@ export default function AralWeeklyGridPanel({
     const result = await listMonitoringRecordsForStudents({
       studentIds,
       classIds,
+      includeAssessmentPeriod: Boolean(recordAssessmentPeriod),
     });
     if (result.error) {
       setError(result.error.message);
@@ -173,12 +176,14 @@ export default function AralWeeklyGridPanel({
       );
       setRecords(
         (result.data ?? []).filter((row) =>
-          pairKeys.has(`${row.student_id}::${row.class_id}`)
+          pairKeys.has(`${row.student_id}::${row.class_id}`) &&
+          (!recordSchoolYear || row.school_year === recordSchoolYear) &&
+          (!recordAssessmentPeriod || (recordAssessmentPeriod === "legacy" ? !row.assessment_period : row.assessment_period === recordAssessmentPeriod))
         )
       );
     }
     setLoading(false);
-  }, [learners, learnerKey]);
+  }, [learners, learnerKey, recordSchoolYear, recordAssessmentPeriod]);
 
   useEffect(() => {
     refresh();
@@ -243,6 +248,7 @@ export default function AralWeeklyGridPanel({
       const progress = parseAralProgress(cells.studentProgress);
       const sessionDays = compactAralSessionDays(cells.sessionDays);
       const payload = {
+        ...(recordAssessmentPeriod && recordAssessmentPeriod !== "legacy" ? { assessment_period: recordAssessmentPeriod } : {}),
         observation_date:
           String(cells.observationDate || "").trim() || aralObservationDateToday(),
         intervention_given: item.interventionGiven || ARAL_WEEKLY_INTERVENTION,

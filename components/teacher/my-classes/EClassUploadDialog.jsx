@@ -91,7 +91,8 @@ export default function EClassUploadDialog({
       const buffer = await selected.arrayBuffer();
       setWorkbookBuffer(buffer);
       const parsed = await parseEClassRecord(selected, {
-        assignedClass: classItem,
+        assignedClass: { ...classItem, quarter: selectedTerm },
+        quarter: selectedTerm,
         teacherName: classItem.teacher,
         includeGrades: true,
         arrayBuffer: buffer,

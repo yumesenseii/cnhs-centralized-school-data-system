@@ -7,8 +7,6 @@ import AralSectionReportPanel from "@/components/teacher/aral-program/AralSectio
 import AralWeeklyGridPanel from "@/components/teacher/aral-program/AralWeeklyGridPanel";
 import ConfirmModal from "@/components/shared/ConfirmModal";
 import { ARAL_ASSESSMENT_PHASE } from "@/lib/monitoring/aralAssessments";
-import { useAralAssessmentPeriod } from "@/hooks/useAralAssessmentPeriod";
-import { getAralPeriodPermissions } from "@/lib/monitoring/assessmentTimeline";
 import { cn } from "@/lib/utils";
 
 const WORKSPACE_TABS = [
@@ -31,15 +29,7 @@ export default function AralSectionWorkspace({
   const learners = group?.learners ?? [];
   const batchId = learners[0]?.batchId ?? null;
   const canWrite = Boolean(teacherId);
-  const { period: aralPeriod } = useAralAssessmentPeriod();
-  const periodPermissions = getAralPeriodPermissions(aralPeriod);
-  // Future assessment periods are never visible for entry.
-  const visibleTabs = WORKSPACE_TABS.filter((item) => {
-    if (item.id === "pre") return !periodPermissions.BOSY.hidden;
-    if (item.id === "mid") return !periodPermissions.MOSY.hidden;
-    if (item.id === "post") return !periodPermissions.EOSY.hidden;
-    return true;
-  });
+  const visibleTabs = WORKSPACE_TABS;
 
   const [tab, setTab] = useState("weekly");
   const [weeklyDirty, setWeeklyDirty] = useState(false);
@@ -106,7 +96,6 @@ export default function AralSectionWorkspace({
             group={group}
             teacherId={teacherId}
             phase={ARAL_ASSESSMENT_PHASE.PRE}
-            assessmentPeriod={aralPeriod}
           />
         ) : null}
 
@@ -115,7 +104,6 @@ export default function AralSectionWorkspace({
             group={group}
             teacherId={teacherId}
             phase={ARAL_ASSESSMENT_PHASE.MID}
-            assessmentPeriod={aralPeriod}
           />
         ) : null}
 
@@ -124,7 +112,6 @@ export default function AralSectionWorkspace({
             group={group}
             teacherId={teacherId}
             phase={ARAL_ASSESSMENT_PHASE.POST}
-            assessmentPeriod={aralPeriod}
           />
         ) : null}
 
