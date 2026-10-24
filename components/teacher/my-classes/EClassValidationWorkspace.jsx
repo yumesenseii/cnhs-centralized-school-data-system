@@ -73,17 +73,66 @@ export default function EClassValidationWorkspace({
   const [enrolling, setEnrolling] = useState(false);
   const [enrollError, setEnrollError] = useState("");
 
-  // Ready learners (only those matched with official class list)
+  // Ready learners (only those matched with official class list and included)
   const readyLearners = useMemo(() => {
-    return learners.filter((l) => l.status === "MATCHED");
+    return learners.filter((l) => l.included && l.matchedStudent?.id);
   }, [learners]);
 
   // Issue learners (learners that require teacher checking or are unlisted)
   const issueLearners = useMemo(() => {
-    return learners.filter((l) => l.status !== "MATCHED");
+    return learners.filter(
+      (l) =>
+        !l.included ||
+        !l.matchedStudent?.id ||
+        l.status === "NEEDS_VERIFICATION" ||
+        l.status === "WRONG_SECTION" ||
+        l.status === "UNMATCHED"
+    );
   }, [learners]);
 
+  const unverifiedWithMatches = useMemo(() => {
+    return issueLearners.filter(
+      (l) => l.status === "NEEDS_VERIFICATION" && l.matchedStudent
+    );
+  }, [issueLearners]);
+
   const hasIssues = issueLearners.length > 0;
+
+  // Verify and include a single learner whose name matches official roster
+  function handleIncludeLearner(learnerIndex) {
+    setLearners((prev) =>
+      prev.map((l) => {
+        if (l.index === learnerIndex && l.matchedStudent) {
+          return {
+            ...l,
+            status: "MATCHED",
+            included: true,
+            student_number: l.student_number || l.matchedStudent.student_number || "",
+            validationMessage: "Verified and included by teacher.",
+          };
+        }
+        return l;
+      })
+    );
+  }
+
+  // Batch verify and include all learners whose names match official roster
+  function handleIncludeAllMatched() {
+    setLearners((prev) =>
+      prev.map((l) => {
+        if (l.status === "NEEDS_VERIFICATION" && l.matchedStudent) {
+          return {
+            ...l,
+            status: "MATCHED",
+            included: true,
+            student_number: l.student_number || l.matchedStudent.student_number || "",
+            validationMessage: "Verified and included by teacher.",
+          };
+        }
+        return l;
+      })
+    );
+  }
 
   // Pagination for 10 learners per page
   const totalPages = Math.max(1, Math.ceil(learners.length / ROWS_PER_PAGE));
@@ -293,6 +342,15 @@ export default function EClassValidationWorkspace({
                                 <UserPlus size={11} />
                                 <span>+ Isama Transferee</span>
                               </button>
+                            ) : item.status === "NEEDS_VERIFICATION" && item.matchedStudent ? (
+                              <button
+                                type="button"
+                                onClick={() => handleIncludeLearner(item.index)}
+                                className="inline-flex cursor-pointer items-center gap-1 text-[10.5px] font-semibold text-emerald-700 hover:underline"
+                              >
+                                <CheckCircle2 size={11} />
+                                <span>Isama / Tugma</span>
+                              </button>
                             ) : null}
                           </div>
                         </td>
@@ -339,7 +397,7 @@ export default function EClassValidationWorkspace({
             <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-xs text-amber-950 shadow-2xs">
               <div className="flex items-start gap-3">
                 <AlertCircle size={20} className="text-amber-600 shrink-0 mt-0.5" />
-                <div>
+                <div className="flex-1">
                   <h3 className="font-bold text-amber-900 text-sm">
                     {issueLearners.length}{" "}
                     {issueLearners.length === 1
@@ -352,10 +410,23 @@ export default function EClassValidationWorkspace({
                     {readyLearners.length === 1 ? "learner is" : "learners are"}{" "}
                     ready. <strong>{issueLearners.length}</strong>{" "}
                     {issueLearners.length === 1
-                      ? "learner was"
-                      : "learners were"}{" "}
-                    not matched with the class list.
+                      ? "learner requires"
+                      : "learners require"}{" "}
+                    verification before saving.
                   </p>
+                  {unverifiedWithMatches.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={handleIncludeAllMatched}
+                      className="mt-2.5 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900 hover:bg-emerald-100 transition-colors shadow-2xs"
+                    >
+                      <CheckCircle2 size={13} className="text-cnhs-green" />
+                      <span>
+                        Isama Lahat ng May Tugmang Pangalan (
+                        {unverifiedWithMatches.length})
+                      </span>
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -438,6 +509,15 @@ export default function EClassValidationWorkspace({
                           >
                             <UserPlus size={12} className="text-cnhs-green" />
                             <span>Isama bilang Transferee</span>
+                          </button>
+                        ) : item.status === "NEEDS_VERIFICATION" && item.matchedStudent ? (
+                          <button
+                            type="button"
+                            onClick={() => handleIncludeLearner(item.index)}
+                            className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs"
+                          >
+                            <CheckCircle2 size={12} className="text-cnhs-green" />
+                            <span>Isama / Tugma</span>
                           </button>
                         ) : null}
                       </div>
