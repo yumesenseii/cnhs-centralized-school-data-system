@@ -165,7 +165,11 @@ export default function AralAssessmentFlowModal({
 
       // Restore existing teacher confirmed outcome if present
       if (existingMetrics.progressionOutcome) {
-        setProgressionOutcome(existingMetrics.progressionOutcome);
+        setProgressionOutcome(
+          existingMetrics.progressionOutcome === "ARAL Eligible — For Review"
+            ? "For Further Review after EOSY"
+            : existingMetrics.progressionOutcome
+        );
       } else {
         setProgressionOutcome(continuationLabel);
       }
@@ -228,16 +232,31 @@ export default function AralAssessmentFlowModal({
     comprehensionTotal,
   ]);
 
-  // Automatically update recommended outcome based on Reading Profile
+  // Grade level of learner and tested passage level
+  const learnerGradeNum = useMemo(() => {
+    const match = String(learner?.grade || "").match(/\d+/);
+    return match ? parseInt(match[0], 10) : 7;
+  }, [learner?.grade]);
+
+  const passageGradeNum = useMemo(() => {
+    const match = String(passageLevel || "").match(/\d+/);
+    return match ? parseInt(match[0], 10) : learnerGradeNum;
+  }, [passageLevel, learnerGradeNum]);
+
+  const isAtGradeLevel = passageGradeNum >= learnerGradeNum;
+  const isIndependentProfile = computedMetrics.readingProfile === "Independent";
+  const canExitAssessment = isIndependentProfile && isAtGradeLevel;
+
+  // Automatically update recommended outcome based on Reading Profile and Passage Level
   useEffect(() => {
     if (computedMetrics.readingProfile) {
-      if (computedMetrics.readingProfile === "Independent") {
+      if (canExitAssessment) {
         setProgressionOutcome("No Further Assessment Required");
       } else {
         setProgressionOutcome(continuationLabel);
       }
     }
-  }, [computedMetrics.readingProfile, continuationLabel]);
+  }, [computedMetrics.readingProfile, canExitAssessment, continuationLabel]);
 
   // Submit handler
   async function handleSave() {
@@ -248,7 +267,8 @@ export default function AralAssessmentFlowModal({
       return;
     }
 
-    if (!workflow.requiresIndividual) {
+    const canPerformAssessment = workflow.requiresIndividual || learner?.readingWorkflowEligible;
+    if (!canPerformAssessment) {
       showToast(workflow.message);
       return;
     }
@@ -294,6 +314,15 @@ export default function AralAssessmentFlowModal({
       showToast("Please verify complete word reading and comprehension metrics.");
       return;
     }
+    if (progressionOutcome === "No Further Assessment Required" && !canExitAssessment) {
+      showToast({
+        message: !isIndependentProfile
+          ? "Learners with Frustration or Instructional profiles cannot be exited from assessment."
+          : `Passage level (${passageLevel}) is below learner's grade level (Grade ${learnerGradeNum}). Exit requires an at-grade assessment.`,
+        tone: "error",
+      });
+      return;
+    }
 
     setSaving(true);
     try {
@@ -306,6 +335,7 @@ export default function AralAssessmentFlowModal({
         assessmentPeriod: aralPeriod || "BOSY",
         correctionReason,
         subject: learner.subject || "English",
+        grade: learner.grade || sourceLearner?.grade,
         gstScore: learner.philIriScore,
         documents: learner.rawPayload?.documents || [],
         readingLevel: computedMetrics.readingProfile || "Not Assessed",
@@ -381,7 +411,7 @@ export default function AralAssessmentFlowModal({
           </button>
         </div>
 
-        {!workflow.requiresIndividual && (
+        {!workflow.requiresIndividual && !learner?.readingWorkflowEligible && (
           <p className="border-b border-amber-200 bg-amber-50 px-5 py-2 text-xs text-amber-800">{workflow.message}</p>
         )}
 
@@ -408,7 +438,7 @@ export default function AralAssessmentFlowModal({
         </div>
 
         {/* Form Body: Raw Inputs Only */}
-        <fieldset disabled={!canEncode || !workflow.requiresIndividual || saving} className="p-5 space-y-3.5 max-h-[calc(85vh-130px)] overflow-y-auto">
+        <fieldset disabled={!canEncode || (!workflow.requiresIndividual && !learner?.readingWorkflowEligible) || saving} className="p-5 space-y-3.5 max-h-[calc(85vh-130px)] overflow-y-auto">
           {/* 1. Passage Level & Auto-filled Total Words */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2">
@@ -565,23 +595,42 @@ export default function AralAssessmentFlowModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <label
                   className={cn(
-                    "flex items-center gap-2 rounded-md border p-2.5 text-xs cursor-pointer select-none transition-colors",
-                    progressionOutcome === "No Further Assessment Required"
-                      ? "border-slate-800 bg-slate-50 font-medium text-slate-900 dark:border-white/40 dark:bg-slate-800 dark:text-white"
-                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300"
+                    "flex flex-col gap-1 rounded-md border p-2.5 text-xs transition-colors",
+                    !canExitAssessment
+                      ? "opacity-60 cursor-not-allowed bg-slate-50 border-slate-200 text-slate-400 dark:border-white/5 dark:bg-slate-800/40"
+                      : progressionOutcome === "No Further Assessment Required"
+                      ? "border-slate-800 bg-slate-50 font-medium text-slate-900 cursor-pointer dark:border-white/40 dark:bg-slate-800 dark:text-white"
+                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 cursor-pointer dark:border-white/10 dark:bg-slate-900 dark:text-slate-300"
                   )}
+                  title={
+                    !isIndependentProfile
+                      ? "Learner profile must be Independent to conclude assessment."
+                      : !isAtGradeLevel
+                      ? `Passage level (${passageLevel}) is below learner's grade level (Grade ${learnerGradeNum}). Exit requires an at-grade assessment.`
+                      : ""
+                  }
                 >
-                  <input
-                    type="radio"
-                    name="progressionOutcome"
-                    value="No Further Assessment Required"
-                    checked={
-                      progressionOutcome === "No Further Assessment Required"
-                    }
-                    onChange={(e) => setProgressionOutcome(e.target.value)}
-                    className="h-3.5 w-3.5 text-slate-900 focus:ring-slate-800 cursor-pointer"
-                  />
-                  <span>No Further Assessment Required</span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="progressionOutcome"
+                      value="No Further Assessment Required"
+                      disabled={!canExitAssessment}
+                      checked={
+                        progressionOutcome === "No Further Assessment Required"
+                      }
+                      onChange={(e) => setProgressionOutcome(e.target.value)}
+                      className="h-3.5 w-3.5 text-slate-900 focus:ring-slate-800 cursor-pointer disabled:cursor-not-allowed"
+                    />
+                    <span className="font-medium">No Further Assessment Required</span>
+                  </div>
+                  {!canExitAssessment && (
+                    <span className="text-[10px] text-amber-700 dark:text-amber-400 pl-5.5 font-normal">
+                      {!isIndependentProfile
+                        ? "Requires Independent reading profile"
+                        : `Passage (${passageLevel}) is below Grade ${learnerGradeNum}`}
+                    </span>
+                  )}
                 </label>
 
                 <label
@@ -600,18 +649,20 @@ export default function AralAssessmentFlowModal({
                     onChange={(e) => setProgressionOutcome(e.target.value)}
                     className="h-3.5 w-3.5 text-slate-900 focus:ring-slate-800 cursor-pointer"
                   />
-                  <span>{continuationLabel}</span>
+                  <span>{aralPeriod === "EOSY" ? "ARAL Eligible — For Review" : continuationLabel}</span>
                 </label>
               </div>
             </div>
           </div>
         </fieldset>
 
-        {workflow.hasIndividualResult && <label className="block px-5 pb-3 text-xs text-slate-600 dark:text-slate-300">
-          Reason for correction
-          <input value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value)} maxLength={500}
-            className="mt-1 block w-full rounded-lg border border-slate-200 bg-transparent px-3 py-2 text-sm" placeholder="Explain any changes to the saved result" />
-        </label>}
+        {Boolean(sourceLearner?.iraMetrics || sourceLearner?.rawPayload?.iraMetrics) && (
+          <label className="block px-5 pb-3 text-xs text-slate-600 dark:text-slate-300">
+            Notes / Reason for correction (optional)
+            <input value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value)} maxLength={500}
+              className="mt-1 block w-full rounded-lg border border-slate-200 bg-transparent px-3 py-2 text-sm" placeholder="Optional: explain any changes to the saved result" />
+          </label>
+        )}
 
         {/* Modal Footer */}
         <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-5 py-3 dark:border-white/10 bg-slate-50/50 dark:bg-slate-800/30">
@@ -626,7 +677,7 @@ export default function AralAssessmentFlowModal({
           <button
             type="button"
             onClick={handleSave}
-            disabled={!canEncode || !workflow.requiresIndividual || saving}
+            disabled={!canEncode || (!workflow.requiresIndividual && !learner?.readingWorkflowEligible) || saving}
             className="inline-flex h-8.5 cursor-pointer items-center gap-1.5 rounded-lg bg-[#246f54] px-4 text-xs font-semibold text-white shadow-2xs transition-colors hover:bg-[#1b5842] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? (

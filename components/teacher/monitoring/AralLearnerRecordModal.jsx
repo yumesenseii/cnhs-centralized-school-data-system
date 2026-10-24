@@ -19,7 +19,7 @@ function getWhatHappensNowExplanation(stepKey, isGstAtGradeLevel) {
     case "assessment_complete":
       return "The Individual Reading Assessment (Form 3) has been completed and recorded. The learner's reading profile is documented.";
     case "for_review":
-      return "End of School Year: Reading need remains across terms. The learner is flagged: For Further Review after EOSY (internal administrative review).";
+      return "End of School Year: Reading need remains across terms. The learner is flagged: ARAL Eligible — For Review (authorized school confirmation).";
     case "absent_reschedule":
       return "The learner was absent during the reading assessment. The assessment is scheduled for reschedule by the subject teacher.";
     case "gst_under_review":
@@ -195,15 +195,15 @@ export default function AralLearnerRecordModal({
             </p>
           </section>
 
-          {/* EOSY For Further Review Informational Banner */}
+          {/* EOSY ARAL Eligible — For Review Informational Banner */}
           {learner.currentStepKey === "for_review" && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-3.5 text-xs text-rose-900 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-200">
+            <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-3.5 text-xs text-sky-900 dark:border-sky-900/40 dark:bg-sky-950/20 dark:text-sky-200">
               <div className="flex items-center gap-2 font-bold">
-                <AlertCircle size={15} className="text-rose-600 shrink-0" />
-                <span>End-of-Year Outcome: For Further Review</span>
+                <AlertCircle size={15} className="text-sky-600 shrink-0" />
+                <span>End-of-Year Outcome: ARAL Eligible — For Review</span>
               </div>
-              <p className="mt-1 text-[11.5px] text-rose-800 dark:text-rose-300 leading-relaxed">
-                Informational: Possible ARAL Summer Consideration. Actual ARAL Summer enrollment, scheduling, and facilitator management are administered externally outside CNHS LEARN.
+              <p className="mt-1 text-[11.5px] text-sky-800 dark:text-sky-300 leading-relaxed">
+                Reading need remains across terms. Flagged as ARAL Eligible — For Review for authorized school confirmation (not automatically enrolled in ARAL or ARAL Summer).
               </p>
             </div>
           )}

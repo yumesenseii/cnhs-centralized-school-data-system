@@ -151,6 +151,7 @@ export function useAdminReports() {
     charts: model?.charts ?? null,
     summary: model?.summary ?? null,
     lessonSummary: model?.lessonSummary ?? null,
+    gradeLevelBreakdown: model?.gradeLevelBreakdown ?? [],
     schoolSummary: model?.schoolSummary ?? null,
     attendance: model?.attendance ?? null,
     overviewActionCounts: model?.overviewActionCounts ?? {

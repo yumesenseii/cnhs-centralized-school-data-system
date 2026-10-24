@@ -22,6 +22,7 @@ import {
   resolveSubjectFamily,
 } from "@/lib/services/recommendation/trendScope";
 import { getActiveSchoolYear } from "@/lib/academic/activeSchoolYear";
+import { predictNumericalSubjectGrade } from "@/lib/services/recommendation/numericalGradeRegressor";
 
 /**
  * POST /api/recommendations/predict_subject_trend
@@ -297,27 +298,13 @@ export async function POST(request) {
     const ecrSheets = sheetRows ?? [];
 
     // --- Publication evidence (published / draft / missing) ---------------
-    // Verify whether an authoritative publication record exists for the current
-    // term, class, and subject. Explicit drafts and unverifiable states remain blocked.
     const evidence = evaluatePublicationEvidence({
       sheets: ecrSheets,
       requiredTerms: [requestedTerm],
     });
 
-    if (evidence.state !== "published") {
-      return NextResponse.json(
-        unavailablePayload({
-          subject: requestedSubject,
-          currentTerm: requestedTerm,
-          targetTerm: requestedTerm === 1 ? 2 : 3,
-          message: describePublicationEvidence(evidence, {
-            subjectLabel: subject.canonical,
-          }),
-          schoolYear: scope.standard,
-          duplicateSubjects: duplicateSubjectKeys,
-        })
-      );
-    }
+    const isPublished = evidence.state === "published";
+    let isProvisional = !isPublished;
 
     // --- Evidence verification and feature construction ------------------
     const featureCheck = verifyAndBuildTrendFeatures({
@@ -326,9 +313,25 @@ export async function POST(request) {
       currentTerm: requestedTerm,
       gradesRecords: gradesData ?? [],
       ecrTermSheets: ecrSheets,
+      allowProvisional: true, // Allow provisional evaluation if draft grades exist
     });
 
     if (!featureCheck.eligible) {
+      if (!isPublished) {
+        return NextResponse.json(
+          unavailablePayload({
+            subject: requestedSubject,
+            currentTerm: requestedTerm,
+            targetTerm: requestedTerm === 1 ? 2 : 3,
+            message: describePublicationEvidence(evidence, {
+              subjectLabel: subject.canonical,
+            }),
+            schoolYear: scope.standard,
+            duplicateSubjects: duplicateSubjectKeys,
+          })
+        );
+      }
+
       const isTeacherSession = staff.profile.role === "teacher";
       const message = isTeacherSession
         ? TEACHER_SCOPE_MESSAGE
@@ -347,7 +350,22 @@ export async function POST(request) {
       );
     }
 
-    // --- Remote inference -------------------------------------------------
+    if (featureCheck.isProvisional) {
+      isProvisional = true;
+    }
+
+    // --- Numerical grade forecasting & decision support -------------------
+    const numericalEstimate = predictNumericalSubjectGrade({
+      featureVector: featureCheck.features,
+      currentGrade: featureCheck.currentGrade,
+      currentTerm: requestedTerm,
+      subject: featureCheck.subject,
+    });
+
+    // --- Remote inference (with resilient fallback) ------------------------
+    let remoteTrend = null;
+    let remoteMessage = null;
+
     if (isRemoteInferenceConfigured()) {
       try {
         const remote = await predictSubjectTrendViaRemote({
@@ -357,22 +375,10 @@ export async function POST(request) {
           featureVector: featureCheck.features,
           featureNames: featureCheck.featureNames,
         });
-
-        // Ensure sanitized return shape
-        return NextResponse.json({
-          status: remote.status,
-          subject: remote.subject,
-          currentTerm: remote.currentTerm,
-          targetTerm: remote.targetTerm,
-          predictedTrend: remote.predictedTrend,
-          source: "pattern-analysis-experimental",
-          disclaimer: ADVISORY_DISCLAIMER,
-          message: remote.message,
-          schoolYear: scope.standard,
-          ...(duplicateSubjectKeys.length > 0
-            ? { duplicateSubjects: duplicateSubjectKeys }
-            : {}),
-        });
+        if (remote && remote.predictedTrend && remote.predictedTrend !== "—") {
+          remoteTrend = remote.predictedTrend;
+          remoteMessage = remote.message;
+        }
       } catch (err) {
         console.warn(
           "[api/recommendations/predict_subject_trend] Remote inference call failed:",
@@ -381,17 +387,30 @@ export async function POST(request) {
       }
     }
 
-    // Fallback when ML service is offline
-    return NextResponse.json(
-      unavailablePayload({
-        subject: featureCheck.subject,
-        currentTerm: featureCheck.currentTerm,
-        targetTerm: featureCheck.targetTerm,
-        message:
-          "Random Forest ML prediction service is currently unavailable. Academic monitoring is operating on authoritative rule-based evaluation.",
-        schoolYear: scope.standard,
-      })
-    );
+    const predictedTrend = remoteTrend || numericalEstimate.predictedTrend;
+    const advisoryMessage = isProvisional
+      ? "Advisory forecast generated from current draft ECR records. Official term publication pending by subject teacher."
+      : (remoteMessage || "Advisory forecast based on verified published records.");
+
+    return NextResponse.json({
+      status: "available",
+      subject: subject.canonical,
+      currentTerm: requestedTerm,
+      targetTerm: requestedTerm === 1 ? 2 : 3,
+      currentGrade: numericalEstimate.currentGrade,
+      estimatedGrade: numericalEstimate.estimatedGrade,
+      estimatedDelta: numericalEstimate.estimatedDelta,
+      typicalError: numericalEstimate.typicalError,
+      predictedTrend,
+      provisional: isProvisional,
+      source: "pattern-analysis-experimental",
+      disclaimer: ADVISORY_DISCLAIMER,
+      message: advisoryMessage,
+      schoolYear: scope.standard,
+      ...(duplicateSubjectKeys.length > 0
+        ? { duplicateSubjects: duplicateSubjectKeys }
+        : {}),
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error?.message ?? "Failed to process trend forecast request." },

@@ -152,13 +152,19 @@ export default function TeacherAralMonitoringPage() {
     })).filter(({ group }) => group.learners.length);
   }, [selectedClass, effectivePeriod, teacherId]);
 
-  function openAssessment(learner) {
-    const workflow = learner.readingWorkflow || getAralReadingWorkflow(learner, effectivePeriod, controls.schoolYear);
-    if (!workflow.requiresIndividual || !effectivePeriod) {
+  function openAssessment(learner, targetPeriod = null) {
+    const periodToUse = targetPeriod || learner?.readingWorkflow?.incompleteEarlierPeriod || effectivePeriod;
+    const workflow = getAralReadingWorkflow(learner, periodToUse, controls.schoolYear);
+    const canOpen = workflow.requiresIndividual || learner?.readingWorkflowEligible || (workflow.hasIncompleteEarlier && workflow.incompleteEarlierReason === "needs_form3");
+    if (!canOpen || !periodToUse) {
       showToast(workflow.message);
       return;
     }
-    setSelectedAssessmentLearner(workflow.assessmentLearner);
+    const targetLearner = workflow.incompleteEarlierLearner || workflow.assessmentLearner;
+    setSelectedAssessmentLearner({
+      ...targetLearner,
+      targetAssessmentPeriod: periodToUse,
+    });
   }
 
   // Assessment period display string
@@ -312,6 +318,7 @@ export default function TeacherAralMonitoringPage() {
           onRefresh={refresh}
           onOpenIra={openAssessment}
           onOpenRecord={(l) => setSelectedLearner(l)}
+          onSelectPeriod={(p) => updatePeriod(p)}
         />
       ) : null}
 
@@ -353,7 +360,7 @@ export default function TeacherAralMonitoringPage() {
         teacherId={teacherId}
         schoolYear={controls.schoolYear}
         quarter={controls.quarter}
-        aralPeriod={effectivePeriod}
+        aralPeriod={selectedAssessmentLearner?.targetAssessmentPeriod || selectedAssessmentLearner?.assessmentPeriod || effectivePeriod}
         onSuccess={refresh}
       />
 

@@ -10,6 +10,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  ReferenceLine,
+  Legend,
 } from "recharts";
 
 const PAGE_SIZE = 10;
@@ -61,25 +63,53 @@ export default function AcademicReportTab({
     },
   ];
 
+  // Grade-Level Performance & Pass Rate Chart Data (Replaces static card strip)
+  const gradeLevelChartData = useMemo(() => {
+    const list = charts?.gradeLevelBreakdown ?? [];
+    return list.map((item) => {
+      const avg =
+        typeof item.averageGrade === "number"
+          ? item.averageGrade
+          : parseFloat(item.averageGrade) || 0;
+      const pass =
+        typeof item.passRateValue === "number"
+          ? item.passRateValue
+          : parseFloat(item.passRate) || 0;
+      return {
+        grade: item.grade,
+        averageGrade: Math.round(avg * 10) / 10,
+        averageGradeDisplay: item.averageGrade,
+        passRate: Math.round(pass),
+        passRateDisplay: item.passRate,
+        learners: item.learners,
+        highRisk: item.highRisk,
+        failingCount: item.failingCount,
+      };
+    });
+  }, [charts?.gradeLevelBreakdown]);
+
   // Subject support chart data
   const subjectChartData = useMemo(() => {
     const perfList = charts?.performanceBySubject ?? [];
     if (perfList.length > 0) {
       return perfList.map((item) => {
         const subjectName = item.subject || item.name || "Subject";
-        // Calculate needing support for this subject if available, or approximate from classReports
         const matchedClasses = classReports.filter(
           (c) =>
             String(c.subject || "").toLowerCase() ===
             subjectName.toLowerCase()
         );
+        const failingCount = matchedClasses.reduce((acc, c) => {
+          const grades = Array.isArray(c.subjectGrades) ? c.subjectGrades : [];
+          return acc + grades.filter((g) => Number(g) < 75).length;
+        }, 0);
         const supportCount = matchedClasses.reduce(
           (acc, c) => acc + (Number(c.requiringIntervention) || 0),
           0
         );
         return {
           subject: subjectName,
-          learners: supportCount > 0 ? supportCount : Math.max(0, Math.round((100 - (Number(item.average) || 75)) * 0.4)),
+          learners: Math.max(failingCount, supportCount),
         };
       }).sort((a, b) => b.learners - a.learners).slice(0, 8);
     }
@@ -97,7 +127,8 @@ export default function AcademicReportTab({
       .slice(0, 8);
   }, [charts, classReports]);
 
-  // Section Summary Table Data (aggregated per section)
+
+  // Section Summary Table Data (aggregated per section with true failing & intervention counts)
   const sectionSummaryData = useMemo(() => {
     const secMap = new Map();
 
@@ -118,7 +149,14 @@ export default function AcademicReportTab({
 
       const entry = secMap.get(sectionName);
       entry.learners = Math.max(entry.learners, Number(c.students) || 0);
-      const needing = Number(c.requiringIntervention) || 0;
+
+      const failingCount = Array.isArray(c.subjectGrades)
+        ? c.subjectGrades.filter((g) => Number(g) < 75).length
+        : 0;
+      const needing = Math.max(
+        failingCount,
+        Number(c.requiringIntervention) || 0
+      );
       entry.needSupport += needing;
 
       if (c.subject && needing > 0) {
@@ -180,65 +218,163 @@ export default function AcademicReportTab({
         ))}
       </div>
 
-      {/* 1 SIMPLE HORIZONTAL BAR CHART */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
-        <div className="border-b border-slate-100 pb-2.5 dark:border-white/5">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-            Learners Needing Academic Support by Subject
-          </h3>
-          <p className="mt-0.5 text-[11px] text-slate-500">
-            Distribution of identified learners needing targeted academic or remedial support.
-          </p>
+      {/* 2-COLUMN DETAILED ANALYTICS GRID */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* CHART 1: GRADE-LEVEL PERFORMANCE & PASSING COMPARISON (Replaces Photo 3) */}
+        <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+          <div className="border-b border-slate-100 pb-2.5 dark:border-white/5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">
+                Grade-Level Performance & Passing Rate
+              </h3>
+              <span className="text-[10px] font-semibold text-slate-400">
+                JHS Grades 7–10
+              </span>
+            </div>
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              Comparative average grade and overall passing rate across Junior High School grade levels.
+            </p>
+          </div>
+
+          <div className="mt-3 h-[240px] w-full">
+            {gradeLevelChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={gradeLevelChartData}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis
+                    dataKey="grade"
+                    tickLine={false}
+                    axisLine={{ stroke: "#e2e8f0" }}
+                    tick={{ fontSize: 11, fill: "#475569", fontWeight: 600 }}
+                  />
+                  <YAxis
+                    domain={[50, 100]}
+                    tickLine={false}
+                    axisLine={{ stroke: "#e2e8f0" }}
+                    tick={{ fontSize: 11, fill: "#64748b" }}
+                  />
+                  <ReferenceLine
+                    y={75}
+                    stroke="#e11d48"
+                    strokeDasharray="3 3"
+                    label={{
+                      value: "Passing (75)",
+                      position: "insideTopRight",
+                      fill: "#e11d48",
+                      fontSize: 10,
+                      fontWeight: 600,
+                    }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#ffffff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05)",
+                    }}
+                    formatter={(val, name) => [
+                      name === "averageGrade" ? `${val}` : `${val}%`,
+                      name === "averageGrade" ? "Average Grade" : "Passing Rate",
+                    ]}
+                  />
+                  <Legend
+                    verticalAlign="top"
+                    align="right"
+                    wrapperStyle={{ paddingBottom: 6, fontSize: 11 }}
+                    formatter={(value) =>
+                      value === "averageGrade" ? "Average Grade" : "Passing Rate (%)"
+                    }
+                  />
+                  <Bar
+                    dataKey="averageGrade"
+                    name="averageGrade"
+                    fill="#166534"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={28}
+                  />
+                  <Bar
+                    dataKey="passRate"
+                    name="passRate"
+                    fill="#10b981"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={28}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-xs text-slate-400">
+                No grade-level comparison data available.
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="mt-4 h-[240px] w-full">
-          {subjectChartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                layout="vertical"
-                data={subjectChartData}
-                margin={{ top: 6, right: 30, left: 40, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                <XAxis
-                  type="number"
-                  tick={{ fontSize: 11, fill: "#64748b" }}
-                  axisLine={{ stroke: "#e2e8f0" }}
-                  tickLine={false}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="subject"
-                  tick={{ fontSize: 11, fill: "#334155" }}
-                  axisLine={{ stroke: "#e2e8f0" }}
-                  tickLine={false}
-                  width={90}
-                />
-                <Tooltip
-                  cursor={{ fill: "#f8fafc" }}
-                  contentStyle={{
-                    backgroundColor: "#ffffff",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "8px",
-                    fontSize: "12px",
-                  }}
-                  formatter={(val) => [`${val} learners`, "Needing Support"]}
-                />
-                <Bar
-                  dataKey="learners"
-                  fill="#1b4332"
-                  radius={[0, 4, 4, 0]}
-                  barSize={16}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex h-full items-center justify-center text-xs text-slate-400">
-              No subject support data available for this term.
-            </div>
-          )}
+        {/* CHART 2: LEARNERS NEEDING ACADEMIC SUPPORT BY SUBJECT */}
+        <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
+          <div className="border-b border-slate-100 pb-2.5 dark:border-white/5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">
+              Learners Needing Academic Support by Subject
+            </h3>
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              Distribution of identified learners needing targeted academic or remedial support.
+            </p>
+          </div>
+
+          <div className="mt-3 h-[240px] w-full">
+            {subjectChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  layout="vertical"
+                  data={subjectChartData}
+                  margin={{ top: 6, right: 24, left: 24, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                  <XAxis
+                    type="number"
+                    tick={{ fontSize: 11, fill: "#64748b" }}
+                    axisLine={{ stroke: "#e2e8f0" }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="subject"
+                    tick={{ fontSize: 11, fill: "#334155" }}
+                    axisLine={{ stroke: "#e2e8f0" }}
+                    tickLine={false}
+                    width={90}
+                  />
+                  <Tooltip
+                    cursor={{ fill: "#f8fafc" }}
+                    contentStyle={{
+                      backgroundColor: "#ffffff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05)",
+                    }}
+                    formatter={(val) => [`${val} learners`, "Needing Support"]}
+                  />
+                  <Bar
+                    dataKey="learners"
+                    fill="#1b4332"
+                    radius={[0, 4, 4, 0]}
+                    barSize={16}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-xs text-slate-400">
+                No subject support data available for this term.
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
 
       {/* SECTION SUMMARY TABLE */}
       <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xs dark:border-white/10 dark:bg-[var(--card)]">
@@ -286,10 +422,24 @@ export default function AcademicReportTab({
                       {row.learners}
                     </td>
                     <td className="px-4 py-3 text-[13px] font-semibold tabular-nums text-slate-900 dark:text-slate-100">
-                      {row.needSupport}
+                      {row.needSupport > 0 ? (
+                        <span className="text-amber-700 dark:text-amber-400">
+                          {row.needSupport}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">0</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-[13px] text-slate-600 dark:text-slate-400">
-                      {row.mainConcern}
+                      {row.needSupport > 0 ? (
+                        <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                          {row.mainConcern}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                          All on track
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -309,3 +459,4 @@ export default function AcademicReportTab({
     </div>
   );
 }
+

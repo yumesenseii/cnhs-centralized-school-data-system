@@ -31,7 +31,11 @@ import {
   aralPeriodLabel,
   getAralTermDisplay,
 } from "@/lib/monitoring/assessmentTimeline";
-import { formatGradeSection } from "@/lib/monitoring/philIriEvaluation";
+import {
+  formatGradeSection,
+  cleanGradeNumber,
+  cleanSectionName,
+} from "@/lib/monitoring/philIriEvaluation";
 import AralPeriodTabs from "@/components/aral/AralPeriodTabs";
 import { getAralReadingWorkflow } from "@/lib/monitoring/aralReadingWorkflow";
 import { useAralAssessmentPeriod } from "@/hooks/useAralAssessmentPeriod";
@@ -139,7 +143,13 @@ export default function AdminAralMonitoringDashboard() {
     let frustration = 0;
 
     for (const l of allReadingLearners) {
-      if (l.currentStepKey === "screening_complete_at_grade") {
+      // GST-derived At Grade Level is kept strictly separate from Form 3 reading profiles
+      const isGstAtGrade =
+        l.currentStepKey === "screening_complete_at_grade" ||
+        l.readingLevel === "At Grade Level" ||
+        (!l.readingLevel && Number(l.philIriScore) >= 28 && !l.isAbsent);
+
+      if (isGstAtGrade) {
         atGrade++;
       } else if (l.readingLevel === "Independent") {
         independent++;
@@ -150,27 +160,31 @@ export default function AdminAralMonitoringDashboard() {
       }
     }
 
-    const assessedTotal = metrics.totalCompleteCount || 1;
+    // Accurate, consistent denominator across all evaluated reading profiles
+    const evaluatedTotal = atGrade + independent + instructional + frustration;
+    const denominator = evaluatedTotal > 0 ? evaluatedTotal : 1;
 
     return {
       atGrade,
       independent,
       instructional,
       frustration,
-      atGradePct: Math.round((atGrade / assessedTotal) * 100) || 0,
-      independentPct: Math.round((independent / assessedTotal) * 100) || 0,
-      instructionalPct: Math.round((instructional / assessedTotal) * 100) || 0,
-      frustrationPct: Math.round((frustration / assessedTotal) * 100) || 0,
+      total: evaluatedTotal,
+      atGradePct: evaluatedTotal > 0 ? Math.round((atGrade / denominator) * 100) : 0,
+      independentPct: evaluatedTotal > 0 ? Math.round((independent / denominator) * 100) : 0,
+      instructionalPct: evaluatedTotal > 0 ? Math.round((instructional / denominator) * 100) : 0,
+      frustrationPct: evaluatedTotal > 0 ? Math.round((frustration / denominator) * 100) : 0,
     };
-  }, [allReadingLearners, metrics.totalCompleteCount]);
+  }, [allReadingLearners]);
 
   // 4. Grade & Section summary breakdown
   const sectionSummaries = useMemo(() => {
     const map = new Map();
 
     for (const l of allReadingLearners) {
-      const g = l.grade ? `Grade ${l.grade}` : "Grade 7";
-      const sec = l.section || "General";
+      const cleanG = cleanGradeNumber(l.grade) || "7";
+      const g = `Grade ${cleanG}`;
+      const sec = cleanSectionName(l.section) || "General";
       const lang = l.language || l.subject || "English";
       const key = `${g}_${sec}_${lang}`;
 
@@ -191,16 +205,31 @@ export default function AdminAralMonitoringDashboard() {
       const item = map.get(key);
       item.total++;
 
-      if (
+      const isEvaluatedAtGrade =
         l.currentStepKey === "screening_complete_at_grade" ||
-        l.currentStepKey === "assessment_complete"
+        l.readingLevel === "At Grade Level" ||
+        (!l.readingLevel && Number(l.philIriScore) >= 28 && !l.isAbsent);
+
+      const hasForm3 =
+        l.readingLevel === "Independent" ||
+        l.readingLevel === "Instructional" ||
+        l.readingLevel === "Frustration";
+
+      if (
+        isEvaluatedAtGrade ||
+        hasForm3 ||
+        l.currentStepKey === "assessment_complete" ||
+        l.currentStepKey === "for_review"
       ) {
         item.assessed++;
       }
-      if (l.currentStepKey === "needs_individual_assessment") {
+      if (
+        l.currentStepKey === "needs_individual_assessment" ||
+        l.currentStepKey === "needs_earlier_ira"
+      ) {
         item.needsIra++;
       }
-      if (l.currentStepKey === "screening_complete_at_grade") {
+      if (isEvaluatedAtGrade) {
         item.atGrade++;
       } else if (l.readingLevel === "Instructional") {
         item.instructional++;
@@ -481,7 +510,7 @@ export default function AdminAralMonitoringDashboard() {
                     </p>
                   </div>
                   <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                    {metrics.totalCompleteCount} Total Assessed
+                    {profileDistribution.total} Evaluated Reading Profiles
                   </span>
                 </div>
 
@@ -495,7 +524,7 @@ export default function AdminAralMonitoringDashboard() {
                       {profileDistribution.atGrade}
                     </p>
                     <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
-                      {profileDistribution.atGradePct}% of assessed
+                      {profileDistribution.atGradePct}% of evaluated
                     </span>
                   </div>
 
@@ -508,7 +537,7 @@ export default function AdminAralMonitoringDashboard() {
                       {profileDistribution.independent}
                     </p>
                     <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
-                      {profileDistribution.independentPct}% of assessed
+                      {profileDistribution.independentPct}% of evaluated
                     </span>
                   </div>
 
@@ -521,7 +550,7 @@ export default function AdminAralMonitoringDashboard() {
                       {profileDistribution.instructional}
                     </p>
                     <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
-                      {profileDistribution.instructionalPct}% of assessed
+                      {profileDistribution.instructionalPct}% of evaluated
                     </span>
                   </div>
 
@@ -534,7 +563,7 @@ export default function AdminAralMonitoringDashboard() {
                       {profileDistribution.frustration}
                     </p>
                     <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
-                      {profileDistribution.frustrationPct}% of assessed
+                      {profileDistribution.frustrationPct}% of evaluated
                     </span>
                   </div>
                 </div>
@@ -736,8 +765,8 @@ export default function AdminAralMonitoringDashboard() {
                             </td>
 
                             <td className="px-4 py-3">
-                              <span className="inline-flex rounded-md bg-rose-50 px-2.5 py-0.5 text-[11px] font-semibold text-rose-800 border border-rose-200">
-                                For Further Review
+                              <span className="inline-flex rounded-md bg-sky-50 px-2.5 py-0.5 text-[11px] font-semibold text-sky-800 border border-sky-200">
+                                ARAL Eligible — For Review
                               </span>
                             </td>
 

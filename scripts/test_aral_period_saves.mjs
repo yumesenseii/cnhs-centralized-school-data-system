@@ -25,17 +25,16 @@ test("encoding, saving, switching periods and returning preserves three independ
   assert.ok(db.calls.every((call) => call.table === "phil_iri_baseline_records"));
 });
 
-test("earlier GST correction requires explanation and preserves later records byte-for-byte", async () => {
+test("earlier GST correction succeeds without explanation and preserves later records byte-for-byte", async () => {
   const db = philIriMemoryClient();
   for (const period of ["BOSY", "MOSY", "EOSY"]) await save(db.client, period, 18);
   const later = JSON.stringify(db.rows.filter((row) => row.assessment_period !== "BOSY"));
-  const denied = await save(db.client, "BOSY", 20);
-  assert.match(denied.error.message, /explain the correction/);
-  assert.equal((await save(db.client, "BOSY", 20, { correctionReason: "Corrected scoring transcription" })).error, null);
+  const saved = await save(db.client, "BOSY", 20);
+  assert.equal(saved.error, null);
   assert.equal(JSON.stringify(db.rows.filter((row) => row.assessment_period !== "BOSY")), later);
   const bosy = db.rows.find((row) => row.assessment_period === "BOSY");
   assert.equal(bosy.raw_payload.auditTrail.at(-1).previousScore, 18);
-  assert.equal(bosy.raw_payload.auditTrail.at(-1).reason, "Corrected scoring transcription");
+  assert.equal(bosy.raw_payload.auditTrail.at(-1).action, "assessment_corrected");
 });
 
 test("initial individual assessment uses real measurements and derives its reading profile", async () => {
@@ -69,12 +68,12 @@ test("resaving an unchanged screening score keeps the individual result", () => 
   assert.equal(payload.reading_level, existing.reading_level);
 });
 
-test("significant individual corrections require a reason and retain prior score history", async () => {
+test("significant individual corrections succeed without mandatory reason and retain prior score history", async () => {
   const db = philIriMemoryClient();
   await save(db.client, "MOSY", 18, { iraMetrics: metrics });
   const changed = { ...metrics, miscues: 20 };
-  assert.ok((await save(db.client, "MOSY", 18, { iraMetrics: changed })).error);
-  assert.equal((await save(db.client, "MOSY", 18, { iraMetrics: changed, correctionReason: "Corrected miscues count" })).error, null);
+  const saved = await save(db.client, "MOSY", 18, { iraMetrics: changed });
+  assert.equal(saved.error, null);
   assert.equal(db.rows[0].reading_level, "Frustration");
   assert.equal(db.rows[0].raw_payload.auditTrail.at(-1).action, "assessment_corrected");
 });

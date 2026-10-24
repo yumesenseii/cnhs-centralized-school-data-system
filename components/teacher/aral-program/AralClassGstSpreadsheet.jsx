@@ -69,6 +69,7 @@ export default function AralClassGstSpreadsheet({
   onRefresh,
   onOpenIra,
   onOpenRecord,
+  onSelectPeriod,
 }) {
   const { showToast } = useAppToast();
   const [saving, setSaving] = useState(false);
@@ -83,6 +84,29 @@ export default function AralClassGstSpreadsheet({
   const [rowEdits, setRowEdits] = useState(() =>
     buildInitialRowEdits(learners, classInfo.classId, schoolYear, aralPeriod)
   );
+
+  // Detect whether the teacher is modifying already saved database scores
+  const hasSavedScoreModifications = useMemo(() => {
+    return learners.some((l) => {
+      const edit = rowEdits[l.studentId];
+      if (!edit || !edit.isDirty) return false;
+      const isAbsentDb = Boolean(
+        l.isAbsent ||
+        l.candidateStatus === "Absent / For Reschedule" ||
+        l.screeningStatus === "Absent / For Reschedule" ||
+        l.rawPayload?.isAbsent
+      );
+      const hasSavedScore = l.philIriScore != null && !isNaN(Number(l.philIriScore));
+      const hasSavedRecord = hasSavedScore || isAbsentDb;
+      if (!hasSavedRecord) return false;
+
+      if (Boolean(edit.isAbsent) !== isAbsentDb) return true;
+      if (hasSavedScore && edit.score !== "" && Number(edit.score) !== Number(l.philIriScore)) {
+        return true;
+      }
+      return false;
+    });
+  }, [learners, rowEdits]);
 
   // Sync state if learners change after database save/refresh while preserving in-flight edits
   useEffect(() => {
@@ -226,13 +250,31 @@ export default function AralClassGstSpreadsheet({
     let pendingOrReschedule = 0;
 
     for (const l of learners) {
-      if (l.readingWorkflow && l.readingWorkflow.mode !== "screening") {
-        if (l.readingWorkflow.hasIndividualResult || l.readingWorkflow.mode === "complete" ||
-            (l.readingWorkflow.current?.philIriScore >= 28)) completedThisTerm++;
-        else pendingOrReschedule++;
-        if (l.readingWorkflow.requiresIndividual && !l.readingWorkflow.hasIndividualResult) needsReadingAssessment++;
+      const workflow = l.readingWorkflow;
+      // Completed earlier or completed this term with benchmark met / passed
+      if (workflow?.mode === "complete") {
+        completedThisTerm++;
         continue;
       }
+      // Incomplete assessment carried over from an earlier period
+      if (workflow?.mode === "incomplete_earlier") {
+        if (workflow.incompleteEarlierReason === "needs_form3") {
+          needsReadingAssessment++;
+        } else {
+          pendingOrReschedule++;
+        }
+        continue;
+      }
+      // Reassessment in MOSY or EOSY
+      if (workflow?.mode === "reassessment") {
+        if (workflow.hasIndividualResult) {
+          completedThisTerm++;
+        } else {
+          needsReadingAssessment++;
+        }
+        continue;
+      }
+      // Regular screening row
       const isAbsent = Boolean(
         l.isAbsent ||
         l.candidateStatus === "Absent / For Reschedule" ||
@@ -243,9 +285,11 @@ export default function AralClassGstSpreadsheet({
       if (isAbsent) {
         pendingOrReschedule++;
       } else if (l.philIriScore != null && !Number.isNaN(Number(l.philIriScore))) {
-        if (Number(l.philIriScore) < 28 && !l.iraMetrics && !l.readingWorkflow?.hasIndividualResult) {
+        if (Number(l.philIriScore) < 28 && !l.iraMetrics && !workflow?.hasIndividualResult) {
           needsReadingAssessment++;
-        } else completedThisTerm++;
+        } else {
+          completedThisTerm++;
+        }
       } else {
         pendingOrReschedule++;
       }
@@ -258,6 +302,13 @@ export default function AralClassGstSpreadsheet({
       pendingOrReschedule,
     };
   }, [learners]);
+
+  // Overall class assessment progress percentage
+  const progressPercent = useMemo(() => {
+    if (!finalizedStats.total) return 0;
+    const assessed = finalizedStats.completedThisTerm + finalizedStats.needsReadingAssessment;
+    return Math.round((assessed / finalizedStats.total) * 100);
+  }, [finalizedStats]);
 
   // 2. Dashboard-matched 4 KPI stat definitions (reusing standard StatCard with neutral default styling)
   const kpiStats = useMemo(
@@ -384,6 +435,9 @@ export default function AralClassGstSpreadsheet({
     setIsReviewOpen(false);
 
     try {
+      const isUuid = (val) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(val || ""));
+      const resolveClassId = (cid) => isUuid(cid) ? cid : (isUuid(classInfo.rawClassId) ? classInfo.rawClassId : (isUuid(classInfo.classId) ? classInfo.classId : null));
+
       // Preserve saved individual assessments when saving the remaining screening rows.
       const scoresPayload = learners.filter((learner) => {
         const edit = rowEdits[learner.studentId];
@@ -400,7 +454,7 @@ export default function AralClassGstSpreadsheet({
 
         return {
           studentId: l.studentId,
-          classId: l.classId || classInfo.classId,
+          classId: resolveClassId(l.classId),
           gstScore: hasValidScore ? Number(edit.score) : null,
           isAbsent: Boolean(edit.isAbsent),
           studentName: l.name || `${l.lastName}, ${l.firstName}`,
@@ -415,14 +469,14 @@ export default function AralClassGstSpreadsheet({
       }
 
       const { data, error } = await saveBatchClassGstScores({
-        classId: classInfo.classId,
+        classId: resolveClassId(classInfo.classId),
         teacherId,
         schoolYear,
         quarter,
         assessmentPeriod: aralPeriod || "BOSY",
         subject: classInfo.subject || "English",
         scores: scoresPayload,
-        correctionReason,
+        correctionReason: hasSavedScoreModifications ? correctionReason : "",
       });
 
       if (error) {
@@ -511,12 +565,41 @@ export default function AralClassGstSpreadsheet({
         ))}
       </div>
 
-      {hasScreeningRows && <label className="block text-xs text-slate-600 dark:text-slate-300">
-        Reason for correcting saved scores (required for corrections)
-        <input value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value)} maxLength={500}
-          className="mt-1 block w-full rounded-lg border border-slate-200 bg-transparent px-3 py-2 text-sm" placeholder="Explain the correction" />
-        <span className="mt-1 block text-[11px] text-slate-500">A changed GST score clears this period’s individual result for reassessment. Earlier values remain in the correction history. Later assessments and progress are kept.</span>
-      </label>}
+      {/* Progress Bar */}
+      <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-2xs dark:border-white/10 dark:bg-slate-900">
+        <div className="flex items-center justify-between text-xs mb-1.5">
+          <span className="font-semibold text-slate-700 dark:text-slate-300">
+            {aralPeriod} Assessment Progress
+          </span>
+          <span className="font-mono text-slate-500 dark:text-slate-400">
+            {finalizedStats.completedThisTerm + finalizedStats.needsReadingAssessment} of {finalizedStats.total} learners assessed ({progressPercent}%)
+          </span>
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+          <div
+            className="h-full rounded-full bg-[#246f54] transition-all duration-300"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      </div>
+
+      {hasSavedScoreModifications && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-xs dark:border-amber-900/40 dark:bg-amber-950/20">
+          <label className="block font-semibold text-amber-900 dark:text-amber-200 mb-1">
+            Notes / Reason for update (optional)
+          </label>
+          <input
+            value={correctionReason}
+            onChange={(event) => setCorrectionReason(event.target.value)}
+            maxLength={500}
+            className="w-full rounded-md border border-amber-300 bg-white px-3 py-1.5 text-xs text-slate-800 shadow-2xs focus:border-[#246f54] focus:outline-hidden dark:border-white/10 dark:bg-slate-900 dark:text-white"
+            placeholder="Optional: explain why the saved score or attendance is being updated"
+          />
+          <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">
+            A changed screening score automatically logs an audit record with previous and new values. Later assessments and progress are kept.
+          </p>
+        </div>
+      )}
       {/* 3. Fast Entry Instruction (Muted helper text, no blue banner) */}
       <p className="text-[11.5px] text-slate-500 dark:text-slate-400">
         {hasScreeningRows
@@ -565,22 +648,51 @@ export default function AralClassGstSpreadsheet({
                 let resultText = "Not Recorded";
                 let resultClass = "text-slate-400 dark:text-slate-500";
 
-                if (edit.isAbsent) {
-                  resultText = "For Reschedule";
+                if (workflow?.mode === "incomplete_earlier") {
+                  if (workflow.incompleteEarlierReason === "needs_form3") {
+                    resultText = `${workflow.incompleteEarlierPeriod} Form 3 Needed`;
+                    resultClass = "font-medium text-amber-700 dark:text-amber-400";
+                  } else if (workflow.incompleteEarlierReason === "absent") {
+                    resultText = `Absent in ${workflow.incompleteEarlierPeriod} (Reschedule)`;
+                    resultClass = "font-medium text-amber-700 dark:text-amber-400";
+                  } else {
+                    resultText = `${workflow.incompleteEarlierPeriod} Not Tested`;
+                    resultClass = "font-medium text-slate-500 dark:text-slate-400";
+                  }
+                } else if (workflow?.mode === "complete") {
+                  if (learner.readingLevel && learner.readingLevel !== "Not Assessed") {
+                    resultText = `Reading Assessment Complete (${learner.readingLevel})`;
+                  } else {
+                    resultText = "Screening Complete — At Grade Level";
+                  }
+                  resultClass = "font-medium text-slate-800 dark:text-slate-200";
+                } else if (workflow?.mode === "reassessment") {
+                  if (workflow.hasIndividualResult) {
+                    if (aralPeriod === "EOSY" && (learner.readingLevel === "Frustration" || learner.readingLevel === "Instructional")) {
+                      resultText = "ARAL Eligible — For Review";
+                      resultClass = "font-medium text-sky-800 dark:text-sky-300";
+                    } else if (learner.readingLevel === "Independent") {
+                      resultText = "Reading Assessment Complete (Independent)";
+                      resultClass = "font-medium text-emerald-800 dark:text-emerald-300";
+                    } else {
+                      resultText = `Form 3 Complete — ${learner.readingLevel || "Assessed"}`;
+                      resultClass = "font-medium text-slate-800 dark:text-slate-200";
+                    }
+                  } else {
+                    resultText = "Reassessment Needed";
+                    resultClass = "font-medium text-slate-800 dark:text-slate-200";
+                  }
+                } else if (edit.isAbsent) {
+                  resultText = "Absent / For Reschedule";
                   resultClass = "font-medium text-amber-700 dark:text-amber-400";
                 } else if (isValidScore) {
                   if (numScore >= 28) {
-                    resultText = "At Grade Level";
+                    resultText = "Screening Complete — At Grade Level";
                     resultClass = "font-medium text-slate-800 dark:text-slate-200";
                   } else {
-                    resultText = "Needs Further Assessment";
+                    resultText = "Needs Form 3 Assessment";
                     resultClass = "font-medium text-slate-800 dark:text-slate-200";
                   }
-                }
-
-                if (workflow && !canEditScreening(learner)) {
-                  resultText = workflow.hasIndividualResult ? learner.readingLevel : workflow.message;
-                  resultClass = "text-slate-700 dark:text-slate-300";
                 }
 
                 // 2. Status indicator
@@ -613,15 +725,38 @@ export default function AralClassGstSpreadsheet({
                   );
                 }
 
-                // 3. Action:
-                // - View Record = text link
-                // - Continue = small outlined/text action, not a filled button
+                // 3. Action
                 let actionElement = (
                   <span className="text-slate-300 text-xs">—</span>
                 );
 
                 if (!isOutOfRange) {
-                  if (workflow?.mode === "blocked" || workflow?.mode === "complete" || (edit.isAbsent && !workflow?.requiresIndividual) || (isValidScore && numScore >= 28)) {
+                  if (workflow?.mode === "incomplete_earlier") {
+                    if (workflow.incompleteEarlierReason === "needs_form3") {
+                      actionElement = (
+                        <button
+                          type="button"
+                          onClick={() => onOpenIra?.(workflow.incompleteEarlierLearner || learner, workflow.incompleteEarlierPeriod)}
+                          disabled={!canEncode}
+                          className="inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50/80 px-2 py-0.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors cursor-pointer shadow-2xs dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300 whitespace-nowrap"
+                        >
+                          <span>Complete {workflow.incompleteEarlierPeriod} Form 3</span>
+                          <ArrowRight size={11} className="text-amber-600 dark:text-amber-400" />
+                        </button>
+                      );
+                    } else {
+                      actionElement = (
+                        <button
+                          type="button"
+                          onClick={() => onSelectPeriod?.(workflow.incompleteEarlierPeriod)}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-[#246f54] hover:underline transition-colors cursor-pointer whitespace-nowrap"
+                        >
+                          <span>Go to {workflow.incompleteEarlierPeriod}</span>
+                          <ArrowRight size={11} />
+                        </button>
+                      );
+                    }
+                  } else if (workflow?.mode === "complete" || (isValidScore && numScore >= 28)) {
                     actionElement = (
                       <button
                         type="button"
@@ -631,15 +766,15 @@ export default function AralClassGstSpreadsheet({
                         View Record
                       </button>
                     );
-                  } else if (workflow?.requiresIndividual || (isValidScore && numScore < 28)) {
+                  } else if (workflow?.mode === "reassessment" || workflow?.requiresIndividual || (isValidScore && numScore < 28)) {
                     actionElement = (
                       <button
                         type="button"
-                        onClick={() => onOpenIra?.(learner)}
-                        disabled={!canEncode || edit.isDirty || edit.isDraft || (workflow && !workflow.requiresIndividual)}
+                        onClick={() => onOpenIra?.(learner, aralPeriod)}
+                        disabled={!canEncode || edit.isDirty || edit.isDraft}
                         className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors cursor-pointer shadow-2xs dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <span>{edit.isDirty || edit.isDraft ? "Save screening first" : workflow?.hasIndividualResult ? "Review Assessment" : hasScreeningRows ? "Individual Assessment" : "Reassess Reading"}</span>
+                        <span>{edit.isDirty || edit.isDraft ? "Save score first" : workflow?.hasIndividualResult ? "Review Assessment" : hasScreeningRows ? "Individual Assessment" : "Reassess Reading"}</span>
                         <ArrowRight size={11} className="text-slate-400" />
                       </button>
                     );
@@ -684,9 +819,18 @@ export default function AralClassGstSpreadsheet({
                     {/* GST Score / 40 Input */}
                     <td className="px-3 py-1.5 whitespace-nowrap">
                       {workflow && workflow.mode !== "screening" ? (
-                        <span className="text-xs text-slate-500">
-                          {workflow.screening ? `${workflow.screening.philIriScore} / 40 · ${workflow.screening.screeningPeriod}` : "—"}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">
+                            {workflow.screening?.philIriScore != null
+                              ? `${workflow.screening.philIriScore} / 40`
+                              : workflow.incompleteEarlierReason === "absent"
+                              ? "Absent"
+                              : "—"}
+                          </span>
+                          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                            {workflow.screening?.screeningPeriod || workflow.incompleteEarlierPeriod || aralPeriod}
+                          </span>
+                        </div>
                       ) : <div className="flex items-center gap-1.5">
                         <input
                           type="number"
@@ -729,18 +873,22 @@ export default function AralClassGstSpreadsheet({
 
                     {/* Dedicated Absent Checkbox Column */}
                     {hasScreeningRows && <td className="px-3 py-1.5 text-center whitespace-nowrap">
-                      <label className={cn("inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 select-none", canEncode ? "cursor-pointer" : "cursor-not-allowed opacity-60")}>
-                        <input
-                          type="checkbox"
-                          checked={edit.isAbsent}
-                          disabled={!screeningEditable}
-                          onChange={() =>
-                            handleAbsentToggle(learner.studentId, edit.isAbsent)
-                          }
-                          className="h-3.5 w-3.5 rounded border-slate-300 text-[#246f54] focus:ring-[#246f54] cursor-pointer disabled:cursor-not-allowed"
-                        />
-                        <span className="text-[11px]">Absent</span>
-                      </label>
+                      {screeningEditable ? (
+                        <label className={cn("inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 select-none", canEncode ? "cursor-pointer" : "cursor-not-allowed opacity-60")}>
+                          <input
+                            type="checkbox"
+                            checked={edit.isAbsent}
+                            disabled={!screeningEditable}
+                            onChange={() =>
+                              handleAbsentToggle(learner.studentId, edit.isAbsent)
+                            }
+                            className="h-3.5 w-3.5 rounded border-slate-300 text-[#246f54] focus:ring-[#246f54] cursor-pointer disabled:cursor-not-allowed"
+                          />
+                          <span className="text-[11px]">Absent</span>
+                        </label>
+                      ) : (
+                        <span className="text-slate-300 text-xs">—</span>
+                      )}
                     </td>}
 
                     {/* Result (with subtle saved/unsaved status) */}

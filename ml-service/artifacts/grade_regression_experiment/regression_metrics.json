@@ -1,0 +1,168 @@
+{
+  "provenance": "synthetic_experimental",
+  "target": "delta (next_term_grade - current_grade)",
+  "features": [
+    "feat_subject_code",
+    "feat_current_subject_grade",
+    "feat_current_term_gwa",
+    "feat_current_relative_standing",
+    "feat_current_failing_count",
+    "feat_current_lowest_grade",
+    "feat_has_prior_term",
+    "feat_prior_subject_grade_delta",
+    "feat_prior_gwa_delta"
+  ],
+  "transitions": [
+    "T1->T2",
+    "T2->T3"
+  ],
+  "split": {
+    "train_rows": 15218,
+    "test_rows": 3813,
+    "seed": 42,
+    "learner_overlap": 0
+  },
+  "inner_cv": {
+    "rf_mae_mean": 3.4798,
+    "rf_mae_sd": 0.0737,
+    "prev_grade_mae_mean": 4.4784
+  },
+  "heldout": {
+    "overall": {
+      "random_forest_regressor": {
+        "n": 3813,
+        "mae": 3.4187,
+        "rmse": 4.2728,
+        "r2": 0.7977
+      },
+      "previous_grade_baseline": {
+        "n": 3813,
+        "mae": 4.3956,
+        "rmse": 5.5066,
+        "r2": 0.664
+      },
+      "mean_delta_baseline": {
+        "n": 3813,
+        "mae": 4.3901,
+        "rmse": 5.4935,
+        "r2": 0.6657
+      }
+    },
+    "t1_to_t2": {
+      "random_forest_regressor": {
+        "n": 1910,
+        "mae": 3.4151,
+        "rmse": 4.2119,
+        "r2": 0.8057
+      },
+      "previous_grade_baseline": {
+        "n": 1910,
+        "mae": 4.3721,
+        "rmse": 5.4488,
+        "r2": 0.6748
+      },
+      "mean_delta_baseline": {
+        "n": 1910,
+        "mae": 4.3731,
+        "rmse": 5.4433,
+        "r2": 0.6754
+      }
+    },
+    "t2_to_t3": {
+      "random_forest_regressor": {
+        "n": 1903,
+        "mae": 3.4223,
+        "rmse": 4.333,
+        "r2": 0.7893
+      },
+      "previous_grade_baseline": {
+        "n": 1903,
+        "mae": 4.4192,
+        "rmse": 5.5641,
+        "r2": 0.6526
+      },
+      "mean_delta_baseline": {
+        "n": 1903,
+        "mae": 4.4072,
+        "rmse": 5.5434,
+        "r2": 0.6551
+      }
+    },
+    "intervened": {
+      "random_forest_regressor": {
+        "n": 1732,
+        "mae": 3.722,
+        "rmse": 4.6467,
+        "r2": 0.6062
+      },
+      "previous_grade_baseline": {
+        "n": 1732,
+        "mae": 4.7293,
+        "rmse": 5.9121,
+        "r2": 0.3626
+      },
+      "mean_delta_baseline": {
+        "n": 1732,
+        "mae": 4.7074,
+        "rmse": 5.876,
+        "r2": 0.3703
+      }
+    },
+    "non_intervened": {
+      "random_forest_regressor": {
+        "n": 2081,
+        "mae": 3.1663,
+        "rmse": 3.9346,
+        "r2": 0.6042
+      },
+      "previous_grade_baseline": {
+        "n": 2081,
+        "mae": 4.1179,
+        "rmse": 5.1449,
+        "r2": 0.3232
+      },
+      "mean_delta_baseline": {
+        "n": 2081,
+        "mae": 4.1261,
+        "rmse": 5.1535,
+        "r2": 0.3209
+      }
+    }
+  },
+  "trend_agreement": {
+    "agreement_rate": 0.8584,
+    "disagreement_rate": 0.1416,
+    "regressor_derived_trend_accuracy": 0.5437,
+    "classifier_trend_accuracy": 0.5513
+  },
+  "error_band": {
+    "typical_error_points": 3.42,
+    "within_plus_minus_mae": 0.5662,
+    "within_plus_minus_2": 0.3525,
+    "within_plus_minus_5": 0.7582
+  },
+  "decision_gate": {
+    "mae_reduction_vs_previous_grade": {
+      "overall": 0.2222,
+      "t1_to_t2": 0.2189,
+      "t2_to_t3": 0.2256
+    },
+    "criterion_mae": ">= 10% in T1->T2 and T2->T3",
+    "criterion_disagreement": "<= 25%",
+    "mae_pass": true,
+    "cv_stability_pass": true,
+    "disagreement_pass": true,
+    "passed": true
+  },
+  "feature_importances": {
+    "feat_subject_code": 0.0273,
+    "feat_current_subject_grade": 0.0352,
+    "feat_current_term_gwa": 0.0379,
+    "feat_current_relative_standing": 0.7696,
+    "feat_current_failing_count": 0.0039,
+    "feat_current_lowest_grade": 0.0328,
+    "feat_has_prior_term": 0.0017,
+    "feat_prior_subject_grade_delta": 0.0345,
+    "feat_prior_gwa_delta": 0.0571
+  }
+}

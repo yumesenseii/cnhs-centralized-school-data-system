@@ -320,8 +320,10 @@ export default function TeacherReportsPage() {
       {
         id: "learners",
         label: "Learners",
-        value: summary?.totalStudents ?? 0,
-        hint: `${summary?.totalClasses ?? 0} classes in scope`,
+        value: (summary?.uniqueStudents || summary?.totalStudents) ?? 0,
+        hint: summary?.totalEnrollments
+          ? `${summary.uniqueStudents || summary.totalStudents} unique · ${summary.totalEnrollments} class seats`
+          : `${summary?.totalClasses ?? 0} classes in scope`,
         tone: "green",
       },
       {

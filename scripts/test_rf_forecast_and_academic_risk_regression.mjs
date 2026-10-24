@@ -24,7 +24,6 @@ import {
 import { RISK_LEVEL } from "../lib/monitoring/recommendations.js";
 import {
   applyRecommendationToUiFields,
-  buildLearnerDisplayRisk,
 } from "../lib/teacher/monitoringMappers.js";
 import { POST } from "../app/api/recommendations/predict_subject_trend/route.js";
 import {

@@ -9,77 +9,8 @@ import { formatGradeSection } from "@/lib/monitoring/philIriEvaluation";
 import { getLearnerTimelineSummary } from "@/lib/monitoring/aralProgression";
 import { aralPeriodLabel } from "@/lib/monitoring/assessmentTimeline";
 
-/**
- * Maps learner reading assessment state to the 6 simplified administrative statuses.
- */
-export function getSimplifiedAralStatus(learner) {
-  if (!learner) {
-    return {
-      label: "Pending",
-      badgeClass: "border-slate-200 bg-slate-100 text-slate-700 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300",
-    };
-  }
-
-  const isAbsent = Boolean(
-    learner.isAbsent ||
-    learner.candidateStatus === "Absent / For Reschedule" ||
-    learner.screeningStatus === "Absent / For Reschedule" ||
-    learner.rawPayload?.isAbsent
-  );
-
-  const isUnderReview = Boolean(
-    learner.candidateStatus === "For Review" &&
-    (learner.teacherReviewReason || learner.rawPayload?.teacherReviewReason)
-  );
-
-  const stepKey = learner.currentStepKey;
-
-  if (stepKey === "for_review") {
-    return {
-      label: "For Further Review",
-      badgeClass: "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300",
-    };
-  }
-
-  if (isAbsent || isUnderReview || stepKey === "absent_reschedule" || stepKey === "gst_under_review") {
-    return {
-      label: "Follow-Up Required",
-      badgeClass: "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300",
-      detail: isAbsent ? "Absent — Reschedule Needed" : "Teacher Review Note",
-    };
-  }
-
-  if (stepKey === "needs_individual_assessment") {
-    return {
-      label: "Needs Assessment",
-      badgeClass: "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300",
-    };
-  }
-
-  if (stepKey === "screening_complete_at_grade") {
-    return {
-      label: "Screening Complete",
-      badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300",
-    };
-  }
-
-  if (
-    stepKey === "assessment_complete" ||
-    stepKey === "completed" ||
-    stepKey === "reading_profile_available" ||
-    stepKey === "assessment_complete_no_support"
-  ) {
-    return {
-      label: "Completed",
-      badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300",
-    };
-  }
-
-  return {
-    label: "Pending",
-    badgeClass: "border-slate-200 bg-slate-100 text-slate-700 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300",
-  };
-}
+import { getSimplifiedAralStatus } from "@/lib/monitoring/aralAcademicStatus";
+export { getSimplifiedAralStatus };
 
 function getNextStepDescription(stepKey, isGstAtGradeLevel) {
   switch (stepKey) {
@@ -87,6 +18,8 @@ function getNextStepDescription(stepKey, isGstAtGradeLevel) {
       return "Awaiting initial reading screening test by the subject teacher.";
     case "needs_individual_assessment":
       return "Screening score is below benchmark. Individual reading assessment is required.";
+    case "needs_earlier_ira":
+      return "Earlier screening score requires Form 3 individual reading assessment.";
     case "screening_complete_at_grade":
       return "Screening complete at grade level. Continue regular classroom reading observation.";
     case "assessment_complete":
@@ -96,6 +29,10 @@ function getNextStepDescription(stepKey, isGstAtGradeLevel) {
       return "Annual reading assessment indicates persistent reading need. Flagged for school head review.";
     case "absent_reschedule":
       return "Learner was absent during assessment. Follow-up reschedule required by teacher.";
+    case "absent_earlier":
+      return "Learner was absent during earlier assessment period. Follow-up reschedule required.";
+    case "missing_earlier":
+      return "Earlier assessment milestone pending completion.";
     case "gst_under_review":
       return "Teacher review note recorded. Follow-up evaluation in progress.";
     default:
@@ -116,41 +53,75 @@ export default function AdminAralLearnerModal({
   if (!isOpen || !learner) return null;
 
   const language = learner.language || learner.subject || "English";
-  const statusInfo = getSimplifiedAralStatus(learner);
+  const statusInfo = getSimplifiedAralStatus(learner) || {
+    label: "Pending",
+    badgeClass: "border-slate-200 bg-slate-100 text-slate-700",
+  };
 
   const isAbsent = Boolean(
     learner.isAbsent ||
     learner.candidateStatus === "Absent / For Reschedule" ||
     learner.screeningStatus === "Absent / For Reschedule" ||
-    learner.rawPayload?.isAbsent
+    learner.rawPayload?.isAbsent ||
+    learner.raw_payload?.isAbsent
   );
 
   const isUnderReview = Boolean(
     learner.candidateStatus === "For Review" &&
-    (learner.teacherReviewReason || learner.rawPayload?.teacherReviewReason)
+    (learner.teacherReviewReason || learner.rawPayload?.teacherReviewReason || learner.raw_payload?.teacherReviewReason)
   );
 
+  // Discover baseline GST from philIriRecords if current period didn't require GST
+  const bosyRec = (learner.philIriRecords || []).find(
+    (r) =>
+      (r.assessmentPeriod || r.assessment_period) === "BOSY" &&
+      (r.total_score != null || r.philIriScore != null)
+  );
+  const baselineScore = bosyRec
+    ? (bosyRec.philIriScore ?? bosyRec.total_score)
+    : null;
+  const effectiveScore =
+    learner.philIriScore != null
+      ? learner.philIriScore
+      : learner.total_score != null
+      ? learner.total_score
+      : learner.rawPayload?.philIriScore ??
+        learner.rawPayload?.total_score ??
+        learner.raw_payload?.philIriScore ??
+        learner.raw_payload?.total_score ??
+        baselineScore;
+
+  const resolvedReadingLevel =
+    learner.readingLevel ||
+    learner.rawPayload?.readingLevel ||
+    learner.raw_payload?.readingLevel ||
+    (learner.philIriRecords || []).map((r) => r.readingLevel || r.reading_level).filter(Boolean)[0] ||
+    null;
+
   const isGstAtGradeLevel =
-    !isAbsent && learner.philIriScore != null && Number(learner.philIriScore) >= 28;
+    !isAbsent &&
+    ((effectiveScore != null && Number(effectiveScore) >= 28) ||
+      learner.currentStepKey === "screening_complete_at_grade" ||
+      resolvedReadingLevel === "At Grade Level");
 
   const hasIra = Boolean(
     !isAbsent &&
-    learner.readingLevel &&
-    learner.readingLevel !== "Not Screened" &&
-    learner.readingLevel !== "Not Assessed" &&
-    learner.readingLevel !== "Not Set" &&
-    learner.readingLevel !== "Pending Oral Profile" &&
-    learner.readingLevel !== "Pending Individual Assessment" &&
-    learner.readingLevel !== "At Grade Level"
+    resolvedReadingLevel &&
+    resolvedReadingLevel !== "Not Screened" &&
+    resolvedReadingLevel !== "Not Assessed" &&
+    resolvedReadingLevel !== "Not Set" &&
+    resolvedReadingLevel !== "Pending Oral Profile" &&
+    resolvedReadingLevel !== "Pending Individual Assessment" &&
+    resolvedReadingLevel !== "At Grade Level"
   );
 
   // High-level GST result description without heavy codes
   const gstResultText = isAbsent
     ? "Absent — Reschedule Pending"
     : isUnderReview
-    ? `${learner.philIriScore} / 40 (Under Review)`
-    : learner.philIriScore != null
-    ? `${learner.philIriScore} / 40 ${isGstAtGradeLevel ? "(At Grade Level)" : "(Below Benchmark)"}`
+    ? `${effectiveScore ?? "—"} / 40 (Under Review)`
+    : effectiveScore != null
+    ? `${effectiveScore} / 40 ${isGstAtGradeLevel ? "(At Grade Level)" : "(Below Benchmark)"}`
     : "Not Recorded";
 
   // High-level reading profile
@@ -161,8 +132,8 @@ export default function AdminAralLearnerModal({
     : isGstAtGradeLevel
     ? "At Grade Level"
     : hasIra
-    ? learner.readingLevel
-    : learner.philIriScore != null
+    ? resolvedReadingLevel
+    : effectiveScore != null
     ? "Assessment Needed"
     : "Pending";
 
@@ -172,8 +143,25 @@ export default function AdminAralLearnerModal({
   const learnerGrade =
     learner.currentGrade ?? learner.classSubjectGrade ?? learner.generalAverage ?? null;
 
-  const timeline = getLearnerTimelineSummary(learner);
-  const iraMetrics = learner.iraMetrics || learner.rawPayload?.iraMetrics || null;
+  const timeline = getLearnerTimelineSummary(learner) || {
+    term1: {},
+    term2: {},
+    term3: {},
+  };
+  const iraMetrics =
+    learner.iraMetrics ||
+    learner.rawPayload?.iraMetrics ||
+    learner.raw_payload?.iraMetrics ||
+    (learner.philIriRecords || [])
+      .map((r) => r.iraMetrics || r.rawPayload?.iraMetrics || r.raw_payload?.iraMetrics)
+      .filter(Boolean)[0] ||
+    null;
+
+  const studentFullName =
+    learner.name ||
+    learner.studentName ||
+    `${learner.lastName || ""}, ${learner.firstName || ""}`.trim() ||
+    "Learner Record";
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
@@ -190,10 +178,10 @@ export default function AdminAralLearnerModal({
               Principal Oversight · Learner Record
             </span>
             <h2 className="mt-1 text-base sm:text-lg font-bold text-slate-900 dark:text-white uppercase truncate">
-              {learner.name}
+              {studentFullName}
             </h2>
             <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
-              LRN: {learner.lrn || learner.studentNumber || "—"} · {formatGradeSection(learner.grade, learner.section)} · {language}
+              LRN: {learner.lrn || learner.studentNumber || "—"} · {learner.gradeSectionDisplay || formatGradeSection(learner.grade, learner.section)} · {language}
             </p>
           </div>
 
@@ -201,10 +189,10 @@ export default function AdminAralLearnerModal({
             <span
               className={cn(
                 "inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border",
-                statusInfo.badgeClass
+                statusInfo?.badgeClass || "border-slate-200 bg-slate-100 text-slate-700"
               )}
             >
-              {statusInfo.label}
+              {statusInfo?.label || "Pending"}
             </span>
             <button
               type="button"
@@ -221,27 +209,37 @@ export default function AdminAralLearnerModal({
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           <AralCorrectionHistory learner={learner} />
           {/* Attention Banner if review note exists */}
-          {isUnderReview && (learner.teacherReviewReason || learner.rawPayload?.teacherReviewReason) && (
+          {isUnderReview && (learner.teacherReviewReason || learner.rawPayload?.teacherReviewReason || learner.raw_payload?.teacherReviewReason) && (
             <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">
               <div className="flex items-center gap-1.5 font-bold">
                 <AlertCircle size={14} className="text-amber-600 shrink-0" />
                 <span>Teacher Observation Note</span>
               </div>
               <p className="mt-1 text-[11.5px] leading-relaxed">
-                &ldquo;{learner.teacherReviewReason || learner.rawPayload?.teacherReviewReason}&rdquo;
+                &ldquo;{learner.teacherReviewReason || learner.rawPayload?.teacherReviewReason || learner.raw_payload?.teacherReviewReason}&rdquo;
               </p>
+            </div>
+          )}
+
+          {/* Follow-up attention banner if detail is present and not under review */}
+          {statusInfo?.detail && !isUnderReview && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">
+              <div className="flex items-center gap-1.5 font-bold">
+                <AlertCircle size={14} className="text-amber-600 shrink-0" />
+                <span>Follow-Up Status: {statusInfo.detail}</span>
+              </div>
             </div>
           )}
 
           {/* Attention Banner if For Further Review (EOSY) */}
           {learner.currentStepKey === "for_review" && (
-            <div className="rounded-lg border border-rose-200 bg-rose-50/80 p-3 text-xs text-rose-900 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300">
+            <div className="rounded-lg border border-sky-200 bg-sky-50/80 p-3 text-xs text-sky-900 dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-300">
               <div className="flex items-center gap-1.5 font-bold">
-                <AlertCircle size={14} className="text-rose-600 shrink-0" />
-                <span>End-of-Year Oversight: For Further Review</span>
+                <AlertCircle size={14} className="text-sky-600 shrink-0" />
+                <span>End-of-Year Oversight: ARAL Eligible — For Review</span>
               </div>
-              <p className="mt-1 text-[11.5px] leading-relaxed text-rose-800 dark:text-rose-200">
-                Learner has remaining reading difficulty across terms. Flagged for school head review and consideration.
+              <p className="mt-1 text-[11.5px] leading-relaxed text-sky-800 dark:text-sky-200">
+                Learner has remaining reading difficulty across terms. Flagged as ARAL Eligible — For Review for authorized school confirmation (not automatically enrolled in ARAL or ARAL Summer).
               </p>
             </div>
           )}
@@ -435,13 +433,17 @@ export default function AdminAralLearnerModal({
                       <div className="rounded-md border border-slate-200 bg-white p-2 dark:border-white/5 dark:bg-slate-800">
                         <span className="text-[10px] text-slate-400 block">Reading Rate</span>
                         <span className="font-bold text-slate-800 dark:text-slate-200">
-                          {iraMetrics.readingRateWpm ? `${iraMetrics.readingRateWpm} WPM` : "—"}
+                          {iraMetrics.readingRateWpm != null
+                            ? `${iraMetrics.readingRateWpm} WPM`
+                            : iraMetrics.readingRate != null
+                            ? `${iraMetrics.readingRate} WPM`
+                            : "—"}
                         </span>
                       </div>
                       <div className="rounded-md border border-slate-200 bg-white p-2 dark:border-white/5 dark:bg-slate-800">
                         <span className="text-[10px] text-slate-400 block">Oral Profile</span>
                         <span className="font-bold text-slate-800 dark:text-slate-200">
-                          {iraMetrics.readingProfile || "—"}
+                          {iraMetrics.readingProfile || iraMetrics.profile || resolvedReadingLevel || "—"}
                         </span>
                       </div>
                     </div>

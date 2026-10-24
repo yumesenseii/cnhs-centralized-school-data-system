@@ -10,6 +10,7 @@ import TabSwitchPanel from "@/components/shared/TabSwitchPanel";
 import AcademicReportTab from "@/components/admin/reports/tabs/AcademicReportTab";
 import AralReportTab from "@/components/admin/reports/tabs/AralReportTab";
 import AttendanceReportTab from "@/components/admin/reports/tabs/AttendanceReportTab";
+import LessonPlanReportTab from "@/components/admin/reports/tabs/LessonPlanReportTab";
 import { useAppToast } from "@/components/shared/AppToast";
 import { useAdminReports } from "@/hooks/admin/useAdminReports";
 import { useAralAssessmentPeriod } from "@/hooks/useAralAssessmentPeriod";
@@ -26,6 +27,7 @@ const PAGE_TABS = [
   { id: "academic", label: "Academic" },
   { id: "aral", label: "ARAL" },
   { id: "attendance", label: "Attendance" },
+  { id: "lesson-plans", label: "Lesson Plans" },
 ];
 
 export default function AdminReportsPage() {
@@ -39,6 +41,7 @@ export default function AdminReportsPage() {
     classReports,
     charts,
     summary,
+    lessonSummary,
     schoolSummary,
     overviewActionCounts,
     overviewHotspots,
@@ -295,6 +298,14 @@ export default function AdminReportsPage() {
 
             {pageTab === "attendance" ? (
               <AttendanceReportTab daily={daily} />
+            ) : null}
+
+            {pageTab === "lesson-plans" ? (
+              <LessonPlanReportTab
+                lessonSummary={lessonSummary}
+                schoolYear={schoolYear}
+                quarter={quarter}
+              />
             ) : null}
           </TabSwitchPanel>
         </div>

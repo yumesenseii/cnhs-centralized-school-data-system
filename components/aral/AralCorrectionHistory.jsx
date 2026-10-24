@@ -1,5 +1,21 @@
 export default function AralCorrectionHistory({ learner }) {
-  const corrections = (learner?.rawPayload?.auditTrail || []).filter((entry) => entry.action === "assessment_corrected");
+  const currentCorrections = (learner?.rawPayload?.auditTrail || []).filter(
+    (entry) => entry.action === "assessment_corrected"
+  );
+  const allRecords = Array.isArray(learner?.philIriRecords) ? learner.philIriRecords : [];
+  const otherCorrections = allRecords.flatMap((r) =>
+    (r.rawPayload?.auditTrail || r.raw_payload?.auditTrail || []).filter(
+      (entry) => entry.action === "assessment_corrected"
+    )
+  );
+
+  const seen = new Set();
+  const corrections = [...currentCorrections, ...otherCorrections].filter((entry) => {
+    const key = `${entry.timestamp}_${entry.reason}_${entry.action}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
   return <>
     {learner?.readingCorrectionNeedsReview && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
       An earlier assessment was corrected. Review this period’s saved results. Its results and intervention progress have been kept.

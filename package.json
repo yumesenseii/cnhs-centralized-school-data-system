@@ -2,6 +2,9 @@
   "name": "cnhs-centralized-school-data-system",
   "version": "0.1.0",
   "private": true,
+  "imports": {
+    "@/*": "./*"
+  },
   "scripts": {
     "predev": "node scripts/ensure-port.js 3002",
     "dev": "next dev --turbopack -p 3002",

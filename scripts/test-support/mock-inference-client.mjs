@@ -20,6 +20,61 @@ export function isRemoteInferenceConfigured() {
   return true;
 }
 
+export function normalizeRiskLevel(value) {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (raw.includes("high") || raw === "priority") return "High Risk";
+  if (raw.includes("moderate") || raw === "medium") return "Moderate Risk";
+  if (raw.includes("low")) return "Low Risk";
+  return null;
+}
+
+export function mapInferenceResponse(payload = {}) {
+  const riskLevel =
+    normalizeRiskLevel(payload.risk_level ?? payload.riskLevel) ||
+    normalizeRiskLevel(payload.label ?? payload.prediction) ||
+    "Low Risk";
+
+  const probabilities =
+    payload.probabilities ??
+    payload.class_probabilities ??
+    payload.classProbabilities ??
+    null;
+
+  return {
+    recommendationType: null,
+    riskLevel,
+    confidence: payload.confidence ?? 0.85,
+    probabilities,
+    reasons: [`Trained Random Forest predicted ${riskLevel}`],
+    generatedAt: new Date().toISOString(),
+    source: payload.source || "random-forest",
+  };
+}
+
+export async function predictViaRemoteInference(features) {
+  return {
+    recommendationType: null,
+    riskLevel: "Low Risk",
+    confidence: 0.85,
+    probabilities: { "Low Risk": 0.85, "Moderate Risk": 0.1, "High Risk": 0.05 },
+    reasons: ["Trained Random Forest predicted Low Risk"],
+    generatedAt: new Date().toISOString(),
+    source: "random-forest",
+  };
+}
+
+export async function predictViaRemoteBatch(inputs = []) {
+  return inputs.map((input) => ({
+    recommendationType: null,
+    riskLevel: "Low Risk",
+    confidence: 0.85,
+    probabilities: { "Low Risk": 0.85, "Moderate Risk": 0.1, "High Risk": 0.05 },
+    reasons: ["Trained Random Forest predicted Low Risk"],
+    generatedAt: new Date().toISOString(),
+    source: "random-forest",
+  }));
+}
+
 export async function predictSubjectTrendViaRemote(payload = {}) {
   calls.push({
     studentId: payload.studentId,

@@ -121,22 +121,96 @@ export default function ReportSubmissionsPanel({
       </div>
 
       <div>
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
-          Monitoring
-        </p>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-y border-slate-200 py-2 dark:border-white/10">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+            Academic & Reading Intervention Monitoring
+          </p>
+          {summary?.interventionProgress?.improvementRate > 0 ? (
+            <span className="rounded-sm bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+              {summary.interventionProgress.improvementRate}% Improved
+            </span>
+          ) : null}
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-2 border-y border-slate-200 py-2 dark:border-white/10">
           <CompactStat label="Under monitoring" value={underMonitoring} />
           <CompactStat
             label="Monitoring completed"
             value={monitoringCompleted}
             tone="text-cnhs-green-dark"
           />
+          <CompactStat
+            label="Learners Improved"
+            value={summary?.interventionProgress?.improvedCount ?? 0}
+            tone="text-emerald-700"
+          />
+          <CompactStat
+            label="Average Point Gain"
+            value={
+              summary?.interventionProgress?.averagePointChange != null
+                ? `${summary.interventionProgress.averagePointChange > 0 ? "+" : ""}${summary.interventionProgress.averagePointChange} pts`
+                : "—"
+            }
+            tone={
+              (summary?.interventionProgress?.averagePointChange ?? 0) >= 0
+                ? "text-cnhs-green-dark"
+                : "text-rose-600"
+            }
+          />
         </div>
+
+        {summary?.interventionProgress?.learnerProgress?.length > 0 ? (
+          <div className="mt-3 overflow-hidden rounded-lg border border-slate-100 dark:border-white/5">
+            <div className="bg-slate-50/60 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:bg-white/[0.02]">
+              Observed Performance (Baseline vs Current Grade)
+            </div>
+            <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 text-xs dark:divide-white/5">
+              {summary.interventionProgress.learnerProgress.slice(0, 8).map((lp) => (
+                <div key={lp.id} className="flex items-center justify-between px-3 py-2 hover:bg-slate-50/50">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-800 truncate dark:text-slate-200">
+                      {lp.name}
+                    </p>
+                    <p className="text-[10px] text-slate-400">
+                      {lp.section} · {lp.subject}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 text-right shrink-0">
+                    <div>
+                      <span className="text-[10px] text-slate-400">Baseline </span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">
+                        {lp.baselineGrade ?? "—"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400">Current </span>
+                      <span className="font-bold text-slate-900 dark:text-slate-100">
+                        {lp.currentGrade ?? "—"}
+                      </span>
+                    </div>
+                    {lp.difference != null ? (
+                      <span
+                        className={`text-[11px] font-bold ${
+                          lp.difference > 0
+                            ? "text-emerald-700 dark:text-emerald-400"
+                            : lp.difference < 0
+                              ? "text-rose-600 dark:text-rose-400"
+                              : "text-slate-500"
+                        }`}
+                      >
+                        {lp.difference > 0 ? `+${lp.difference}` : lp.difference}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {hasLatest ? (
         <p className="text-[12px] text-slate-500">
-          Latest:{" "}
+          Latest lesson plan:{" "}
           <span className="font-semibold text-slate-700">
             {lessonSummary.latestTitle}
           </span>

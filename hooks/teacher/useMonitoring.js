@@ -70,14 +70,22 @@ function filterRosterPayload(
     );
   }
   const classIds = new Set(classes.map((row) => row.id));
+  const enrollments = (payload?.enrollments ?? []).filter((row) =>
+    classIds.has(row.class_id)
+  );
+  const studentIds = new Set(
+    enrollments.map((row) => row.student_id || unwrap(row.students)?.id).filter(Boolean)
+  );
+
   return {
     classes,
-    enrollments: (payload?.enrollments ?? []).filter((row) =>
-      classIds.has(row.class_id)
-    ),
+    enrollments,
     grades: (payload?.grades ?? []).filter((row) => classIds.has(row.class_id)),
     monitoringRecords: (payload?.monitoringRecords ?? []).filter((row) =>
       classIds.has(row.class_id)
+    ),
+    philIriRecords: (payload?.philIriRecords ?? []).filter((row) =>
+      studentIds.has(row.student_id)
     ),
   };
 }

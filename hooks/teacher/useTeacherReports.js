@@ -18,11 +18,15 @@ import {
   averageOf,
   buildAralDistribution,
   buildAverageGradePerSubject,
+  buildGwaRiskDistribution,
   buildMonitoringProgressChart,
   buildPerformanceDistribution,
+  computeInterventionPerformanceProgress,
+  computeMultiTermAcademicTrends,
+  computeUniqueLearnerCount,
   countAralScreening,
-  monitoringCompletionRate,
   highestLowestSubjects,
+  monitoringCompletionRate,
   passingRateFromGrades,
 } from "@/lib/teacher/reportsCalculations";
 import { useSoftLoadState } from "@/hooks/useSoftLoadState";
@@ -74,10 +78,17 @@ function applySubjectSectionFilter(base, subject, section) {
   const { highest, lowest } = highestLowestSubjects(classReports);
   const passRate = passingRateFromGrades(allSubjectGrades);
 
+  const uniqueStudents = computeUniqueLearnerCount(students);
+  const interventionProgress = computeInterventionPerformanceProgress(students);
+  const termTrends = computeMultiTermAcademicTrends(students, classReports);
+  const gwaRiskDistribution = buildGwaRiskDistribution(students);
+
   const summary = {
     ...base.summary,
     totalClasses: classReports.length,
-    totalStudents: students.length,
+    totalStudents: uniqueStudents || students.length,
+    uniqueStudents,
+    totalEnrollments: students.length,
     aralScreeningCount: aralCount,
     classroomRemedialCount,
     averageClassGrade: avgClassGrade,
@@ -91,6 +102,9 @@ function applySubjectSectionFilter(base, subject, section) {
       (s) => s.monitoringStatus && s.monitoringStatus !== "Not Started"
     ).length,
     hasAralClass,
+    interventionProgress,
+    termTrends,
+    gwaRiskDistribution,
   };
 
   const lessonMetrics = base.summaryCards?.find((c) => c.id === "lesson-plans")
@@ -106,7 +120,7 @@ function applySubjectSectionFilter(base, subject, section) {
       title: "Classes Assigned",
       metrics: [
         { label: "Total Classes", value: String(summary.totalClasses) },
-        { label: "Total Students", value: String(summary.totalStudents) },
+        { label: "Unique Learners", value: String(summary.uniqueStudents || summary.totalStudents) },
         {
           label: "Average Class Grade",
           value:
@@ -251,6 +265,8 @@ function applySubjectSectionFilter(base, subject, section) {
       aralDistribution: buildAralDistribution(students),
       averageGradePerSubject: buildAverageGradePerSubject(classReports),
       monitoringProgress: buildMonitoringProgressChart(students),
+      gwaRiskDistribution,
+      termTrends,
     },
   };
 }

@@ -30,9 +30,21 @@ export default function MasterClassListTab({
         (genderFilter === "male" && String(s.sex).toLowerCase().startsWith("m")) ||
         (genderFilter === "female" && String(s.sex).toLowerCase().startsWith("f"));
 
-      const grade = Number(s.averageGrade);
-      const isFailing = Number.isFinite(grade) && grade < 75;
-      const isPassing = Number.isFinite(grade) && grade >= 75;
+      const rawTermGrade = s.termGrades?.[currentTerm];
+      const rawGrade =
+        rawTermGrade !== null && rawTermGrade !== undefined && rawTermGrade !== ""
+          ? rawTermGrade
+          : currentTerm
+          ? null
+          : s.averageGrade;
+      const hasGrade =
+        rawGrade !== null &&
+        rawGrade !== undefined &&
+        rawGrade !== "" &&
+        !isNaN(Number(rawGrade));
+      const grade = hasGrade ? Number(rawGrade) : null;
+      const isFailing = hasGrade && grade < 75;
+      const isPassing = hasGrade && grade >= 75;
 
       const matchesStatus =
         statusFilter === "all" ||
@@ -41,7 +53,7 @@ export default function MasterClassListTab({
 
       return matchesSearch && matchesGender && matchesStatus;
     });
-  }, [students, search, genderFilter, statusFilter]);
+  }, [students, search, genderFilter, statusFilter, currentTerm]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -149,11 +161,22 @@ export default function MasterClassListTab({
             ) : (
               paginated.map((student) => {
                 const termGrades = student.termGrades ?? {};
-                const currentGrade = Number(student.averageGrade);
-                const isFailing = Number.isFinite(currentGrade) && currentGrade < 75;
+                const rawTermGrade = termGrades[currentTerm];
+                const rawGrade =
+                  rawTermGrade !== null && rawTermGrade !== undefined && rawTermGrade !== ""
+                    ? rawTermGrade
+                    : currentTerm
+                    ? null
+                    : student.averageGrade;
+                const hasGrade =
+                  rawGrade !== null &&
+                  rawGrade !== undefined &&
+                  rawGrade !== "" &&
+                  !isNaN(Number(rawGrade));
+                const currentGrade = hasGrade ? Number(rawGrade) : null;
+                const isFailing = hasGrade && currentGrade < 75;
                 const isBorderline =
-                  Number.isFinite(currentGrade) &&
-                  (currentGrade === 75 || currentGrade === 76);
+                  hasGrade && (currentGrade === 75 || currentGrade === 76);
 
                 return (
                   <tr
@@ -191,10 +214,12 @@ export default function MasterClassListTab({
                             ? "bg-red-50 text-red-700 font-bold"
                             : isBorderline
                             ? "bg-amber-50 text-amber-700 font-bold"
-                            : "text-slate-800 dark:text-white"
+                            : hasGrade
+                            ? "text-slate-800 dark:text-white"
+                            : "text-slate-400 font-normal"
                         )}
                       >
-                        {student.averageGrade ?? "—"}
+                        {hasGrade ? currentGrade : "—"}
                       </span>
                     </td>
                     <td className="py-2.5 px-3 text-center">
@@ -206,7 +231,7 @@ export default function MasterClassListTab({
                         <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200">
                           Needs Monitoring
                         </span>
-                      ) : Number.isFinite(currentGrade) ? (
+                      ) : hasGrade ? (
                         <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
                           Passed
                         </span>

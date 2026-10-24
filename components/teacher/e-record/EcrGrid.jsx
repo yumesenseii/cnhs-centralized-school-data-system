@@ -2,6 +2,7 @@
 
 import { Upload } from "lucide-react";
 import { useCallback, useMemo, useRef } from "react";
+import { cn } from "@/lib/utils";
 import { scoreKey } from "@/lib/ecr/constants";
 import { termGradeDescription } from "@/lib/ecr/computeGrades";
 import { parseValidGrade } from "@/lib/ecr/gradeIntegrity";
@@ -357,7 +358,21 @@ export default function EcrGrid({
                 <span className="block truncate font-medium">
                   {formatSf2LearnerName(student)}
                 </span>
-                <RowStatusBadge status={status} />
+                <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                  <RowStatusBadge status={status} />
+                  {computed?.term_grade != null && (
+                    <span
+                      className={cn(
+                        "inline-flex rounded px-1.5 py-0.5 text-[9px] font-bold tabular-nums border",
+                        Number(computed.term_grade) < 75
+                          ? "bg-red-50 text-red-700 border-red-200"
+                          : "bg-emerald-50 text-[#246f54] border-emerald-200"
+                      )}
+                    >
+                      Grade: {computed.term_grade}
+                    </span>
+                  )}
+                </div>
               </td>
               <ScoreCells
                 config={config}

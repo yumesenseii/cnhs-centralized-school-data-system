@@ -243,9 +243,9 @@ export default function LearnerAcademicDetailModal({
     };
   }, [activeLearner]);
 
-  // Lazy fetch per-subject trend forecast only when Advanced ML is expanded
+  // Fetch per-subject trend forecast whenever the modal is open
   useEffect(() => {
-    if (!expandedSections.advancedMl || !activeLearner) return;
+    if (!isOpen || !activeLearner) return;
 
     const studentId = activeLearner.studentId || activeLearner.id;
     const subject = studentSubject;
@@ -259,7 +259,11 @@ export default function LearnerAcademicDetailModal({
       return;
     }
 
-    if (term !== 1 && term !== 2) {
+    // Term 3 is the last term of the school year: there is no next term to
+    // forecast. Show the validated Term 2 -> Term 3 forecast as a retrospective
+    // check against the actual Term 3 grade. Terms beyond 3 stay unavailable.
+    const isRetrospective = term === 3;
+    if (term !== 1 && term !== 2 && !isRetrospective) {
       setTrendData({
         status: "unavailable",
         currentTerm: term,
@@ -269,6 +273,7 @@ export default function LearnerAcademicDetailModal({
       });
       return;
     }
+    const sourceTerm = isRetrospective ? 2 : term;
 
     let isSubscribed = true;
     setLoadingTrend(true);
@@ -283,16 +288,14 @@ export default function LearnerAcademicDetailModal({
       body: JSON.stringify({
         learnerId: studentId,
         subject,
-        currentTerm: term,
-        // The server validates this request against the learner's authorized
-        // academic context; it is never trusted as-is.
+        currentTerm: sourceTerm,
         schoolYear: activeLearner?.schoolYear || schoolYear,
       }),
     })
       .then((res) => res.json())
       .then((data) => {
         if (!isSubscribed) return;
-        setTrendData(data);
+        setTrendData(isRetrospective ? { ...data, retrospective: true } : data);
       })
       .catch((err) => {
         if (!isSubscribed) return;
@@ -308,7 +311,7 @@ export default function LearnerAcademicDetailModal({
     return () => {
       isSubscribed = false;
     };
-  }, [expandedSections.advancedMl, activeLearner, studentSubject, currentQuarterNumber, schoolYear]);
+  }, [isOpen, activeLearner, studentSubject, currentQuarterNumber, schoolYear]);
 
   const subjectGradesList = Array.isArray(activeLearner.subjectGrades)
     ? activeLearner.subjectGrades
@@ -1132,25 +1135,40 @@ export default function LearnerAcademicDetailModal({
       }}
     >
       <div className="relative z-10 flex max-h-[88vh] w-[min(780px,96vw)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[var(--card)]">
-        {/* 1. SIMPLE LEARNER HEADER */}
+        {/* MODAL HEADER: LEARNER INFORMATION */}
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 bg-white px-5 py-4 dark:border-white/5 dark:bg-transparent sm:px-6">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2.5">
-              <h2
-                id="learner-academic-detail-title"
-                className="truncate text-lg font-bold tracking-tight text-slate-900 dark:text-white sm:text-xl"
-              >
-                {studentFullName}
-              </h2>
-              {/* Single primary authoritative attention status */}
-              <RiskPill value={academicRisk} />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-cnhs-green-dark">
+                Learner Academic Profile
+              </span>
+              <span className="text-[11px] font-medium text-slate-400">
+                · {termLabel(currentQuarterNumber)}
+              </span>
             </div>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            <h2
+              id="learner-academic-detail-title"
+              className="mt-0.5 truncate text-lg font-bold tracking-tight text-slate-900 dark:text-white sm:text-xl"
+            >
+              {studentFullName}
+            </h2>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
               <span className="font-semibold text-slate-700 dark:text-slate-200">{studentSection}</span>
-              {" · "}
-              <span>Subject: <strong className="text-slate-800 dark:text-slate-100">{studentSubject}</strong></span>
-              {studentLrn && studentLrn !== "—" ? ` · LRN: ${studentLrn}` : ""}
-            </p>
+              <span>·</span>
+              <span>Class Subject: <strong className="text-slate-800 dark:text-slate-100">{studentSubject}</strong></span>
+              {studentLrn && studentLrn !== "—" ? (
+                <>
+                  <span>·</span>
+                  <span>LRN: {studentLrn}</span>
+                </>
+              ) : null}
+              {studentAdviser && studentAdviser !== "—" ? (
+                <>
+                  <span>·</span>
+                  <span>Adviser: {studentAdviser}</span>
+                </>
+              ) : null}
+            </div>
           </div>
           <button
             type="button"
@@ -1162,7 +1180,7 @@ export default function LearnerAcademicDetailModal({
           </button>
         </div>
 
-        {/* MODAL BODY */}
+        {/* MODAL BODY: 6-LEVEL STREAMLINED HIERARCHY */}
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-slate-50/50 p-5 dark:bg-black/10 sm:p-6">
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500">
@@ -1171,93 +1189,170 @@ export default function LearnerAcademicDetailModal({
             </div>
           ) : (
             <>
-              {/* 1. LEARNER SUMMARY */}
-              <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs dark:border-white/5 dark:bg-[var(--card)] space-y-3">
+              {/* 1. LEARNER INFORMATION CARD */}
+              <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs dark:border-white/5 dark:bg-[var(--card)]">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-white/5">
-                  <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200 text-xs">
-                    <GraduationCap size={15} className="text-cnhs-green-dark" />
-                    <span>Learner Summary</span>
-                    <span className="text-[11px] font-normal text-slate-500">
-                      ({termLabel(currentQuarterNumber)})
-                    </span>
+                  <div className="flex items-center gap-2">
+                    <GraduationCap size={15} className="text-cnhs-green-dark shrink-0" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                      1. Learner Information
+                    </h3>
                   </div>
-                  <RiskPill value={academicRisk} />
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                    {activeLearner.schoolYear || schoolYear} · {termLabel(currentQuarterNumber)}
+                  </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="rounded-lg bg-slate-50/70 p-2.5 dark:bg-white/[0.02]">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-                      Learner
+                <div className="mt-3 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
+                  <div className="rounded-lg bg-slate-50 p-2.5 dark:bg-white/[0.02]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Learner Name
                     </span>
-                    <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    <span className="mt-0.5 block font-bold text-slate-900 dark:text-slate-100 truncate">
                       {studentFullName}
-                    </div>
-                    <div className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-                      {studentSection}
-                      {studentLrn && studentLrn !== "—" ? ` · LRN: ${studentLrn}` : ""}
-                    </div>
-                  </div>
-                  <div className="rounded-lg bg-slate-50/70 p-2.5 dark:bg-white/[0.02]">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-                      Current Term Performance · {studentSubject}
                     </span>
-                    <div className="mt-1 flex flex-wrap items-center gap-3">
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] text-slate-400">Grade</span>
-                          {curGrade !== null && curGrade < 75 ? (
-                            <span className="inline-flex items-center rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                              Needs Academic Support
-                            </span>
-                          ) : null}
-                        </div>
-                        <div
-                          className={cn(
-                            "text-base font-bold",
-                            curGrade !== null && curGrade < 75
-                              ? "text-amber-800 dark:text-amber-400"
-                              : "text-slate-900 dark:text-slate-100"
-                          )}
-                        >
-                          {curGrade !== null ? `${curGrade} / 100` : "—"}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-slate-400">Trend</span>
-                        <div className={cn("inline-flex items-center gap-1 font-semibold text-xs", progressExplanation.progressStyle)}>
-                          {progressInfo.progress === "Improving" ? (
-                            <TrendingUp size={12} className="text-emerald-600" />
-                          ) : progressInfo.progress === "Declining" ? (
-                            <TrendingDown size={12} className="text-amber-700" />
-                          ) : progressInfo.progress === "No clear change" ? (
-                            <Minus size={12} className="text-slate-400" />
-                          ) : null}
-                          <span>{progressExplanation.progressDisplay}</span>
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-slate-400">Support</span>
-                        <div className="font-semibold text-slate-800 dark:text-slate-200">
-                          {currentSupport.label}
-                        </div>
-                      </div>
-                    </div>
-                    {(prevGrade !== null || progressInfo.hasPreviousGrade) ? (
-                      <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                        Previous: {progressExplanation.previousDisplay}
-                        {historicalLabel ? ` (${historicalLabel})` : ""}
-                      </div>
-                    ) : null}
+                  </div>
+                  <div className="rounded-lg bg-slate-50 p-2.5 dark:bg-white/[0.02]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Grade &amp; Section
+                    </span>
+                    <span className="mt-0.5 block font-semibold text-slate-800 dark:text-slate-200 truncate">
+                      {studentSection}
+                    </span>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 p-2.5 dark:bg-white/[0.02]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Class Subject
+                    </span>
+                    <span className="mt-0.5 block font-semibold text-slate-800 dark:text-slate-200 truncate">
+                      {studentSubject}
+                    </span>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 p-2.5 dark:bg-white/[0.02]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      LRN
+                    </span>
+                    <span className="mt-0.5 block font-mono text-slate-800 dark:text-slate-200 truncate">
+                      {studentLrn && studentLrn !== "—" ? studentLrn : "—"}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* 2. ACADEMIC CONCERN */}
+              {/* 2. ACADEMIC PERFORMANCE & RISK (PROMINENT GWA & RISK BADGE) */}
+              <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs dark:border-white/5 dark:bg-[var(--card)] space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-white/5">
+                  <div className="flex items-center gap-2">
+                    <BookOpen size={15} className="text-cnhs-green-dark shrink-0" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                      2. Academic Performance &amp; Risk
+                    </h3>
+                  </div>
+                  {/* Single prominent authoritative Risk Badge */}
+                  <RiskPill value={academicRisk} />
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
+                  {/* Complete Per-Term GWA Card */}
+                  <div className="flex flex-col justify-between rounded-lg border border-slate-100 bg-slate-50/70 p-3.5 dark:border-white/5 dark:bg-white/[0.02]">
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                          Per-Term GWA ({termLabel(currentQuarterNumber)})
+                        </span>
+                        <span className="text-[10.5px] font-semibold text-slate-500">
+                          {authoritativeGwa !== null ? "Published Complete" : "Pending ECR"}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 flex items-baseline gap-2">
+                        <span className="font-mono text-2xl font-black text-slate-900 dark:text-slate-100">
+                          {authoritativeGwa !== null ? authoritativeGwa.toFixed(2) : "—"}
+                        </span>
+                        {authoritativeGwa !== null ? (
+                          <span className="text-xs font-medium text-slate-400">/ 100</span>
+                        ) : (
+                          <span className="text-xs font-semibold text-slate-500">
+                            Awaiting full-term publication
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <p className="mt-2 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                      {authoritativeGwa !== null
+                        ? `Official per-term General Weighted Average evaluated across all required core subjects. Maps to ${academicRisk}.`
+                        : "Academic evaluation is provisional. Full-term GWA and overall academic risk remain pending until grades are published for all required learning areas."}
+                    </p>
+                  </div>
+
+                  {/* Current Subject Grade & Actual Term-over-Term Progress */}
+                  <div className="flex flex-col justify-between rounded-lg border border-slate-100 bg-slate-50/70 p-3.5 dark:border-white/5 dark:bg-white/[0.02]">
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                          {studentSubject} Grade
+                        </span>
+                        {curGrade !== null && curGrade < 75 ? (
+                          <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                            Needs Academic Support
+                          </span>
+                        ) : curGrade !== null ? (
+                          <span className="inline-flex items-center rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                            Passing (≥ 75)
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="mt-1.5 flex items-baseline gap-2">
+                        <span
+                          className={cn(
+                            "font-mono text-2xl font-black",
+                            curGrade !== null && curGrade < 75
+                              ? "text-amber-700 dark:text-amber-400"
+                              : "text-slate-900 dark:text-slate-100"
+                          )}
+                        >
+                          {curGrade !== null ? curGrade : "—"}
+                        </span>
+                        {curGrade !== null ? (
+                          <span className="text-xs font-medium text-slate-400">/ 100</span>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="mt-2 border-t border-slate-200/60 pt-2 text-[11px] dark:border-white/5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500">Actual Grade Progress:</span>
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 font-semibold",
+                            progressExplanation.progressStyle
+                          )}
+                        >
+                          {progressInfo.progress === "Improving" ? (
+                            <TrendingUp size={12} className="text-emerald-600" />
+                          ) : null}
+                          {progressInfo.progress === "Declining" ? (
+                            <TrendingDown size={12} className="text-amber-700" />
+                          ) : null}
+                          {progressInfo.progress === "No clear change" ? (
+                            <Minus size={12} className="text-slate-400" />
+                          ) : null}
+                          <span>{progressExplanation.progressDisplay}</span>
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-[10.5px] text-slate-400">
+                        {progressExplanation.sentence} {historicalLabel ? `(${historicalLabel})` : ""}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. ACADEMIC CONCERN (SUBJECT FAILURE ISOLATED FROM OVERALL GWA) */}
               <div
                 className={cn(
-                  "rounded-2xl border p-4 shadow-2xs transition",
+                  "rounded-xl border p-4 shadow-2xs transition",
                   curGrade !== null && curGrade < 75
-                    ? "border-amber-200/90 bg-amber-50/60 dark:border-amber-900/30 dark:bg-amber-950/20"
+                    ? "border-amber-200 bg-amber-50/60 dark:border-amber-900/30 dark:bg-amber-950/20"
                     : "border-slate-200/80 bg-white dark:border-white/5 dark:bg-[var(--card)]"
                 )}
               >
@@ -1272,36 +1367,38 @@ export default function LearnerAcademicDetailModal({
                   >
                     <Info size={14} />
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-xs font-bold uppercase tracking-wide text-slate-900 dark:text-white">
-                      Academic Concern
+                  <div className="min-w-0 flex-1 text-xs">
+                    <h3 className="font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                      3. Academic Concern
                     </h3>
-                    <p className="mt-1 text-xs font-semibold text-slate-800 dark:text-slate-200">
-                      {mainConcernHeadline}
+                    <p className="mt-1 font-semibold text-slate-800 dark:text-slate-200">
+                      {curGrade !== null && curGrade < 75
+                        ? `Subject Concern: ${studentSubject} grade is below passing (${curGrade} / 75 passing threshold)`
+                        : "Learner is performing at or above passing standards in evaluated class subject"}
                     </p>
-                    <p className="mt-1 text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+                    <p className="mt-1 leading-relaxed text-slate-600 dark:text-slate-300">
                       {attentionReason}
                     </p>
-                    {guidanceInfo.sentence ? (
-                      <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                        {guidanceInfo.sentence}
+                    {activeLearner.weakSubjects?.length > 1 ? (
+                      <p className="mt-1 text-[11px] font-medium text-amber-800 dark:text-amber-300">
+                        Additional subject(s) below 75: {activeLearner.weakSubjects.filter((s) => s !== studentSubject).join(", ")}
                       </p>
                     ) : null}
-                    <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                      Official GWA/term risk is based on school rules; individual subject weaknesses are noted separately.
-                    </p>
+                    <div className="mt-2 rounded-lg bg-white/70 p-2 text-[11px] text-slate-500 dark:bg-black/20 dark:text-slate-400">
+                      <strong className="text-slate-700 dark:text-slate-300">DepEd Rule Authority:</strong> Subject grades below 75 require subject-specific remediation, but are kept strictly separate from overall per-term GWA risk ({academicRisk}). Passing GWA is never overridden by an individual subject grade.
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* 3. RECOMMENDED NEXT STEP */}
-              <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-2xs dark:border-white/5 dark:bg-[var(--card)] space-y-3">
+              {/* 4. RECOMMENDED ACTION */}
+              <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs dark:border-white/5 dark:bg-[var(--card)] space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-white/5">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-cnhs-green-dark">
-                    Recommended Next Step
+                    4. Recommended Action
                   </h3>
                   <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                    {isPrincipal ? "For review (read-only)" : "Teacher Action"}
+                    {isPrincipal ? "For review (read-only)" : "Authoritative Rule-Based Action"}
                   </span>
                 </div>
 
@@ -1333,79 +1430,41 @@ export default function LearnerAcademicDetailModal({
                 ) : (
                   <div className="space-y-2 text-xs">
                     <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 dark:bg-white/[0.02]">
-                      <span className="text-slate-500">Current academic support</span>
+                      <span className="text-slate-500">Current Academic Support:</span>
                       <span className="font-semibold text-slate-800 dark:text-slate-200">
                         {currentSupport.label}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Recommendations are teacher-reviewed drafts. This view is for principal review only.
-                    </p>
                     {activeLearner.teacherRemarks ? (
                       <div className="rounded-xl bg-slate-50 px-3 py-2 text-slate-600 dark:bg-white/[0.02] dark:text-slate-400">
                         <span className="font-semibold text-slate-700 dark:text-slate-300">Teacher note:</span> {activeLearner.teacherRemarks}
-                      </div>
-                    ) : null}
-                    {referralState.isLanguageSubject && referralState.hasActiveReferral ? (
-                      <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                        <span>
-                          {referralState.isApproved
-                            ? "ARAL Referral: Approved for Assessment"
-                            : "ARAL Referral: Pending Principal Review"}
-                        </span>
-                        {typeof onNavigateToAral === "function" ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onClose?.();
-                              onNavigateToAral(activeLearner);
-                            }}
-                            className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-semibold text-cnhs-green-dark hover:underline"
-                          >
-                            <span>View in ARAL Reading Assessment</span>
-                            <ArrowUpRight size={12} />
-                          </button>
-                        ) : (
-                          <Link
-                            href={
-                              role === "principal" || role === "admin"
-                                ? `/aral-monitoring${activeLearner?.studentId ? `?studentId=${activeLearner.studentId}` : ""}`
-                                : `/teacher/aral-monitoring${activeLearner?.studentId ? `?studentId=${activeLearner.studentId}` : ""}`
-                            }
-                            onClick={onClose}
-                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-cnhs-green-dark hover:underline"
-                          >
-                            <span>View in ARAL Reading Assessment</span>
-                            <ArrowUpRight size={12} />
-                          </Link>
-                        )}
                       </div>
                     ) : null}
                   </div>
                 )}
               </div>
 
-              {/* 4. LEARNING PLAN */}
-              <div className="rounded-2xl border border-emerald-200/80 bg-white p-4 shadow-2xs dark:border-emerald-900/30 dark:bg-[var(--card)] space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-100/70 pb-2.5 dark:border-emerald-900/30">
+              {/* 5. LEARNING PLAN (PLP) */}
+              <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs dark:border-white/5 dark:bg-[var(--card)] space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-white/5">
                   <div className="flex items-center gap-2">
-                    <Sparkles size={15} className="text-emerald-700 dark:text-emerald-300" />
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-200">
-                      Learning Plan
+                    <Sparkles size={15} className="text-cnhs-green-dark shrink-0" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-cnhs-green-dark">
+                      5. Learning Plan
                     </h3>
                   </div>
                   <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Teacher-reviewed draft · {isPrincipal ? "For review" : "Editable by teacher"}
+                    Teacher-reviewed draft · Aligned with DepEd guidelines
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-xs text-slate-600 dark:text-slate-300">
-                    View the simplified PLP with reason for support, learning goal, suggested activities, progress monitoring, and notes.
+                    View or update the personalized learning plan: structured support goals, targeted remedial activities, and progress indicators.
                   </p>
                   <button
                     type="button"
                     onClick={() => setShowPlpModal(true)}
-                    className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-xl bg-emerald-700 px-3.5 text-xs font-semibold text-white shadow-2xs transition hover:bg-emerald-800"
+                    className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-xl bg-cnhs-green-dark px-3.5 text-xs font-semibold text-white shadow-2xs transition hover:bg-[#1b5842]"
                   >
                     <Sparkles size={12} />
                     <span>View Learning Plan</span>
@@ -1413,203 +1472,261 @@ export default function LearnerAcademicDetailModal({
                 </div>
               </div>
 
-              {/* OPTIONAL COLLAPSED DETAILS */}
-              <div className="space-y-2 pt-1">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Optional Details
+              {/* 6. GRADE HISTORY & RF FORECAST */}
+              <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs dark:border-white/5 dark:bg-[var(--card)] space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-white/5">
+                  <div className="flex items-center gap-2">
+                    <GraduationCap size={15} className="text-slate-600 dark:text-slate-400 shrink-0" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                      6. Grade History &amp; RF Forecast
+                    </h3>
+                  </div>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Actual Records &amp; Decision-Support Advisory
+                  </span>
                 </div>
 
-                {/* ACCORDION A: GRADE & PROGRESS HISTORY */}
-                <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-white/5 dark:bg-[var(--card)]">
-                  <button
-                    type="button"
-                    onClick={() => toggleSection("gradeHistory")}
-                    className="flex w-full cursor-pointer items-center justify-between p-3.5 text-left text-xs font-semibold text-slate-800 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/[0.02]"
-                  >
-                    <div className="flex items-center gap-2">
-                      <GraduationCap size={15} className="text-slate-500" />
-                      <span>Grade &amp; Progress History</span>
-                      <span className="text-[10.5px] font-normal text-slate-400">
-                        ({progressExplanation.progressDisplay})
+                {/* Part A: Actual Grade History (Quarterly Subject Breakdown) */}
+                <div>
+                  <span className="mb-2 block text-[10.5px] font-bold uppercase tracking-wider text-slate-400">
+                    Quarterly Subject Breakdown ({termLabel(currentQuarterNumber)})
+                  </span>
+                  {subjectGradesList.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {subjectGradesList.map((sg, idx) => {
+                        const gradeVal = sg.grade ?? sg.quarterGrade ?? null;
+                        const isBelowPassing = gradeVal !== null && gradeVal < 75;
+                        return (
+                          <div
+                            key={idx}
+                            className="rounded-lg border border-slate-100 bg-slate-50/60 p-2.5 dark:border-white/5 dark:bg-white/[0.02]"
+                          >
+                            <span className="block truncate text-[10.5px] font-medium text-slate-500">
+                              {sg.subject || sg.subjectName}
+                            </span>
+                            <div className="mt-1 flex items-baseline justify-between">
+                              <span
+                                className={cn(
+                                  "font-mono text-sm font-bold",
+                                  isBelowPassing
+                                    ? "text-amber-700 dark:text-amber-400"
+                                    : "text-slate-800 dark:text-slate-200"
+                                )}
+                              >
+                                {gradeVal !== null ? gradeVal : "—"}
+                              </span>
+                              {gradeVal !== null ? (
+                                <span
+                                  className={cn(
+                                    "text-[9.5px] font-semibold",
+                                    isBelowPassing ? "text-amber-700" : "text-emerald-700"
+                                  )}
+                                >
+                                  {isBelowPassing ? "Below 75" : "Passed"}
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs italic text-slate-400">
+                      No published subject breakdown recorded for this term yet.
+                    </p>
+                  )}
+                </div>
+
+                {/* Part B: Random Forest Subject Trend Forecast (Advisory) */}
+                <div className="space-y-2 border-t border-slate-100 pt-3 dark:border-white/5">
+                  <div className="flex flex-wrap items-center justify-between gap-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <TrendingUp size={14} className="text-cnhs-green-dark" />
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        Random Forest Trend Forecast · {studentSubject}
                       </span>
                     </div>
-                    {expandedSections.gradeHistory ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </button>
-                  {expandedSections.gradeHistory ? (
-                    <div className="border-t border-slate-100 p-4 text-xs dark:border-white/5 space-y-3">
-                      <div className="grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-3 dark:bg-white/[0.02]">
-                        <div>
-                          <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                            Previous Grade
-                          </span>
-                          <span className="mt-1 block font-mono text-sm font-bold text-slate-800 dark:text-slate-200">
-                            {progressExplanation.previousDisplay}
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                      Experimental Advisory Only
+                    </span>
+                  </div>
+
+                  {loadingTrend ? (
+                    <div className="flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50/60 p-3 text-xs text-slate-500 dark:border-white/5 dark:bg-white/[0.02]">
+                      <Loader2 size={13} className="animate-spin text-cnhs-green-dark" />
+                      <span>Evaluating next-term forecast for {studentSubject}...</span>
+                    </div>
+                  ) : trendData?.status === "available" ? (
+                    <div className="space-y-3 rounded-xl border border-slate-200/80 bg-white p-3.5 text-xs shadow-2xs dark:border-white/5 dark:bg-white/[0.02]">
+                      {/* Optional Provisional / Draft Banner */}
+                      {trendData.provisional ? (
+                        <div className="flex items-center gap-1.5 rounded-md border border-amber-200/80 bg-amber-50/80 px-2.5 py-1 text-[11px] text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-300">
+                          <Info size={12} className="shrink-0 text-amber-600 dark:text-amber-400" />
+                          <span>
+                            <strong>Provisional Advisory:</strong> Generated from current draft ECR records. Official publication pending by subject teacher.
                           </span>
                         </div>
-                        <div>
-                          <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                            Current Grade
+                      ) : null}
+
+                      {/* Header */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-white/5">
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {trendData.retrospective
+                            ? "Term 2 → Term 3 Retrospective Evaluation"
+                            : `Term ${trendData.currentTerm} → Term ${trendData.targetTerm} Forecast`}
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          Random Forest Decision-Support
+                        </span>
+                      </div>
+
+                      {/* 3-Metric Executive Grid: Current Grade | Estimated Next-Term Grade | Predicted Trend */}
+                      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+                        {/* 1. Current Grade */}
+                        <div className="rounded-lg border border-slate-100 bg-slate-50/70 p-2.5 dark:border-white/5 dark:bg-white/[0.02]">
+                          <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                            Current Term {trendData.currentTerm}
                           </span>
-                          <span className="mt-1 block font-mono text-sm font-bold text-slate-900 dark:text-slate-100">
-                            {progressExplanation.currentDisplay}
-                          </span>
+                          <div className="mt-1 flex items-baseline justify-between">
+                            <span className="font-mono text-lg font-bold text-slate-900 dark:text-slate-100">
+                              {trendData.currentGrade ?? curGrade ?? "—"}
+                            </span>
+                            <span
+                              className={cn(
+                                "text-[10px] font-semibold",
+                                (trendData.currentGrade ?? curGrade ?? 75) < 75
+                                  ? "text-amber-700 dark:text-amber-400"
+                                  : "text-emerald-700 dark:text-emerald-400"
+                              )}
+                            >
+                              {(trendData.currentGrade ?? curGrade ?? 75) < 75
+                                ? "Below 75"
+                                : "Passed"}
+                            </span>
+                          </div>
                         </div>
-                        <div>
-                          <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                            Progress Trend
-                          </span>
-                          <span className={cn("mt-1 inline-flex items-center gap-1 text-xs", progressExplanation.progressStyle)}>
-                            {progressInfo.progress === "Improving" ? (
-                              <TrendingUp size={13} className="text-emerald-600" />
-                            ) : progressInfo.progress === "Declining" ? (
-                              <TrendingDown size={13} className="text-amber-700" />
-                            ) : progressInfo.progress === "No clear change" ? (
-                              <Minus size={13} className="text-slate-400" />
+
+                        {/* 2. Estimated Next-Term Grade (Give Number) */}
+                        <div className="rounded-lg border border-emerald-100 bg-emerald-50/40 p-2.5 dark:border-emerald-950/40 dark:bg-emerald-950/20">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                              Estimated Term {trendData.targetTerm}
+                            </span>
+                            <span className="text-[9.5px] font-medium text-emerald-600 dark:text-emerald-400">
+                              ±{trendData.typicalError || 3} pts
+                            </span>
+                          </div>
+                          <div className="mt-1 flex items-baseline justify-between">
+                            <span className="font-mono text-lg font-bold text-emerald-900 dark:text-emerald-100">
+                              ≈ {trendData.estimatedGrade ?? "—"}
+                            </span>
+                            {trendData.estimatedDelta != null ? (
+                              <span
+                                className={cn(
+                                  "font-mono text-[11px] font-semibold",
+                                  trendData.estimatedDelta > 0
+                                    ? "text-emerald-700 dark:text-emerald-300"
+                                    : trendData.estimatedDelta < 0
+                                    ? "text-amber-700 dark:text-amber-300"
+                                    : "text-slate-500"
+                                )}
+                              >
+                                {trendData.estimatedDelta > 0
+                                  ? `+${trendData.estimatedDelta}`
+                                  : trendData.estimatedDelta}
+                              </span>
                             ) : null}
-                            <span>{progressExplanation.progressDisplay}</span>
+                          </div>
+                        </div>
+
+                        {/* 3. Predicted Trend */}
+                        <div className="flex flex-col justify-between rounded-lg border border-slate-100 bg-slate-50/70 p-2.5 dark:border-white/5 dark:bg-white/[0.02]">
+                          <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                            Predicted Trend
                           </span>
+                          <div className="mt-1 flex items-center justify-between">
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold",
+                                trendData.predictedTrend === "Improving"
+                                  ? "border border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                  : trendData.predictedTrend === "Declining"
+                                  ? "border border-amber-200 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                                  : "border border-slate-200 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                              )}
+                            >
+                              {trendData.predictedTrend === "Improving" ? <TrendingUp size={12} /> : null}
+                              {trendData.predictedTrend === "Declining" ? <TrendingDown size={12} /> : null}
+                              <span>{trendData.predictedTrend || "Steady"}</span>
+                            </span>
+                          </div>
                         </div>
                       </div>
 
-                      <p className="text-[11.5px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                        {progressExplanation.sentence} {historicalLabel ? `Comparison based on ${historicalLabel}.` : ""}
+                      {/* Advisory Disclaimer */}
+                      <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                        {trendData.retrospective
+                          ? "Term 3 is the final grading term of the school year. Showing verified Term 2 → Term 3 forecast for comparison against the actual Term 3 grade. "
+                          : `Random Forest pattern analysis forecasts an ${String(
+                              trendData.predictedTrend || "steady"
+                            ).toLowerCase()} trajectory for ${studentSubject} in Term ${trendData.targetTerm} based on learning patterns. `}
+                        Experimental advisory estimate only; does not replace official DepEd quarterly marks or report card records.
                       </p>
-
-                      {subjectGradesList.length > 0 ? (
-                        <div className="pt-2 border-t border-slate-100 dark:border-white/5">
-                          <span className="block text-[10.5px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-                            Quarterly Subject Breakdown
-                          </span>
-                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                            {subjectGradesList.map((sg, idx) => (
-                              <div
-                                key={idx}
-                                className="rounded-lg border border-slate-100 bg-slate-50/50 p-2 dark:border-white/5 dark:bg-white/[0.02]"
-                              >
-                                <span className="block truncate text-[10px] text-slate-500">{sg.subject || sg.subjectName}</span>
-                                <span className="block font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
-                                  {sg.grade ?? sg.quarterGrade ?? "—"}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
                     </div>
-                  ) : null}
+                  ) : (
+                    <div className="space-y-1 rounded-lg border border-slate-100 bg-slate-50/60 p-3 text-xs dark:border-white/5 dark:bg-white/[0.02]">
+                      <div className="flex items-center gap-1.5 font-semibold text-slate-600 dark:text-slate-400">
+                        <Info size={13} className="text-slate-400" />
+                        <span>Forecast unavailable for current records</span>
+                      </div>
+                      <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                        {trendData?.message ||
+                          "A next-term forecast requires at least one recorded grade for this subject in the current term."}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
-
-
-                {/* ACCORDION C: SUPPORT & OBSERVATION LOGS */}
+                {/* Optional Expandable Logs: Support Activity & Observation History */}
                 {activityRecords.length > 0 ? (
-                  <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-white/5 dark:bg-[var(--card)]">
+                  <div className="border-t border-slate-100 pt-2 dark:border-white/5">
                     <button
                       type="button"
                       onClick={() => toggleSection("recentActivity")}
-                      className="flex w-full cursor-pointer items-center justify-between p-3.5 text-left text-xs font-semibold text-slate-800 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/[0.02]"
+                      className="flex w-full cursor-pointer items-center justify-between py-1 text-left text-xs font-semibold text-slate-700 transition hover:text-slate-900 dark:text-slate-300"
                     >
                       <div className="flex items-center gap-2">
-                        <Clock size={15} className="text-slate-500" />
+                        <Clock size={14} className="text-slate-400" />
                         <span>Support Activity &amp; Observation History</span>
                         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">
                           {activityRecords.length}
                         </span>
                       </div>
-                      {expandedSections.recentActivity ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      {expandedSections.recentActivity ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
                     </button>
                     {expandedSections.recentActivity ? (
-                      <div className="border-t border-slate-100 p-4 text-xs dark:border-white/5">
-                        <div className="divide-y divide-slate-100 dark:divide-white/5">
-                          {activityRecords.map((rec) => (
-                            <div key={rec.id} className="py-2.5 first:pt-0 last:pb-0">
-                              <div className="flex items-center justify-between text-[11px]">
-                                <span className="font-semibold text-slate-800 dark:text-slate-200">
-                                  {rec.interventionGiven || "Classroom Remediation"}
-                                </span>
-                                <span className="font-mono text-slate-400">
-                                  {rec.observationDate || rec.observation_date || rec.createdAt || "—"}
-                                </span>
-                              </div>
-                              {rec.teacherRemarks || rec.teacher_remarks ? (
-                                <p className="mt-1 text-[11.5px] leading-relaxed text-slate-600 dark:text-slate-400">
-                                  {rec.teacherRemarks || rec.teacher_remarks}
-                                </p>
-                              ) : null}
-                              {rec.studentProgress || rec.student_progress ? (
-                                <p className="mt-0.5 text-[10.5px] text-slate-400">
-                                  Progress:{" "}
-                                  <strong className="text-slate-600 dark:text-slate-300">
-                                    {rec.studentProgress || rec.student_progress}
-                                  </strong>
-                                </p>
-                              ) : null}
+                      <div className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-100 bg-slate-50/50 p-3 text-xs dark:divide-white/5 dark:border-white/5 dark:bg-white/[0.02]">
+                        {activityRecords.map((rec) => (
+                          <div key={rec.id} className="py-2 first:pt-0 last:pb-0 text-xs">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                {rec.interventionGiven || "Classroom Remediation"}
+                              </span>
+                              <span className="font-mono text-slate-400">
+                                {rec.observationDate || rec.observation_date || rec.createdAt || "—"}
+                              </span>
                             </div>
-                          ))}
-                        </div>
+                            {rec.teacherRemarks || rec.teacher_remarks ? (
+                              <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-400">
+                                {rec.teacherRemarks || rec.teacher_remarks}
+                              </p>
+                            ) : null}
+                          </div>
+                        ))}
                       </div>
                     ) : null}
                   </div>
                 ) : null}
-
-                {/* ACCORDION D: NEXT-TERM SUBJECT TREND FORECAST (SELECTED) */}
-                <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-white/5 dark:bg-[var(--card)]">
-                  <button
-                    type="button"
-                    onClick={() => toggleSection("advancedMl")}
-                    className="flex w-full cursor-pointer items-center justify-between p-3.5 text-left text-xs font-semibold text-slate-800 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/[0.02]"
-                  >
-                    <div className="flex items-center gap-2">
-                      <TrendingUp size={15} className="text-slate-500" />
-                      <span>Next-term subject trend forecast (selected)</span>
-                      <span className="text-[10.5px] font-normal text-slate-400">Optional</span>
-                    </div>
-                    {expandedSections.advancedMl ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </button>
-                  {expandedSections.advancedMl ? (
-                    <div className="border-t border-slate-100 p-4 text-xs dark:border-white/5 space-y-2">
-                      {loadingTrend ? (
-                        <div className="flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50/60 p-3 text-xs text-slate-500 dark:border-white/5 dark:bg-white/[0.02]">
-                          <Loader2 size={13} className="animate-spin text-cnhs-green-dark" />
-                          <span>Checking forecast for {studentSubject}...</span>
-                        </div>
-                      ) : trendData?.status === "available" && trendData.predictedTrend && trendData.predictedTrend !== "—" ? (
-                        <div className="rounded-lg border border-slate-100 bg-white p-3 text-xs dark:border-white/5 dark:bg-white/[0.02] space-y-2">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-                              {studentSubject} · Term {trendData.currentTerm} → Term {trendData.targetTerm}
-                            </span>
-                            <span
-                              className={cn(
-                                "rounded-md px-2 py-0.5 text-xs font-semibold",
-                                trendData.predictedTrend === "Improving"
-                                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-                                  : trendData.predictedTrend === "Declining"
-                                  ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
-                                  : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                              )}
-                            >
-                              {trendData.predictedTrend}
-                            </span>
-                          </div>
-                          <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-                            Advisory only. Does not affect official academic risk or intervention placement.
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3 text-xs dark:border-white/5 dark:bg-white/[0.02] space-y-1">
-                          <div className="flex items-center gap-1.5 font-semibold text-slate-600 dark:text-slate-400">
-                            <Info size={13} className="text-slate-400" />
-                            <span>Forecast not available for the selected term/subject</span>
-                          </div>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                            {trendData?.message || "A valid next-term trend forecast is not available with the current records for this learner, subject, and term."}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ) : null}
-                </div>
               </div>
             </>
           )}
