@@ -411,6 +411,9 @@ export default function ClassOverview({ classId }) {
               grades ? ` and ${grades} grade record${grades === 1 ? "" : "s"}` : ""
             }.`
           );
+          if (result?.targetTerm && setViewQuarter) {
+            setViewQuarter(result.targetTerm);
+          }
           invalidateTeacherClassesCache(teacherId);
           await refresh();
         }}

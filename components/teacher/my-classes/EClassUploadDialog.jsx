@@ -201,10 +201,14 @@ export default function EClassUploadDialog({
             classItem={classItem}
             onConfirmImport={handleConfirmImport}
             onBack={() => {
+              setError("");
               setStep("upload");
               setValidationResult(null);
             }}
             importing={uploading}
+            error={error}
+            statusLabel={statusLabel}
+            progress={progress}
           />
         ) : step === "term" ? (
           <div>

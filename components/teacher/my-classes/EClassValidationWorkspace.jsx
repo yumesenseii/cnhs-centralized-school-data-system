@@ -57,6 +57,8 @@ export default function EClassValidationWorkspace({
   onConfirmImport,
   onBack,
   importing = false,
+  error = "",
+  statusLabel = "",
 }) {
   const { sectionInfo, targetQuarter, validatedLearners: initialLearners } =
     validationResult;
@@ -220,6 +222,22 @@ export default function EClassValidationWorkspace({
 
       {/* 2. Main Content Body */}
       <div className="flex-1 overflow-y-auto p-5">
+        {error ? (
+          <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-900 shadow-2xs">
+            <div className="flex items-start gap-3">
+              <AlertCircle size={18} className="text-rose-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <h3 className="font-bold text-rose-900 text-sm">
+                  Hindi Ma-save ang Grades
+                </h3>
+                <p className="text-rose-800 leading-relaxed text-xs">
+                  {error}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {/* Scenario 0: Section has 0 officially enrolled students */}
         {sectionInfo.officialRosterSize === 0 ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-xs text-amber-950 shadow-2xs">
@@ -625,7 +643,7 @@ export default function EClassValidationWorkspace({
             {importing ? <Loader2 size={14} className="animate-spin" /> : null}
             <span>
               {importing
-                ? "Saving Grades..."
+                ? (statusLabel || "Saving Grades...")
                 : `Confirm ${readyLearners.length} Grades`}
             </span>
           </button>
